@@ -1,11 +1,19 @@
 use serenity::all::{Message, User, UserId, ChannelId, MessageId, GuildId};
 use std::collections::{HashMap, HashSet};
 
+pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
+    if let Some(g) = guild_id {
+        g.to_string()
+    } else {
+        String::from("@me")
+    }
+}
+
 /// Creates a URL to a Discord message
 pub async fn make_message_url(message: &Message) -> String {
     format!(
         "https://discord.com/channels/{}/{}/{}",
-        message.guild_id.unwrap_or_default(),
+        guild_id_url_str(message.guild_id).await,
         message.channel_id,
         message.id
     )
