@@ -72,7 +72,7 @@ impl Environment {
             match db.get_environments().await {
                 Ok(environments) => {
                     let mut vars = self.variables.write().await;
-                    for env in environments {
+                    for env in &environments {
                         vars.insert(env.key.clone(), env.value.clone());
                     }
                     info!("Loaded {} environment variables from database", environments.len());

@@ -17,3 +17,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 lazy_static = "1.4"
 regex = "1.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockall = "0.11"
+test-log = { version = "0.2", features = ["trace"] }
+env_logger = "0.10"

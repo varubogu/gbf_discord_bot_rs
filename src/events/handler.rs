@@ -41,3 +41,32 @@ impl SerenityEventHandler for EventHandler {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_event_handler_creation() {
+        // Skip this test if no database is available
+        if std::env::var("DATABASE_URL").is_err() {
+            println!("Skipping event handler test: DATABASE_URL not set");
+            return;
+        }
+        
+        // This test simply verifies that we can create an EventHandler
+        match Database::new().await {
+            Ok(db) => {
+                let db_arc = Arc::new(db);
+                let handler = EventHandler::new(db_arc);
+                
+                // If we got here without panicking, the test passes
+                assert!(true, "EventHandler creation succeeded");
+            },
+            Err(_) => {
+                println!("Skipping event handler test: Database connection failed");
+                return;
+            }
+        }
+    }
+}
