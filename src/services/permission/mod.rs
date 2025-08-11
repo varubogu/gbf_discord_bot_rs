@@ -1,4 +1,4 @@
-use serenity::all::{Context, Member};
+use poise::serenity_prelude::all::{Context, Member};
 
 /// Checks if a member has the specified role name
 pub async fn has_role(ctx: &Context, member: &Member, role_name: &str) -> bool {

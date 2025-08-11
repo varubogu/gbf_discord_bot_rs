@@ -1,4 +1,4 @@
-use serenity::all::{
+use poise::serenity_prelude::all::{
     Context, CommandInteraction, CreateInteractionResponse, CreateInteractionResponseMessage,
     CreateEmbed, CreateEmbedFooter,
 };

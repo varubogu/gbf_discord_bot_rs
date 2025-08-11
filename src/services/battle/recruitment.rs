@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use chrono::{Local, Timelike};
-use serenity::all::{
+use poise::serenity_prelude::all::{
     Context, CreateEmbed, Message,
 };
 use tracing::{error, info};

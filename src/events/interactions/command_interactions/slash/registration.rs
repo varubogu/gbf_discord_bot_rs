@@ -1,4 +1,4 @@
-use serenity::all::{
+use poise::serenity_prelude::all::{
     Context, GuildId, CreateCommand, CreateCommandOption, CommandOptionType,
 };
 use tracing::{error, info};

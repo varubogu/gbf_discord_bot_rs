@@ -1,4 +1,4 @@
-use serenity::all::{Message, User, UserId, ChannelId, MessageId, GuildId};
+use poise::serenity_prelude::all::{Message, User, UserId, ChannelId, MessageId, GuildId};
 use std::collections::{HashMap, HashSet};
 
 pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
@@ -12,7 +12,7 @@ pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serenity::all::{MessageId, ChannelId, GuildId, MessageType};
+    use poise::serenity_prelude::all::{MessageId, ChannelId, GuildId, MessageType};
     use chrono::Utc;
 
     #[tokio::test]
@@ -155,7 +155,7 @@ pub async fn make_message_url(message: &Message) -> String {
 
 /// Gets all users who reacted to a message, grouped by reaction
 pub async fn get_reaction_users(
-    ctx: &serenity::all::Context,
+    ctx: &poise::serenity_prelude::all::Context,
     message: &Message,
 ) -> Result<HashMap<String, Vec<User>>, String> {
     let mut result = HashMap::new();
@@ -193,7 +193,7 @@ pub async fn get_reaction_users(
 
 /// Gets all unique users who reacted to a message
 pub async fn get_unique_reaction_users(
-    ctx: &serenity::all::Context,
+    ctx: &poise::serenity_prelude::all::Context,
     message: &Message,
 ) -> Result<HashSet<UserId>, String> {
     let reactions = get_reaction_users(ctx, message).await?;
@@ -210,7 +210,7 @@ pub async fn get_unique_reaction_users(
 
 /// Updates an embed with reaction participants
 pub async fn update_embed_with_participants(
-    ctx: &serenity::all::Context,
+    ctx: &poise::serenity_prelude::all::Context,
     message: &Message,
     reactions: HashMap<String, Vec<User>>,
 ) -> Result<(), String> {
@@ -239,14 +239,14 @@ pub async fn update_embed_with_participants(
             user_mentions = "無し".to_string();
         }
         
-        embed.fields.push(serenity::all::EmbedField::new(reaction, user_mentions, false));
+        embed.fields.push(poise::serenity_prelude::all::EmbedField::new(reaction, user_mentions, false));
     }
     
     // Create a new message builder
-    let mut builder = serenity::all::EditMessage::default();
+    let mut builder = poise::serenity_prelude::all::EditMessage::default();
     
     // Create a new embed with just the fields we need
-    let mut create_embed = serenity::all::CreateEmbed::new();
+    let mut create_embed = poise::serenity_prelude::all::CreateEmbed::new();
     
     // Copy title and description if they exist
     if let Some(title) = &embed.title {

@@ -1,4 +1,4 @@
-use serenity::all::ReactionType;
+use poise::serenity_prelude::all::ReactionType;
 
 // Battle types enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

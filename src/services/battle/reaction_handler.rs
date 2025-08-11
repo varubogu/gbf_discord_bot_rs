@@ -1,6 +1,5 @@
 use std::sync::Arc;
-use poise::serenity_prelude::Reaction;
-use serenity::all::{Context, Reaction, Message};
+use poise::serenity_prelude::all::{Context, Reaction, Message};
 use tracing::{error, info};
 
 use crate::services::database::Database;
