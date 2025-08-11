@@ -1,14 +1,14 @@
 [package]
 name = "gbf_discord_bot_rs"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "cache"] }
-tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "signal"] }
+poise = "0.6.1"
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "signal"] }
 dotenv = "0.15"
-sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "macros"] }
-sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
+sea-orm = { version = "1.1", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 async-trait = "0.1"
@@ -16,10 +16,13 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 lazy_static = "1.4"
-regex = "1.10"
+regex = "1.11.1"
+log = { version = "0.4.27" }
+logcall = { version = "0.1.11"}
+
 
 [dev-dependencies]
 tokio-test = "0.4"
-mockall = "0.11"
+mockall = "0.13"
 test-log = { version = "0.2", features = ["trace"] }
 env_logger = "0.10"

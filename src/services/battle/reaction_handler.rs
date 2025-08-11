@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use poise::serenity_prelude::Reaction;
 use serenity::all::{Context, Reaction, Message};
 use tracing::{error, info};
 
@@ -6,12 +7,11 @@ use crate::services::database::Database;
 use crate::utils::discord_helper::{get_reaction_users, update_embed_with_participants, get_unique_reaction_users};
 
 pub struct ReactionHandler {
-    db: Arc<Database>,
 }
 
 impl ReactionHandler {
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self {}
     }
     
     pub async fn handle_reaction_add(&self, ctx: Context, reaction: Reaction) -> Result<(), String> {

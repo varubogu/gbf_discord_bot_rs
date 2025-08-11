@@ -1,45 +1,51 @@
 use std::sync::Arc;
-
-use serenity::all::{Context, EventHandler as SerenityEventHandler, Ready, Message, Reaction};
-use serenity::async_trait;
+use async_trait::async_trait;
 use tracing::{info, error};
-
+use crate::{PoiseData, PoiseError};
 use crate::services::database::Database;
-use crate::events::handlers::reactions::{handle_reaction_add, handle_reaction_remove};
+use crate::events::handlers;
+
+async fn event_handler(
+    ctx: &poise::serenity_prelude::Context,
+    event: &poise::serenity_prelude::FullEvent,
+    _framework: poise::FrameworkContext<'_, PoiseData, PoiseError>,
+    data: &PoiseData,
+) -> Result<(), PoiseError> {
+    match event {
+        poise::serenity_prelude::FullEvent::Ready(ready) => {
+            println!("Connected as {}", ready.user.name);
+            handlers::ready::on_ready(ctx).await?;
+            Ok(())
+        },
+        poise::serenity_prelude::FullEvent::ReactionAdd(reaction) => {
+            println!("Connected as {}", reaction.user.name);
+            handlers::reaction_add::on_reaction_add(ctx, reaction).await?;
+            Ok(())
+        },
+        poise::serenity_prelude::FullEvent::ReactionRemove(reaction) => {
+            println!("Connected as {}", reaction.user.name);
+            handlers::reaction_remove::on_reaction_remove(ctx, reaction).await?;
+            Ok(())
+        },
+        _ => {
+            Ok(())
+        }
+    }
+}
+
 
 pub struct EventHandler {
-    db: Arc<Database>,
 }
 
 impl EventHandler {
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
 #[async_trait]
-impl SerenityEventHandler for EventHandler {
-    async fn ready(&self, _ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
-        
-        // Slash commands registration is handled elsewhere
-    }
-    
-    async fn message(&self, _ctx: Context, _msg: Message) {
-        // Handle messages if needed
-    }
-    
-    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        if let Err(e) = handle_reaction_add(ctx, reaction, self.db.clone()).await {
-            error!("Error handling reaction add: {}", e);
-        }
-    }
-    
-    async fn reaction_remove(&self, ctx: Context, reaction: Reaction) {
-        if let Err(e) = handle_reaction_remove(ctx, reaction, self.db.clone()).await {
-            error!("Error handling reaction remove: {}", e);
-        }
-    }
+impl PoiseEvent for EventHandler {
+
 }
 
 #[cfg(test)]

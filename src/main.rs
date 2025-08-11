@@ -1,10 +1,8 @@
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
-
-use serenity::all::{
-    Client, GatewayIntents,
-};
+use dotenv::dotenv;
+use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use tracing::{error, info};
 
 // Import modules
@@ -17,18 +15,9 @@ use services::database::Database;
 use services::environment::init_environment;
 use events::handler::EventHandler;
 
-async fn initialize_bot() -> Result<Arc<Database>, Box<dyn std::error::Error>> {
-    let db = Database::new().await?;
-    let db_arc = Arc::new(db);
-    
-    // Initialize environment with database
-    if let Err(e) = init_environment(Some(db_arc.clone())).await {
-        error!("Failed to initialize environment with database: {}", e);
-        // Continue anyway, as we at least have the .env values
-    }
-    
-    Ok(db_arc)
-}
+pub(crate) type PoiseData = ();
+pub(crate) type PoiseError = Box<dyn std::error::Error + Send + Sync>;
+pub(crate) type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
 
 #[tokio::main]
 async fn main() {
@@ -49,45 +38,41 @@ async fn main() {
         | GatewayIntents::GUILDS
         | GatewayIntents::MESSAGE_CONTENT;
 
-    // Initialize database and environment
-    let db = match initialize_bot().await {
-        Ok(db) => db,
-        Err(e) => {
-            error!("Error initializing bot: {:?}", e);
-            return;
-        }
-    };
+    // Create poise framework
+    let framework = poise::Framework::builder()
+        .options(poise::FrameworkOptions {
+            commands: commands(),
+            ..Default::default()
+        })
+        .setup(move |ctx, _ready, framework| {
+            Box::pin(async move {
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                Ok(())
+            })
+        })
+        .build();
 
-    // Create event handler
-    let event_handler = EventHandler::new(db);
+    // Create event handler for non-command events
+    let event_handler = EventHandler::new();
 
-    // Create client
-    let mut client = Client::builder(&token, intents)
+    // Create client with poise
+    let client = serenity::ClientBuilder::new(&token, intents)
+        .framework(framework)
         .event_handler(event_handler)
-        .await
-        .expect("Error creating client");
+        .await;
 
-    // Set up error handling for the client
-    info!("Starting client...");
-    match client.start().await {
-        Ok(_) => info!("Client exited successfully"),
-        Err(e) => {
-            error!("Client error: {:?}", e);
-            // Log detailed error information
-            match e {
-                serenity::Error::Gateway(gateway_err) => {
-                    error!("Gateway error: {:?}", gateway_err);
-                },
-                serenity::Error::Http(http_err) => {
-                    error!("HTTP error: {:?}", http_err);
-                },
-                serenity::Error::Model(model_err) => {
-                    error!("Model error: {:?}", model_err);
-                },
-                _ => {
-                    error!("Other error: {:?}", e);
-                }
-            }
-        }
-    }
+    client.unwrap().start().await.unwrap();
+}
+fn commands() -> Vec<poise::Command<PoiseData
+    , PoiseError>> {
+    vec![
+        events::interactions::command_interactions::slash::reaction_members::reaction_members(),
+        events::interactions::command_interactions::contextmenu::reaction_users_context_menu::get_reaction_members(),
+        events::interactions::command_interactions::contextmenu::reaction_grouping_users_context_menu::get_reaction_grouping_members(),
+    ]
+}
+
+#[allow(dead_code)]
+async fn error_handler(error: poise::FrameworkError<'_, PoiseData, PoiseError>) {
+    println!("Oh no, we got an error: {:?}", error);
 }

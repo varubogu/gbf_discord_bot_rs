@@ -6,6 +6,8 @@ use crate::models;
 // Import the old model structs for compatibility
 use super::models::{Quest, QuestAlias, BattleRecruitment, MessageText, Environment};
 
+
+
 pub struct Database {
     inner: Arc<models::Database>,
 }

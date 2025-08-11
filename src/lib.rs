@@ -5,7 +5,6 @@ pub mod events;
 pub mod services;
 pub mod utils;
 pub mod models;
-pub mod config;
 
 // Re-export commonly used items for convenience
 pub use services::database::Database;
