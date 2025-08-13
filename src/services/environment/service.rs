@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::services::database::Database;
+use crate::repository::Database;
 use super::init::load_from_database_and_update_env;
 
 /// Service function to load environment variables from database

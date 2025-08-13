@@ -1,37 +1,21 @@
 use std::sync::Arc;
-use poise::serenity_prelude::all::{Context, Reaction, Message};
+use poise::serenity_prelude::all::{Context, Reaction, Message, User};
 use tracing::{error, info};
 
-use crate::services::database::Database;
 use crate::utils::discord_helper::{get_reaction_users, update_embed_with_participants, get_unique_reaction_users};
+use crate::repository::Database;
+use crate::models::battle_recruitment::BattleRecruitment;
 
 pub struct ReactionHandler {
+    db: Arc<Database>,
 }
 
 impl ReactionHandler {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(db: Arc<Database>) -> Self {
+        Self { db }
     }
-    
-    pub async fn handle_reaction_add(&self, ctx: Context, reaction: Reaction) -> Result<(), String> {
-        // Skip reactions from the bot itself
-        if reaction.user_id.unwrap() == ctx.cache.current_user().id {
-            return Ok(());
-        }
-        
-        self.handle_reaction(ctx, reaction).await
-    }
-    
-    pub async fn handle_reaction_remove(&self, ctx: Context, reaction: Reaction) -> Result<(), String> {
-        // Skip reactions from the bot itself
-        if reaction.user_id.unwrap() == ctx.cache.current_user().id {
-            return Ok(());
-        }
-        
-        self.handle_reaction(ctx, reaction).await
-    }
-    
-    async fn handle_reaction(&self, ctx: Context, reaction: Reaction) -> Result<(), String> {
+
+    pub async fn handle_reaction(&self, ctx: Context, reaction: Reaction) -> Result<(), String> {
         let guild_id = match reaction.guild_id {
             Some(id) => id,
             None => return Ok(()),
@@ -84,8 +68,8 @@ impl ReactionHandler {
         &self,
         ctx: &Context,
         message: &Message,
-        recruitment: &crate::services::database::BattleRecruitment,
-        reactions: std::collections::HashMap<String, Vec<serenity::all::User>>,
+        recruitment: &BattleRecruitment,
+        reactions: std::collections::HashMap<String, Vec<User>>,
     ) -> Result<(), String> {
         // Get the quest
         let quest = match self.db.get_quest_by_target_id(recruitment.target_id).await {

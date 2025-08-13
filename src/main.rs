@@ -1,23 +1,18 @@
 use std::env;
 use std::path::Path;
-use std::sync::Arc;
-use dotenv::dotenv;
+use poise::FrameworkError::EventHandler;
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
-use tracing::{error, info};
 
-// Import modules
 mod events;
 mod services;
 mod utils;
 mod models;
+mod types;
+mod repository;
+mod facades;
 
-use services::database::Database;
-use services::environment::init_environment;
-use events::handler::EventHandler;
-
-pub(crate) type PoiseData = ();
-pub(crate) type PoiseError = Box<dyn std::error::Error + Send + Sync>;
-pub(crate) type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;
+use crate::events::handler::event_handler;
+use crate::types::{PoiseData, PoiseError};
 
 #[tokio::main]
 async fn main() {
@@ -44,6 +39,12 @@ async fn main() {
             commands: commands(),
             ..Default::default()
         })
+        .options(poise::FrameworkOptions {
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
+            },
+            ..Default::default()
+        })
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
@@ -52,23 +53,18 @@ async fn main() {
         })
         .build();
 
-    // Create event handler for non-command events
-    let event_handler = EventHandler::new();
-
     // Create client with poise
     let client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
-        .event_handler(event_handler)
         .await;
 
     client.unwrap().start().await.unwrap();
 }
-fn commands() -> Vec<poise::Command<PoiseData
-    , PoiseError>> {
+fn commands() -> Vec<poise::Command<PoiseData, PoiseError>> {
     vec![
-        events::interactions::command_interactions::slash::reaction_members::reaction_members(),
-        events::interactions::command_interactions::contextmenu::reaction_users_context_menu::get_reaction_members(),
-        events::interactions::command_interactions::contextmenu::reaction_grouping_users_context_menu::get_reaction_grouping_members(),
+        // events::interactions::command_interactions::slash::environ_load::handle_environ_load_command(),
+        // events::interactions::command_interactions::contextmenu::reaction_users_context_menu::get_reaction_members(),
+        // events::interactions::command_interactions::contextmenu::reaction_grouping_users_context_menu::get_reaction_grouping_members(),
     ]
 }
 

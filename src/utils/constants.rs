@@ -1,0 +1,1 @@
+pub const ROLL_GBF_BOT_CONTROLS: &str = "gbf_bot_control";

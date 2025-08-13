@@ -1,6 +1,16 @@
-use crate::models::{Database, Environment};
+use serde::{Deserialize, Serialize};
 use crate::models::entities::{environment, Environment as EnvironmentEntity};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set, DbErr, IntoActiveModel, ActiveModelBehavior, TransactionTrait};
+use crate::models::database::Database;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Environment {
+    pub id: i32,
+    pub key: String,
+    pub value: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
 
 impl From<environment::Model> for Environment {
     fn from(model: environment::Model) -> Self {

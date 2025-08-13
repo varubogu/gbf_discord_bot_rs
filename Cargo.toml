@@ -19,6 +19,9 @@ lazy_static = "1.4"
 regex = "1.11.1"
 log = { version = "0.4.27" }
 logcall = { version = "0.1.11"}
+rust-i18n = "3.1.5"
+dateparser = "0.2.1"
+futures = "0.3.31"
 
 
 [dev-dependencies]

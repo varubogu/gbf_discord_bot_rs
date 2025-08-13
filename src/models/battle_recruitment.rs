@@ -1,6 +1,21 @@
-use crate::models::{Database, BattleRecruitment};
+use serde::{Deserialize, Serialize};
 use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, DbErr};
+use crate::models::database::Database;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BattleRecruitment {
+    pub id: i32,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub target_id: i32,
+    pub battle_type_id: i32,
+    pub expiry_date: chrono::DateTime<chrono::Utc>,
+    pub recruit_end_message_id: Option<i64>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
 
 impl From<battle_recruitment::Model> for BattleRecruitment {
     fn from(model: battle_recruitment::Model) -> Self {

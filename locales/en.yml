@@ -1,0 +1,35 @@
+en:
+  common:
+    success: "Success"
+    error: "Error"
+    warning: "Warning"
+    info: "Information"
+    yes: "Yes"
+    no: "No"
+    cancel: "Cancel"
+    confirm: "Confirm"
+    loading: "Loading..."
+    unknown: "Unknown"
+  
+  battle_recruitment:
+    title: "Battle Recruitment"
+    new_recruitment: "New battle recruitment created"
+    recruitment_cancelled: "Battle recruitment cancelled"
+    recruitment_closed: "Battle recruitment closed"
+    recruitment_full: "Battle recruitment is full"
+    join_success: "Successfully joined the battle"
+    leave_success: "Successfully left the battle"
+    not_found: "Battle recruitment not found"
+    already_joined: "You have already joined this battle"
+    not_joined: "You are not part of this battle"
+    
+  errors:
+    invalid_input: "Invalid input provided"
+    permission_denied: "Permission denied"
+    internal_error: "An internal error occurred"
+    user_not_found: "User not found"
+    command_failed: "Command execution failed"
+    
+  messages:
+    welcome: "Welcome to the GBF Discord Bot!"
+    help: "Use `/help` to see available commands"

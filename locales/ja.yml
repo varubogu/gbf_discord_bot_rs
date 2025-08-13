@@ -1,0 +1,35 @@
+ja:
+  common:
+    success: "成功"
+    error: "エラー"
+    warning: "警告"
+    info: "情報"
+    yes: "はい"
+    no: "いいえ"
+    cancel: "キャンセル"
+    confirm: "確認"
+    loading: "読み込み中..."
+    unknown: "不明"
+  
+  battle_recruitment:
+    title: "バトル募集"
+    new_recruitment: "新しいバトル募集が作成されました"
+    recruitment_cancelled: "バトル募集がキャンセルされました"
+    recruitment_closed: "バトル募集が締切りました"
+    recruitment_full: "バトル募集は満員です"
+    join_success: "バトルに参加しました"
+    leave_success: "バトルから離脱しました"
+    not_found: "バトル募集が見つかりません"
+    already_joined: "既にこのバトルに参加しています"
+    not_joined: "このバトルに参加していません"
+    
+  errors:
+    invalid_input: "無効な入力です"
+    permission_denied: "権限がありません"
+    internal_error: "内部エラーが発生しました"
+    user_not_found: "ユーザーが見つかりません"
+    command_failed: "コマンドの実行に失敗しました"
+    
+  messages:
+    welcome: "GBF Discord Botへようこそ！"
+    help: "`/help`を使用して利用可能なコマンドを確認してください"

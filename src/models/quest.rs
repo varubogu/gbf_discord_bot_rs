@@ -1,7 +1,27 @@
-use crate::models::{Database, Quest, QuestAlias};
+use serde::{Deserialize, Serialize};
 use crate::models::entities::{quest, quest_alias};
 use crate::models::entities::{Quest as QuestEntity, QuestAlias as QuestAliasEntity};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, RelationTrait, DbErr};
+use crate::models::database::Database;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Quest {
+    pub id: i32,
+    pub target_id: i32,
+    pub quest_name: String,
+    pub default_battle_type: i32,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuestAlias {
+    pub id: i32,
+    pub target_id: i32,
+    pub alias: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
 
 impl From<quest::Model> for Quest {
     fn from(model: quest::Model) -> Self {

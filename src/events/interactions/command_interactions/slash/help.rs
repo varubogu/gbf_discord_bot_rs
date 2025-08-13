@@ -1,13 +1,15 @@
-use poise::serenity_prelude::all::{
-    Context, CommandInteraction, CreateInteractionResponse, CreateInteractionResponseMessage,
-    CreateEmbed, CreateEmbedFooter,
-};
-use tracing::error;
+use crate::types::{PoiseContext, PoiseError};
+use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 
-pub async fn handle_help_command(
-    ctx: &Context, 
-    command: &CommandInteraction,
-) -> Result<(), String> {
+#[poise::command(
+    slash_command,
+    name_localized("ja", "ヘルプ"),
+    description_localized("ja", "ヘルプを表示します"),
+    ephemeral
+)]
+pub async fn help(
+    ctx: PoiseContext<'_>,
+) -> Result<(), PoiseError> {
     // Create an embed with help information
     let embed = CreateEmbed::new()
         .title("GBF Discord Bot Help")
@@ -19,7 +21,7 @@ pub async fn handle_help_command(
         )
         .field(
             "/recruit",
-            "Create a battle recruitment with reactions for different elements.\n\
+            "Create a battle_recruitment recruitment with reactions for different elements.\n\
             Usage: `/recruit quest:<quest_name> [battle_type:<type>] [event_date:<date>]`",
             false
         )
@@ -38,17 +40,11 @@ pub async fn handle_help_command(
         )
         .footer(CreateEmbedFooter::new("GBF Discord Bot - Rust Edition"));
     
-    // Send the response
-    if let Err(e) = command.create_response(&ctx.http, 
-        CreateInteractionResponse::Message(
-            CreateInteractionResponseMessage::new()
-                .add_embed(embed)
-                .ephemeral(true)
-        )
-    ).await {
-        error!("Error sending help response: {:?}", e);
-        return Err(format!("Failed to send help response: {}", e));
-    }
+    // Send the response using Poise's reply method
+    ctx.send(poise::CreateReply::default()
+        .embed(embed)
+        .ephemeral(true)
+    ).await?;
     
     Ok(())
 }

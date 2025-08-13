@@ -1,13 +1,13 @@
-// Library file for GBF Discord Bot
-// This exposes modules for testing and potential library usage
+// Library interface for gbf_discord_bot_rs
+// This exposes modules for use by examples and external code
+
+// Initialize rust-i18n at the library root
+rust_i18n::i18n!("locales");
 
 pub mod events;
 pub mod services;
 pub mod utils;
 pub mod models;
-
-// Re-export commonly used items for convenience
-pub use services::database::Database;
-pub use services::battle::{BattleType, RecruitmentService};
-pub use events::handler::EventHandler;
-pub use utils::{date_parser, discord_helper};
+pub mod types;
+pub mod repository;
+pub mod facades;
