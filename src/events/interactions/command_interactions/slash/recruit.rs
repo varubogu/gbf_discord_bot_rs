@@ -1,6 +1,8 @@
 use futures::Stream;
+use sea_orm::TransactionTrait;
 use crate::facades::battle_recruitment;
 use crate::types::{BattleType, PoiseContext, PoiseError};
+use crate::utils::database::DatabaseServiceExt;
 // use crate::services::battle_recruitment::_recruitment::RecruitmentService;
 
 #[poise::command(
@@ -28,15 +30,28 @@ pub async fn handle_recruit_command(
 ) -> Result<(), PoiseError> {
     ctx.defer().await?;
 
+    let db = &ctx.data().db;
+
     // Use default battle_recruitment type for now
-    let _battle_type = BattleType::Default;
+    let battle_type = BattleType::Default;
 
-    // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
+    // Use the extension trait method for lambda-style transactions
+    db.execute_in_transaction(|_txn| async move {
+        // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
 
-    // TODO: Use quest parameter properly
-    let _quest = quest;
-
-    battle_recruitment::new(&ctx).await;
+        // Call the updated battle_recruitment::new function
+        match battle_recruitment::new(&ctx, &quest, battle_type).await {
+            Ok(_) => {
+                ctx.say("募集が正常に作成されました。").await?;
+                Ok(())
+            },
+            Err(e) => {
+                ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
+                Err(e.into())
+            }
+        }
+    }).await?;
+    
     Ok(())
 }
 

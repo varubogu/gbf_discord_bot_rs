@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
-use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
+use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, DbErr};
+
+use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
 use crate::models::database::Database;
 
+/// Battle recruitment domain model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BattleRecruitment {
     pub id: i32,
@@ -11,10 +14,10 @@ pub struct BattleRecruitment {
     pub message_id: i64,
     pub target_id: i32,
     pub battle_type_id: i32,
-    pub expiry_date: chrono::DateTime<chrono::Utc>,
+    pub expiry_date: DateTime<Utc>,
     pub recruit_end_message_id: Option<i64>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<battle_recruitment::Model> for BattleRecruitment {

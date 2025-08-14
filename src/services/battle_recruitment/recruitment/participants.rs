@@ -1,198 +1,82 @@
-// use std::sync::Arc;
-// use std::collections::{HashMap, HashSet};
-// use poise::serenity_prelude::all::{Context, Message, User, UserId, ReactionType};
-// use tracing::{error, info};
-// 
-// use crate::repository::Database;
-// use crate::models::battle_recruitment::BattleRecruitment;
-// use crate::types::BattleType;
-// 
-// pub struct ParticipantsService {
-//     db: Arc<Database>,
-// }
-// 
-// impl ParticipantsService {
-//     pub fn new(db: Arc<Database>) -> Self {
-//         Self { db }
-//     }
-// 
-//     /// 募集の参加者情報を取得・管理する
-//     /// Python版のafter_reaction.pyのget_reaction_users()に相当
-//     pub async fn get_recruitment_participants(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         battle_type: BattleType,
-//     ) -> Result<Vec<User>, String> {
-//         // リアクションユーザーを取得
-//         let reaction_users = self.get_reaction_users(ctx, message, battle_type).await?;
-//         
-//         // Bot自身を除外
-//         let bot_user_id = ctx.cache.current_user().id;
-//         let participants: Vec<User> = reaction_users
-//             .into_iter()
-//             .filter(|user| user.id != bot_user_id)
-//             .collect();
-// 
-//         info!("Found {} participants", participants.len());
-//         Ok(participants)
-//     }
-// 
-//     /// 特定の募集の参加者数をチェック
-//     pub async fn check_recruitment_capacity(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         recruitment: &BattleRecruitment,
-//         battle_type: BattleType,
-//     ) -> Result<bool, String> {
-//         let participants = self.get_recruitment_participants(ctx, message, battle_type).await?;
-//         
-//         // クエスト情報から定員を取得
-//         let quest = match self.db.get_quest_by_target_id(recruitment.target_id).await {
-//             Ok(Some(quest)) => quest,
-//             Ok(None) => {
-//                 error!("Quest not found for target_id: {}", recruitment.target_id);
-//                 return Ok(false);
-//             },
-//             Err(e) => {
-//                 error!("Error fetching quest: {:?}", e);
-//                 return Err(format!("Database error: {}", e));
-//             }
-//         };
-// 
-//         // デフォルトの定員数（実際の実装では quest から取得すべき）
-//         let capacity = 6; // 一般的なGBFマルチバトルの定員
-// 
-//         info!("Participants: {}/{}", participants.len(), capacity);
-//         Ok(participants.len() >= capacity)
-//     }
-// 
-//     /// 参加者のユニークリストを取得
-//     pub async fn get_unique_participants(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         battle_type: BattleType,
-//     ) -> Result<Vec<User>, String> {
-//         let participants = self.get_recruitment_participants(ctx, message, battle_type).await?;
-//         
-//         // UserIdでユニーク化
-//         let mut seen_ids = HashSet::new();
-//         let unique_participants: Vec<User> = participants
-//             .into_iter()
-//             .filter(|user| seen_ids.insert(user.id))
-//             .collect();
-// 
-//         Ok(unique_participants)
-//     }
-// 
-//     /// 参加者リストをメンション形式で取得
-//     pub async fn get_participants_mentions(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         battle_type: BattleType,
-//     ) -> Result<String, String> {
-//         let participants = self.get_unique_participants(ctx, message, battle_type).await?;
-//         
-//         let mentions = participants
-//             .iter()
-//             .map(|user| format!("<@{}>", user.id))
-//             .collect::<Vec<_>>()
-//             .join(" ");
-// 
-//         Ok(mentions)
-//     }
-// 
-//     /// メッセージからリアクションユーザーを取得
-//     /// Python版のget_reaction_users()に相当
-//     async fn get_reaction_users(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         battle_type: BattleType,
-//     ) -> Result<Vec<User>, String> {
-//         let target_reactions = battle_type.reactions();
-//         let mut users = Vec::new();
-// 
-//         for message_reaction in &message.reactions {
-//             // 対象のリアクションかチェック
-//             let is_target_reaction = target_reactions.iter().any(|target| {
-//                 match target {
-//                     crate::types::ReactionType::Unicode(emoji) => {
-//                         message_reaction.reaction_type.unicode_eq(emoji)
-//                     },
-//                     crate::types::ReactionType::Custom { name, .. } => {
-//                         message_reaction.reaction_type.as_data() == *name
-//                     },
-//                 }
-//             });
-// 
-//             if is_target_reaction {
-//                 // このリアクションのユーザーを取得
-//                 match message_reaction.users(&ctx.http, None, None).await {
-//                     Ok(reaction_users) => {
-//                         users.extend(reaction_users);
-//                     },
-//                     Err(e) => {
-//                         error!("Error getting reaction users: {:?}", e);
-//                         // エラーが発生しても他のリアクションの処理を続行
-//                     }
-//                 }
-//             }
-//         }
-// 
-//         Ok(users)
-//     }
-// 
-//     /// 参加者数の統計情報を取得
-//     pub async fn get_participation_stats(
-//         &self,
-//         ctx: &Context,
-//         message: &Message,
-//         battle_type: BattleType,
-//     ) -> Result<HashMap<String, usize>, String> {
-//         let mut stats = HashMap::new();
-//         let target_reactions = battle_type.reactions();
-// 
-//         for message_reaction in &message.reactions {
-//             let is_target_reaction = target_reactions.iter().any(|target| {
-//                 match target {
-//                     crate::types::ReactionType::Unicode(emoji) => {
-//                         message_reaction.reaction_type.unicode_eq(emoji)
-//                     },
-//                     crate::types::ReactionType::Custom { name, .. } => {
-//                         message_reaction.reaction_type.as_data() == *name
-//                     },
-//                 }
-//             });
-// 
-//             if is_target_reaction {
-//                 let reaction_key = match &message_reaction.reaction_type {
-//                     poise::serenity_prelude::ReactionType::Unicode(emoji) => emoji.clone(),
-//                     poise::serenity_prelude::ReactionType::Custom { name, .. } => {
-//                         name.clone().unwrap_or_else(|| "unknown".to_string())
-//                     },
-//                     _ => "unknown".to_string(),
-//                 };
-// 
-//                 // Bot以外のユーザー数をカウント
-//                 let bot_user_id = ctx.cache.current_user().id;
-//                 let user_count = if message_reaction.count > 0 {
-//                     // Botが含まれている場合は1を引く
-//                     match message_reaction.users(&ctx.http, None, None).await {
-//                         Ok(users) => users.iter().filter(|u| u.id != bot_user_id).count(),
-//                         Err(_) => message_reaction.count as usize,
-//                     }
-//                 } else {
-//                     0
-//                 };
-// 
-//                 stats.insert(reaction_key, user_count);
-//             }
-//         }
-// 
-//         Ok(stats)
-//     }
-// }
+use tracing::{info, warn};
+/// ParticipantsService - 募集参加者管理を行うサービス
+/// 現在は仕様検討中のため、警告表示と正常終了パターンをエミュレートします
+pub struct ParticipantsService;
+
+impl ParticipantsService {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// 募集メッセージのリアクションとメンバーを取得
+    pub async fn get_reactions_and_members(&self, message_id: u64) -> Result<Vec<String>, String> {
+        warn!("ParticipantsService::get_reactions_and_members - 仕様検討中です");
+        info!("リアクション・メンバー取得をエミュレート: message_id={}", message_id);
+        
+        // エミュレート用の参加者リスト
+        let mock_participants = vec![
+            "<@111111111>".to_string(),
+            "<@222222222>".to_string(),
+            "<@333333333>".to_string(),
+        ];
+        Ok(mock_participants)
+    }
+
+    /// DBから募集情報を取得
+    pub async fn get_recruitment_from_db(&self, guild_id: u64, channel_id: u64, message_id: u64) -> Result<(), String> {
+        warn!("ParticipantsService::get_recruitment_from_db - 仕様検討中です");
+        info!("DB募集情報取得をエミュレート: guild_id={}, channel_id={}, message_id={}", 
+              guild_id, channel_id, message_id);
+        Ok(())
+    }
+
+    /// リアクションとメンバーからメッセージを作成
+    pub async fn create_participant_message(&self, participants: &[String], quest_name: &str) -> Result<String, String> {
+        warn!("ParticipantsService::create_participant_message - 仕様検討中です");
+        info!("参加者メッセージ作成をエミュレート");
+        
+        let participant_list = if participants.is_empty() {
+            "現在参加者はいません".to_string()
+        } else {
+            participants.join("\n")
+        };
+        
+        let message = format!(
+            "{}の参加者一覧\n\n{}",
+            quest_name,
+            participant_list
+        );
+        Ok(message)
+    }
+
+    /// クエストと日時からメッセージを作成（参加者情報含む）
+    pub async fn create_quest_datetime_message(&self, quest_name: &str, datetime: &str, participants: &[String]) -> Result<String, String> {
+        warn!("ParticipantsService::create_quest_datetime_message - 仕様検討中です");
+        info!("クエスト・日時メッセージ作成をエミュレート");
+        
+        let participant_count = participants.len();
+        let message = format!(
+            "{}の募集\n開催日時: {}\n参加者数: {}名\n\n参加者:\n{}",
+            quest_name,
+            datetime,
+            participant_count,
+            if participants.is_empty() { "なし".to_string() } else { participants.join("\n") }
+        );
+        Ok(message)
+    }
+
+    /// メッセージを更新
+    pub async fn update_message(&self, channel_id: u64, message_id: u64, content: &str) -> Result<(), String> {
+        warn!("ParticipantsService::update_message - 仕様検討中です");
+        info!("メッセージ更新をエミュレート: channel_id={}, message_id={}", 
+              channel_id, message_id);
+        info!("更新内容: {}", content);
+        Ok(())
+    }
+}
+
+impl Default for ParticipantsService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
