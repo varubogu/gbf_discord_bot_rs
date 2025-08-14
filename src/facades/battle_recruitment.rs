@@ -1,13 +1,12 @@
 use crate::types::{PoiseContext, BattleType};
 use crate::services::battle_recruitment::recruitment::{
-    NewRecruitmentService, UpdateRecruitmentService, ParticipantsService, 
+    UpdateRecruitmentService, ParticipantsService,
     CancelRecruitmentService, StartRecruitmentService
 };
-use crate::repository::Database;
+use crate::repository::database::Database;
 use crate::utils::database::DatabaseServiceExt;
 use std::sync::Arc;
 use tracing::{info, warn, error};
-use chrono::Local;
 
 /// 新しい募集を開始する
 pub(crate) async fn new(ctx: &PoiseContext<'_>, quest_alias: &str, battle_type: BattleType) -> Result<(), String> {

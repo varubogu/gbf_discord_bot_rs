@@ -3,7 +3,7 @@ use chrono::{DateTime, Local};
 use poise::serenity_prelude::all::{Context, Message, ChannelId, EditMessage, CreateEmbed};
 use tracing::{error, info, warn};
 
-use crate::repository::Database;
+use crate::repository::database::Database;
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::types::BattleType;
 

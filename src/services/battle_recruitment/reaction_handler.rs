@@ -3,7 +3,7 @@ use poise::serenity_prelude::all::{Context, Reaction, Message, User};
 use tracing::{error, info};
 
 use crate::utils::discord_helper::{get_reaction_users, update_embed_with_participants, get_unique_reaction_users};
-use crate::repository::Database;
+use crate::repository::database::Database;
 use crate::models::battle_recruitment::BattleRecruitment;
 
 pub struct ReactionHandler {

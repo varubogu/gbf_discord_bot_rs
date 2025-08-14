@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use regex::Regex;
 use tracing::{info, error};
 
-use crate::repository::Database;
+use crate::repository::database::Database;
 
 #[derive(Debug)]
 pub struct EnvironmentError {

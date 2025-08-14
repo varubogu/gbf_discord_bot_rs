@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::repository::Database;
+use crate::repository::database::Database;
 use super::environment::Environment;
 
 // Create a singleton instance

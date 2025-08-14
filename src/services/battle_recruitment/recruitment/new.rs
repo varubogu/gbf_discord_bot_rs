@@ -3,17 +3,27 @@ use chrono::{DateTime, Local, Duration};
 use poise::serenity_prelude::all::{Context, CreateEmbed, CreateMessage, Message, ChannelId};
 use tracing::{error, info};
 
-use crate::repository::Database;
+use crate::repository::{BattleRecruitmentRepository, QuestRepository, RepositoryFactory};
 use crate::models::quest::Quest;
 use crate::types::BattleType;
 
 pub struct NewRecruitmentService {
-    db: Arc<Database>,
+    battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+    quest_repo: Arc<dyn QuestRepository>,
 }
 
 impl NewRecruitmentService {
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub async fn new() -> Result<Self, String> {
+        let battle_recruitment_repo = RepositoryFactory::create_battle_recruitment_repository().await
+            .map_err(|e| format!("Failed to create battle recruitment repository: {}", e))?;
+        
+        let quest_repo = RepositoryFactory::create_quest_repository().await
+            .map_err(|e| format!("Failed to create quest repository: {}", e))?;
+        
+        Ok(Self { 
+            battle_recruitment_repo: Arc::from(battle_recruitment_repo),
+            quest_repo: Arc::from(quest_repo),
+        })
     }
 
     /// 新規募集を作成する
@@ -63,7 +73,7 @@ impl NewRecruitmentService {
 
     /// クエストエイリアスからクエスト情報を取得
     async fn get_quest_by_alias(&self, alias: &str) -> Result<Quest, String> {
-        match self.db.quest.get_by_alias(alias).await {
+        match self.quest_repo.get_by_alias(alias).await {
             Ok(Some(quest)) => Ok(quest),
             Ok(None) => Err(format!("Quest not found for alias: {}", alias)),
             Err(e) => {
@@ -144,7 +154,7 @@ impl NewRecruitmentService {
         battle_type: BattleType,
         expiry_date: DateTime<Local>,
     ) -> Result<(), String> {
-        match self.db.battle_recruitment.create(
+        match self.battle_recruitment_repo.create(
             guild_id,
             channel_id,
             message_id,

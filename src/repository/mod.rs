@@ -1,59 +1,57 @@
+pub(crate) mod database;
 pub mod battle_recruitment_repository;
 pub mod quest_repository;
 pub mod message_text_repository;
 pub mod environment_repository;
 
-use tracing::info;
+use crate::types::PoiseError;
 
-// Import repository traits
-use battle_recruitment_repository::{BattleRecruitmentRepository, SeaOrmBattleRecruitmentRepository};
-use quest_repository::{QuestRepository, SeaOrmQuestRepository};
-use message_text_repository::{MessageTextRepository, SeaOrmMessageTextRepository};
-use environment_repository::{EnvironmentRepository, SeaOrmEnvironmentRepository};
+// 抽象インターフェースをre-export
+pub use battle_recruitment_repository::BattleRecruitmentRepository;
+pub use quest_repository::QuestRepository;
+pub use message_text_repository::MessageTextRepository;
+pub use environment_repository::EnvironmentRepository;
 
-pub struct Database {
-    pub quest: Box<dyn QuestRepository + Send + Sync>,
-    pub battle_recruitment: Box<dyn BattleRecruitmentRepository + Send + Sync>,
-    pub message_text: Box<dyn MessageTextRepository + Send + Sync>,
-    pub environment: Box<dyn EnvironmentRepository + Send + Sync>,
-}
+/// リポジトリファクトリ
+/// データベース実装の詳細を隠蔽し、抽象インターフェースのみ公開
+pub struct RepositoryFactory;
 
-impl Database {
-    pub async fn new() -> Result<Self, sqlx::Error> {
-        info!("Creating database connection...");
-        
-        // Get database connection
-        let conn = match crate::models::database::Database::new().await {
-            Ok(db) => db.conn,
-            Err(e) => return Err(sqlx::Error::Protocol(format!("Failed to connect to database: {}", e))),
-        };
-
-        info!("Connected to database");
-        Ok(Self {
-            quest: Box::new(SeaOrmQuestRepository::new(conn.clone())),
-            battle_recruitment: Box::new(SeaOrmBattleRecruitmentRepository::new(conn.clone())),
-            message_text: Box::new(SeaOrmMessageTextRepository::new(conn.clone())),
-            environment: Box::new(SeaOrmEnvironmentRepository::new(conn)),
-        })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::Utc;
-
-    #[tokio::test]
-    async fn test_database_new() {
-        // Test database creation
-        // Note: This test will be skipped if DATABASE_URL is not set
-        if std::env::var("DATABASE_URL").is_err() {
-            println!("Skipping database test: DATABASE_URL not set");
-            return;
-        }
-
-        let result = Database::new().await;
-        assert!(result.is_ok(), "Database creation should succeed with valid connection");
+impl RepositoryFactory {
+    /// バトル募集リポジトリを作成
+    pub async fn create_battle_recruitment_repository() -> Result<Box<dyn BattleRecruitmentRepository>, PoiseError> {
+        let provider = Self::create_database_provider().await?;
+        Ok(Box::new(database::BattleRecruitmentRepositoryImpl::new(provider)))
     }
 
+    /// クエストリポジトリを作成
+    pub async fn create_quest_repository() -> Result<Box<dyn QuestRepository>, PoiseError> {
+        let provider = Self::create_database_provider().await?;
+        Ok(Box::new(database::QuestRepositoryImpl::new(provider)))
+    }
+
+    /// メッセージテキストリポジトリを作成
+    pub async fn create_message_text_repository() -> Result<Box<dyn MessageTextRepository>, PoiseError> {
+        let provider = Self::create_database_provider().await?;
+        Ok(Box::new(database::MessageTextRepositoryImpl::new(provider)))
+    }
+
+    /// 環境設定リポジトリを作成
+    pub async fn create_environment_repository() -> Result<Box<dyn EnvironmentRepository>, PoiseError> {
+        let provider = Self::create_database_provider().await?;
+        Ok(Box::new(database::EnvironmentRepositoryImpl::new(provider)))
+    }
+
+    /// トランザクションマネージャーを作成
+    pub async fn create_transaction_manager() -> Result<database::DatabaseTransactionManager, PoiseError> {
+        let provider = Self::create_database_provider().await?;
+        Ok(database::DatabaseTransactionManager::new(provider))
+    }
+
+    /// データベースプロバイダーを作成（内部実装を隠蔽）
+    async fn create_database_provider() -> Result<database::DatabaseProvider, PoiseError> {
+        // データベース接続の詳細を内部で処理
+        let conn = crate::models::database::Database::new().await
+            .map_err(|e| PoiseError::from(format!("Failed to connect to database: {}", e)))?;
+        Ok(database::DatabaseProvider::new(conn.conn))
+    }
 }
