@@ -27,7 +27,7 @@ impl UpdateRecruitmentService {
         new_embed: Option<CreateEmbed>,
     ) -> Result<(), String> {
         // 募集が存在するかチェック
-        let _recruitment = match self.db.get_battle_recruitment(
+        let _recruitment = match self.db.battle_recruitment.get_by_message(
             guild_id as i64,
             channel_id as i64,
             message_id as i64,
@@ -106,7 +106,7 @@ impl UpdateRecruitmentService {
         new_date: DateTime<Local>,
     ) -> Result<(), String> {
         // 募集情報を取得
-        let recruitment = match self.db.get_battle_recruitment(
+        let recruitment = match self.db.battle_recruitment.get_by_message(
             guild_id as i64,
             channel_id as i64,
             message_id as i64,

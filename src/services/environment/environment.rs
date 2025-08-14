@@ -69,7 +69,7 @@ impl Environment {
     
     pub async fn load_from_database(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(db) = &self.db {
-            match db.get_environments().await {
+            match db.environment.get_all().await {
                 Ok(environments) => {
                     let mut vars = self.variables.write().await;
                     let env_count = environments.len();

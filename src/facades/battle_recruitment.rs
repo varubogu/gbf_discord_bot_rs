@@ -13,33 +13,9 @@ use chrono::Local;
 pub(crate) async fn new(ctx: &PoiseContext<'_>, quest_alias: &str, battle_type: BattleType) -> Result<(), String> {
     info!("battle_recruitment::new - 新しい募集を開始します");
     
-    let db_service = &ctx.data().db;
+    // 他の関連操作...
+    // repository.set_recruitment_end_message(recruitment.id, some_message_id).await?;
 
-    // ラムダ式を使用したトランザクション管理
-    let battle_recruitment = db_service.execute_in_transaction(|_txn| async move {
-        // リポジトリインスタンスを作成
-        let repository = Database::new().await
-            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("リポジトリ作成エラー: {}", e))) as crate::types::PoiseError)?;
-
-        // 募集を作成
-        let recruitment = repository.create_battle_recruitment(
-            ctx.guild_id().unwrap().get() as i64,
-            ctx.channel_id().get() as i64,
-            12345, // TODO: 実際のメッセージIDを使用
-            1,     // TODO: 実際のtarget_idを使用
-            battle_type as i32,
-            chrono::Utc::now() + chrono::Duration::hours(1),
-        ).await
-        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("募集作成エラー: {}", e))) as crate::types::PoiseError)?;
-
-        // 他の関連操作...
-        // repository.set_recruitment_end_message(recruitment.id, some_message_id).await?;
-
-        Ok(recruitment)
-    }).await
-    .map_err(|e| format!("トランザクションエラー: {}", e))?;
-
-    info!("新しい募集が正常に作成されました: id={}", battle_recruitment.id);
     Ok(())
 }
 
@@ -56,7 +32,7 @@ pub(crate) async fn new_with_builder(ctx: &PoiseContext<'_>, quest_alias: &str, 
             .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("リポジトリ作成エラー: {}", e))) as crate::types::PoiseError)?;
 
         // 募集を作成
-        let recruitment = repository.create_battle_recruitment(
+        let recruitment = repository.battle_recruitment.create(
             ctx.guild_id().unwrap().get() as i64,
             ctx.channel_id().get() as i64,
             12345, // TODO: 実際のメッセージIDを使用

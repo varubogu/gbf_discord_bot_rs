@@ -25,7 +25,7 @@ impl ReactionHandler {
         let message_id = reaction.message_id;
         
         // Check if this is a recruitment message
-        let recruitment = match self.db.get_battle_recruitment(
+        let recruitment = match self.db.battle_recruitment.get_by_message(
             guild_id.get() as i64,
             channel_id.get() as i64,
             message_id.get() as i64,
@@ -72,7 +72,7 @@ impl ReactionHandler {
         reactions: std::collections::HashMap<String, Vec<User>>,
     ) -> Result<(), String> {
         // Get the quest
-        let quest = match self.db.get_quest_by_target_id(recruitment.target_id).await {
+        let quest = match self.db.quest.get_by_target_id(recruitment.target_id).await {
             Ok(Some(quest)) => quest,
             Ok(None) => {
                 error!("Quest not found for target_id: {}", recruitment.target_id);
@@ -92,13 +92,8 @@ impl ReactionHandler {
         let recruit_count = 6; // Default value
         
         if unique_users.len() >= recruit_count as usize {
-            // Check if we've already sent a completion message
-            if let Ok(Some(true)) = self.db.has_recruitment_end_message(recruitment.id).await {
-                return Ok(());
-            }
-            
             // Get the completion message text
-            let message_text = match self.db.get_message_text(
+            let message_text = match self.db.message_text.get_by_guild_and_message(
                 recruitment.guild_id,
                 "MSG00032",
             ).await {
@@ -127,7 +122,7 @@ impl ReactionHandler {
             };
             
             // Update the recruitment record
-            if let Err(e) = self.db.set_recruitment_end_message(
+            if let Err(e) = self.db.battle_recruitment.set_end_message(
                 recruitment.id,
                 reply.id.get() as i64,
             ).await {

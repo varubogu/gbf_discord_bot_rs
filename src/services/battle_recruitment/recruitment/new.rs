@@ -63,7 +63,7 @@ impl NewRecruitmentService {
 
     /// クエストエイリアスからクエスト情報を取得
     async fn get_quest_by_alias(&self, alias: &str) -> Result<Quest, String> {
-        match self.db.get_quest_by_alias(alias).await {
+        match self.db.quest.get_by_alias(alias).await {
             Ok(Some(quest)) => Ok(quest),
             Ok(None) => Err(format!("Quest not found for alias: {}", alias)),
             Err(e) => {
@@ -144,7 +144,7 @@ impl NewRecruitmentService {
         battle_type: BattleType,
         expiry_date: DateTime<Local>,
     ) -> Result<(), String> {
-        match self.db.create_battle_recruitment(
+        match self.db.battle_recruitment.create(
             guild_id,
             channel_id,
             message_id,

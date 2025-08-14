@@ -35,24 +35,19 @@ pub async fn handle_recruit_command(
     // Use default battle_recruitment type for now
     let battle_type = BattleType::Default;
 
-    // Use the extension trait method for lambda-style transactions
-    db.execute_in_transaction(|_txn| async move {
-        // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
+    // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
 
-        // Call the updated battle_recruitment::new function
-        match battle_recruitment::new(&ctx, &quest, battle_type).await {
-            Ok(_) => {
-                ctx.say("募集が正常に作成されました。").await?;
-                Ok(())
-            },
-            Err(e) => {
-                ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
-                Err(e.into())
-            }
+    // Call the updated battle_recruitment::new function
+    match battle_recruitment::new(&ctx, &quest, battle_type).await {
+        Ok(_) => {
+            ctx.say("募集が正常に作成されました。").await?;
+            Ok(())
+        },
+        Err(e) => {
+            ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
+            Err(e.into())
         }
-    }).await?;
-    
-    Ok(())
+    }
 }
 
 async fn quest_auto_complete<'a>(
