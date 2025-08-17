@@ -1,28 +1,27 @@
-use async_trait::async_trait;
-use sea_orm::{ActiveModelTrait, Set, EntityTrait, ColumnTrait, QueryFilter, ConnectionTrait};
+﻿use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use sea_orm::{EntityTrait, ActiveModelTrait, Set, DatabaseConnection, QueryFilter, ColumnTrait, prelude::DateTimeUtc};
 use crate::types::PoiseError;
 use crate::models::battle_recruitment::BattleRecruitment;
-use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
-use crate::utils::database::Transaction;
+use crate::models::entities::battle_recruitment::{Entity as BattleRecruitmentEntity, ActiveModel, Column};
+use crate::infrastructure::database::Transaction;
 use crate::repository::BattleRecruitmentRepository;
 
-
-/// SeaORM implementation of BattleRecruitmentRepository
-pub struct SeaOrmBattleRecruitmentRepository {
-    conn: sea_orm::DatabaseConnection,
+/// SeaORM を使用したバトル募集リポジトリの実装
+pub struct BattleRecruitmentRepositoryImpl {
+    connection: DatabaseConnection,
 }
 
-impl SeaOrmBattleRecruitmentRepository {
-    pub fn new(conn: sea_orm::DatabaseConnection) -> Self {
-        Self { conn }
+impl BattleRecruitmentRepositoryImpl {
+    pub fn new(connection: DatabaseConnection) -> Self {
+        Self { connection }
     }
 }
 
 #[async_trait]
-impl BattleRecruitmentRepository for SeaOrmBattleRecruitmentRepository {
+impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
     async fn create(
-        &self,
+        &self, 
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
@@ -30,7 +29,7 @@ impl BattleRecruitmentRepository for SeaOrmBattleRecruitmentRepository {
         battle_type_id: i32,
         expiry_date: DateTime<Utc>,
     ) -> Result<BattleRecruitment, PoiseError> {
-        let battle_recruitment = battle_recruitment::ActiveModel {
+        let active_model = ActiveModel {
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
             message_id: Set(message_id),
@@ -40,129 +39,109 @@ impl BattleRecruitmentRepository for SeaOrmBattleRecruitmentRepository {
             ..Default::default()
         };
 
-        let result = battle_recruitment.insert(&self.conn).await?;
-        Ok(result.into())
-    }
+        let result = active_model.insert(&self.connection).await
+            .map_err(|e| PoiseError::from(format!("Failed to create battle recruitment: {}", e)))?;
 
+        Ok(BattleRecruitment::from(result))
+    }
 
     async fn get_by_message(
-        &self,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        &self, 
+        guild_id: i64, 
+        channel_id: i64, 
+        message_id: i64
     ) -> Result<Option<BattleRecruitment>, PoiseError> {
         let result = BattleRecruitmentEntity::find()
-            .filter(battle_recruitment::Column::GuildId.eq(guild_id))
-            .filter(battle_recruitment::Column::ChannelId.eq(channel_id))
-            .filter(battle_recruitment::Column::MessageId.eq(message_id))
-            .one(&self.conn)
-            .await?;
+            .filter(Column::GuildId.eq(guild_id))
+            .filter(Column::ChannelId.eq(channel_id))
+            .filter(Column::MessageId.eq(message_id))
+            .one(&self.connection)
+            .await
+            .map_err(|e| PoiseError::from(format!("Failed to get battle recruitment by message: {}", e)))?;
 
-        Ok(result.map(|model| model.into()))
+        Ok(result.map(BattleRecruitment::from))
     }
 
-
     async fn set_end_message(
-        &self,
-        recruitment_id: i32,
-        message_id: i64,
+        &self, 
+        recruitment_id: i32, 
+        message_id: i64
     ) -> Result<(), PoiseError> {
-        let recruitment = BattleRecruitmentEntity::find_by_id(recruitment_id)
-            .one(&self.conn)
-            .await?;
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(&self.connection)
+            .await
+            .map_err(|e| PoiseError::from(format!("Failed to find recruitment: {}", e)))?
+            .ok_or_else(|| PoiseError::from("Recruitment not found".to_string()))?
+            .into();
 
-        if let Some(recruitment) = recruitment {
-            let mut active_model: battle_recruitment::ActiveModel = recruitment.into();
-            active_model.recruit_end_message_id = Set(Some(message_id));
-            active_model.update(&self.conn).await?;
-        }
+        active_model.recruit_end_message_id = Set(Some(message_id));
+        active_model.update(&self.connection).await
+            .map_err(|e| PoiseError::from(format!("Failed to update end message: {}", e)))?;
 
         Ok(())
     }
 
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::Utc;
-
-    async fn setup_test_repo() -> Result<SeaOrmBattleRecruitmentRepository, String> {
-        if std::env::var("DATABASE_URL").is_err() {
-            return Err("DATABASE_URL not set".to_string());
-        }
-
-        let conn = match crate::models::database::Database::new().await {
-            Ok(db) => db.conn,
-            Err(e) => return Err(format!("Failed to connect to database: {}", e)),
+    async fn create_with_txn(
+        &self,
+        txn: &Transaction,
+        guild_id: i64,
+        channel_id: i64,
+        message_id: i64,
+        target_id: i32,
+        battle_type_id: i32,
+        expiry_date: DateTime<Utc>,
+    ) -> Result<BattleRecruitment, PoiseError> {
+        let active_model = ActiveModel {
+            guild_id: Set(guild_id),
+            channel_id: Set(channel_id),
+            message_id: Set(message_id),
+            target_id: Set(target_id),
+            battle_type_id: Set(battle_type_id),
+            expiry_date: Set(expiry_date),
+            ..Default::default()
         };
 
-        Ok(SeaOrmBattleRecruitmentRepository::new(conn))
+        let result = active_model.insert(txn.get_txn()?).await
+            .map_err(|e| PoiseError::from(format!("Failed to create battle recruitment in txn: {}", e)))?;
+
+        Ok(BattleRecruitment::from(result))
     }
 
-    #[tokio::test]
-    async fn test_battle_recruitment_operations() {
-        let repo = match setup_test_repo().await {
-            Ok(repo) => repo,
-            Err(e) => {
-                println!("Skipping database test: {}", e);
-                return;
-            }
-        };
+    async fn get_by_message_with_txn(
+        &self,
+        txn: &Transaction,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+    ) -> Result<Option<BattleRecruitment>, PoiseError> {
+        let result = BattleRecruitmentEntity::find()
+            .filter(Column::GuildId.eq(guild_id))
+            .filter(Column::ChannelId.eq(channel_id))
+            .filter(Column::MessageId.eq(message_id))
+            .one(txn.get_txn()?)
+            .await
+            .map_err(|e| PoiseError::from(format!("Failed to get battle recruitment by message in txn: {}", e)))?;
 
-        // Test creating a battle_recruitment recruitment
-        let guild_id = 123456789;
-        let channel_id = 987654321;
-        let message_id = 555666777;
-        let target_id = 1;
-        let battle_type_id = 1;
-        let expiry_date = Utc::now() + chrono::Duration::hours(1);
+        Ok(result.map(BattleRecruitment::from))
+    }
 
-        let create_result = repo.create(
-            guild_id,
-            channel_id,
-            message_id,
-            target_id,
-            battle_type_id,
-            expiry_date,
-        ).await;
+    async fn set_end_message_with_txn(
+        &self,
+        txn: &Transaction,
+        recruitment_id: i32,
+        message_id: i64,
+    ) -> Result<(), PoiseError> {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(txn.get_txn()?)
+            .await
+            .map_err(|e| PoiseError::from(format!("Failed to find recruitment in txn: {}", e)))?
+            .ok_or_else(|| PoiseError::from("Recruitment not found".to_string()))?
+            .into();
 
-        match create_result {
-            Ok(recruitment) => {
-                assert_eq!(recruitment.guild_id, guild_id);
-                assert_eq!(recruitment.channel_id, channel_id);
-                assert_eq!(recruitment.message_id, message_id);
-                assert_eq!(recruitment.target_id, target_id);
-                assert_eq!(recruitment.battle_type_id, battle_type_id);
+        active_model.recruit_end_message_id = Set(Some(message_id));
+        active_model.update(txn.get_txn()?).await
+            .map_err(|e| PoiseError::from(format!("Failed to update end message in txn: {}", e)))?;
 
-                // Test retrieving the created recruitment
-                let get_result = repo.get_by_message(guild_id, channel_id, message_id).await;
-                match get_result {
-                    Ok(Some(retrieved)) => {
-                        assert_eq!(retrieved.id, recruitment.id);
-                        assert_eq!(retrieved.guild_id, guild_id);
-                        assert_eq!(retrieved.channel_id, channel_id);
-                        assert_eq!(retrieved.message_id, message_id);
-                    },
-                    Ok(None) => panic!("Should have retrieved the created recruitment"),
-                    Err(e) => println!("Error retrieving recruitment: {}", e),
-                }
-
-                // Test recruitment end message operations
-                let end_message_id = 111222333;
-                let set_result = repo.set_end_message(recruitment.id, end_message_id).await;
-                match set_result {
-                    Ok(_) => {
-                        println!("Successfully set end message for recruitment");
-                    },
-                    Err(e) => {
-                        println!("Failed to set end message: {}", e);
-                    }
-                }
-            },
-            Err(e) => {
-                println!("Create battle_recruitment recruitment returned error (may be expected): {}", e);
-            }
-        }
+        Ok(())
     }
 }

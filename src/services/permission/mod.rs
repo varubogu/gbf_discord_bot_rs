@@ -1,6 +1,6 @@
 use poise::serenity_prelude::all::{Context, Member};
 use crate::types::{PoiseContext, PoiseError};
-use crate::utils::constants::ROLL_GBF_BOT_CONTROLS;
+use crate::constants::ROLL_GBF_BOT_CONTROLS;
 
 /// Checks if a member has the specified role name
 pub async fn has_role(ctx: &PoiseContext<'_>, member: &Member, role_name: &str) -> Result<(), String> {

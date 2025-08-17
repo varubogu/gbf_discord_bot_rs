@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use crate::models::entities::{quest, quest_alias};
 use crate::models::entities::{Quest as QuestEntity, QuestAlias as QuestAliasEntity};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, RelationTrait, DbErr};
-use crate::models::database::Database;
+use crate::repository::database::db_compat::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Quest {

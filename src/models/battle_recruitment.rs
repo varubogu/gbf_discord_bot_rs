@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, DbErr};
 
 use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
-use crate::models::database::Database;
+use crate::repository::database::db_compat::Database;
 
 /// Battle recruitment domain model
 #[derive(Debug, Clone, Serialize, Deserialize)]

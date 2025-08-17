@@ -7,6 +7,15 @@ use crate::repository::{BattleRecruitmentRepository, QuestRepository, Repository
 use crate::models::quest::Quest;
 use crate::types::BattleType;
 
+pub(crate) struct NewParameter {
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub quest: Quest,
+    pub target_id: i32,
+    pub battle_type_id: i32,
+    pub expiry_date: chrono::DateTime<chrono::Utc>,
+}
 pub struct NewRecruitmentService {
     battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
     quest_repo: Arc<dyn QuestRepository>,
@@ -14,16 +23,17 @@ pub struct NewRecruitmentService {
 
 impl NewRecruitmentService {
     pub async fn new() -> Result<Self, String> {
-        let battle_recruitment_repo = RepositoryFactory::create_battle_recruitment_repository().await
-            .map_err(|e| format!("Failed to create battle recruitment repository: {}", e))?;
-        
-        let quest_repo = RepositoryFactory::create_quest_repository().await
-            .map_err(|e| format!("Failed to create quest repository: {}", e))?;
-        
-        Ok(Self { 
-            battle_recruitment_repo: Arc::from(battle_recruitment_repo),
-            quest_repo: Arc::from(quest_repo),
-        })
+        panic!("Not implemented");
+        // let battle_recruitment_repo = RepositoryFactory::create_battle_recruitment_repository().await
+        //     .map_err(|e| format!("Failed to create battle recruitment repository: {}", e))?;
+        // 
+        // let quest_repo = RepositoryFactory::create_quest_repository().await
+        //     .map_err(|e| format!("Failed to create quest repository: {}", e))?;
+        // 
+        // Ok(Self { 
+        //     battle_recruitment_repo: Arc::from(battle_recruitment_repo),
+        //     quest_repo: Arc::from(quest_repo),
+        // })
     }
 
     /// 新規募集を作成する

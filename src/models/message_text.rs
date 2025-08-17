@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::models::entities::{message_text, MessageText as MessageTextEntity};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DbErr};
-use crate::models::database::Database;
+use crate::repository::database::db_compat::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageText {

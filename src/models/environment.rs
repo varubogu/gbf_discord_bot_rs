@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::models::entities::{environment, Environment as EnvironmentEntity};
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set, DbErr, IntoActiveModel, ActiveModelBehavior, TransactionTrait};
-use crate::models::database::Database;
+use crate::repository::database::db_compat::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Environment {

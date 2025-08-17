@@ -1,8 +1,13 @@
 use std::pin::Pin;
 use std::future::Future;
+use std::env;
+use std::sync::Arc;
 use async_trait::async_trait;
-use sea_orm::{DatabaseConnection, DatabaseTransaction as SeaOrmTransaction, TransactionTrait};
+use sea_orm::{Database as SeaDatabase, DatabaseConnection, DatabaseTransaction as SeaOrmTransaction, TransactionTrait};
+use tracing::info;
 use crate::types::PoiseError;
+use crate::repository::BattleRecruitmentRepository;
+use crate::repository::database::battle_recruitment_repository::BattleRecruitmentRepositoryImpl;
 
 /// データベーストランザクションを管理するジェネリックラッパー
 /// 
@@ -123,30 +128,41 @@ pub trait DatabaseService: Send + Sync + std::fmt::Debug {
 pub trait DatabaseServiceExt: DatabaseService {
     /// ラムダ式を使用してトランザクション内で操作を実行
     /// 
-    /// このメソッドは、ラムダ式を受け取って自動的にトランザクションを管理します。
-    /// エラーが発生した場合は自動的にロールバックされます。
+    /// このメソッドは、ラムダ式を受け取ってトランザクションを提供します。
+    /// **重要**: ラムダ式内で明示的に`txn.commit().await?`を呼び出してください。
+    /// コミットが呼び出されずにラムダ式が終了した場合、トランザクションは自動的にロールバックされます。
+    /// エラーが発生した場合も自動的にロールバックされます。
     /// 
     /// # 型パラメータ
     /// * `F` - 実行するラムダ式の型
     /// * `T` - ラムダ式の戻り値の型
     /// 
     /// # 引数
-    /// * `f` - トランザクション内で実行するラムダ式
+    /// * `f` - トランザクション内で実行するラムダ式（必ずコミットを呼び出すこと）
     /// 
     /// # エラー
-    /// トランザクション開始、ラムダ式の実行、またはコミットでエラーが発生した場合
+    /// トランザクション開始またはラムダ式の実行でエラーが発生した場合
     /// 
     /// # 戻り値
     /// ラムダ式の実行結果、またはエラー
+    /// 
+    /// # 例
+    /// ```rust
+    /// let result = db.execute_in_transaction(|txn| async move {
+    ///     // データベース操作をここに記述
+    ///     // 処理が成功したら必ずコミットを呼び出す
+    ///     txn.commit().await?;
+    ///     Ok(some_value)
+    /// }).await?;
+    /// ```
     async fn execute_in_transaction<F, T, Fut>(&self, f: F) -> Result<T, PoiseError>
     where
-        F: FnOnce(&Transaction) -> Fut + Send,
+        F: FnOnce(Transaction) -> Fut + Send,
         Fut: Future<Output = Result<T, PoiseError>> + Send,
         T: Send,
     {
         let txn = self.begin_transaction().await?;
-        let result = f(&txn).await?;
-        txn.commit().await.map_err(|e| Box::new(e) as PoiseError)?;
+        let result = f(txn).await?;
         Ok(result)
     }
 }
@@ -156,8 +172,9 @@ impl<T: ?Sized + DatabaseService> DatabaseServiceExt for T {}
 
 /// 流暢なトランザクションAPIのためのトランザクションビルダー
 /// 
-/// このStructは、ラムダ式を受け取ってトランザクション内で実行し、
-/// 自動的にコミット・ロールバック処理を管理する機能を提供します。
+/// このStructは、ラムダ式を受け取ってトランザクション内で実行する機能を提供します。
+/// **重要**: ラムダ式内で明示的にコミットを呼び出してください。
+/// コミットが呼び出されずにラムダ式が終了した場合、トランザクションは自動的にロールバックされます。
 pub struct TransactionBuilder<'a> {
     /// データベースサービスへの参照
     db: &'a dyn DatabaseService,
@@ -167,18 +184,19 @@ impl<'a> TransactionBuilder<'a> {
     /// ラムダ式を受け取ってトランザクション内で実行
     /// 
     /// このメソッドは自動的にトランザクションを開始し、提供されたラムダ式を実行します。
-    /// ラムダ式が成功した場合はトランザクションをコミットし、
-    /// エラーが発生した場合は自動的にロールバックされます。
+    /// **重要**: ラムダ式内で明示的に`txn.commit().await?`を呼び出してください。
+    /// コミットが呼び出されずにラムダ式が終了した場合、トランザクションは自動的にロールバックされます。
+    /// エラーが発生した場合も自動的にロールバックされます。
     /// 
     /// # 型パラメータ
     /// * `F` - 実行するラムダ式の型
     /// * `T` - ラムダ式の戻り値の型
     /// 
     /// # 引数
-    /// * `f` - トランザクション内で実行するラムダ式
+    /// * `f` - トランザクション内で実行するラムダ式（必ずコミットを呼び出すこと）
     /// 
     /// # エラー
-    /// トランザクション開始、ラムダ式の実行、またはコミットでエラーが発生した場合
+    /// トランザクション開始またはラムダ式の実行でエラーが発生した場合
     /// 
     /// # 戻り値
     /// ラムダ式の実行結果、またはエラー
@@ -187,16 +205,17 @@ impl<'a> TransactionBuilder<'a> {
     /// ```rust
     /// let result = db.transaction().execute(|txn| Box::pin(async move {
     ///     // データベース操作をここに記述
+    ///     // 処理が成功したら必ずコミットを呼び出す
+    ///     txn.commit().await?;
     ///     Ok(some_value)
     /// })).await?;
     /// ```
     pub async fn execute<F, T>(self, f: F) -> Result<T, PoiseError>
     where
-        F: FnOnce(&Transaction) -> Pin<Box<dyn Future<Output = Result<T, PoiseError>> + Send + '_>>,
+        F: FnOnce(Transaction) -> Pin<Box<dyn Future<Output = Result<T, PoiseError>> + Send>>,
     {
         let txn = self.db.begin_transaction().await?;
-        let result = f(&txn).await?;
-        txn.commit().await.map_err(|e| Box::new(e) as PoiseError)?;
+        let result = f(txn).await?;
         Ok(result)
     }
 }
@@ -250,5 +269,90 @@ impl DatabaseService for SeaOrmDatabase {
     /// SeaORMのDatabaseConnectionへの参照
     fn get_connection(&self) -> &DatabaseConnection {
         &self.conn
+    }
+}
+
+/// データベース接続マネージャー（Repository層専用）
+pub struct DatabaseConnectionManager {
+    conn: DatabaseConnection,
+}
+
+impl DatabaseConnectionManager {
+    pub async fn new() -> Result<Self, sea_orm::DbErr> {
+        let database_url = env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set");
+            
+        info!("Connecting to database...");
+        let conn = SeaDatabase::connect(&database_url).await?;
+            
+        info!("Connected to database");
+        Ok(Self { conn })
+    }
+    
+    pub fn connection(&self) -> &DatabaseConnection {
+        &self.conn
+    }
+}
+
+/// Repository層の依存注入コンテナ
+pub struct RepositoryContainer {
+    pub battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+    // 他のrepositoryも追加可能
+}
+
+impl RepositoryContainer {
+    pub async fn new() -> Result<Self, PoiseError> {
+        let db_manager = DatabaseConnectionManager::new().await?;
+        
+        let battle_recruitment_repo = Arc::new(
+            BattleRecruitmentRepositoryImpl::new(db_manager.connection().clone())
+        );
+        
+        Ok(Self {
+            battle_recruitment_repo,
+        })
+    }
+}
+
+/// トランザクションコンテキスト（Repository層のトランザクション対応メソッド用）
+pub struct TransactionContext<'a> {
+    pub txn: &'a Transaction,
+    pub repos: &'a RepositoryContainer,
+}
+
+impl<'a> TransactionContext<'a> {
+    pub fn new(txn: &'a Transaction, repos: &'a RepositoryContainer) -> Self {
+        Self { txn, repos }
+    }
+}
+
+/// トランザクション実行のための抽象化インターフェース
+pub struct TransactionManager {
+    db_service: SeaOrmDatabase,
+    repos: RepositoryContainer,
+}
+
+impl TransactionManager {
+    pub async fn new() -> Result<Self, PoiseError> {
+        let db_manager = DatabaseConnectionManager::new().await?;
+        let db_service = SeaOrmDatabase::new(db_manager.connection().clone());
+        let repos = RepositoryContainer::new().await?;
+        
+        Ok(Self {
+            db_service,
+            repos,
+        })
+    }
+    
+    /// Facade専用：トランザクション内で処理を実行
+    pub async fn execute_in_transaction<F, T>(&self, f: F) -> Result<T, PoiseError>
+    where
+        F: FnOnce(TransactionContext) -> Pin<Box<dyn Future<Output = Result<T, PoiseError>> + Send>> + Send,
+        T: Send,
+    {
+        self.db_service.execute_in_transaction(|txn| {
+            let ctx = TransactionContext::new(&txn, &self.repos);
+            f(ctx)
+        }).await
     }
 }

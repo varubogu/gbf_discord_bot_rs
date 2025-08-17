@@ -3,17 +3,26 @@ use chrono::{DateTime, Local};
 use poise::serenity_prelude::all::{Context, Message, ChannelId, EditMessage, CreateEmbed};
 use tracing::{error, info, warn};
 
-use crate::repository::database::Database;
 use crate::models::battle_recruitment::BattleRecruitment;
+use crate::models::quest::Quest;
 use crate::types::BattleType;
 
+pub(crate) struct UpdateParameter {
+    pub quest: Quest,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub target_id: i32,
+    pub battle_type_id: i32,
+    pub expiry_date: chrono::DateTime<chrono::Utc>,
+}
+
 pub struct UpdateRecruitmentService {
-    db: Arc<Database>,
 }
 
 impl UpdateRecruitmentService {
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self {}
     }
 
     /// 募集メッセージの内容を更新する
@@ -26,45 +35,46 @@ impl UpdateRecruitmentService {
         new_content: Option<String>,
         new_embed: Option<CreateEmbed>,
     ) -> Result<(), String> {
-        // 募集が存在するかチェック
-        let _recruitment = match self.db.battle_recruitment.get_by_message(
-            guild_id as i64,
-            channel_id as i64,
-            message_id as i64,
-        ).await {
-            Ok(Some(recruitment)) => recruitment,
-            Ok(None) => {
-                warn!("Recruitment not found for message: {}", message_id);
-                return Err("募集が見つかりませんでした。".to_string());
-            },
-            Err(e) => {
-                error!("Error fetching recruitment: {:?}", e);
-                return Err("データベースエラーが発生しました。".to_string());
-            }
-        };
-
-        // メッセージを更新
-        let channel = ChannelId::from(channel_id);
-        let mut edit_builder = EditMessage::new();
-
-        if let Some(content) = new_content {
-            edit_builder = edit_builder.content(content);
-        }
-
-        if let Some(embed) = new_embed {
-            edit_builder = edit_builder.embed(embed);
-        }
-
-        match channel.edit_message(&ctx.http, message_id, edit_builder).await {
-            Ok(_) => {
-                info!("Successfully updated recruitment message: {}", message_id);
-                Ok(())
-            },
-            Err(e) => {
-                error!("Failed to update message: {:?}", e);
-                Err("メッセージの更新に失敗しました。".to_string())
-            }
-        }
+        panic!("Not implemented");
+        // // 募集が存在するかチェック
+        // let _recruitment = match self.db.battle_recruitment.get_by_message(
+        //     guild_id as i64,
+        //     channel_id as i64,
+        //     message_id as i64,
+        // ).await {
+        //     Ok(Some(recruitment)) => recruitment,
+        //     Ok(None) => {
+        //         warn!("Recruitment not found for message: {}", message_id);
+        //         return Err("募集が見つかりませんでした。".to_string());
+        //     },
+        //     Err(e) => {
+        //         error!("Error fetching recruitment: {:?}", e);
+        //         return Err("データベースエラーが発生しました。".to_string());
+        //     }
+        // };
+        //
+        // // メッセージを更新
+        // let channel = ChannelId::from(channel_id);
+        // let mut edit_builder = EditMessage::new();
+        //
+        // if let Some(content) = new_content {
+        //     edit_builder = edit_builder.content(content);
+        // }
+        //
+        // if let Some(embed) = new_embed {
+        //     edit_builder = edit_builder.embed(embed);
+        // }
+        //
+        // match channel.edit_message(&ctx.http, message_id, edit_builder).await {
+        //     Ok(_) => {
+        //         info!("Successfully updated recruitment message: {}", message_id);
+        //         Ok(())
+        //     },
+        //     Err(e) => {
+        //         error!("Failed to update message: {:?}", e);
+        //         Err("メッセージの更新に失敗しました。".to_string())
+        //     }
+        // }
     }
 
     /// 募集の参加者リスト埋め込みを更新する
@@ -105,43 +115,44 @@ impl UpdateRecruitmentService {
         message_id: u64,
         new_date: DateTime<Local>,
     ) -> Result<(), String> {
-        // 募集情報を取得
-        let recruitment = match self.db.battle_recruitment.get_by_message(
-            guild_id as i64,
-            channel_id as i64,
-            message_id as i64,
-        ).await {
-            Ok(Some(recruitment)) => recruitment,
-            Ok(None) => {
-                return Err("募集が見つかりませんでした。".to_string());
-            },
-            Err(e) => {
-                error!("Error fetching recruitment: {:?}", e);
-                return Err("データベースエラーが発生しました。".to_string());
-            }
-        };
-
-        // 注意: 実際の実装ではクエスト名を取得する必要がある
-        let quest_name = "クエスト"; // 簡易版実装
-
-        // 新しいメッセージ内容を作成
-        let new_content = format!(
-            "{}の参加者を募集します。\n開催日時：{}",
-            quest_name,
-            new_date.format("%m/%d %H:%M")
-        );
-
-        self.update_recruitment_message(
-            ctx,
-            guild_id,
-            channel_id,
-            message_id,
-            Some(new_content),
-            None,
-        ).await?;
-
-        info!("Updated recruitment date for message: {}", message_id);
-        Ok(())
+        panic!("Not implemented");
+        // // 募集情報を取得
+        // let recruitment = match self.db.battle_recruitment.get_by_message(
+        //     guild_id as i64,
+        //     channel_id as i64,
+        //     message_id as i64,
+        // ).await {
+        //     Ok(Some(recruitment)) => recruitment,
+        //     Ok(None) => {
+        //         return Err("募集が見つかりませんでした。".to_string());
+        //     },
+        //     Err(e) => {
+        //         error!("Error fetching recruitment: {:?}", e);
+        //         return Err("データベースエラーが発生しました。".to_string());
+        //     }
+        // };
+        //
+        // // 注意: 実際の実装ではクエスト名を取得する必要がある
+        // let quest_name = "クエスト"; // 簡易版実装
+        //
+        // // 新しいメッセージ内容を作成
+        // let new_content = format!(
+        //     "{}の参加者を募集します。\n開催日時：{}",
+        //     quest_name,
+        //     new_date.format("%m/%d %H:%M")
+        // );
+        //
+        // self.update_recruitment_message(
+        //     ctx,
+        //     guild_id,
+        //     channel_id,
+        //     message_id,
+        //     Some(new_content),
+        //     None,
+        // ).await?;
+        //
+        // info!("Updated recruitment date for message: {}", message_id);
+        // Ok(())
     }
 
     /// 募集メッセージにステータス更新を追加

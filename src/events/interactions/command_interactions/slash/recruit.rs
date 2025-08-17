@@ -1,16 +1,14 @@
 use futures::Stream;
-use sea_orm::TransactionTrait;
+use poise::serenity_prelude::Message;
 use crate::facades::battle_recruitment;
 use crate::types::{BattleType, PoiseContext, PoiseError};
-use crate::utils::database::DatabaseServiceExt;
-// use crate::services::battle_recruitment::_recruitment::RecruitmentService;
 
 #[poise::command(
     slash_command,
     name_localized("ja", "募集"),
     description_localized("ja", "バトル募集を作成します"),
 )]
-pub async fn handle_recruit_command(
+pub async fn recruit(
     ctx: PoiseContext<'_>,
 
     #[description = "quest name or alias"]
@@ -30,15 +28,42 @@ pub async fn handle_recruit_command(
 ) -> Result<(), PoiseError> {
     ctx.defer().await?;
 
-    let db = &ctx.data().db;
-
-    // Use default battle_recruitment type for now
     let battle_type = BattleType::Default;
 
     // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
 
     // Call the updated battle_recruitment::new function
     match battle_recruitment::new(&ctx, &quest, battle_type).await {
+        Ok(_) => {
+            ctx.say("募集が正常に作成されました。").await?;
+            Ok(())
+        },
+        Err(e) => {
+            ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
+            Err(e.into())
+        }
+    }
+}
+
+
+#[poise::command(
+    slash_command,
+    name_localized("ja", "募集キャンセル"),
+    description_localized("ja", "マルチバトル募集をキャンセル"),
+)]
+pub async fn recruit_cancel(
+    ctx: PoiseContext<'_>,
+
+    #[description = "recruit message"]
+    #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
+    message: Message,
+) -> Result<(), PoiseError> {
+    ctx.defer().await?;
+
+    let guild_id = ctx.guild_id().unwrap_or_default().get();
+    let channel_id = message.channel_id.get();
+    let message_id = message.id.get();
+    match battle_recruitment::cancel(&ctx, guild_id, channel_id, message_id).await {
         Ok(_) => {
             ctx.say("募集が正常に作成されました。").await?;
             Ok(())

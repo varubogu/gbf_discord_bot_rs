@@ -17,4 +17,10 @@ impl Database {
         info!("Connected to database");
         Ok(Self { conn })
     }
+    
+    // /// DatabaseServiceとの統合メソッド
+    // /// utils/database.rsのSeaOrmDatabaseとして利用するための変換メソッド
+    // pub fn as_database_service(&self) -> SeaOrmDatabase {
+    //     SeaOrmDatabase::new(self.conn.clone())
+    // }
 }
