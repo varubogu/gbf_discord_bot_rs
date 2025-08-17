@@ -1,4 +1,4 @@
-﻿use crate::infrastructure::database::Transaction;
+﻿use crate::infrastructure::database::transaction::Transaction;
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::types::PoiseError;
 use async_trait::async_trait;

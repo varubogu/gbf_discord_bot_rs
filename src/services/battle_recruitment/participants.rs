@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::{BattleRecruitmentRepository, RepositoryFactory};
-use crate::types::BattleType;
+use crate::types::battle_type::BattleType;
 
 pub(crate) struct PaticipantsParameter {
     pub guild_id: i64,

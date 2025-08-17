@@ -5,7 +5,7 @@ use poise::serenity_prelude::all::{
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::infrastructure::database::Transaction;
+use crate::infrastructure::database::transaction::Transaction;
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::BattleRecruitmentRepository;
 use crate::types::PoiseError;

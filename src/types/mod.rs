@@ -1,6 +1,4 @@
-pub mod battle_type;
-use crate::infrastructure::database::DatabaseService;
-pub use battle_type::BattleType;
+pub(crate) mod battle_type;
 
 #[derive(Debug)]
 pub struct PoiseData {}

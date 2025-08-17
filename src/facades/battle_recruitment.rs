@@ -1,10 +1,11 @@
-﻿use crate::infrastructure::database::TransactionManager;
+﻿use crate::infrastructure::database::transaction_manager::TransactionManager;
 use crate::services::battle_recruitment::cancel::CancelRecruitmentService;
 use crate::services::battle_recruitment::new::NewRecruitmentService;
 use crate::services::battle_recruitment::participants::ParticipantsService;
 use crate::services::battle_recruitment::start::StartRecruitmentService;
 use crate::services::battle_recruitment::update::UpdateRecruitmentService;
-use crate::types::{BattleType, PoiseContext};
+use crate::types::PoiseContext;
+use crate::types::battle_type::BattleType;
 use poise::serenity_prelude::{ChannelId, GuildId, MessageId};
 use std::sync::Arc;
 use tracing::{error, info, warn};

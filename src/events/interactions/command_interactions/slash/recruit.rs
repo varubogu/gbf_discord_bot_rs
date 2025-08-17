@@ -1,5 +1,6 @@
 use crate::facades::battle_recruitment;
-use crate::types::{BattleType, PoiseContext, PoiseError};
+use crate::types::battle_type::BattleType;
+use crate::types::{PoiseContext, PoiseError};
 use futures::Stream;
 use poise::serenity_prelude::Message;
 

@@ -1,25 +1,25 @@
-// mod new;
-// 
+// database new;
+//
 // use std::sync::Arc;
 // use chrono::{Local, Timelike};
 // use poise::serenity_prelude::all::{
 //     Context, CreateEmbed, Message,
 // };
 // use tracing::{error, info};
-// 
+//
 // use crate::repository::Database;
 // use crate::models::Quest;
 // use crate::types::BattleType;
-// 
+//
 // pub struct RecruitmentService {
 //     db: Arc<Database>,
 // }
-// 
+//
 // impl RecruitmentService {
 //     pub fn new(db: Arc<Database>) -> Self {
 //         Self { db }
 //     }
-//     
+//
 //     pub async fn default_expiry_date() -> chrono::DateTime<Local> {
 //         let now = Local::now();
 //         now.with_hour(21)
@@ -31,17 +31,17 @@
 //             .with_nanosecond(0)
 //             .unwrap()
 //     }
-//     
+//
 //     pub async fn parse_event_date(date_str: &str) -> Result<chrono::DateTime<Local>, String> {
 //         // Simple implementation - in a real app, you'd want more robust parsing
 //         if date_str == "今日 21:00" {
 //             return Ok(Self::default_expiry_date().await);
 //         }
-//         
+//
 //         // For now, just return the default
 //         Ok(Self::default_expiry_date().await)
 //     }
-//     
+//
 //     pub async fn get_quest_by_alias(&self, alias: &str) -> Result<Option<Quest>, String> {
 //         match self.db.get_quest_by_alias(alias).await {
 //             Ok(quest) => Ok(quest),
@@ -51,7 +51,7 @@
 //             }
 //         }
 //     }
-//     
+//
 //     pub async fn create_recruitment_message(
 //         &self,
 //         quest_name: &str,
@@ -64,21 +64,21 @@
 //         } else {
 //             format!("{}の{}参加者を募集します！", quest_name, battle_type.name())
 //         };
-//         
+//
 //         let message_with_date = format!(
-//             "{}\n開催日時：{}", 
-//             message_text, 
+//             "{}\n開催日時：{}",
+//             message_text,
 //             event_date.format("%m/%d %H:%M")
 //         );
-//         
+//
 //         // Create embed
 //         let embed = CreateEmbed::new()
 //             .title("参加者一覧")
 //             .description("現在参加者はいません。");
-//             
+//
 //         (message_with_date, embed)
 //     }
-//     
+//
 //     pub async fn register_recruitment(
 //         &self,
 //         guild_id: i64,
@@ -99,10 +99,10 @@
 //             error!("Error registering recruitment in database: {:?}", e);
 //             return Err(format!("Failed to register recruitment: {}", e));
 //         }
-//         
+//
 //         Ok(())
 //     }
-//     
+//
 //     pub async fn add_reactions(
 //         &self,
 //         ctx: &Context,
@@ -115,7 +115,7 @@
 //                 // Continue with other reactions even if one fails
 //             }
 //         }
-//         
+//
 //         Ok(())
 //     }
 // }

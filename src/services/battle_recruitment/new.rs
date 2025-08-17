@@ -5,7 +5,7 @@ use tracing::{error, info};
 
 use crate::models::quest::Quest;
 use crate::repository::{BattleRecruitmentRepository, QuestRepository, RepositoryFactory};
-use crate::types::BattleType;
+use crate::types::battle_type::BattleType;
 
 pub(crate) struct NewParameter {
     pub guild_id: i64,
