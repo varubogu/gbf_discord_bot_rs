@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use crate::models::entities::{message_text, MessageText as MessageTextEntity};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DbErr};
+use crate::models::entities::{MessageText as MessageTextEntity, message_text};
 use crate::repository::database::db_compat::Database;
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageText {
@@ -39,7 +39,7 @@ impl Database {
             .filter(message_text::Column::MessageId.eq(message_id))
             .one(&self.conn)
             .await?;
-            
+
         Ok(model.map(|m| m.into()))
     }
 }

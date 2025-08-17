@@ -1,5 +1,5 @@
-use std::env;
 use sea_orm::{Database as SeaDatabase, DatabaseConnection, DbErr};
+use std::env;
 use tracing::info;
 
 pub struct Database {
@@ -8,16 +8,15 @@ pub struct Database {
 
 impl Database {
     pub async fn new() -> Result<Self, DbErr> {
-        let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
-            
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
         info!("Connecting to database...");
         let conn = SeaDatabase::connect(&database_url).await?;
-            
+
         info!("Connected to database");
         Ok(Self { conn })
     }
-    
+
     // /// DatabaseServiceとの統合メソッド
     // /// utils/database.rsのSeaOrmDatabaseとして利用するための変換メソッド
     // pub fn as_database_service(&self) -> SeaOrmDatabase {

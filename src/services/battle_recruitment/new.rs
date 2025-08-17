@@ -1,10 +1,10 @@
+use chrono::{DateTime, Duration, Local};
+use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, CreateMessage, Message};
 use std::sync::Arc;
-use chrono::{DateTime, Local, Duration};
-use poise::serenity_prelude::all::{Context, CreateEmbed, CreateMessage, Message, ChannelId};
 use tracing::{error, info};
 
-use crate::repository::{BattleRecruitmentRepository, QuestRepository, RepositoryFactory};
 use crate::models::quest::Quest;
+use crate::repository::{BattleRecruitmentRepository, QuestRepository, RepositoryFactory};
 use crate::types::BattleType;
 
 pub(crate) struct NewParameter {
@@ -26,11 +26,11 @@ impl NewRecruitmentService {
         panic!("Not implemented");
         // let battle_recruitment_repo = RepositoryFactory::create_battle_recruitment_repository().await
         //     .map_err(|e| format!("Failed to create battle recruitment repository: {}", e))?;
-        // 
+        //
         // let quest_repo = RepositoryFactory::create_quest_repository().await
         //     .map_err(|e| format!("Failed to create quest repository: {}", e))?;
-        // 
-        // Ok(Self { 
+        //
+        // Ok(Self {
         //     battle_recruitment_repo: Arc::from(battle_recruitment_repo),
         //     quest_repo: Arc::from(quest_repo),
         // })
@@ -49,23 +49,24 @@ impl NewRecruitmentService {
     ) -> Result<Message, String> {
         // 1. クエストを取得
         let quest = self.get_quest_by_alias(quest_alias).await?;
-        
+
         // 2. イベント日時を決定（指定されていない場合はデフォルト）
-        let expiry_date = event_date.unwrap_or_else(|| {
-            Local::now() + Duration::days(7)
-        });
+        let expiry_date = event_date.unwrap_or_else(|| Local::now() + Duration::days(7));
 
         // 3. 募集メッセージを作成・送信
-        let message = self.send_recruitment_message(
-            ctx,
-            channel_id,
-            &quest.quest_name,
-            battle_type.clone(),
-            expiry_date,
-        ).await?;
+        let message = self
+            .send_recruitment_message(
+                ctx,
+                channel_id,
+                &quest.quest_name,
+                battle_type.clone(),
+                expiry_date,
+            )
+            .await?;
 
         // 4. リアクションを追加
-        self.add_reactions(ctx, &message, battle_type.clone()).await?;
+        self.add_reactions(ctx, &message, battle_type.clone())
+            .await?;
 
         // 5. データベースに登録
         self.register_recruitment(
@@ -75,9 +76,13 @@ impl NewRecruitmentService {
             quest.target_id,
             battle_type,
             expiry_date,
-        ).await?;
+        )
+        .await?;
 
-        info!("Successfully created recruitment for quest: {}", quest.quest_name);
+        info!(
+            "Successfully created recruitment for quest: {}",
+            quest.quest_name
+        );
         Ok(message)
     }
 
@@ -105,15 +110,12 @@ impl NewRecruitmentService {
     ) -> Result<Message, String> {
         // メッセージテキストを作成
         let mut message_text = format!("{}の参加者を募集します。", quest_name);
-        
+
         if battle_type == BattleType::AllElement {
             message_text.push_str("\n参加属性を選んでください");
         }
 
-        message_text.push_str(&format!(
-            "\n開催日時：{}",
-            event_date.format("%m/%d %H:%M")
-        ));
+        message_text.push_str(&format!("\n開催日時：{}", event_date.format("%m/%d %H:%M")));
 
         // 埋め込みメッセージを作成
         let embed = CreateEmbed::new()
@@ -122,11 +124,12 @@ impl NewRecruitmentService {
             .color(0x0099ff);
 
         // メッセージを送信
-        let builder = CreateMessage::new()
-            .content(message_text)
-            .embed(embed);
+        let builder = CreateMessage::new().content(message_text).embed(embed);
 
-        match ChannelId::from(channel_id).send_message(&ctx.http, builder).await {
+        match ChannelId::from(channel_id)
+            .send_message(&ctx.http, builder)
+            .await
+        {
             Ok(message) => Ok(message),
             Err(e) => {
                 error!("Error sending recruitment message: {:?}", e);
@@ -164,14 +167,18 @@ impl NewRecruitmentService {
         battle_type: BattleType,
         expiry_date: DateTime<Local>,
     ) -> Result<(), String> {
-        match self.battle_recruitment_repo.create(
-            guild_id,
-            channel_id,
-            message_id,
-            target_id,
-            battle_type as i32,
-            expiry_date.with_timezone(&chrono::Utc),
-        ).await {
+        match self
+            .battle_recruitment_repo
+            .create(
+                guild_id,
+                channel_id,
+                message_id,
+                target_id,
+                battle_type as i32,
+                expiry_date.with_timezone(&chrono::Utc),
+            )
+            .await
+        {
             Ok(_) => {
                 info!("Successfully registered recruitment in database");
                 Ok(())

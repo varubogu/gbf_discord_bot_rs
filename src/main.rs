@@ -8,9 +8,9 @@ mod services;
 mod types;
 mod utils;
 
+use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use std::env;
 use std::path::Path;
-use poise::serenity_prelude::{self as serenity, GatewayIntents};
 
 use crate::events::handler::event_handler;
 use crate::types::{PoiseData, PoiseError};
@@ -29,7 +29,7 @@ async fn main() {
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 
     // Set up intents
-    let intents = GatewayIntents::GUILD_MESSAGES 
+    let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::GUILD_MESSAGE_REACTIONS
         | GatewayIntents::GUILDS
         | GatewayIntents::MESSAGE_CONTENT;
@@ -65,8 +65,6 @@ async fn main() {
 
     client.unwrap().start().await.unwrap();
 }
-
-
 
 fn commands() -> Vec<poise::Command<PoiseData, PoiseError>> {
     vec![

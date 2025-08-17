@@ -1,10 +1,8 @@
 use crate::services::permission::has_bot_control_permission;
 // use crate::services::environment::service::load_environment_from_database;
 use crate::types::{PoiseContext, PoiseError};
-use std::sync::Arc;
 
-pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<(), PoiseError>{
-
+pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<(), PoiseError> {
     // コマンド実行者の情報取得
     let member = ctx.author_member().await.unwrap();
 
@@ -13,7 +11,6 @@ pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<(), PoiseError>{
     if let Err(permission_error) = has_permission_result {
         return Err(permission_error.into());
     }
-
 
     panic!();
     // // 環境変数読み込み処理（データベースから読み込み）
@@ -35,4 +32,3 @@ pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<(), PoiseError>{
     //     }
     // }
 }
-

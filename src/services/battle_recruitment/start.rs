@@ -1,13 +1,14 @@
+use poise::serenity_prelude::all::{
+    ChannelId, Context, CreateMessage, Message, MessageId, ReactionType,
+};
 use std::sync::Arc;
-use poise::serenity_prelude::all::{Context, Message, ChannelId, MessageId, CreateMessage, ReactionType};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
-use crate::repository::{BattleRecruitmentRepository, RepositoryFactory};
 use crate::models::battle_recruitment::BattleRecruitment;
+use crate::repository::{BattleRecruitmentRepository, RepositoryFactory};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
-pub struct StartRecruitmentService {
-}
+pub struct StartRecruitmentService {}
 
 impl StartRecruitmentService {
     pub async fn new() -> Result<Self, String> {
@@ -16,10 +17,10 @@ impl StartRecruitmentService {
 
     /// DBから募集情報を取得
     pub async fn get_recruitment_from_db(
-        &self, 
-        guild_id: u64, 
-        channel_id: u64, 
-        message_id: u64
+        &self,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
     ) -> Result<BattleRecruitment, String> {
         panic!();
         // info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
@@ -46,15 +47,21 @@ impl StartRecruitmentService {
 
     /// リアクションから参加者一覧取得
     pub async fn get_participants_from_reactions(
-        &self, 
-        ctx: &Context, 
-        channel_id: u64, 
-        message_id: u64
+        &self,
+        ctx: &Context,
+        channel_id: u64,
+        message_id: u64,
     ) -> Result<Vec<String>, String> {
-        info!("リアクション参加者取得開始: channel_id={}, message_id={}", channel_id, message_id);
-        
+        info!(
+            "リアクション参加者取得開始: channel_id={}, message_id={}",
+            channel_id, message_id
+        );
+
         let channel = ChannelId::from(channel_id);
-        let message = match channel.message(&ctx.http, MessageId::from(message_id)).await {
+        let message = match channel
+            .message(&ctx.http, MessageId::from(message_id))
+            .await
+        {
             Ok(message) => message,
             Err(e) => {
                 error!("メッセージ取得エラー: {:?}", e);
@@ -66,14 +73,17 @@ impl StartRecruitmentService {
 
         for reaction in &message.reactions {
             // リアクションしたユーザーを取得
-            match message.reaction_users(&ctx.http, reaction.reaction_type.clone(), Some(100), None).await {
+            match message
+                .reaction_users(&ctx.http, reaction.reaction_type.clone(), Some(100), None)
+                .await
+            {
                 Ok(users) => {
                     let user_mentions: Vec<String> = users
                         .iter()
                         .filter(|user| !user.bot) // ボットユーザーを除外
                         .map(|user| format!("<@{}>", user.id))
                         .collect();
-                    
+
                     all_participants.extend(user_mentions);
                 }
                 Err(e) => {
@@ -87,42 +97,51 @@ impl StartRecruitmentService {
         all_participants.sort();
         all_participants.dedup();
 
-        info!("リアクション参加者取得完了: {} participants found", all_participants.len());
+        info!(
+            "リアクション参加者取得完了: {} participants found",
+            all_participants.len()
+        );
         Ok(all_participants)
     }
 
     /// 開始メッセージを作成（参加者へのメンション含む）
-    pub async fn create_start_message(&self, quest_name: &str, participants: &[String]) -> Result<String, String> {
+    pub async fn create_start_message(
+        &self,
+        quest_name: &str,
+        participants: &[String],
+    ) -> Result<String, String> {
         warn!("StartRecruitmentService::create_start_message - 仕様検討中です");
         info!("開始メッセージ作成をエミュレート");
-        
+
         let participant_mentions = if participants.is_empty() {
             "参加者がいません".to_string()
         } else {
             participants.join(" ")
         };
-        
+
         let message = format!(
             "🚀 **クエスト出発時間です！** 🚀\n\n{}\n\n参加者の皆さん: {}\n\nクエストを開始してください！",
-            quest_name,
-            participant_mentions
+            quest_name, participant_mentions
         );
         Ok(message)
     }
 
     /// 元の募集メッセージに返信する形でメッセージを送信
     pub async fn send_start_reply(
-        &self, 
-        ctx: &Context, 
-        channel_id: u64, 
-        original_message_id: u64, 
-        content: &str
+        &self,
+        ctx: &Context,
+        channel_id: u64,
+        original_message_id: u64,
+        content: &str,
     ) -> Result<(), String> {
-        info!("開始返信送信開始: channel_id={}, message_id={}", channel_id, original_message_id);
-        
+        info!(
+            "開始返信送信開始: channel_id={}, message_id={}",
+            channel_id, original_message_id
+        );
+
         let channel = ChannelId::from(channel_id);
         let original_message = MessageId::from(original_message_id);
-        
+
         let reply_message = CreateMessage::new()
             .content(content)
             .reference_message((channel, original_message));
@@ -142,8 +161,15 @@ impl StartRecruitmentService {
     /// 募集を開始済み状態に更新
     /// 注意: 現在のBattleRecruitmentRepositoryトレイトには開始済み状態更新メソッドがないため、
     /// set_end_messageを使用して終了メッセージIDを設定することで開始状態を表現します。
-    pub async fn mark_recruitment_as_started(&self, recruitment_id: i64, end_message_id: u64) -> Result<(), String> {
-        info!("募集開始済み状態更新開始: recruitment_id={}, end_message_id={}", recruitment_id, end_message_id);
+    pub async fn mark_recruitment_as_started(
+        &self,
+        recruitment_id: i64,
+        end_message_id: u64,
+    ) -> Result<(), String> {
+        info!(
+            "募集開始済み状態更新開始: recruitment_id={}, end_message_id={}",
+            recruitment_id, end_message_id
+        );
         panic!();
         // match self.battle_recruitment_repo.set_end_message(recruitment_id as i32, end_message_id as i64).await {
         //     Ok(_) => {

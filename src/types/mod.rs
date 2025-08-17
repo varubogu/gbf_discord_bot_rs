@@ -1,10 +1,8 @@
 pub mod battle_type;
-pub use battle_type::BattleType;
-use std::sync::Arc;
 use crate::infrastructure::database::DatabaseService;
+pub use battle_type::BattleType;
 
 #[derive(Debug)]
-pub struct PoiseData {
-}
+pub struct PoiseData {}
 pub type PoiseError = Box<dyn std::error::Error + Send + Sync>;
 pub type PoiseContext<'a> = poise::Context<'a, PoiseData, PoiseError>;

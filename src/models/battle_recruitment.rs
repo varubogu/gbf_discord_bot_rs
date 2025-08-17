@@ -1,8 +1,10 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, DbErr};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set};
+use serde::{Deserialize, Serialize};
 
-use crate::models::entities::{battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity};
+use crate::models::entities::{
+    battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity,
+};
 use crate::repository::database::db_compat::Database;
 
 /// Battle recruitment domain model
@@ -39,7 +41,7 @@ impl From<battle_recruitment::Model> for BattleRecruitment {
 
 impl Database {
     pub async fn create_battle_recruitment(
-        &self, 
+        &self,
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
@@ -60,7 +62,7 @@ impl Database {
         let result = battle_recruitment.insert(&self.conn).await?;
         Ok(result.into())
     }
-    
+
     pub async fn get_battle_recruitment(
         &self,
         guild_id: i64,
@@ -73,10 +75,10 @@ impl Database {
             .filter(battle_recruitment::Column::MessageId.eq(message_id))
             .one(&self.conn)
             .await?;
-            
+
         Ok(result.map(|model| model.into()))
     }
-    
+
     pub async fn has_recruitment_end_message(
         &self,
         recruitment_id: i32,
@@ -84,10 +86,10 @@ impl Database {
         let result = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(&self.conn)
             .await?;
-            
+
         Ok(result.map(|model| model.recruit_end_message_id.is_some()))
     }
-    
+
     pub async fn set_recruitment_end_message(
         &self,
         recruitment_id: i32,
@@ -96,13 +98,13 @@ impl Database {
         let recruitment = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(&self.conn)
             .await?;
-            
+
         if let Some(recruitment) = recruitment {
             let mut active_model: battle_recruitment::ActiveModel = recruitment.into();
             active_model.recruit_end_message_id = Set(Some(message_id));
             active_model.update(&self.conn).await?;
         }
-        
+
         Ok(())
     }
 }

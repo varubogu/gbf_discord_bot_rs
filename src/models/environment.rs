@@ -1,7 +1,10 @@
-use serde::{Deserialize, Serialize};
-use crate::models::entities::{environment, Environment as EnvironmentEntity};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set, DbErr, IntoActiveModel, ActiveModelBehavior, TransactionTrait};
+use crate::models::entities::{Environment as EnvironmentEntity, environment};
 use crate::repository::database::db_compat::Database;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, Set,
+    TransactionTrait,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Environment {
@@ -26,32 +29,30 @@ impl From<environment::Model> for Environment {
 
 impl Database {
     pub async fn get_environments(&self) -> Result<Vec<Environment>, DbErr> {
-        let models = EnvironmentEntity::find()
-            .all(&self.conn)
-            .await?;
-            
+        let models = EnvironmentEntity::find().all(&self.conn).await?;
+
         Ok(models.into_iter().map(|model| model.into()).collect())
     }
-    
+
     pub async fn get_environment(&self, key: &str) -> Result<Option<Environment>, DbErr> {
         let model = EnvironmentEntity::find()
             .filter(environment::Column::Key.eq(key))
             .one(&self.conn)
             .await?;
-            
+
         Ok(model.map(|m| m.into()))
     }
-    
+
     pub async fn set_environment(&self, key: &str, value: &str) -> Result<Environment, DbErr> {
         // Start a transaction
         let txn = self.conn.begin().await?;
-        
+
         // Try to find existing environment with the key
         let existing = EnvironmentEntity::find()
             .filter(environment::Column::Key.eq(key))
             .one(&txn)
             .await?;
-            
+
         let result = if let Some(existing) = existing {
             // Update existing
             let mut active_model: environment::ActiveModel = existing.into_active_model();
@@ -66,10 +67,10 @@ impl Database {
             };
             active_model.insert(&txn).await?
         };
-        
+
         // Commit the transaction
         txn.commit().await?;
-        
+
         Ok(result.into())
     }
 }

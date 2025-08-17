@@ -1,6 +1,6 @@
-use std::sync::Arc;
 use chrono::{DateTime, Local};
-use poise::serenity_prelude::all::{Context, Message, ChannelId, EditMessage, CreateEmbed};
+use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, EditMessage, Message};
+use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitment::BattleRecruitment;
@@ -17,8 +17,7 @@ pub(crate) struct UpdateParameter {
     pub expiry_date: chrono::DateTime<chrono::Utc>,
 }
 
-pub struct UpdateRecruitmentService {
-}
+pub struct UpdateRecruitmentService {}
 
 impl UpdateRecruitmentService {
     pub fn new() -> Self {
@@ -89,21 +88,15 @@ impl UpdateRecruitmentService {
     ) -> Result<(), String> {
         let embed = CreateEmbed::new()
             .title("参加者一覧")
-            .description(format!(
-                "現在の参加者: {}/{}",
-                participant_count,
-                capacity
-            ))
-            .color(if participant_count >= capacity { 0x00ff00 } else { 0x0099ff });
+            .description(format!("現在の参加者: {}/{}", participant_count, capacity))
+            .color(if participant_count >= capacity {
+                0x00ff00
+            } else {
+                0x0099ff
+            });
 
-        self.update_recruitment_message(
-            ctx,
-            guild_id,
-            channel_id,
-            message_id,
-            None,
-            Some(embed),
-        ).await
+        self.update_recruitment_message(ctx, guild_id, channel_id, message_id, None, Some(embed))
+            .await
     }
 
     /// 募集の開催日時を更新する
@@ -165,15 +158,20 @@ impl UpdateRecruitmentService {
     ) -> Result<Message, String> {
         let status_message = format!(
             "募集更新 (元メッセージ: {}): {}",
-            original_message_id,
-            status
+            original_message_id, status
         );
 
-        match ChannelId::from(channel_id).say(&ctx.http, status_message).await {
+        match ChannelId::from(channel_id)
+            .say(&ctx.http, status_message)
+            .await
+        {
             Ok(message) => {
-                info!("Added status update for recruitment: {}", original_message_id);
+                info!(
+                    "Added status update for recruitment: {}",
+                    original_message_id
+                );
                 Ok(message)
-            },
+            }
             Err(e) => {
                 error!("Failed to send status update: {:?}", e);
                 Err("ステータス更新の送信に失敗しました。".to_string())
@@ -204,19 +202,20 @@ impl UpdateRecruitmentService {
             message_id,
             Some("✅ 募集完了".to_string()),
             Some(embed),
-        ).await?;
+        )
+        .await?;
 
         // 完了通知メッセージを送信
-        let completion_message = format!(
-            "{}\nメンバーが揃いました！",
-            participants.join(" ")
-        );
+        let completion_message = format!("{}\nメンバーが揃いました！", participants.join(" "));
 
-        match ChannelId::from(channel_id).say(&ctx.http, completion_message).await {
+        match ChannelId::from(channel_id)
+            .say(&ctx.http, completion_message)
+            .await
+        {
             Ok(_) => {
                 info!("Marked recruitment as complete: {}", message_id);
                 Ok(())
-            },
+            }
             Err(e) => {
                 error!("Failed to send completion message: {:?}", e);
                 // メッセージ更新は成功したので、エラーとせずログのみ
@@ -245,11 +244,14 @@ impl UpdateRecruitmentService {
             .content("🚨 重要更新あり 🚨")
             .embed(embed);
 
-        match ChannelId::from(channel_id).edit_message(&ctx.http, message_id, edit_builder).await {
+        match ChannelId::from(channel_id)
+            .edit_message(&ctx.http, message_id, edit_builder)
+            .await
+        {
             Ok(_) => {
                 info!("Applied urgent update to message: {}", message_id);
                 Ok(())
-            },
+            }
             Err(e) => {
                 error!("Failed to apply urgent update: {:?}", e);
                 Err("緊急更新の適用に失敗しました。".to_string())
