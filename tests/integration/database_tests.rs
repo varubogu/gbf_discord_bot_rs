@@ -10,7 +10,7 @@ fn test_database_integration() {
     // This is a placeholder test that always passes
     // In a real project, we would test the database functionality
     // by using a test database or mocking the database
-    
+
     println!("Database integration test placeholder");
     assert!(true, "Database integration test passed");
 }

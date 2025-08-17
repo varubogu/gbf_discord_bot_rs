@@ -51,14 +51,14 @@ async fn test_bot_startup() {
 async fn test_discord_connection() {
     // This would be a more comprehensive test that verifies the bot can connect to Discord
     // and perform basic operations. For now, we'll just use a placeholder.
-    
+
     // In a real implementation, this might:
     // 1. Start the bot with a test token
     // 2. Verify it connects to Discord successfully
     // 3. Send a test command
     // 4. Verify the response
     // 5. Shut down the bot
-    
+
     println!("Discord connection test would go here");
     // For now, just pass the test
     assert!(true);

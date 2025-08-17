@@ -14,7 +14,11 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(belongs_to = "super::quest::Entity", from = "Column::TargetId", to = "super::quest::Column::Id")]
+    #[sea_orm(
+        belongs_to = "super::quest::Entity",
+        from = "Column::TargetId",
+        to = "super::quest::Column::Id"
+    )]
     Quest,
 }
 

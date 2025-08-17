@@ -1,7 +1,7 @@
-use rust_i18n::{t, set_locale};
-use std::sync::{OnceLock, RwLock};
-use std::collections::HashMap;
+use rust_i18n::{set_locale, t};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::{OnceLock, RwLock};
 use tokio::fs;
 
 /// Supported languages for the message service
@@ -51,7 +51,10 @@ impl CustomMessageStore {
         messages.get(locale)?.get(key).cloned()
     }
 
-    async fn load_from_directory(&self, dir_path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn load_from_directory(
+        &self,
+        dir_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut entries = fs::read_dir(dir_path).await?;
         let mut new_messages = HashMap::new();
 
@@ -108,7 +111,10 @@ impl MessageService {
     }
 
     /// Load custom messages from directory (async)
-    pub async fn load_custom_messages(&self, dir_path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn load_custom_messages(
+        &self,
+        dir_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.custom_store.load_from_directory(dir_path).await
     }
 
@@ -127,12 +133,12 @@ impl MessageService {
     /// Get a localized message with specific language
     pub fn get_with_language(&self, key: &str, language: Language) -> String {
         let locale = language.to_locale();
-        
+
         // First try custom messages
         if let Some(custom_message) = self.custom_store.get(key, locale) {
             return custom_message;
         }
-        
+
         // Fallback to standard rust-i18n messages
         // t!(key, locale = locale).to_string()
         "".to_string()
@@ -145,15 +151,20 @@ impl MessageService {
     }
 
     /// Get a localized message with parameters and specific language
-    pub fn get_with_params_and_language(&self, key: &str, params: &[(&str, &str)], language: Language) -> String {
+    pub fn get_with_params_and_language(
+        &self,
+        key: &str,
+        params: &[(&str, &str)],
+        language: Language,
+    ) -> String {
         let mut result = self.get_with_language(key, language);
-        
+
         for (param_key, param_value) in params {
             // Support both {{param}} and {param} formats
             result = result.replace(&format!("{{{{{}}}}}", param_key), param_value);
             result = result.replace(&format!("{{{}}}", param_key), param_value);
         }
-        
+
         result
     }
 
@@ -195,7 +206,11 @@ pub mod messages {
     }
 
     /// Get a message with parameters and specific language
-    pub fn get_with_params_and_language(key: &str, params: &[(&str, &str)], language: Language) -> String {
+    pub fn get_with_params_and_language(
+        key: &str,
+        params: &[(&str, &str)],
+        language: Language,
+    ) -> String {
         MessageService::instance().get_with_params_and_language(key, params, language)
     }
 
@@ -205,8 +220,12 @@ pub mod messages {
     }
 
     /// Load custom messages from directory
-    pub async fn load_custom_messages(dir_path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        MessageService::instance().load_custom_messages(dir_path).await
+    pub async fn load_custom_messages(
+        dir_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        MessageService::instance()
+            .load_custom_messages(dir_path)
+            .await
     }
 
     /// Clear custom messages
@@ -247,8 +266,11 @@ mod tests {
     #[test]
     fn test_parameter_substitution() {
         let service = MessageService::new();
-        let params = &[("quest_name", "ドラゴンクエスト"), ("battle_type", "全属性")];
-        
+        let params = &[
+            ("quest_name", "ドラゴンクエスト"),
+            ("battle_type", "全属性"),
+        ];
+
         // Assuming we have a message key that uses parameters
         let result = service.get_with_params("recruitment.message", params);
         assert!(!result.is_empty());

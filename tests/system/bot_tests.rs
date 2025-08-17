@@ -20,18 +20,22 @@ async fn test_bot_initialization() {
 
     // Create a database connection
     let db_result = Database::new().await;
-    assert!(db_result.is_ok(), "Failed to connect to database: {:?}", db_result.err());
-    
+    assert!(
+        db_result.is_ok(),
+        "Failed to connect to database: {:?}",
+        db_result.err()
+    );
+
     let db = Arc::new(db_result.unwrap());
-    
+
     // Create an event handler
     let handler = EventHandler::new(db);
-    
+
     // In a real test, we would initialize the bot client here
     // and verify that it connects to Discord successfully
     // However, this would require a real Discord bot token and
     // would actually connect to Discord, which is not ideal for automated tests
-    
+
     // For now, we'll just assert that the handler was created successfully
     assert!(true, "Bot initialization test passed");
 }
@@ -47,10 +51,10 @@ async fn test_bot_initialization() {
 // async fn test_bot_responds_to_command() {
 //     // Initialize the bot with a test configuration
 //     let bot = initialize_test_bot().await;
-//     
+//
 //     // Simulate a user sending a command
 //     let response = bot.simulate_command("!help").await;
-//     
+//
 //     // Verify that the bot responds correctly
 //     assert!(response.contains("Here are the available commands:"));
 // }

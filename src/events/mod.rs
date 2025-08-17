@@ -1,3 +1,3 @@
-pub mod interactions;
-pub mod handlers;
 pub mod handler;
+pub mod handlers;
+pub mod interactions;

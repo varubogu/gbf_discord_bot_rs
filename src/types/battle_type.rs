@@ -27,7 +27,7 @@ impl BattleType {
             _ => None,
         }
     }
-    
+
     pub fn name(&self) -> &'static str {
         match self {
             Self::Default => "デフォルト",
@@ -40,7 +40,7 @@ impl BattleType {
             Self::Dark => "闇属性",
         }
     }
-    
+
     pub fn reactions(&self) -> Vec<ReactionType> {
         match self {
             Self::Default | Self::AllElement => vec![
@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(BattleType::from_value(5), Some(BattleType::Wind));
         assert_eq!(BattleType::from_value(6), Some(BattleType::Light));
         assert_eq!(BattleType::from_value(7), Some(BattleType::Dark));
-        
+
         // Test invalid values
         assert_eq!(BattleType::from_value(-1), None);
         assert_eq!(BattleType::from_value(8), None);
@@ -102,36 +102,60 @@ mod tests {
         let all_element_reactions = BattleType::AllElement.reactions();
         assert_eq!(default_reactions.len(), 6);
         assert_eq!(all_element_reactions.len(), 6);
-        
+
         // Verify they contain the expected emoji
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("🔥")));
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("💧")));
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("🌱")));
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("🌪️")));
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("✨")));
-        assert!(default_reactions.iter().any(|r| r.to_string().contains("🌑")));
-        
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("🔥"))
+        );
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("💧"))
+        );
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("🌱"))
+        );
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("🌪️"))
+        );
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("✨"))
+        );
+        assert!(
+            default_reactions
+                .iter()
+                .any(|r| r.to_string().contains("🌑"))
+        );
+
         // Test specific element types have single reactions
         let fire_reactions = BattleType::Fire.reactions();
         assert_eq!(fire_reactions.len(), 1);
         assert!(fire_reactions[0].to_string().contains("🔥"));
-        
+
         let water_reactions = BattleType::Water.reactions();
         assert_eq!(water_reactions.len(), 1);
         assert!(water_reactions[0].to_string().contains("💧"));
-        
+
         let earth_reactions = BattleType::Earth.reactions();
         assert_eq!(earth_reactions.len(), 1);
         assert!(earth_reactions[0].to_string().contains("🌱"));
-        
+
         let wind_reactions = BattleType::Wind.reactions();
         assert_eq!(wind_reactions.len(), 1);
         assert!(wind_reactions[0].to_string().contains("🌪️"));
-        
+
         let light_reactions = BattleType::Light.reactions();
         assert_eq!(light_reactions.len(), 1);
         assert!(light_reactions[0].to_string().contains("✨"));
-        
+
         let dark_reactions = BattleType::Dark.reactions();
         assert_eq!(dark_reactions.len(), 1);
         assert!(dark_reactions[0].to_string().contains("🌑"));

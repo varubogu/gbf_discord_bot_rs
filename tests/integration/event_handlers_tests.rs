@@ -19,13 +19,17 @@ async fn test_event_handler_initialization() {
 
     // Create a database connection
     let db_result = Database::new().await;
-    assert!(db_result.is_ok(), "Failed to connect to database: {:?}", db_result.err());
-    
+    assert!(
+        db_result.is_ok(),
+        "Failed to connect to database: {:?}",
+        db_result.err()
+    );
+
     let db = Arc::new(db_result.unwrap());
-    
+
     // Create an event handler
     let handler = EventHandler::new(db);
-    
+
     // If we got here without panicking, the test passes
     assert!(true, "EventHandler was successfully created");
 }
