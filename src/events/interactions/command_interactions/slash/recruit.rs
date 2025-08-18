@@ -45,11 +45,12 @@ pub async fn recruit(
 }
 
 #[poise::command(
+    context_menu_command = "recruit_cancel",
     slash_command,
     name_localized("ja", "募集キャンセル"),
     description_localized("ja", "マルチバトル募集をキャンセル")
 )]
-pub async fn recruit_cancel(
+pub async fn cannel(
     ctx: PoiseContext<'_>,
 
     #[description = "recruit message"]

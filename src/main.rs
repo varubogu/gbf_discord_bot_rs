@@ -8,12 +8,11 @@ mod services;
 mod types;
 mod utils;
 
+use crate::events::{command::commands, handler::event_handler};
+use crate::types::{PoiseData, PoiseError};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use std::env;
 use std::path::Path;
-
-use crate::events::handler::event_handler;
-use crate::types::{PoiseData, PoiseError};
 
 #[tokio::main]
 async fn main() {
@@ -38,9 +37,6 @@ async fn main() {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
-            ..Default::default()
-        })
-        .options(poise::FrameworkOptions {
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
@@ -64,14 +60,6 @@ async fn main() {
         .await;
 
     client.unwrap().start().await.unwrap();
-}
-
-fn commands() -> Vec<poise::Command<PoiseData, PoiseError>> {
-    vec![
-        // events::interactions::command_interactions::slash::environ_load::handle_environ_load_command(),
-        // events::interactions::command_interactions::contextmenu::reaction_users_context_menu::get_reaction_members(),
-        // events::interactions::command_interactions::contextmenu::reaction_grouping_users_context_menu::get_reaction_grouping_members(),
-    ]
 }
 
 #[allow(dead_code)]
