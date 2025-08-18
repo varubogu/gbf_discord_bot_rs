@@ -7,7 +7,6 @@ use crate::services::battle_recruitment::update::UpdateRecruitmentService;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
 use poise::serenity_prelude::{ChannelId, GuildId, MessageId};
-use std::sync::Arc;
 use tracing::{error, info, warn};
 
 /// 新しい募集を開始する（トランザクション対応版）

@@ -1,5 +1,4 @@
-use rust_i18n::{set_locale, t};
-use serde_json::Value;
+use rust_i18n::set_locale;
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 use tokio::fs;

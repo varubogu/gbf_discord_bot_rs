@@ -12,8 +12,7 @@ pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
-    use poise::serenity_prelude::all::{ChannelId, GuildId, MessageId, MessageType};
+    use poise::serenity_prelude::all::{ChannelId, GuildId, MessageId};
 
     #[tokio::test]
     async fn test_guild_id_url_str_with_guild_id() {

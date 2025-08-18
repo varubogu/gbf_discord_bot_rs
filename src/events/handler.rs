@@ -32,6 +32,4 @@ pub async fn event_handler(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}
