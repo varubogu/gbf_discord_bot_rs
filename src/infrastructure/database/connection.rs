@@ -1,4 +1,5 @@
 use crate::infrastructure::database::transaction::{DatabaseService, Transaction};
+use crate::services::database::connection::build_database_url;
 use crate::types::PoiseError;
 use async_trait::async_trait;
 use sea_orm::{Database as SeaDatabase, DatabaseConnection, TransactionTrait};
@@ -64,7 +65,8 @@ pub struct DatabaseConnectionManager {
 
 impl DatabaseConnectionManager {
     pub async fn new() -> Result<Self, sea_orm::DbErr> {
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        // 集約されたdatabase connectionサービスを使用してURLを構築
+        let database_url = build_database_url().map_err(|e| sea_orm::DbErr::Custom(e.message))?;
 
         info!("Connecting to database...");
         let conn = SeaDatabase::connect(&database_url).await?;

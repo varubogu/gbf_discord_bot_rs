@@ -1,10 +1,11 @@
-use async_trait::async_trait;
-use sea_orm::{EntityTrait, ColumnTrait, QueryFilter, DatabaseConnection};
-use crate::types::PoiseError;
+use crate::models::entities::{
+    quest, quest::Entity as QuestEntity, quest_alias, quest_alias::Entity as QuestAliasEntity,
+};
 use crate::models::quest::{Quest, QuestAlias};
-use crate::models::entities::{quest, quest::Entity as QuestEntity, quest_alias, quest_alias::Entity as QuestAliasEntity};
 use crate::repository::QuestRepository;
-
+use crate::types::PoiseError;
+use async_trait::async_trait;
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
 pub struct SeaOrmQuestRepository {
     conn: DatabaseConnection,
@@ -24,14 +25,17 @@ impl QuestRepository for SeaOrmQuestRepository {
             .await
             .map_err(|e| PoiseError::from(format!("Failed to get quests: {}", e)))?;
 
-        Ok(quests.into_iter().map(|q| Quest {
-            id: q.id,
-            target_id: q.target_id,
-            quest_name: q.quest_name,
-            default_battle_type: q.default_battle_type,
-            created_at: q.created_at,
-            updated_at: q.updated_at,
-        }).collect())
+        Ok(quests
+            .into_iter()
+            .map(|q| Quest {
+                id: q.id,
+                target_id: q.target_id,
+                quest_name: q.quest_name,
+                default_battle_type: q.default_battle_type,
+                created_at: q.created_at,
+                updated_at: q.updated_at,
+            })
+            .collect())
     }
 
     async fn get_aliases(&self) -> Result<Vec<QuestAlias>, PoiseError> {
@@ -40,13 +44,16 @@ impl QuestRepository for SeaOrmQuestRepository {
             .await
             .map_err(|e| PoiseError::from(format!("Failed to get quest aliases: {}", e)))?;
 
-        Ok(aliases.into_iter().map(|a| QuestAlias {
-            id: a.id,
-            target_id: a.target_id,
-            alias: a.alias,
-            created_at: a.created_at,
-            updated_at: a.updated_at,
-        }).collect())
+        Ok(aliases
+            .into_iter()
+            .map(|a| QuestAlias {
+                id: a.id,
+                target_id: a.target_id,
+                alias: a.alias,
+                created_at: a.created_at,
+                updated_at: a.updated_at,
+            })
+            .collect())
     }
 
     async fn get_by_alias(&self, alias: &str) -> Result<Option<Quest>, PoiseError> {
@@ -63,7 +70,9 @@ impl QuestRepository for SeaOrmQuestRepository {
                 .filter(quest::Column::TargetId.eq(alias_record.target_id))
                 .one(&self.conn)
                 .await
-                .map_err(|e| PoiseError::from(format!("Failed to find quest by target_id: {}", e)))?;
+                .map_err(|e| {
+                    PoiseError::from(format!("Failed to find quest by target_id: {}", e))
+                })?;
 
             Ok(quest.map(|q| Quest {
                 id: q.id,
@@ -99,14 +108,19 @@ impl QuestRepository for SeaOrmQuestRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::database::connection::is_database_available;
     use sea_orm::DatabaseConnection;
 
     async fn setup_test_db() -> Result<SeaOrmQuestRepository, String> {
-        if std::env::var("DATABASE_URL").is_err() {
-            return Err("DATABASE_URL not set".to_string());
+        let (available, missing) = is_database_available();
+        if !available {
+            return Err(format!(
+                "Database connection info not set - missing: {:?}",
+                missing
+            ));
         }
 
-        let conn = match crate::models::database::Database::new().await {
+        let conn = match crate::repository::database::models_database::Database::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
         };
@@ -132,10 +146,13 @@ mod tests {
                 println!("Retrieved {} quests", quests.len());
                 // Verify that each quest has required fields
                 for quest in quests {
-                    assert!(!quest.quest_name.is_empty(), "Quest name should not be empty");
+                    assert!(
+                        !quest.quest_name.is_empty(),
+                        "Quest name should not be empty"
+                    );
                     assert!(quest.id > 0, "Quest ID should be positive");
                 }
-            },
+            }
             Err(e) => {
                 // This might be expected if a database is empty or not properly initialised
                 println!("Get quests returned error (maybe expected): {}", e);
@@ -162,7 +179,7 @@ mod tests {
                     assert!(!alias.alias.is_empty(), "Alias should not be empty");
                     assert!(alias.target_id > 0, "Target ID should be positive");
                 }
-            },
+            }
             Err(e) => {
                 println!("Get quest aliases returned error (maybe expected): {}", e);
             }
@@ -185,10 +202,13 @@ mod tests {
             Ok(None) => {
                 // Expected result for non-existent alias
                 assert!(true);
-            },
+            }
             Ok(Some(quest)) => {
-                println!("Unexpectedly found a quest for non-existent alias: {}", quest.quest_name);
-            },
+                println!(
+                    "Unexpectedly found a quest for non-existent alias: {}",
+                    quest.quest_name
+                );
+            }
             Err(e) => {
                 println!("Get quest by alias returned error: {}", e);
             }
@@ -211,11 +231,11 @@ mod tests {
             Ok(None) => {
                 // Expected result for non-existent target ID
                 assert!(true);
-            },
+            }
             Ok(Some(quest)) => {
                 println!("Found a quest for target ID 999999: {}", quest.quest_name);
                 assert_eq!(quest.target_id, 999999, "Quest target ID should match");
-            },
+            }
             Err(e) => {
                 println!("Get quest by target ID returned error: {}", e);
             }

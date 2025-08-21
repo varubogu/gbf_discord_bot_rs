@@ -1,4 +1,5 @@
 pub mod battle_recruitment;
-// pub database environment;
+pub mod database;
+pub mod environment;
 mod message;
 pub mod permission;

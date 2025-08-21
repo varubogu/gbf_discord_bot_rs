@@ -4,7 +4,7 @@ mod facades;
 mod infrastructure;
 mod models;
 mod repository;
-mod services;
+pub mod services;
 mod types;
 mod utils;
 

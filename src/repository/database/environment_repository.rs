@@ -1,10 +1,9 @@
-use async_trait::async_trait;
-use sea_orm::{ActiveModelTrait, Set, EntityTrait, ColumnTrait, QueryFilter, DatabaseConnection};
-use crate::types::PoiseError;
-use crate::models::environment::Environment;
 use crate::models::entities::{environment, environment::Entity as EnvironmentEntity};
+use crate::models::environment::Environment;
 use crate::repository::EnvironmentRepository;
-
+use crate::types::PoiseError;
+use async_trait::async_trait;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 pub struct SeaOrmEnvironmentRepository {
     conn: DatabaseConnection,
@@ -24,13 +23,16 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
             .await
             .map_err(|e| PoiseError::from(format!("Failed to get environments: {}", e)))?;
 
-        Ok(environments.into_iter().map(|env| Environment {
-            id: env.id,
-            key: env.key,
-            value: env.value,
-            created_at: env.created_at,
-            updated_at: env.updated_at,
-        }).collect())
+        Ok(environments
+            .into_iter()
+            .map(|env| Environment {
+                id: env.id,
+                key: env.key,
+                value: env.value,
+                created_at: env.created_at,
+                updated_at: env.updated_at,
+            })
+            .collect())
     }
 
     async fn get_by_key(&self, key: &str) -> Result<Option<Environment>, PoiseError> {
@@ -55,15 +57,19 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
             .filter(environment::Column::Key.eq(key))
             .one(&self.conn)
             .await
-            .map_err(|e| PoiseError::from(format!("Failed to check the existing environment: {}", e)))?;
+            .map_err(|e| {
+                PoiseError::from(format!("Failed to check the existing environment: {}", e))
+            })?;
 
         let result = if let Some(existing_env) = existing {
             // Update existing environment variable
             let mut active_model: environment::ActiveModel = existing_env.into();
             active_model.value = Set(value.to_string());
             active_model.updated_at = Set(chrono::Utc::now());
-            
-            active_model.update(&self.conn).await
+
+            active_model
+                .update(&self.conn)
+                .await
                 .map_err(|e| PoiseError::from(format!("Failed to update environment: {}", e)))?
         } else {
             // Create new environment variable
@@ -74,8 +80,10 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
                 updated_at: Set(chrono::Utc::now()),
                 ..Default::default()
             };
-            
-            new_env.insert(&self.conn).await
+
+            new_env
+                .insert(&self.conn)
+                .await
                 .map_err(|e| PoiseError::from(format!("Failed to create environment: {}", e)))?
         };
 
@@ -92,13 +100,18 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::database::connection::is_database_available;
 
     async fn setup_test_repo() -> Result<SeaOrmEnvironmentRepository, String> {
-        if std::env::var("DATABASE_URL").is_err() {
-            return Err("DATABASE_URL not set".to_string());
+        let (available, missing) = is_database_available();
+        if !available {
+            return Err(format!(
+                "Database connection info not set - missing: {:?}",
+                missing
+            ));
         }
 
-        let conn = match crate::models::database::Database::new().await {
+        let conn = match crate::repository::database::models_database::Database::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
         };
@@ -124,7 +137,7 @@ mod tests {
                 for env in environments {
                     assert!(!env.key.is_empty(), "Environment key should not be empty");
                 }
-            },
+            }
             Err(e) => {
                 println!("Get environments returned error: {}", e);
             }
@@ -148,19 +161,19 @@ mod tests {
                             Ok(Some(retrieved_env)) => {
                                 assert_eq!(retrieved_env.key, test_key);
                                 assert_eq!(retrieved_env.value, "test_value");
-                            },
+                            }
                             _ => println!("Failed to retrieve set environment"),
                         }
-                    },
+                    }
                     Err(e) => {
                         println!("Set environment returned error: {}", e);
                     }
                 }
-            },
+            }
             Ok(Some(env)) => {
                 println!("Found existing environment: {} = {}", env.key, env.value);
                 assert_eq!(env.key, test_key);
-            },
+            }
             Err(e) => {
                 println!("Get environment returned error: {}", e);
             }
