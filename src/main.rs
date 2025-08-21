@@ -54,7 +54,7 @@ async fn main() {
         })
         .build();
 
-    // Create client with poise
+    // Create a client with poise
     let client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
         .await;
@@ -64,5 +64,5 @@ async fn main() {
 
 #[allow(dead_code)]
 async fn error_handler(error: poise::FrameworkError<'_, PoiseData, PoiseError>) {
-    println!("Oh no, we got an error: {:?}", error);
+    println!("Oh no, we got an error: {:}", error);
 }
