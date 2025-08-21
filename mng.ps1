@@ -48,8 +48,16 @@ function Show-Help
 
 function Start-DevDatabase
 {
+    # .envファイルの存在確認
+    if (-not (Test-Path ".env"))
+    {
+        Write-Host "❌ Warning: .env file not found!" -ForegroundColor Red
+        Write-Host "Please create .env file based on .env.example" -ForegroundColor Yellow
+        exit 1
+    }
+
     # 環境変数ファイルの読み込み
-    Get-Content ".\config\.env.db.production" | ForEach-Object {
+    Get-Content ".env" | ForEach-Object {
         if ($_ -match "^([^=]+)=(.*)$")
         {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
@@ -57,20 +65,17 @@ function Start-DevDatabase
     }
 
     # 環境変数を取得
-    $DBUSER = $env:DBUSER
-    $DBPASSWORD = $env:DBPASSWORD
-    $DBDATABASE = $env:DBDATABASE
+    $DBUSER = $env:DB_USER
+    $DBPASSWORD = $env:DB_PASSWORD
+    $DBDATABASE = $env:DB_NAME
+    $DBHOST = $env:DB_HOST
+    $DBPORT = $env:DB_PORT
 
     # コンテナが存在するか確認
     $runningContainer = docker ps -q -f name=dev-db
     if (-not $runningContainer)
     {
         $exitedContainer = docker ps -aq -f status=exited -f name=dev-db
-        if ($exitedContainer)
-        {
-            # 停止中のコンテナがある場合は削除
-            docker rm dev-db
-        }
         Write-Host "🚀 Starting development database..." -ForegroundColor Green
         # Dockerイメージのビルド
         docker build -t dev-db-image -f Dockerfile.db .
@@ -78,10 +83,10 @@ function Start-DevDatabase
         docker run -d `
             --name dev-db `
             -v pgdata:/var/lib/postgresql/data `
-            -e POSTGRES_USER=$DBUSER `
-            -e POSTGRES_PASSWORD=$DBPASSWORD `
-            -e POSTGRES_DB=$DBDATABASE `
-            -p 5432:5432 `
+            -e POSTGRES_USER="$DBUSER" `
+            -e POSTGRES_PASSWORD="$DBPASSWORD" `
+            -e POSTGRES_DB="$DBDATABASE" `
+            -p "${DBPORT}:5432" `
             dev-db-image
     }
     else
@@ -103,8 +108,8 @@ function Start-DevDatabase
 
     Write-Host "✅ Database is ready!" -ForegroundColor Green
     Write-Host "Connection info:" -ForegroundColor White
-    Write-Host "Host: localhost" -ForegroundColor White
-    Write-Host "Port: 5432" -ForegroundColor White
+    Write-Host "Host: $DBHOST" -ForegroundColor White
+    Write-Host "Port: $DBPORT" -ForegroundColor White
     Write-Host "User: $DBUSER" -ForegroundColor White
     Write-Host "Database: $DBDATABASE" -ForegroundColor White
 }
@@ -113,7 +118,6 @@ function Stop-DevDatabase
 {
     Write-Host "🛑 Stopping development database..." -ForegroundColor Yellow
     docker stop dev-db 2> $null
-    docker rm dev-db 2> $null
     Write-Host "✅ Development database stopped!" -ForegroundColor Green
 }
 

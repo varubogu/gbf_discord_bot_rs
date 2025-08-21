@@ -126,8 +126,17 @@ esac
 
 # dev up の処理
 dev_up() {
-    # 環境変数ファイルの読み込み
-    source ./config/.env.db.production
+    # .envファイルの存在確認
+    if [ ! -f ".env" ]; then
+        echo -e "${RED}❌ Warning: .env file not found!${NC}"
+        echo -e "${YELLOW}Please create .env file based on .env.example${NC}"
+        exit 1
+    fi
+
+    # 環境変数の読み込み
+    set -a
+    source .env
+    set +a
 
     # コンテナが存在するか確認
     if [ ! "$(docker ps -q -f name=dev-db)" ]; then
@@ -142,10 +151,10 @@ dev_up() {
         docker run -d \
             --name dev-db \
             -v pgdata:/var/lib/postgresql/data \
-            -e POSTGRES_USER=${DBUSER} \
-            -e POSTGRES_PASSWORD=${DBPASSWORD} \
-            -e POSTGRES_DB=${DBDATABASE} \
-            -p 5432:5432 \
+            -e POSTGRES_USER=${DB_USER} \
+            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+            -e POSTGRES_DB=${DB_NAME} \
+            -p ${DB_PORT}:5432 \
             dev-db-image
     else
         echo -e "${YELLOW}✨ Database is already running${NC}"
@@ -153,7 +162,7 @@ dev_up() {
 
     # データベースの接続確認
     echo -e "${CYAN}🔍 Checking database connection...${NC}"
-    until docker exec dev-db pg_isready -U ${DBUSER}
+    until docker exec dev-db pg_isready -U ${DB_USER}
     do
         echo -e "${YELLOW}🕐 Waiting for database to be ready...${NC}"
         sleep 2
@@ -161,17 +170,16 @@ dev_up() {
 
     echo -e "${GREEN}✅ Database is ready!${NC}"
     echo -e "${WHITE}Connection info:${NC}"
-    echo -e "${WHITE}Host: localhost${NC}"
-    echo -e "${WHITE}Port: 5432${NC}"
-    echo -e "${WHITE}User: ${DBUSER}${NC}"
-    echo -e "${WHITE}Database: ${DBDATABASE}${NC}"
+    echo -e "${WHITE}Host: ${DB_HOST}${NC}"
+    echo -e "${WHITE}Port: ${DB_PORT}${NC}"
+    echo -e "${WHITE}User: ${DB_USER}${NC}"
+    echo -e "${WHITE}Database: ${DB_NAME}${NC}"
 }
 
 # dev down の処理
 dev_down() {
     echo -e "${YELLOW}🛑 Stopping development database...${NC}"
     docker stop dev-db 2>/dev/null
-    docker rm dev-db 2>/dev/null
     echo -e "${GREEN}✅ Development database stopped!${NC}"
 }
 
