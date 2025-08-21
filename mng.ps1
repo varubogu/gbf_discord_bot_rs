@@ -1,21 +1,22 @@
 param(
-    [Parameter(Position=0, Mandatory=$true)]
+    [Parameter(Position = 0, Mandatory = $true)]
     [ValidateSet("dev", "prod", "help")]
     [string]$Environment,
-    
-    [Parameter(Position=1)]
+
+    [Parameter(Position = 1)]
     [ArgumentCompleter({
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-        
+
         $environment = $fakeBoundParameters['Environment']
-        switch ($environment) {
-            'dev' { 
+        switch ($environment)
+        {
+            'dev' {
                 @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
-            'prod' { 
+            'prod' {
                 @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
-            default { 
+            default {
                 @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
         }
@@ -23,7 +24,8 @@ param(
     [string]$Command = "up"
 )
 
-function Show-Help {
+function Show-Help
+{
     Write-Host "🛠️ Management Script for Development and Production" -ForegroundColor Green
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor Yellow
@@ -44,10 +46,12 @@ function Show-Help {
     Write-Host "  .\mng.ps1 prod nocache" -ForegroundColor White
 }
 
-function Start-DevDatabase {
+function Start-DevDatabase
+{
     # 環境変数ファイルの読み込み
     Get-Content ".\config\.env.db.production" | ForEach-Object {
-        if ($_ -match "^([^=]+)=(.*)$") {
+        if ($_ -match "^([^=]+)=(.*)$")
+        {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
         }
     }
@@ -59,9 +63,11 @@ function Start-DevDatabase {
 
     # コンテナが存在するか確認
     $runningContainer = docker ps -q -f name=dev-db
-    if (-not $runningContainer) {
+    if (-not $runningContainer)
+    {
         $exitedContainer = docker ps -aq -f status=exited -f name=dev-db
-        if ($exitedContainer) {
+        if ($exitedContainer)
+        {
             # 停止中のコンテナがある場合は削除
             docker rm dev-db
         }
@@ -78,15 +84,18 @@ function Start-DevDatabase {
             -p 5432:5432 `
             dev-db-image
     }
-    else {
+    else
+    {
         Write-Host "✨ Database is already running" -ForegroundColor Yellow
     }
 
     # データベースの接続確認
     Write-Host "🔍 Checking database connection..." -ForegroundColor Cyan
-    do {
+    do
+    {
         $isReady = docker exec dev-db pg_isready -U $DBUSER
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-Host "🕐 Waiting for database to be ready..." -ForegroundColor Yellow
             Start-Sleep -Seconds 2
         }
@@ -100,54 +109,64 @@ function Start-DevDatabase {
     Write-Host "Database: $DBDATABASE" -ForegroundColor White
 }
 
-function Stop-DevDatabase {
+function Stop-DevDatabase
+{
     Write-Host "🛑 Stopping development database..." -ForegroundColor Yellow
-    docker stop dev-db 2>$null
-    docker rm dev-db 2>$null
+    docker stop dev-db 2> $null
+    docker rm dev-db 2> $null
     Write-Host "✅ Development database stopped!" -ForegroundColor Green
 }
 
-function Start-ProdServices {
+function Start-ProdServices
+{
     Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
     docker compose --env-file config\.env up -d
 }
 
-function Stop-ProdServices {
+function Stop-ProdServices
+{
     Write-Host "🛑 サービスを停止しています..." -ForegroundColor Yellow
     docker compose down
 }
 
-function Start-ProdServicesNoCache {
+function Start-ProdServicesNoCache
+{
     Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
     docker compose --env-file config\.env build --no-cache
-    if ($LASTEXITCODE -eq 0) {
+    if ($LASTEXITCODE -eq 0)
+    {
         Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
         docker compose --env-file config\.env up -d
     }
-    else {
+    else
+    {
         Write-Host "❌ ビルド中にエラーが発生しました" -ForegroundColor Red
         exit 1
     }
 }
 
 # ヘルプの表示
-if ($Environment -eq "help") {
+if ($Environment -eq "help")
+{
     Show-Help
     exit
 }
 
 # コマンドの検証と実行
-switch ($Environment) {
+switch ($Environment)
+{
     "dev" {
         # devで利用可能なコマンドの検証
-        if ($Command -notin @("up", "down", "help")) {
+        if ($Command -notin @("up", "down", "help"))
+        {
             Write-Host "❌ Invalid command for dev: $Command" -ForegroundColor Red
             Write-Host "Available commands for dev: up, down" -ForegroundColor Yellow
             Show-Help
             exit 1
         }
-        
-        switch ($Command) {
+
+        switch ($Command)
+        {
             "up" {
                 Start-DevDatabase
             }
@@ -161,14 +180,16 @@ switch ($Environment) {
     }
     "prod" {
         # prodで利用可能なコマンドの検証
-        if ($Command -notin @("up", "down", "nocache", "help")) {
+        if ($Command -notin @("up", "down", "nocache", "help"))
+        {
             Write-Host "❌ Invalid command for prod: $Command" -ForegroundColor Red
             Write-Host "Available commands for prod: up, down, nocache" -ForegroundColor Yellow
             Show-Help
             exit 1
         }
-        
-        switch ($Command) {
+
+        switch ($Command)
+        {
             "up" {
                 Start-ProdServices
             }
