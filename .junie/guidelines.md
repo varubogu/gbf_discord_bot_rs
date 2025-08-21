@@ -59,6 +59,8 @@ JunieやAIチャットが出力するmarkdownの設計書・説明書は
 │   └── main.rs      # エントリポイント
 ├── target       # cargoのビルド等の出力先
 ├── tests        # 結合テスト
+├── .env         # 開発時の環境変数定義（重要な認証情報が含まれるため読み込み禁止）
+├── .env.example # 開発時の環境変数定義の見本
 ├── Cargo.lock   # Cargoインストール済みクレート
 └── Cargo.toml   # Cargo設定ファイル
 ```
