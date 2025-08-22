@@ -5,10 +5,9 @@ use poise::serenity_prelude::all::{
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::infrastructure::database::transaction::Transaction;
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::BattleRecruitmentRepository;
-use crate::types::PoiseError;
+use crate::types::{AppError, Result};
 
 pub(crate) struct CancelParameter {
     pub guild_id: i64,
@@ -26,14 +25,13 @@ impl<'a> CancelRecruitmentService<'a> {
         Self { repo }
     }
 
-    /// DBから募集情報を取得（トランザクション内）
-    pub async fn get_recruitment_from_db_with_txn(
+    /// DBから募集情報を取得（非トランザクション）
+    pub async fn get_recruitment_from_db(
         &self,
-        txn: &Transaction,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment, PoiseError> {
+    ) -> Result<BattleRecruitment> {
         info!(
             "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id
@@ -41,7 +39,7 @@ impl<'a> CancelRecruitmentService<'a> {
 
         match self
             .repo
-            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
             .await?
         {
             Some(recruitment) => {
@@ -50,29 +48,22 @@ impl<'a> CancelRecruitmentService<'a> {
             }
             None => {
                 warn!("募集情報が見つかりません: message_id={}", message_id);
-                Err(PoiseError::from(format!(
-                    "Recruitment not found for message_id: {}",
-                    message_id
-                )))
+                Err(AppError::Business {
+                    message: format!("Recruitment not found for message_id: {}", message_id),
+                })
             }
         }
     }
 
-    /// 募集をキャンセル済み状態に更新（トランザクション内）
-    pub async fn mark_recruitment_as_cancelled_with_txn(
-        &self,
-        txn: &Transaction,
-        recruitment_id: i32,
-    ) -> Result<(), PoiseError> {
+    /// 募集をキャンセル済み状態に更新（非トランザクション）
+    pub async fn mark_recruitment_as_cancelled(&self, recruitment_id: i32) -> Result<()> {
         info!(
             "募集キャンセル済み状態更新: recruitment_id={}",
             recruitment_id
         );
 
         // 終了メッセージID = 0 でキャンセル状態を表現
-        self.repo
-            .set_end_message_with_txn(txn, recruitment_id, 0)
-            .await?;
+        self.repo.set_end_message(recruitment_id, 0).await?;
 
         info!(
             "募集キャンセル済み状態更新完了: recruitment_id={}",
@@ -87,7 +78,7 @@ impl<'a> CancelRecruitmentService<'a> {
         ctx: &Context,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Vec<String>, PoiseError> {
+    ) -> Result<Vec<String>> {
         info!(
             "リアクション参加者取得開始: channel_id={}, message_id={}",
             channel_id, message_id
@@ -134,10 +125,7 @@ impl<'a> CancelRecruitmentService<'a> {
     }
 
     /// キャンセル済みメッセージ作成（非トランザクション）
-    pub async fn create_cancelled_message(
-        &self,
-        original_content: &str,
-    ) -> Result<String, PoiseError> {
+    pub async fn create_cancelled_message(&self, original_content: &str) -> Result<String> {
         warn!("CancelRecruitmentService::create_cancelled_message - 仕様検討中です");
         // 暫定実装：元のメッセージに「キャンセル済み」を追加
         Ok(format!(
@@ -147,10 +135,7 @@ impl<'a> CancelRecruitmentService<'a> {
     }
 
     /// キャンセル通知メッセージ作成（非トランザクション）
-    pub async fn create_cancel_notification(
-        &self,
-        participants: &[String],
-    ) -> Result<String, PoiseError> {
+    pub async fn create_cancel_notification(&self, participants: &[String]) -> Result<String> {
         warn!("CancelRecruitmentService::create_cancel_notification - 仕様検討中です");
 
         if participants.is_empty() {
@@ -171,7 +156,7 @@ impl<'a> CancelRecruitmentService<'a> {
         channel_id: u64,
         message_id: u64,
         original_content: &str,
-    ) -> Result<(), PoiseError> {
+    ) -> Result<()> {
         info!(
             "元メッセージをキャンセル済みに編集: channel_id={}, message_id={}",
             channel_id, message_id
@@ -197,7 +182,7 @@ impl<'a> CancelRecruitmentService<'a> {
         channel_id: u64,
         original_message_id: u64,
         content: &str,
-    ) -> Result<(), PoiseError> {
+    ) -> Result<()> {
         info!(
             "キャンセル返信送信: channel_id={}, original_message_id={}",
             channel_id, original_message_id

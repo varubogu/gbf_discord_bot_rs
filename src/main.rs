@@ -9,31 +9,65 @@ mod types;
 mod utils;
 
 use crate::events::{command::commands, handler::event_handler};
-use crate::types::{PoiseData, PoiseError};
+use crate::types::{AppConfig, AppError, AppState, PoiseData, Result};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
+use sea_orm::{ConnectOptions, Database};
 use std::env;
 use std::path::Path;
+use std::time::Duration;
+use tracing::{error, info};
+
+async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConnection> {
+    info!("Initializing optimized database connection...");
+
+    // SeaORMコネクションプールの最適化設定
+    let mut opt = ConnectOptions::new(database_url);
+    opt.max_connections(100)
+        .min_connections(5)
+        .connect_timeout(Duration::from_secs(8))
+        .acquire_timeout(Duration::from_secs(8))
+        .idle_timeout(Duration::from_secs(300))
+        .max_lifetime(Duration::from_secs(3600))
+        .sqlx_logging(true)
+        .sqlx_logging_level(log::LevelFilter::Info);
+
+    let db = Database::connect(opt).await?;
+    info!("Database connection pool initialized successfully");
+    Ok(db)
+}
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
+    info!("Starting Granblue Fantasy Discord Bot...");
 
     // Load environment variables
     let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
     let dotenv_path = Path::new(&config_folder).join(".env");
     dotenv::from_path(dotenv_path).ok();
 
-    // Get Discord token
-    let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
+    // Load configuration using structured approach
+    let config = AppConfig::from_env()?;
+    info!("Configuration loaded successfully");
 
-    // Set up intents
+    // Initialize database with optimized connection pool
+    let db_connection = initialize_database(&config.database_url).await?;
+
+    // Create AppState (Rustらしいパターン)
+    let app_state = AppState::new(db_connection, config);
+    info!("AppState initialized");
+
+    // Set up Discord intents
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::GUILD_MESSAGE_REACTIONS
         | GatewayIntents::GUILDS
         | GatewayIntents::MESSAGE_CONTENT;
 
-    // Create poise framework
+    // Create Discord client (clone discord_token before the move)
+    let discord_token = app_state.config.discord_token.clone();
+
+    // Create poise framework with AppState
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
@@ -46,23 +80,30 @@ async fn main() {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 
-                // PoiseDataを初期化
-                let data = PoiseData {};
+                // PoiseDataにAppStateを設定
+                let data = PoiseData { app_state };
+                info!("Poise framework initialized with AppState");
 
                 Ok(data)
             })
         })
         .build();
-
-    // Create a client with poise
-    let client = serenity::ClientBuilder::new(&token, intents)
+    let mut client = serenity::ClientBuilder::new(&discord_token, intents)
         .framework(framework)
-        .await;
+        .await?;
 
-    client.unwrap().start().await.unwrap();
+    info!("Discord client created, starting bot...");
+
+    // Start the bot
+    if let Err(e) = client.start().await {
+        error!("Error starting bot: {:?}", e);
+        return Err(AppError::Discord(e));
+    }
+
+    Ok(())
 }
 
 #[allow(dead_code)]
-async fn error_handler(error: poise::FrameworkError<'_, PoiseData, PoiseError>) {
-    println!("Oh no, we got an error: {:}", error);
+async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
+    error!("Poise framework error: {:?}", error);
 }

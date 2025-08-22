@@ -22,6 +22,7 @@ logcall = { version = "0.1.11"}
 rust-i18n = "3.1.5"
 dateparser = "0.2.1"
 futures = "0.3.31"
+thiserror = "1.0"
 
 
 [dev-dependencies]

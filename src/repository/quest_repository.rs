@@ -1,5 +1,5 @@
 use crate::models::quest::{Quest, QuestAlias};
-use crate::types::PoiseError;
+use crate::types::Result;
 use async_trait::async_trait;
 
 /// クエストリポジトリの抽象インターフェース
@@ -7,14 +7,14 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait QuestRepository: Send + Sync {
     /// 全クエストを取得
-    async fn get_all(&self) -> Result<Vec<Quest>, PoiseError>;
+    async fn get_all(&self) -> Result<Vec<Quest>>;
 
     /// 全クエストエイリアスを取得
-    async fn get_aliases(&self) -> Result<Vec<QuestAlias>, PoiseError>;
+    async fn get_aliases(&self) -> Result<Vec<QuestAlias>>;
 
     /// エイリアスでクエストを検索
-    async fn get_by_alias(&self, alias: &str) -> Result<Option<Quest>, PoiseError>;
+    async fn get_by_alias(&self, alias: &str) -> Result<Option<Quest>>;
 
     /// ターゲットIDでクエストを検索
-    async fn get_by_target_id(&self, target_id: i32) -> Result<Option<Quest>, PoiseError>;
+    async fn get_by_target_id(&self, target_id: i32) -> Result<Option<Quest>>;
 }

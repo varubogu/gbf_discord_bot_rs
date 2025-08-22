@@ -1,5 +1,5 @@
 use crate::models::message_text::MessageText;
-use crate::types::PoiseError;
+use crate::types::Result;
 use async_trait::async_trait;
 
 /// メッセージテキストリポジトリの抽象インターフェース
@@ -11,5 +11,5 @@ pub trait MessageTextRepository: Send + Sync {
         &self,
         guild_id: i64,
         message_id: &str,
-    ) -> Result<Option<MessageText>, PoiseError>;
+    ) -> Result<Option<MessageText>>;
 }

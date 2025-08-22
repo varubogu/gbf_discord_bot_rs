@@ -1,6 +1,6 @@
-use crate::facades::battle_recruitment;
+use crate::facades::battle_recruitment::BattleRecruitmentFacade;
 use crate::types::battle_type::BattleType;
-use crate::types::{PoiseContext, PoiseError};
+use crate::types::{PoiseContext, Result};
 use futures::Stream;
 use poise::serenity_prelude::Message;
 
@@ -24,22 +24,26 @@ pub async fn recruit(
     // #[description = "Quest Combat Style"]
     // #[description_localized("ja", "クエストの戦闘スタイル")]
     // battle_type: Option<BattleType>,
-) -> Result<(), PoiseError> {
+) -> Result<()> {
     ctx.defer().await?;
 
     let battle_type = BattleType::Default;
 
     // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
 
-    // Call the updated battle_recruitment::new function
-    match battle_recruitment::new(&ctx, &quest, battle_type).await {
+    // Create BattleRecruitmentFacade using AppState (Rustらしいパターン)
+    let app_state = &ctx.data().app_state;
+    let facade = BattleRecruitmentFacade::new(app_state);
+
+    // Call the new BattleRecruitmentFacade method
+    match facade.new_recruitment(&ctx, &quest, battle_type).await {
         Ok(_) => {
             ctx.say("募集が正常に作成されました。").await?;
             Ok(())
         }
         Err(e) => {
             ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
-            Err(e.into())
+            Err(e)
         }
     }
 }
@@ -56,20 +60,29 @@ pub async fn cannel(
     #[description = "recruit message"]
     #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
     message: Message,
-) -> Result<(), PoiseError> {
+) -> Result<()> {
     ctx.defer().await?;
 
     let guild_id = ctx.guild_id().unwrap_or_default().get();
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();
-    match battle_recruitment::cancel(&ctx, guild_id, channel_id, message_id).await {
+
+    // Create BattleRecruitmentFacade using AppState (Rustらしいパターン)
+    let app_state = &ctx.data().app_state;
+    let facade = BattleRecruitmentFacade::new(app_state);
+
+    match facade
+        .cancel_recruitment(ctx.serenity_context(), guild_id, channel_id, message_id)
+        .await
+    {
         Ok(_) => {
-            ctx.say("募集が正常に作成されました。").await?;
+            ctx.say("募集が正常にキャンセルされました。").await?;
             Ok(())
         }
         Err(e) => {
-            ctx.say(format!("募集作成に失敗しました: {}", e)).await?;
-            Err(e.into())
+            ctx.say(format!("募集キャンセルに失敗しました: {}", e))
+                .await?;
+            Err(e)
         }
     }
 }

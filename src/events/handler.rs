@@ -1,12 +1,12 @@
 use crate::events::handlers;
-use crate::types::{PoiseData, PoiseError};
+use crate::types::{AppError, PoiseData, Result};
 
 pub async fn event_handler(
     ctx: &poise::serenity_prelude::Context,
     event: &poise::serenity_prelude::FullEvent,
-    _framework: poise::FrameworkContext<'_, PoiseData, PoiseError>,
+    _framework: poise::FrameworkContext<'_, PoiseData, AppError>,
     data: &PoiseData,
-) -> Result<(), PoiseError> {
+) -> Result<()> {
     match event {
         poise::serenity_prelude::FullEvent::Ready { data_about_bot } => {
             println!("Connected as {}", data_about_bot.user.name);

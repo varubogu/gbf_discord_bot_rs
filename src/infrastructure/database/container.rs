@@ -1,25 +1,34 @@
-use crate::infrastructure::database::connection::DatabaseConnectionManager;
-use crate::repository::BattleRecruitmentRepository;
 use crate::repository::database::battle_recruitment_repository::BattleRecruitmentRepositoryImpl;
-use crate::types::PoiseError;
-use std::sync::Arc;
+use sea_orm::DatabaseConnection;
 
-/// Repository層の依存注入コンテナ
+/// Repository層のコンテナ（Rustらしいパターン）
+///
+/// AppStateから共有のDB接続を受け取り、Repository群を管理します。
+/// 従来のDIコンテナパターンから、よりシンプルで効率的なアプローチに変更。
+#[derive(Debug)]
 pub struct RepositoryContainer {
-    pub battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+    battle_recruitment_repo: BattleRecruitmentRepositoryImpl,
     // 他のrepositoryも追加可能
 }
 
 impl RepositoryContainer {
-    pub async fn new() -> Result<Self, PoiseError> {
-        let db_manager = DatabaseConnectionManager::new().await?;
+    /// 共有DB接続を使用してRepositoryContainerを作成
+    ///
+    /// # 引数
+    /// * `db_connection` - 共有されるDB接続
+    ///
+    /// # 戻り値
+    /// 新しいRepositoryContainerインスタンス
+    pub fn new(db_connection: &DatabaseConnection) -> Self {
+        let battle_recruitment_repo = BattleRecruitmentRepositoryImpl::new(db_connection.clone());
 
-        let battle_recruitment_repo = Arc::new(BattleRecruitmentRepositoryImpl::new(
-            db_manager.connection().clone(),
-        ));
-
-        Ok(Self {
+        Self {
             battle_recruitment_repo,
-        })
+        }
+    }
+
+    /// BattleRecruitmentRepositoryへの参照を取得
+    pub fn battle_recruitment(&self) -> &BattleRecruitmentRepositoryImpl {
+        &self.battle_recruitment_repo
     }
 }

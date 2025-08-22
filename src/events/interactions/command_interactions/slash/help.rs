@@ -1,4 +1,4 @@
-use crate::types::{PoiseContext, PoiseError};
+use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 
 #[poise::command(
@@ -7,7 +7,7 @@ use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
     description_localized("ja", "ヘルプを表示します"),
     ephemeral
 )]
-pub async fn help(ctx: PoiseContext<'_>) -> Result<(), PoiseError> {
+pub async fn help(ctx: PoiseContext<'_>) -> Result<()> {
     // Create an embed with help information
     let embed = CreateEmbed::new()
         .title("GBF Discord Bot Help")

@@ -1,8 +1,8 @@
 use crate::services::permission::has_bot_control_permission;
 // use crate::services::environment::service::load_environment_from_database;
-use crate::types::{PoiseContext, PoiseError};
+use crate::types::{PoiseContext, Result};
 
-pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<(), PoiseError> {
+pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<()> {
     // コマンド実行者の情報取得
     let member = ctx.author_member().await.unwrap();
 
