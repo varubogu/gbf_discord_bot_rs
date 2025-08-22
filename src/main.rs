@@ -10,8 +10,10 @@ mod utils;
 
 use crate::events::{command::commands, handler::event_handler};
 use crate::types::{AppConfig, AppError, AppState, PoiseData, Result};
+use migration::{Migrator, MigratorTrait};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use sea_orm::{ConnectOptions, Database};
+use sea_orm_migration::prelude::*;
 use std::env;
 use std::path::Path;
 use std::time::Duration;
@@ -33,6 +35,15 @@ async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConn
 
     let db = Database::connect(opt).await?;
     info!("Database connection pool initialised successfully");
+
+    // マイグレーションの実行
+    info!("Running database migrations...");
+    Migrator::up(&db, None).await.map_err(|e| {
+        error!("Migration failed: {:?}", e);
+        AppError::Database(e)
+    })?;
+    info!("Database migrations completed successfully");
+
     Ok(db)
 }
 
