@@ -32,7 +32,7 @@ async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConn
         .sqlx_logging_level(log::LevelFilter::Info);
 
     let db = Database::connect(opt).await?;
-    info!("Database connection pool initialized successfully");
+    info!("Database connection pool initialised successfully");
     Ok(db)
 }
 
@@ -47,14 +47,15 @@ async fn main() -> Result<()> {
     let dotenv_path = Path::new(&config_folder).join(".env");
     dotenv::from_path(dotenv_path).ok();
 
-    // Load configuration using structured approach
+    // Load configuration using a structured approach
     let config = AppConfig::from_env()?;
     info!("Configuration loaded successfully");
 
-    // Initialize database with optimized connection pool
+    // Initialise a database with an optimised connection pool
     let db_connection = initialize_database(&config.database_url).await?;
+    info!("Database connection pool initialised successfully");
 
-    // Create AppState (Rustらしいパターン)
+    // Create AppState
     let app_state = AppState::new(db_connection, config);
     info!("AppState initialized");
 
@@ -67,7 +68,7 @@ async fn main() -> Result<()> {
     // Create Discord client (clone discord_token before the move)
     let discord_token = app_state.config.discord_token.clone();
 
-    // Create poise framework with AppState
+    // Create a poise framework with AppState
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
