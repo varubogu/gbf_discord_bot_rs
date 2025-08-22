@@ -21,7 +21,6 @@ JunieやAIチャットが出力するmarkdownの設計書・説明書は
 - poise (discord bot)
 - Postgres (database)
 - sea-orm (ORM)
--
 
 ## プロジェクト構成について
 
@@ -157,6 +156,264 @@ JunieやAIチャットが出力するmarkdownの設計書・説明書は
 - **DB接続の抽象化**: Service層でトランザクション取得時にDB接続を行っておき、データアクセス層以外からはDB接続タイミングを意識不要とする
 - **Repository層での使用**: トランザクション抽象オブジェクトを引数として受け取り、DB接続は引数として受け取らない
 - **トランザクション内接続**: トランザクションに紐づくコネクションを使って処理を実行する
+
+## 依存性注入の具体的実装指針
+
+### コンストラクタインジェクションの詳細ルール
+
+- **必須**: すべての依存関係はコンストラクタ（`new`メソッド）で受け取る
+- **禁止**: `new()`メソッド内での他のオブジェクトの`new()`呼び出し
+- **推奨**: traitによる抽象化を用いた依存関係の定義
+
+**実装例**:
+
+```rust
+// ✅ 正しい実装
+impl TransactionManager {
+  pub fn new(db_service: Arc<dyn DatabaseService>, repos: RepositoryContainer) -> Self {
+    Self { db_service, repos }
+  }
+}
+
+// ❌ 間違った実装
+impl TransactionManager {
+  pub async fn new() -> Result<Self, PoiseError> {
+    let db_manager = DatabaseConnectionManager::new().await?; // 禁止
+    let repos = RepositoryContainer::new().await?; // 禁止
+    // ...
+  }
+}
+```
+
+### 各層での依存関係受け取りパターン
+
+**プレゼンテーション層（Events/Commands）**:
+
+- `Context`または`Data`から必要な依存関係を取得
+- Facade層への依存関係注入を行う
+
+```rust
+pub async fn handle_command(ctx: PoiseContext) -> Result<(), PoiseError> {
+  let tx_manager = ctx.data().transaction_manager.clone();
+  let facade = BattleRecruitmentFacade::new(tx_manager);
+  facade.create_new_recruitment(/* params */).await
+}
+```
+
+**Facade層**:
+
+- Service層とTransactionManagerを依存関係として受け取る
+- 1つのオペレーションを担当するクラスとして実装
+
+```rust
+pub struct BattleRecruitmentFacade {
+  tx_manager: Arc<TransactionManager>,
+  new_service: Arc<dyn NewRecruitmentService>,
+  update_service: Arc<dyn UpdateRecruitmentService>,
+}
+
+impl BattleRecruitmentFacade {
+  pub fn new(
+    tx_manager: Arc<TransactionManager>,
+    new_service: Arc<dyn NewRecruitmentService>,
+    update_service: Arc<dyn UpdateRecruitmentService>,
+  ) -> Self {
+    Self { tx_manager, new_service, update_service }
+  }
+}
+```
+
+**Service層**:
+
+- Repository層の依存関係を受け取る
+- 単一責任の原則に従う
+
+```rust
+pub struct NewRecruitmentService {
+  repo: Arc<dyn BattleRecruitmentRepository>,
+}
+
+impl NewRecruitmentService {
+  pub fn new(repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+    Self { repo }
+  }
+}
+```
+
+## アーキテクチャ層間の責務詳細化
+
+### プレゼンテーション層の詳細責務
+
+**主要責務**:
+
+- ユーザー入力の検証とサニタイゼーション
+- facade層への適切なパラメータ変換
+- エラーハンドリングと適切なレスポンス生成
+
+**禁止事項**:
+
+- Service層やRepository層への直接アクセス
+- ビジネスロジックの実装
+- データベース操作の実行
+
+**実装パターン**:
+
+```rust
+pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> {
+  // 1. 入力検証
+  let quest_alias = validate_quest_alias(quest_alias)?;
+
+  // 2. Facade層への依存関係注入
+  let facade = create_battle_recruitment_facade(&ctx.data())?;
+
+  // 3. Facade層の呼び出し
+  let result = facade.create_new_recruitment(quest_alias, battle_type).await?;
+
+  // 4. レスポンス生成
+  ctx.say(format!("募集を作成しました: {}", result.recruitment_id)).await?;
+  Ok(())
+}
+```
+
+### Facade層の詳細責務
+
+**主要責務**:
+
+- Service層の協調（オーケストレーション）
+- トランザクション境界の管理
+- 複数のServiceを組み合わせた1つのユースケース実行
+
+**禁止事項**:
+
+- Repository層への直接アクセス
+- データベース固有の操作
+- 複数のユースケースを1つのクラスで処理
+
+**実装パターン**:
+
+```rust
+impl BattleRecruitmentFacade {
+  pub async fn create_new_recruitment(&self, quest_alias: &str, battle_type: BattleType) -> Result<RecruitmentResult, PoiseError> {
+    self.tx_manager.execute_in_transaction(|tx_ctx| {
+      Box::pin(async move {
+        // 1. クエスト情報の取得
+        let quest_info = self.quest_service.get_quest_info(quest_alias).await?;
+
+        // 2. 募集の作成
+        let recruitment = self.new_service.create_recruitment(&quest_info, battle_type, tx_ctx).await?;
+
+        // 3. メッセージの送信
+        let message = self.message_service.send_recruitment_message(&recruitment).await?;
+
+        // 4. 結果の返却
+        Ok(RecruitmentResult { recruitment_id: recruitment.id, message_id: message.id })
+      })
+    }).await
+  }
+}
+```
+
+### Service層の詳細責務
+
+**主要責務**:
+
+- 単一の業務処理実行
+- ドメインルールの実装
+- Repository層の呼び出し
+
+**禁止事項**:
+
+- 他のService層への直接依存（Facade層経由で協調）
+- プレゼンテーション層特有の処理
+- トランザクション管理（Facade層の責務）
+
+### Repository層の詳細責務
+
+**主要責務**:
+
+- データの永続化・取得
+- データベース固有の操作
+- エンティティとドメインモデルの変換
+
+**禁止事項**:
+
+- ビジネスロジックの実装
+- 他のRepository層への依存
+- DB接続の直接管理（Transactionのみ受け取る）
+
+## エラーハンドリング戦略
+
+### 層別エラーハンドリング
+
+- **プレゼンテーション層**: ユーザー向けエラーメッセージの生成
+- **Facade層**: ビジネス例外の捕捉とログ出力
+- **Service層**: ドメイン固有例外の生成
+- **Repository層**: データアクセス例外の適切な変換
+
+### エラー種別と対応方針
+
+```rust
+// エラーの階層化
+pub enum ApplicationError {
+  ValidationError(String),
+  BusinessRuleViolation(String),
+  DataAccessError(String),
+  ExternalServiceError(String),
+}
+```
+
+## テスト戦略
+
+### 単体テストの指針
+
+- **各層での単体テスト必須**
+- **モックオブジェクトによる依存関係の分離**
+- **テストダブルの適切な使用**
+
+### 結合テストの指針
+
+- **Facade層での結合テスト**
+- **Repository層での実データベーステスト**
+
+## パフォーマンス考慮事項
+
+### DB接続管理
+
+- **コネクションプーリングの適切な設定**
+- **長時間トランザクションの回避**
+- **N+1問題の防止**
+
+### メモリ管理
+
+- **Arc<T>を用いた適切な参照共有**
+- **不要な clone() の回避**
+
+## セキュリティ考慮事項
+
+### 入力検証
+
+- **プレゼンテーション層での必須入力検証**
+- **SQLインジェクション対策**
+- **適切なサニタイゼーション**
+
+### 認証・認可
+
+- **Discord権限の適切な確認**
+- **サーバー固有権限の実装**
+
+## ログ・監視
+
+### ログレベルの使い分け
+
+- **ERROR**: システムエラー、予期しない例外
+- **WARN**: 業務例外、リトライ可能なエラー
+- **INFO**: 重要な業務処理の開始・終了
+- **DEBUG**: 詳細なトレース情報
+
+### 構造化ログの実装
+
+- **トランザクションIDによる処理追跡**
+- **メトリクス収集のための適切な情報出力**
 
 ### その他ユースケース別
 
