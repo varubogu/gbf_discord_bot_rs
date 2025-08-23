@@ -2,9 +2,11 @@
 
 ## 概要
 
-このドキュメントは、グランブルーファンタジーDiscord Botプロジェクトにおける**Discord API制約**と**クロージャパターン**の詳細なガイドラインを定義します。
+このドキュメントは、グランブルーファンタジーDiscord Botプロジェクトにおける**Discord API制約**と**クロージャパターン**
+の詳細なガイドラインを定義します。
 
-クリーンアーキテクチャの原則に従い、アプリケーション層以降でのDiscord API処理を禁止し、プレゼンテーション層でのみDiscord操作を許可することで、純粋関数としてのFacade/Service層を実現し、テスタビリティと保守性を向上させます。
+クリーンアーキテクチャの原則に従い、アプリケーション層以降でのDiscord
+API処理を禁止し、プレゼンテーション層でのみDiscord操作を許可することで、純粋関数としてのFacade/Service層を実現し、テスタビリティと保守性を向上させます。
 
 ## Discord API制約の基本原則
 
@@ -20,22 +22,26 @@ Discord API（poise/serenity）の直接呼び出しを禁止する
 #### プレゼンテーション層（Events/Commands/Handlers）
 
 **許可事項**:
+
 - PoiseContext、Serenity Contextの使用
 - Discord API（メッセージ送信、編集、リアクション等）の直接呼び出し
 - クロージャを通じたDiscord操作の実装
 
 **禁止事項**:
+
 - ビジネスロジックの実装
 - データベース操作の直接実行
 
 #### アプリケーション層（Facade/Service）
 
 **許可事項**:
+
 - 純粋なビジネスロジックの実装
 - クロージャパラメータによるDiscord操作の要求
 - トランザクション管理（Facade層のみ）
 
 **禁止事項**:
+
 - Discord API（poise/serenity）の直接呼び出し
 - PoiseContext、Serenity Contextの受け取り
 - 副作用を持つ外部システム操作
@@ -43,10 +49,12 @@ Discord API（poise/serenity）の直接呼び出しを禁止する
 #### データアクセス層（Repository）
 
 **許可事項**:
+
 - データベース操作の実装
 - エンティティ変換
 
 **禁止事項**:
+
 - Discord API操作
 - ビジネスロジックの実装
 
@@ -98,7 +106,7 @@ impl BattleRecruitmentFacade {
     ) -> Result<RecruitmentResult>
     where
         F: Fn(DiscordOperation) -> Fut,
-        Fut: Future<Output = Result<DiscordOperationResult>>,
+        Fut: Future<Output=Result<DiscordOperationResult>>,
     {
         // 1. クエスト情報の取得
         let quest_info = self.quest_service
@@ -135,10 +143,10 @@ impl BattleRecruitmentFacade {
 ```rust
 pub async fn recruit(ctx: PoiseContext<'_>, quest: String) -> Result<()> {
     ctx.defer().await?;
-    
+
     let app_state = &ctx.data().app_state;
     let facade = BattleRecruitmentFacade::new(app_state);
-    
+
     // クロージャを使用してDiscord操作を分離
     let result = facade.new_recruitment(
         &quest,
@@ -159,11 +167,11 @@ pub async fn recruit(ctx: PoiseContext<'_>, quest: String) -> Result<()> {
                                 m
                             })
                             .await?;
-                        
+
                         Ok(DiscordOperationResult {
                             message_id: message.id.get(),
                         })
-                    },
+                    }
                     DiscordOperation::EditMessage { channel_id, message_id, content, embed } => {
                         let channel = ChannelId::from(channel_id);
                         channel.edit_message(&ctx_clone.http, message_id, |m| {
@@ -175,15 +183,15 @@ pub async fn recruit(ctx: PoiseContext<'_>, quest: String) -> Result<()> {
                             }
                             m
                         }).await?;
-                        
+
                         Ok(DiscordOperationResult { message_id })
-                    },
+                    }
                     // 他の操作の実装...
                 }
             })
         }
     ).await?;
-    
+
     ctx.say(format!("募集を作成しました。ID: {}", result.recruitment_id))
         .await?;
     Ok(())
@@ -203,7 +211,7 @@ pub async fn new_recruitment<F, Fut>(
 ) -> Result<RecruitmentResult>
 where
     F: FnOnce(DiscordOperation) -> Fut + Send + 'static,
-    Fut: Future<Output = Result<DiscordOperationResult>> + Send,
+    Fut: Future<Output=Result<DiscordOperationResult>> + Send,
 {
     // 実装...
 }
@@ -240,16 +248,16 @@ use thiserror::Error;
 pub enum DiscordOperationError {
     #[error("メッセージの送信に失敗しました: {0}")]
     MessageSendFailed(String),
-    
+
     #[error("メッセージの編集に失敗しました: {0}")]
     MessageEditFailed(String),
-    
+
     #[error("権限が不足しています")]
     PermissionDenied,
-    
+
     #[error("チャンネルが見つかりません")]
     ChannelNotFound,
-    
+
     #[error("Discord API接続エラー: {0}")]
     ConnectionError(String),
 }
@@ -263,7 +271,7 @@ impl From<SerenityError> for DiscordOperationError {
                     404 => DiscordOperationError::ChannelNotFound,
                     _ => DiscordOperationError::ConnectionError(err.to_string()),
                 }
-            },
+            }
             _ => DiscordOperationError::ConnectionError(err.to_string()),
         }
     }
@@ -278,13 +286,13 @@ impl From<SerenityError> for DiscordOperationError {
 pub enum ApplicationError {
     #[error("バリデーションエラー: {0}")]
     ValidationError(String),
-    
+
     #[error("ビジネスルール違反: {0}")]
     BusinessRuleViolation(String),
-    
+
     #[error("データアクセスエラー: {0}")]
     DataAccessError(#[from] DataAccessError),
-    
+
     #[error("外部サービスエラー: {0}")]
     ExternalServiceError(#[from] DiscordOperationError),
 }
@@ -305,7 +313,7 @@ mod tests {
         let facade = BattleRecruitmentFacade::new(&mock_app_state());
         let captured_operations = Arc::new(Mutex::new(Vec::new()));
         let captured_clone = captured_operations.clone();
-        
+
         let result = facade.new_recruitment(
             "test_quest",
             BattleType::Default,
@@ -317,23 +325,23 @@ mod tests {
                 })
             }
         ).await;
-        
+
         assert!(result.is_ok());
         let operations = captured_operations.lock().unwrap();
         assert_eq!(operations.len(), 1);
-        
+
         match &operations[0] {
             DiscordOperation::SendMessage { content, .. } => {
                 assert!(content.contains("test_quest"));
-            },
+            }
             _ => panic!("Expected SendMessage operation"),
         }
     }
-    
+
     #[tokio::test]
     async fn test_new_recruitment_discord_error() {
         let facade = BattleRecruitmentFacade::new(&mock_app_state());
-        
+
         let result = facade.new_recruitment(
             "test_quest",
             BattleType::Default,
@@ -346,7 +354,7 @@ mod tests {
                 })
             }
         ).await;
-        
+
         assert!(result.is_err());
     }
 }
@@ -363,13 +371,13 @@ mod service_tests {
     async fn test_create_recruitment_data_pure_function() {
         let service = NewRecruitmentService::new(mock_repository());
         let quest = Quest { name: "テストクエスト".to_string(), /* ... */ };
-        
+
         let result = service.create_recruitment_data(
             &quest,
             BattleType::Default,
             None
         ).await;
-        
+
         assert!(result.is_ok());
         let data = result.unwrap();
         assert_eq!(data.quest_name, "テストクエスト");
@@ -393,13 +401,13 @@ impl BattleRecruitmentFacade {
     ) -> Result<()>
     where
         F: FnOnce(DiscordOperation) -> Fut,
-        Fut: Future<Output = Result<DiscordOperationResult>>,
+        Fut: Future<Output=Result<DiscordOperationResult>>,
     {
         // 純粋なビジネスロジック
         let recruitment = self.get_recruitment_service
             .get_by_id(recruitment_id)
             .await?;
-            
+
         // Discord操作を外部に委譲
         discord_operation(DiscordOperation::EditMessage {
             channel_id: recruitment.channel_id as u64,
@@ -407,7 +415,7 @@ impl BattleRecruitmentFacade {
             content: Some(new_content),
             embed: None,
         }).await?;
-        
+
         Ok(())
     }
 }
@@ -415,7 +423,7 @@ impl BattleRecruitmentFacade {
 // ✅ 正しいパターン（プレゼンテーション層）
 pub async fn update_recruit(ctx: PoiseContext<'_>, message: Message) -> Result<()> {
     let facade = BattleRecruitmentFacade::new(&ctx.data().app_state);
-    
+
     facade.update_recruitment(
         message.id.get() as i32,
         "更新されたメッセージ".to_string(),
@@ -441,10 +449,10 @@ impl BattleRecruitmentFacade {
         quest: &str,
     ) -> Result<()> {
         // ビジネスロジック...
-        
+
         // ❌ Facade層でのDiscord API直接呼び出し
         ctx.say("募集を作成しました").await?;
-        
+
         Ok(())
     }
 }
@@ -462,7 +470,7 @@ impl UpdateRecruitmentService {
         channel.edit_message(&ctx.http, message_id, |m| {
             m.content(content)
         }).await?;
-        
+
         Ok(())
     }
 }
