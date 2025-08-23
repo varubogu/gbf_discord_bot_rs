@@ -4,21 +4,49 @@ use poise::serenity_prelude::all::{
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{error, info, warn};
+use sea_orm::DatabaseTransaction;
 
 use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::{BattleRecruitmentRepository, RepositoryFactory};
+use crate::repository::BattleRecruitmentRepository;
 use crate::types::battle_type::BattleType;
+use crate::types::{AppError, Result};
 
 pub(crate) struct PaticipantsParameter {
     pub guild_id: i64,
     pub channel_id: i64,
 }
+
 /// ParticipantsService - 募集参加者管理を行うサービス
-pub struct ParticipantsService {}
+pub struct ParticipantsService {
+    battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+}
 
 impl ParticipantsService {
-    pub async fn new() -> Result<Self, String> {
-        Ok(Self {})
+    /// 新しいParticipantsServiceを作成（依存性注入）
+    pub fn new(battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+        Self {
+            battle_recruitment_repo,
+        }
+    }
+
+    /// 参加者をメッセージIDから更新する（Facade層用メソッド）
+    pub async fn update_participants_by_message(
+        &self,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+        txn: &DatabaseTransaction,
+    ) -> Result<BattleRecruitment> {
+        info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
+
+        // 募集情報の存在確認
+        let recruitment = self.battle_recruitment_repo
+            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .await?
+            .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
+
+        info!(recruitment_id = recruitment.id, "参加者更新処理完了");
+        Ok(recruitment)
     }
 
     /// 募集メッセージのリアクションとメンバーを取得

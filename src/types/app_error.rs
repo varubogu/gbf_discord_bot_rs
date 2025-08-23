@@ -18,6 +18,12 @@ pub enum AppError {
 
     #[error("Generic error: {0}")]
     Generic(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Discord operation error: {0}")]
+    DiscordOperation(#[from] crate::types::DiscordOperationError),
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {

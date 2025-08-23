@@ -1,8 +1,11 @@
 use crate::facades::battle_recruitment::BattleRecruitmentFacade;
 use crate::types::battle_type::BattleType;
-use crate::types::{PoiseContext, Result};
+use crate::types::{PoiseContext, Result, DiscordOperation, DiscordOperationResult, DiscordOperationError};
 use futures::Stream;
-use poise::serenity_prelude::Message;
+use poise::serenity_prelude::{Message, ChannelId, CreateMessage, CreateEmbed, ReactionType, Http};
+use std::pin::Pin;
+use std::future::Future;
+use std::sync::Arc;
 
 #[poise::command(
     slash_command,
@@ -31,14 +34,35 @@ pub async fn recruit(
 
     // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
 
+    // guild_idとchannel_idを取得
+    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+    let channel_id = ctx.channel_id().get();
+
     // Create BattleRecruitmentFacade using AppState (Rustらしいパターン)
     let app_state = &ctx.data().app_state;
     let facade = BattleRecruitmentFacade::new(app_state);
 
-    // Call the new BattleRecruitmentFacade method
-    match facade.new_recruitment(&ctx, &quest, battle_type).await {
-        Ok(_) => {
-            ctx.say("募集が正常に作成されました。").await?;
+    // Discord操作用のクロージャを作成
+    let discord_http = ctx.serenity_context().http.clone();
+    let mut discord_operation = |operation: DiscordOperation| -> Pin<Box<dyn Future<Output=Result<DiscordOperationResult>> + Send>> {
+        let http = discord_http.clone();
+        Box::pin(async move {
+            match operation {
+                DiscordOperation::SendMessage { channel_id, content, embed } => {
+                    send_message_operation(http, channel_id, content, embed).await
+                },
+                DiscordOperation::AddReaction { message, emoji } => {
+                    add_reaction_operation(http, message, emoji).await
+                },
+                _ => Err(crate::types::AppError::from(DiscordOperationError::MessageSendFailed("未対応の操作".to_string()))),
+            }
+        })
+    };
+
+    // Call the new BattleRecruitmentFacade method with closure pattern
+    match facade.new_recruitment(&quest, battle_type, channel_id, guild_id, discord_operation).await {
+        Ok(message_id) => {
+            ctx.say(format!("募集が正常に作成されました。メッセージID: {}", message_id)).await?;
             Ok(())
         }
         Err(e) => {
@@ -71,8 +95,22 @@ pub async fn cannel(
     let app_state = &ctx.data().app_state;
     let facade = BattleRecruitmentFacade::new(app_state);
 
+    // Discord操作用のクロージャを作成
+    let discord_http = ctx.serenity_context().http.clone();
+    let mut discord_operation = |operation: DiscordOperation| -> Pin<Box<dyn Future<Output=Result<DiscordOperationResult>> + Send>> {
+        let http = discord_http.clone();
+        Box::pin(async move {
+            match operation {
+                DiscordOperation::DeleteMessage { channel_id, message_id } => {
+                    delete_message_operation(http, channel_id, message_id).await
+                },
+                _ => Err(crate::types::AppError::from(DiscordOperationError::MessageSendFailed("未対応の操作".to_string()))),
+            }
+        })
+    };
+
     match facade
-        .cancel_recruitment(ctx.serenity_context(), guild_id, channel_id, message_id)
+        .cancel_recruitment(guild_id, channel_id, message_id, discord_operation)
         .await
     {
         Ok(_) => {
@@ -102,4 +140,59 @@ async fn quest_auto_complete<'a>(
         .collect();
 
     futures::stream::iter(filtered_items)
+}
+
+/// SendMessage操作を実行する関数
+async fn send_message_operation(
+    http: Arc<Http>,
+    channel_id: u64,
+    content: String,
+    embed: Option<CreateEmbed>,
+) -> Result<DiscordOperationResult> {
+    let channel = ChannelId::from(channel_id);
+    let mut builder = CreateMessage::new().content(content);
+
+    if let Some(embed) = embed {
+        builder = builder.embed(embed);
+    }
+
+    match channel.send_message(&http, builder).await {
+        Ok(message) => Ok(DiscordOperationResult {
+            message_id: message.id.get(),
+            message: Some(message),
+        }),
+        Err(e) => Err(crate::types::AppError::from(DiscordOperationError::from(e))),
+    }
+}
+
+/// AddReaction操作を実行する関数
+async fn add_reaction_operation(
+    http: Arc<Http>,
+    message: Message,
+    emoji: ReactionType,
+) -> Result<DiscordOperationResult> {
+    let message_id = message.id.get();
+    match message.react(&http, emoji).await {
+        Ok(_) => Ok(DiscordOperationResult {
+            message_id,
+            message: Some(message),
+        }),
+        Err(e) => Err(crate::types::AppError::from(DiscordOperationError::from(e))),
+    }
+}
+
+/// DeleteMessage操作を実行する関数
+async fn delete_message_operation(
+    http: Arc<Http>,
+    channel_id: u64,
+    message_id: u64,
+) -> Result<DiscordOperationResult> {
+    let channel = ChannelId::from(channel_id);
+    match channel.delete_message(&http, message_id).await {
+        Ok(_) => Ok(DiscordOperationResult {
+            message_id,
+            message: None,
+        }),
+        Err(e) => Err(crate::types::AppError::from(DiscordOperationError::from(e))),
+    }
 }

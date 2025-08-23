@@ -1,11 +1,24 @@
 use chrono::{DateTime, Duration, Local};
-use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, CreateMessage, Message};
+use poise::serenity_prelude::all::CreateEmbed;
 use std::sync::Arc;
 use tracing::{error, info};
 
 use crate::models::quest::Quest;
-use crate::repository::{BattleRecruitmentRepository, QuestRepository, RepositoryFactory};
-use crate::types::battle_type::BattleType;
+use crate::repository::{BattleRecruitmentRepository, QuestRepository};
+use crate::types::{battle_type::BattleType, DiscordOperation};
+
+/// 募集データ構造体（純粋なビジネスロジック用）
+#[derive(Debug, Clone)]
+pub struct RecruitmentData {
+    pub quest: Quest,
+    pub battle_type: BattleType,
+    pub channel_id: u64,
+    pub guild_id: u64,
+    pub expiry_date: DateTime<chrono::Utc>,
+    pub message_content: String,
+    pub embed: CreateEmbed,
+    pub reactions: Vec<poise::serenity_prelude::ReactionType>,
+}
 
 pub(crate) struct NewParameter {
     pub guild_id: i64,
@@ -22,68 +35,92 @@ pub struct NewRecruitmentService {
 }
 
 impl NewRecruitmentService {
-    pub async fn new() -> Result<Self, String> {
-        panic!("Not implemented");
-        // let battle_recruitment_repo = RepositoryFactory::create_battle_recruitment_repository().await
-        //     .map_err(|e| format!("Failed to create battle recruitment repository: {}", e))?;
-        //
-        // let quest_repo = RepositoryFactory::create_quest_repository().await
-        //     .map_err(|e| format!("Failed to create quest repository: {}", e))?;
-        //
-        // Ok(Self {
-        //     battle_recruitment_repo: Arc::from(battle_recruitment_repo),
-        //     quest_repo: Arc::from(quest_repo),
-        // })
+    /// 依存性注入パターンに従ったコンストラクタ
+    pub fn new(
+        battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+        quest_repo: Arc<dyn QuestRepository>,
+    ) -> Self {
+        Self {
+            battle_recruitment_repo,
+            quest_repo,
+        }
     }
 
-    /// 新規募集を作成する
-    /// Python版のbase_battle_recruiment_cog.py の recruitment() メソッドに相当
-    pub async fn create_recruitment(
+    /// 募集データを作成する（純粋なビジネスロジック）
+    pub async fn create_recruitment_data(
         &self,
-        ctx: &Context,
-        channel_id: u64,
-        guild_id: u64,
         quest_alias: &str,
         battle_type: BattleType,
+        channel_id: u64,
+        guild_id: u64,
         event_date: Option<DateTime<Local>>,
-    ) -> Result<Message, String> {
+    ) -> Result<RecruitmentData, String> {
         // 1. クエストを取得
         let quest = self.get_quest_by_alias(quest_alias).await?;
 
         // 2. イベント日時を決定（指定されていない場合はデフォルト）
-        let expiry_date = event_date.unwrap_or_else(|| Local::now() + Duration::days(7));
+        let expiry_date = event_date
+            .unwrap_or_else(|| Local::now() + Duration::days(7))
+            .with_timezone(&chrono::Utc);
 
-        // 3. 募集メッセージを作成・送信
-        let message = self
-            .send_recruitment_message(
-                ctx,
-                channel_id,
-                &quest.quest_name,
-                battle_type.clone(),
-                expiry_date,
-            )
-            .await?;
+        // 3. メッセージ内容を作成
+        let message_content = self.create_message_content(&quest.quest_name, &battle_type, &expiry_date);
 
-        // 4. リアクションを追加
-        self.add_reactions(ctx, &message, battle_type.clone())
-            .await?;
+        // 4. 埋め込みメッセージを作成
+        let embed = CreateEmbed::new()
+            .title("参加者一覧")
+            .description("現在参加者はいません。")
+            .color(0x0099ff);
 
-        // 5. データベースに登録
-        self.register_recruitment(
-            guild_id as i64,
-            channel_id as i64,
-            message.id.get() as i64,
-            quest.target_id,
+        // 5. リアクション一覧を取得
+        let reactions = battle_type.reactions();
+
+        Ok(RecruitmentData {
+            quest,
             battle_type,
+            channel_id,
+            guild_id,
             expiry_date,
-        )
-        .await?;
+            message_content,
+            embed,
+            reactions,
+        })
+    }
 
-        info!(
-            "Successfully created recruitment for quest: {}",
-            quest.quest_name
-        );
-        Ok(message)
+    /// データベースに募集を保存する（純粋なビジネスロジック）
+    pub async fn save_recruitment(
+        &self,
+        recruitment_data: &RecruitmentData,
+        message_id: u64,
+    ) -> Result<(), String> {
+        self.register_recruitment(
+            recruitment_data.guild_id as i64,
+            recruitment_data.channel_id as i64,
+            message_id as i64,
+            recruitment_data.quest.target_id,
+            recruitment_data.battle_type.clone(),
+            recruitment_data.expiry_date.with_timezone(&Local),
+        )
+            .await
+    }
+
+    /// メッセージ内容を作成する（純粋関数）
+    fn create_message_content(
+        &self,
+        quest_name: &str,
+        battle_type: &BattleType,
+        expiry_date: &DateTime<chrono::Utc>,
+    ) -> String {
+        let mut message_text = format!("{}の参加者を募集します。", quest_name);
+
+        if *battle_type == BattleType::AllElement {
+            message_text.push_str("\n参加属性を選んでください");
+        }
+
+        let local_date = expiry_date.with_timezone(&Local);
+        message_text.push_str(&format!("\n開催日時：{}", local_date.format("%m/%d %H:%M")));
+
+        message_text
     }
 
     /// クエストエイリアスからクエスト情報を取得
@@ -98,63 +135,6 @@ impl NewRecruitmentService {
         }
     }
 
-    /// 募集メッセージを作成・送信
-    /// Python版の _send_message() に相当
-    async fn send_recruitment_message(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        quest_name: &str,
-        battle_type: BattleType,
-        event_date: DateTime<Local>,
-    ) -> Result<Message, String> {
-        // メッセージテキストを作成
-        let mut message_text = format!("{}の参加者を募集します。", quest_name);
-
-        if battle_type == BattleType::AllElement {
-            message_text.push_str("\n参加属性を選んでください");
-        }
-
-        message_text.push_str(&format!("\n開催日時：{}", event_date.format("%m/%d %H:%M")));
-
-        // 埋め込みメッセージを作成
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description("現在参加者はいません。")
-            .color(0x0099ff);
-
-        // メッセージを送信
-        let builder = CreateMessage::new().content(message_text).embed(embed);
-
-        match ChannelId::from(channel_id)
-            .send_message(&ctx.http, builder)
-            .await
-        {
-            Ok(message) => Ok(message),
-            Err(e) => {
-                error!("Error sending recruitment message: {:?}", e);
-                Err(format!("Failed to send message: {}", e))
-            }
-        }
-    }
-
-    /// メッセージにリアクションを追加
-    /// Python版の _add_reaction() に相当
-    async fn add_reactions(
-        &self,
-        ctx: &Context,
-        message: &Message,
-        battle_type: BattleType,
-    ) -> Result<(), String> {
-        for reaction in battle_type.reactions() {
-            let reaction_clone = reaction.clone();
-            if let Err(e) = message.react(&ctx.http, reaction).await {
-                error!("Error adding reaction {:?}: {:?}", reaction_clone, e);
-                // 一つのリアクション失敗でも処理を継続
-            }
-        }
-        Ok(())
-    }
 
     /// 募集情報をデータベースに登録
     /// Python版の _regist() に相当

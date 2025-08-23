@@ -25,6 +25,26 @@ impl<'a> CancelRecruitmentService<'a> {
         Self { repo }
     }
 
+    /// メッセージIDから募集をキャンセルする（Facade層用メソッド）
+    pub async fn cancel_by_message(
+        &self,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+        txn: &sea_orm::DatabaseTransaction,
+    ) -> Result<BattleRecruitment> {
+        info!("CancelRecruitmentService::cancel_by_message - キャンセル処理開始");
+
+        // 募集情報の存在確認
+        let recruitment = self.get_recruitment_from_db(guild_id, channel_id, message_id).await?;
+
+        // 募集をキャンセル済み状態に更新
+        self.mark_recruitment_as_cancelled(recruitment.id).await?;
+
+        info!(recruitment_id = recruitment.id, "キャンセル処理完了");
+        Ok(recruitment)
+    }
+
     /// DBから募集情報を取得（非トランザクション）
     pub async fn get_recruitment_from_db(
         &self,

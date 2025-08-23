@@ -3,16 +3,41 @@ use poise::serenity_prelude::all::{
 };
 use std::sync::Arc;
 use tracing::{error, info, warn};
+use sea_orm::DatabaseTransaction;
 
 use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::{BattleRecruitmentRepository, RepositoryFactory};
+use crate::repository::BattleRecruitmentRepository;
+use crate::types::{AppError, Result};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
-pub struct StartRecruitmentService {}
+pub struct StartRecruitmentService {
+    repo: Arc<dyn BattleRecruitmentRepository>,
+}
 
 impl StartRecruitmentService {
-    pub async fn new() -> Result<Self, String> {
-        Ok(Self {})
+    /// 新しいStartRecruitmentServiceを作成（依存性注入）
+    pub fn new(repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+        Self { repo }
+    }
+
+    /// メッセージIDから募集を開始する（Facade層用メソッド）
+    pub async fn start_by_message(
+        &self,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+        txn: &DatabaseTransaction,
+    ) -> Result<BattleRecruitment> {
+        info!("StartRecruitmentService::start_by_message - 開始処理開始");
+
+        // 募集情報の存在確認
+        let recruitment = self.get_recruitment_from_db(guild_id, channel_id, message_id).await?;
+
+        // 募集を開始済み状態に更新（message_idを使用）
+        self.mark_recruitment_as_started(recruitment.id as i64, message_id).await?;
+
+        info!(recruitment_id = recruitment.id, "開始処理完了");
+        Ok(recruitment)
     }
 
     /// DBから募集情報を取得
@@ -21,28 +46,23 @@ impl StartRecruitmentService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment, String> {
-        panic!();
-        // info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
-        //       guild_id, channel_id, message_id);
-        //
-        // match self.battle_recruitment_repo
-        //     .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
-        //     .await
-        // {
-        //     Ok(Some(recruitment)) => {
-        //         info!("募集情報取得成功: recruitment_id={}", recruitment.id);
-        //         Ok(recruitment)
-        //     }
-        //     Ok(None) => {
-        //         warn!("募集情報が見つかりません: message_id={}", message_id);
-        //         Err(format!("Recruitment not found for message_id: {}", message_id))
-        //     }
-        //     Err(e) => {
-        //         error!("DB募集情報取得エラー: {:?}", e);
-        //         Err(format!("Database error: {}", e))
-        //     }
-        // }
+    ) -> Result<BattleRecruitment> {
+        info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
+              guild_id, channel_id, message_id);
+
+        match self.repo
+            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .await?
+        {
+            Some(recruitment) => {
+                info!("募集情報取得成功: recruitment_id={}", recruitment.id);
+                Ok(recruitment)
+            }
+            None => {
+                warn!("募集情報が見つかりません: message_id={}", message_id);
+                Err(AppError::NotFound(format!("Recruitment not found for message_id: {}", message_id)))
+            }
+        }
     }
 
     /// リアクションから参加者一覧取得
@@ -165,21 +185,15 @@ impl StartRecruitmentService {
         &self,
         recruitment_id: i64,
         end_message_id: u64,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         info!(
             "募集開始済み状態更新開始: recruitment_id={}, end_message_id={}",
             recruitment_id, end_message_id
         );
-        panic!();
-        // match self.battle_recruitment_repo.set_end_message(recruitment_id as i32, end_message_id as i64).await {
-        //     Ok(_) => {
-        //         info!("募集開始済み状態更新成功: recruitment_id={}", recruitment_id);
-        //         Ok(())
-        //     }
-        //     Err(e) => {
-        //         error!("募集開始済み状態更新エラー: {:?}", e);
-        //         Err(format!("Failed to mark recruitment as started: {}", e))
-        //     }
-        // }
+
+        self.repo.set_end_message(recruitment_id as i32, end_message_id as i64).await?;
+
+        info!("募集開始済み状態更新成功: recruitment_id={}", recruitment_id);
+        Ok(())
     }
 }
