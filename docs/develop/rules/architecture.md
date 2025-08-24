@@ -1,0 +1,207 @@
+# アーキテクチャルール
+
+## 基本方針
+
+クリーンアーキテクチャを遵守しつつ、Rustエコシステムに適したパフォーマンス最大化の設計を採用。
+そのため下記の1方向の流れは遵守してください。
+
+プレゼンテーション層（event,commandなど）>アプリケーション層（facade,service）>データアクセス層（repository）
+
+## Rustらしい設計原則
+
+- **AppStateパターン**: DIコンテナではなく、シンプルなAppState構造体で共有状態を管理
+- **関数型アプローチ**: 重いオブジェクトではなく、関数とデータの組み合わせを重視
+- **ゼロコスト抽象化**: 不要なArc、Cloneを避け、借用とライフタイムを活用
+- **具体的エラー型**: `thiserror`を使用した型安全で明確なエラーハンドリング
+- **Builder Pattern**: 複雑な構造体の生成には表現力豊かなBuilder Patternを使用
+
+## 層間責務の詳細
+
+### プレゼンテーション層（event, command, controllerなど）
+
+ユーザーのアクションを受け取る層。
+今回でいうと下記が対象。
+
+- イベント発生（src/events/handler, src/events/handlers/*）
+- インタラクション発生（src/events/interactions/*）
+- スケジュールによる起動
+
+#### 主な責務
+
+- facade層を呼び出す
+- facade層を呼び出すためのパラメータを作成（イベントなどで起こった情報を収集し、facade_parameterにする）
+- facadeとは1対1の関係であり、1対多にはならない
+- アプリケーション層、データアクセス層をこの層から触ってはいけない
+- **Discord API操作の実装** - PoiseContext、Serenity Contextの使用とDiscord API呼び出しはこの層でのみ許可
+- **クロージャパターンの実装** - アプリケーション層からのDiscord操作要求に対してクロージャで応答
+
+#### 詳細責務
+
+**主要責務**:
+
+- ユーザー入力の検証とサニタイゼーション
+- facade層への適切なパラメータ変換
+- エラーハンドリングと適切なレスポンス生成
+
+**禁止事項**:
+
+- Service層やRepository層への直接アクセス
+- ビジネスロジックの実装
+- データベース操作の実行
+
+**実装パターン**:
+
+```rust
+pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> {
+  // 1. 入力検証
+  let quest_alias = validate_quest_alias(quest_alias)?;
+
+  // 2. Facade層への依存関係注入
+  let facade = create_battle_recruitment_facade(&ctx.data())?;
+
+  // 3. Facade層の呼び出し
+  let result = facade.create_new_recruitment(quest_alias, battle_type).await?;
+
+  // 4. レスポンス生成
+  ctx.say(format!("募集を作成しました: {}", result.recruitment_id)).await?;
+  Ok(())
+}
+```
+
+### アプリケーション層（facade）
+
+クリーンアーキテクチャに従った純粋なビジネスロジックのうち１つのオペレーションを担当。
+アプリケーション層の外側の層で、主にプレゼンテーション層から呼び出される。
+
+#### 主な責務
+
+- service層の総括
+- service層を呼び出す
+- service層を呼び出すためのパラメータを作成（service側が特定の構造体などを求めている場合のみ）
+- DBトランザクションを利用する場合、この階層でやる必要があるため、抽象化されたトランザクションの使用は許可される
+- 上記以外の層については触れてはいけない
+
+#### 禁止事項
+
+- **Discord API操作の直接実行** - poise/serenityのAPIを直接呼び出してはいけない
+- **PoiseContext、Serenity Contextの受け取り** - Discord固有のコンテキストオブジェクトを引数として受け取ってはいけない
+- **副作用を持つ外部システム操作** - 純粋なビジネスロジックのみを実装し、外部システムへの副作用はクロージャパターンで委譲する
+
+#### 詳細責務
+
+**主要責務**:
+
+- Service層の協調（オーケストレーション）
+- トランザクション境界の管理
+- 複数のServiceを組み合わせた1つのユースケース実行
+
+**禁止事項**:
+
+- Repository層への直接アクセス
+- データベース固有の操作
+- 複数のユースケースを1つのクラスで処理
+
+**実装パターン**:
+
+```rust
+impl BattleRecruitmentFacade {
+  pub async fn create_new_recruitment(&self, quest_alias: &str, battle_type: BattleType) -> Result<RecruitmentResult, PoiseError> {
+    self.tx_manager.execute_in_transaction(|tx_ctx| {
+      Box::pin(async move {
+        // 1. クエスト情報の取得
+        let quest_info = self.quest_service.get_quest_info(quest_alias).await?;
+
+        // 2. 募集の作成
+        let recruitment = self.new_service.create_recruitment(&quest_info, battle_type, tx_ctx).await?;
+
+        // 3. メッセージの送信
+        let message = self.message_service.send_recruitment_message(&recruitment).await?;
+
+        // 4. 結果の返却
+        Ok(RecruitmentResult { recruitment_id: recruitment.id, message_id: message.id })
+      })
+    }).await
+  }
+}
+```
+
+### アプリケーション層（service）
+
+クリーンアーキテクチャに従った純粋なビジネスロジックを担当。
+
+#### 詳細責務
+
+**主要責務**:
+
+- 単一の業務処理実行
+- ドメインルールの実装
+- Repository層の呼び出し
+
+**禁止事項**:
+
+- 他のService層への直接依存（Facade層経由で協調）
+- プレゼンテーション層特有の処理
+- トランザクション管理（Facade層の責務）
+
+### データアクセス層（repository）
+
+#### 主な責務
+
+- 保存・読み込み処理
+  - トランザクションを引数として受け取る
+  - DB接続は引数として受け取らない
+
+#### 詳細責務
+
+**主要責務**:
+
+- データの永続化・取得
+- データベース固有の操作
+- エンティティとドメインモデルの変換
+
+**禁止事項**:
+
+- ビジネスロジックの実装
+- 他のRepository層への依存
+- DB接続の直接管理（Transactionのみ受け取る）
+
+### データアクセス層（infrastructure）
+
+#### DB接続管理
+
+- **main関数でのDB接続初期化**: アプリケーション起動時（main関数実行～bot起動まで）に単一のDB接続（コネクションプール含む）を作成し、これを全体で共有する。
+- **依存性注入による配布**: 作成したDB接続は依存性注入（Dependency Injection）パターンを使って各層に配布する。
+- **シングルトン化**: DB接続は実質的にシングルトンとして機能するが、グローバル変数ではなく依存性注入によって管理する。
+- **データアクセス層での使用制限**: DB接続の直接的な操作はデータアクセス層（infrastructure, repository）でのみ許可される。
+
+#### 依存性注入の流れ
+
+1. **main.rs**: 単一のDB接続を作成
+2. **プレゼンテーション層**: 共有DB接続から必要な依存関係オブジェクトを準備
+3. **Facade層**: プレゼンテーション層から依存関係を受け取り、Service層に渡す
+4. **Service層**: Repository層への依存関係を管理
+5. **Repository層**: 注入されたDB接続を使用して実際の操作を実行
+
+#### コンストラクタでの依存関係受け取り
+
+- **TransactionManager**: `new(db_service, repos)` - DB接続関連オブジェクトを外部から受け取る
+- **RepositoryContainer**: `new_with_connection(db_connection)` - 共有DB接続を外部から受け取る
+- **各Repository実装**: `new(db_connection)` - 共有DB接続を外部から受け取る
+
+#### 禁止事項
+
+- 各層での個別DB接続作成は禁止（`DatabaseConnectionManager::new()`の直接呼び出し禁止）
+- Repository層でのDB接続引数受け取りは禁止（トランザクションのみ受け取る）
+- サービスロケータパターンによるグローバル状態への依存は禁止
+
+#### トランザクション管理
+
+- **トランザクション抽象オブジェクトの取得**: Service層で取得されるが、実際の実行はFacade層で行う
+- **DB接続の抽象化**: Service層でトランザクション取得時にDB接続を行っておき、データアクセス層以外からはDB接続タイミングを意識不要とする
+- **Repository層での使用**: トランザクション抽象オブジェクトを引数として受け取り、DB接続は引数として受け取らない
+- **トランザクション内接続**: トランザクションに紐づくコネクションを使って処理を実行する
+
+## 実装上の注意点
+
+- main.rsでのAppState初期化とSeaORMコネクションプール最適化
+- Rustの所有権システムを活用したメモリ安全性とパフォーマンス両立
