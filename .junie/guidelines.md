@@ -33,6 +33,8 @@ JunieやAIチャットが出力するmarkdownの設計書・説明書は
 - **[セキュリティルール](../docs/develop/rules/security.md)**: 入力検証、SQLインジェクション対策、権限管理
 - **[テストルール](../docs/develop/rules/testing.md)**: 単体・結合テスト戦略とテストダブル使用指針
 - **[ログ・監視ルール](../docs/develop/rules/logging.md)**: 構造化ログとメトリクス収集
+- **[ワークフロー](../docs/develop/rules/workflow.md)**: 遵守すべき作業手順
+-
 
 これらのルールファイルは必ず参照し、遵守してください。
 
