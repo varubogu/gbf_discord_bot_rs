@@ -1,9 +1,8 @@
-# データベース接続と依存性注入（DI）設計書
+# 依存性注入（DI）設計書
 
 ## 1. 概要
 
-本設計書では、Discord Bot（Rust + poise + SeaORM）におけるデータベース接続管理の問題を依存性注入（Dependency
-Injection）パターンによって解決する方針を詳述します。
+本設計書では、Discord Bot（Rust + poise）における依存性注入（Dependency Injection）パターンの設計方針について詳述します。
 
 ### 1.1 作成日時
 
@@ -11,45 +10,15 @@ Injection）パターンによって解決する方針を詳述します。
 
 ### 1.2 目的
 
-- 現在のDB接続における複数接続作成問題の解決
-- リソース効率的な単一コネクションプールの実現
 - テスタビリティとメンテナンス性の向上
 - クリーンアーキテクチャの原則遵守
+- 依存関係の明確化と管理の改善
 
 ## 2. 現状分析
 
 ### 2.1 現在のアーキテクチャの問題点
 
-#### 問題1: 複数のDB接続作成
-
-現在のコードでは以下の箇所でそれぞれ新しい`DatabaseConnectionManager`を作成しています：
-
-```rust
-// src/infrastructure/database/container.rs
-impl RepositoryContainer {
-    pub async fn new() -> Result<Self, PoiseError> {
-        let db_manager = DatabaseConnectionManager::new().await?;  // 新規作成1
-        // ...
-    }
-}
-
-// src/infrastructure/database/transaction_manager.rs  
-impl TransactionManager {
-    pub async fn new() -> Result<Self, PoiseError> {
-        let db_manager = DatabaseConnectionManager::new().await?;  // 新規作成2
-        let repos = RepositoryContainer::new().await?;              // 新規作成3
-        // ...
-    }
-}
-```
-
-**影響:**
-
-- 複数の独立したコネクションプールが作成される
-- メモリとネットワーク接続の無駄遣い
-- データベース接続数の予期しない増加
-
-#### 問題2: Factory Patternによる依存関係の自己作成
+#### 問題1: Factory Patternによる依存関係の自己作成
 
 各オブジェクトが自分で依存関係を作成する構造になっており、依存関係が隠蔽されています。
 
