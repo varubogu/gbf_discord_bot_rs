@@ -2,7 +2,8 @@
 
 ## 基本方針
 
-クリーンアーキテクチャを遵守しつつ、Rustエコシステムに適したパフォーマンス最大化の設計を採用。
+クリーンアーキテクチャ風の設計を採用しつつ、poiseフレームワークを最大限活用する実用的なアーキテクチャを採用。
+Discord Bot以外での使用予定がないため、facade・service層でのPoiseコンテキスト利用を許可し、開発効率を重視します。
 そのため下記の1方向の流れは遵守してください。
 
 プレゼンテーション層（event,commandなど）>アプリケーション層（facade,service）>データアクセス層（repository）
@@ -105,7 +106,7 @@ Infrastructure層
 │ ✓ Service層の協調                                              │
 │ ✓ トランザクション境界管理                                      │
 │ ✓ 複数Serviceの組み合わせ                                      │
-│ ✗ Discord API直接実行禁止                                      │
+│ ✓ PoiseContext・Discord API操作許可                            │
 │ ✗ Repository層への直接アクセス禁止                              │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
@@ -115,6 +116,7 @@ Infrastructure層
 │ ✓ 単一業務処理実行                                              │
 │ ✓ ドメインルール実装                                            │
 │ ✓ Repository層呼び出し                                          │
+│ ✓ PoiseContext・Discord API操作許可                            │
 │ ✗ 他Service層への直接依存禁止                                  │
 │ ✗ トランザクション管理禁止（Facade層の責務）                   │
 └─────────────────────┬───────────────────────────────────────────┘
@@ -122,11 +124,11 @@ Infrastructure層
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ Repository層                                                    │
-│ ✓ データ永続化・取得                                            │
-│ ✓ エンティティ変換                                              │
-│ ✓ トランザクション引数受け取り                                  │
-│ ✗ ビジネスロジック実装禁止                                      │
-│ ✗ DB接続直接管理禁止                                           │
+│ ✓ データ永続化・取得の抽象化層                                       │
+│ ✓ エンティティ変換                                                 │
+│ ✓ トランザクション引数受け取り                                       │
+│ ✗ ビジネスロジック実装禁止                                          │
+│ ✗ DB接続直接管理禁止                                               │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
@@ -164,8 +166,8 @@ Infrastructure層
 - facade層を呼び出すためのパラメータを作成（イベントなどで起こった情報を収集し、facade_parameterにする）
 - facadeとは1対1の関係であり、1対多にはならない
 - アプリケーション層、データアクセス層をこの層から触ってはいけない
-- **Discord API操作の実装** - PoiseContext、Serenity Contextの使用とDiscord API呼び出しはこの層でのみ許可
-- **クロージャパターンの実装** - アプリケーション層からのDiscord操作要求に対してクロージャで応答
+- **Discord API操作の実装** - PoiseContext、Serenity Contextの使用とDiscord API呼び出しを実装
+- **クロージャパターンの実装** - アプリケーション層からのDiscord操作要求に対してクロージャで応答（オプション）
 
 #### 詳細責務
 
@@ -213,11 +215,11 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 - DBトランザクションを利用する場合、この階層でやる必要があるため、抽象化されたトランザクションの使用は許可される
 - 上記以外の層については触れてはいけない
 
-#### 禁止事項
+#### 許可事項
 
-- **Discord API操作の直接実行** - poise/serenityのAPIを直接呼び出してはいけない
-- **PoiseContext、Serenity Contextの受け取り** - Discord固有のコンテキストオブジェクトを引数として受け取ってはいけない
-- **副作用を持つ外部システム操作** - 純粋なビジネスロジックのみを実装し、外部システムへの副作用はクロージャパターンで委譲する
+- **PoiseContext、Serenity Contextのアクセス** - poiseフレームワークを最大限活用するため、Discord固有のコンテキストオブジェクトの利用を許可
+- **Discord API操作** - 必要に応じてpoise/serenityのAPIを直接呼び出すことを許可
+- **外部システム操作** - Discord Botとしての機能実装を優先し、必要な外部システム操作を許可
 
 #### 詳細責務
 
@@ -237,17 +239,30 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 
 ```rust
 impl BattleRecruitmentFacade {
-  pub async fn create_new_recruitment(&self, quest_alias: &str, battle_type: BattleType) -> Result<RecruitmentResult, PoiseError> {
+  pub async fn create_new_recruitment(
+    &self, 
+    ctx: &PoiseContext, 
+    quest_alias: &str, 
+    battle_type: BattleType
+  ) -> Result<RecruitmentResult, PoiseError> {
     self.tx_manager.execute_in_transaction(|tx_ctx| {
       Box::pin(async move {
         // 1. クエスト情報の取得
         let quest_info = self.quest_service.get_quest_info(quest_alias).await?;
 
         // 2. 募集の作成
-        let recruitment = self.new_service.create_recruitment(&quest_info, battle_type, tx_ctx).await?;
+        let recruitment = self.recruitment_service.create_recruitment(&quest_info, battle_type, tx_ctx).await?;
 
-        // 3. メッセージの送信
-        let message = self.message_service.send_recruitment_message(&recruitment).await?;
+        // 3. Discord APIを直接使用してメッセージ送信
+        let message = ctx.channel_id()
+          .send_message(&ctx.http(), |m| {
+            m.content(format!("募集を開始しました: {}", recruitment.quest_name))
+             .embed(|e| {
+               e.title("バトル募集")
+                .description(&recruitment.description)
+                .color(0x00ff00)
+             })
+          }).await?;
 
         // 4. 結果の返却
         Ok(RecruitmentResult { recruitment_id: recruitment.id, message_id: message.id })
@@ -260,6 +275,12 @@ impl BattleRecruitmentFacade {
 ### アプリケーション層（service）
 
 クリーンアーキテクチャに従った純粋なビジネスロジックを担当。
+
+#### 許可事項
+
+- **PoiseContext、Serenity Contextのアクセス** - poiseフレームワークを最大限活用するため、Discord固有のコンテキストオブジェクトの利用を許可
+- **Discord API操作** - 必要に応じてpoise/serenityのAPIを直接呼び出すことを許可
+- **外部システム操作** - Discord Botとしての機能実装を優先し、必要な外部システム操作を許可
 
 #### 詳細責務
 
