@@ -1,4 +1,4 @@
-use crate::services::database::connection::build_database_url;
+use crate::infrastructure::database::connection::build_database_url;
 use crate::types::Result;
 use sea_orm::{Database as SeaDatabase, DatabaseConnection, TransactionTrait};
 use std::env;

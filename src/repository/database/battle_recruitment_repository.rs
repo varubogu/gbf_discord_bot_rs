@@ -6,7 +6,10 @@ use crate::repository::BattleRecruitmentRepository;
 use crate::types::{AppError, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
+    QueryFilter, Set,
+};
 
 /// SeaORM を使用したバトル募集リポジトリの実装
 #[derive(Debug)]
@@ -17,6 +20,35 @@ pub struct BattleRecruitmentRepositoryImpl {
 impl BattleRecruitmentRepositoryImpl {
     pub fn new(connection: DatabaseConnection) -> Self {
         Self { connection }
+    }
+
+    /// トランザクション対応のcreateメソッド
+    pub async fn create_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        channel_id: i64,
+        message_id: i64,
+        target_id: i32,
+        battle_type_id: i32,
+        expiry_date: DateTime<Utc>,
+    ) -> Result<BattleRecruitment> {
+        let active_model = ActiveModel {
+            guild_id: Set(guild_id),
+            channel_id: Set(channel_id),
+            message_id: Set(message_id),
+            target_id: Set(target_id),
+            battle_type_id: Set(battle_type_id),
+            expiry_date: Set(expiry_date),
+            ..Default::default()
+        };
+
+        let result = active_model
+            .insert(txn)
+            .await
+            .map_err(|e| AppError::Database(e))?;
+
+        Ok(BattleRecruitment::from(result))
     }
 }
 

@@ -135,48 +135,25 @@ mod tests {
     #[test]
     fn test_is_database_available_all_present() {
         setup_complete_env();
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            available,
-            "All database environment variables should be available"
-        );
-        assert!(
-            missing.is_empty(),
-            "No environment variables should be missing"
-        );
-
-        setup_clean_env();
+        assert!(available, "All variables should be available");
+        assert!(missing.is_empty(), "No variables should be missing");
     }
 
     #[test]
     fn test_is_database_available_all_missing() {
         setup_clean_env();
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when all variables are missing"
+        assert!(!available, "No variables should be available");
+        assert_eq!(
+            missing.len(),
+            4,
+            "Should be missing 4 variables (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
         );
-        assert_eq!(missing.len(), 4, "Should report 4 missing variables");
-        assert!(
-            missing.contains(&"DB_HOST".to_string()),
-            "DB_HOST should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_USER".to_string()),
-            "DB_USER should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_PASSWORD".to_string()),
-            "DB_PASSWORD should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_NAME".to_string()),
-            "DB_NAME should be in missing list"
-        );
+        assert!(missing.contains(&"DB_HOST".to_string()));
+        assert!(missing.contains(&"DB_USER".to_string()));
+        assert!(missing.contains(&"DB_PASSWORD".to_string()));
+        assert!(missing.contains(&"DB_NAME".to_string()));
     }
 
     #[test]
@@ -185,20 +162,10 @@ mod tests {
         unsafe {
             env::remove_var("DB_HOST");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when DB_HOST is missing"
-        );
-        assert_eq!(missing.len(), 1, "Should report 1 missing variable");
-        assert!(
-            missing.contains(&"DB_HOST".to_string()),
-            "DB_HOST should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing DB_HOST");
+        assert_eq!(missing.len(), 1, "Should be missing only 1 variable");
+        assert_eq!(missing[0], "DB_HOST");
     }
 
     #[test]
@@ -207,20 +174,10 @@ mod tests {
         unsafe {
             env::remove_var("DB_USER");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when DB_USER is missing"
-        );
-        assert_eq!(missing.len(), 1, "Should report 1 missing variable");
-        assert!(
-            missing.contains(&"DB_USER".to_string()),
-            "DB_USER should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing DB_USER");
+        assert_eq!(missing.len(), 1, "Should be missing only 1 variable");
+        assert_eq!(missing[0], "DB_USER");
     }
 
     #[test]
@@ -229,20 +186,13 @@ mod tests {
         unsafe {
             env::remove_var("DB_PASSWORD");
         }
-
         let (available, missing) = is_database_available();
-
         assert!(
             !available,
-            "Database should not be available when DB_PASSWORD is missing"
+            "Should not be available with missing DB_PASSWORD"
         );
-        assert_eq!(missing.len(), 1, "Should report 1 missing variable");
-        assert!(
-            missing.contains(&"DB_PASSWORD".to_string()),
-            "DB_PASSWORD should be in missing list"
-        );
-
-        setup_clean_env();
+        assert_eq!(missing.len(), 1, "Should be missing only 1 variable");
+        assert_eq!(missing[0], "DB_PASSWORD");
     }
 
     #[test]
@@ -251,20 +201,10 @@ mod tests {
         unsafe {
             env::remove_var("DB_NAME");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when DB_NAME is missing"
-        );
-        assert_eq!(missing.len(), 1, "Should report 1 missing variable");
-        assert!(
-            missing.contains(&"DB_NAME".to_string()),
-            "DB_NAME should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing DB_NAME");
+        assert_eq!(missing.len(), 1, "Should be missing only 1 variable");
+        assert_eq!(missing[0], "DB_NAME");
     }
 
     #[test]
@@ -274,24 +214,11 @@ mod tests {
             env::remove_var("DB_HOST");
             env::remove_var("DB_USER");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when DB_HOST and DB_USER are missing"
-        );
-        assert_eq!(missing.len(), 2, "Should report 2 missing variables");
-        assert!(
-            missing.contains(&"DB_HOST".to_string()),
-            "DB_HOST should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_USER".to_string()),
-            "DB_USER should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing variables");
+        assert_eq!(missing.len(), 2, "Should be missing 2 variables");
+        assert!(missing.contains(&"DB_HOST".to_string()));
+        assert!(missing.contains(&"DB_USER".to_string()));
     }
 
     #[test]
@@ -301,24 +228,11 @@ mod tests {
             env::remove_var("DB_PASSWORD");
             env::remove_var("DB_NAME");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when DB_PASSWORD and DB_NAME are missing"
-        );
-        assert_eq!(missing.len(), 2, "Should report 2 missing variables");
-        assert!(
-            missing.contains(&"DB_PASSWORD".to_string()),
-            "DB_PASSWORD should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_NAME".to_string()),
-            "DB_NAME should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing variables");
+        assert_eq!(missing.len(), 2, "Should be missing 2 variables");
+        assert!(missing.contains(&"DB_PASSWORD".to_string()));
+        assert!(missing.contains(&"DB_NAME".to_string()));
     }
 
     #[test]
@@ -329,68 +243,44 @@ mod tests {
             env::remove_var("DB_USER");
             env::remove_var("DB_PASSWORD");
         }
-
         let (available, missing) = is_database_available();
-
-        assert!(
-            !available,
-            "Database should not be available when 3 variables are missing"
-        );
-        assert_eq!(missing.len(), 3, "Should report 3 missing variables");
-        assert!(
-            missing.contains(&"DB_HOST".to_string()),
-            "DB_HOST should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_USER".to_string()),
-            "DB_USER should be in missing list"
-        );
-        assert!(
-            missing.contains(&"DB_PASSWORD".to_string()),
-            "DB_PASSWORD should be in missing list"
-        );
-
-        setup_clean_env();
+        assert!(!available, "Should not be available with missing variables");
+        assert_eq!(missing.len(), 3, "Should be missing 3 variables");
+        assert!(missing.contains(&"DB_HOST".to_string()));
+        assert!(missing.contains(&"DB_USER".to_string()));
+        assert!(missing.contains(&"DB_PASSWORD".to_string()));
+        assert!(!missing.contains(&"DB_NAME".to_string()));
     }
 
     #[test]
     fn test_is_database_available_db_port_optional() {
         setup_complete_env();
         unsafe {
-            env::remove_var("DB_PORT");
+            env::remove_var("DB_PORT"); // ポートは省略可能
         }
-
         let (available, missing) = is_database_available();
-
-        // DB_PORTは省略可能なので、他の環境変数が設定されていれば利用可能
-        assert!(
-            available,
-            "Database should be available even when DB_PORT is missing"
-        );
-        assert!(
-            missing.is_empty(),
-            "No environment variables should be missing when only DB_PORT is absent"
-        );
-
-        setup_clean_env();
+        assert!(available, "Should be available even without DB_PORT");
+        assert!(missing.is_empty(), "DB_PORT should not be in missing list");
     }
 
     #[test]
     fn test_is_database_available() {
-        let (available, missing) = is_database_available();
+        let (available, _) = is_database_available();
 
-        // 利用可能かどうかに関わらず、この関数は正常に実行される
         if available {
+            // 環境変数が設定されている場合、build_database_url()もテストする
+            let result = build_database_url();
             assert!(
-                missing.is_empty(),
-                "If database is available, there should be no missing variables"
+                result.is_ok(),
+                "build_database_url() should work when env vars are available"
             );
         } else {
+            // 環境変数が設定されていない場合、build_database_url()はエラーを返すべき
+            let result = build_database_url();
             assert!(
-                !missing.is_empty(),
-                "If database is not available, there should be missing variables"
+                result.is_err(),
+                "build_database_url() should return error when env vars are missing"
             );
-            println!("Missing database variables: {:?}", missing);
         }
     }
 }
