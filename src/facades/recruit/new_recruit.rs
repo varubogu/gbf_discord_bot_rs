@@ -1,9 +1,8 @@
 use crate::infrastructure::database::container::RepositoryContainer;
-use crate::models::battle_recruitment;
 use crate::services;
 use crate::types;
+use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
-use crate::types::{AppError, PoiseContext};
 use sea_orm::TransactionTrait;
 use tracing::{info, instrument};
 

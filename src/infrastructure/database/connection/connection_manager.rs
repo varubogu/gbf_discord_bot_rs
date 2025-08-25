@@ -1,5 +1,5 @@
 use std::env;
-use tracing::{error, info};
+use tracing::info;
 
 #[derive(Debug)]
 pub struct DatabaseConnectionError {

@@ -1,9 +1,7 @@
-use crate::services::battle_recruitment::participants::ParticipantsService;
 use crate::types;
 use crate::types::{DiscordOperation, DiscordOperationResult, PoiseContext};
 use sea_orm::TransactionTrait;
 use std::pin::Pin;
-use std::sync::Arc;
 use tracing::{error, info, instrument};
 
 /// 参加者を更新する（クロージャパターン）

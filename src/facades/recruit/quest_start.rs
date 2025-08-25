@@ -1,9 +1,7 @@
-use crate::services::battle_recruitment::start::StartRecruitmentService;
 use crate::types;
 use crate::types::{DiscordOperation, DiscordOperationResult, PoiseContext};
 use sea_orm::TransactionTrait;
 use std::pin::Pin;
-use std::sync::Arc;
 use tracing::{error, info, instrument};
 
 /// 募集を開始する（クロージャパターン）
