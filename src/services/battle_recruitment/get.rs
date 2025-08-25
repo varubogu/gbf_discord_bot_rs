@@ -38,13 +38,17 @@ impl GetRecruitmentService {
     }
 
     /// 募集IDから募集情報を取得する
-    pub async fn get_by_id(&self, recruitment_id: i32) -> Result<Option<BattleRecruitment>, String> {
-        match self.battle_recruitment_repo.get_by_id(recruitment_id).await {
-            Ok(recruitment) => Ok(recruitment),
-            Err(e) => {
-                error!("Error getting recruitment by id: {:?}", e);
-                Err(format!("Failed to get recruitment: {}", e))
-            }
-        }
+    pub async fn get_by_id(
+        &self,
+        recruitment_id: i32,
+    ) -> Result<Option<BattleRecruitment>, String> {
+        // match self.battle_recruitment_repo.get_by_id(recruitment_id).await {
+        //     Ok(recruitment) => Ok(recruitment),
+        //     Err(e) => {
+        //         error!("Error getting recruitment by id: {:?}", e);
+        //         Err(format!("Failed to get recruitment: {}", e))
+        //     }
+        // }
+        Ok(None)
     }
 }

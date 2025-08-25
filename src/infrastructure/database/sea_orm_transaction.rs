@@ -1,4 +1,3 @@
-use crate::types::AppError;
 use crate::types::transaction::{DatabaseConnectionTrait, DatabaseTransactionTrait};
 use async_trait::async_trait;
 use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
@@ -56,12 +55,5 @@ impl DatabaseConnectionTrait for SeaOrmConnection {
     async fn begin_transaction(&self) -> Result<Self::Transaction, Self::Error> {
         let txn = self.inner.begin().await?;
         Ok(SeaOrmTransaction::new(txn))
-    }
-}
-
-/// SeaOrmのDbErrからAppErrorへの変換
-impl From<sea_orm::DbErr> for AppError {
-    fn from(err: sea_orm::DbErr) -> Self {
-        AppError::Database(err)
     }
 }

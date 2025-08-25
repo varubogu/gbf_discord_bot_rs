@@ -1,9 +1,9 @@
 use poise::serenity_prelude::all::{
     ChannelId, Context, CreateMessage, Message, MessageId, ReactionType,
 };
+use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{error, info, warn};
-use sea_orm::DatabaseTransaction;
 
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::BattleRecruitmentRepository;
@@ -31,10 +31,13 @@ impl StartRecruitmentService {
         info!("StartRecruitmentService::start_by_message - 開始処理開始");
 
         // 募集情報の存在確認
-        let recruitment = self.get_recruitment_from_db(guild_id, channel_id, message_id).await?;
+        let recruitment = self
+            .get_recruitment_from_db(guild_id, channel_id, message_id)
+            .await?;
 
         // 募集を開始済み状態に更新（message_idを使用）
-        self.mark_recruitment_as_started(recruitment.id as i64, message_id).await?;
+        self.mark_recruitment_as_started(recruitment.id as i64, message_id)
+            .await?;
 
         info!(recruitment_id = recruitment.id, "開始処理完了");
         Ok(recruitment)
@@ -47,10 +50,13 @@ impl StartRecruitmentService {
         channel_id: u64,
         message_id: u64,
     ) -> Result<BattleRecruitment> {
-        info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
-              guild_id, channel_id, message_id);
+        info!(
+            "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
+            guild_id, channel_id, message_id
+        );
 
-        match self.repo
+        match self
+            .repo
             .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
             .await?
         {
@@ -60,7 +66,10 @@ impl StartRecruitmentService {
             }
             None => {
                 warn!("募集情報が見つかりません: message_id={}", message_id);
-                Err(AppError::NotFound(format!("Recruitment not found for message_id: {}", message_id)))
+                Err(AppError::NotFound(format!(
+                    "Recruitment not found for message_id: {}",
+                    message_id
+                )))
             }
         }
     }
@@ -71,7 +80,7 @@ impl StartRecruitmentService {
         ctx: &Context,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<Vec<String>> {
         info!(
             "リアクション参加者取得開始: channel_id={}, message_id={}",
             channel_id, message_id
@@ -85,7 +94,7 @@ impl StartRecruitmentService {
             Ok(message) => message,
             Err(e) => {
                 error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {}", e));
+                return Err(format!("Failed to get message: {}", e).into());
             }
         };
 
@@ -129,7 +138,7 @@ impl StartRecruitmentService {
         &self,
         quest_name: &str,
         participants: &[String],
-    ) -> Result<String, String> {
+    ) -> Result<String> {
         warn!("StartRecruitmentService::create_start_message - 仕様検討中です");
         info!("開始メッセージ作成をエミュレート");
 
@@ -153,7 +162,7 @@ impl StartRecruitmentService {
         channel_id: u64,
         original_message_id: u64,
         content: &str,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         info!(
             "開始返信送信開始: channel_id={}, message_id={}",
             channel_id, original_message_id
@@ -173,7 +182,7 @@ impl StartRecruitmentService {
             }
             Err(e) => {
                 error!("開始返信送信エラー: {:?}", e);
-                Err(format!("Failed to send start reply: {}", e))
+                Err(format!("Failed to send start reply: {}", e).into())
             }
         }
     }
@@ -191,9 +200,14 @@ impl StartRecruitmentService {
             recruitment_id, end_message_id
         );
 
-        self.repo.set_end_message(recruitment_id as i32, end_message_id as i64).await?;
+        self.repo
+            .set_end_message(recruitment_id as i32, end_message_id as i64)
+            .await?;
 
-        info!("募集開始済み状態更新成功: recruitment_id={}", recruitment_id);
+        info!(
+            "募集開始済み状態更新成功: recruitment_id={}",
+            recruitment_id
+        );
         Ok(())
     }
 }

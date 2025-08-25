@@ -4,7 +4,6 @@ use crate::types::Result;
 use crate::types::transaction::DatabaseTransactionTrait;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 /// SeaORM用のトランザクションコンテキスト（実用的な設計）
@@ -46,9 +45,10 @@ impl TransactionManager {
     }
 
     /// Facade専用：トランザクション内で処理を実行
-    pub async fn execute_in_transaction<F, T>(&self, f: F) -> Result<T>
+    pub async fn execute_in_transaction<F, Fut, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(TransactionContext) -> Pin<Box<dyn Future<Output = Result<T>> + Send>> + Send,
+        F: FnOnce(TransactionContext) -> Fut,
+        Fut: Future<Output = Result<T>> + Send,
         T: Send,
     {
         let sea_orm_txn = self.db_connection.begin().await?;

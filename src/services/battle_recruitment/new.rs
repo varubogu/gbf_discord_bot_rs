@@ -5,7 +5,7 @@ use tracing::{error, info};
 
 use crate::models::quest::Quest;
 use crate::repository::{BattleRecruitmentRepository, QuestRepository};
-use crate::types::{battle_type::BattleType, DiscordOperation};
+use crate::types::battle_type::BattleType;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
 #[derive(Debug, Clone)]
@@ -20,15 +20,6 @@ pub struct RecruitmentData {
     pub reactions: Vec<poise::serenity_prelude::ReactionType>,
 }
 
-pub(crate) struct NewParameter {
-    pub guild_id: i64,
-    pub channel_id: i64,
-    pub message_id: i64,
-    pub quest: Quest,
-    pub target_id: i32,
-    pub battle_type_id: i32,
-    pub expiry_date: chrono::DateTime<chrono::Utc>,
-}
 pub struct NewRecruitmentService {
     battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
     quest_repo: Arc<dyn QuestRepository>,
@@ -64,7 +55,8 @@ impl NewRecruitmentService {
             .with_timezone(&chrono::Utc);
 
         // 3. メッセージ内容を作成
-        let message_content = self.create_message_content(&quest.quest_name, &battle_type, &expiry_date);
+        let message_content =
+            self.create_message_content(&quest.quest_name, &battle_type, &expiry_date);
 
         // 4. 埋め込みメッセージを作成
         let embed = CreateEmbed::new()
@@ -101,7 +93,7 @@ impl NewRecruitmentService {
             recruitment_data.battle_type.clone(),
             recruitment_data.expiry_date.with_timezone(&Local),
         )
-            .await
+        .await
     }
 
     /// メッセージ内容を作成する（純粋関数）
@@ -135,7 +127,6 @@ impl NewRecruitmentService {
         }
     }
 
-
     /// 募集情報をデータベースに登録
     /// Python版の _regist() に相当
     async fn register_recruitment(
@@ -168,5 +159,34 @@ impl NewRecruitmentService {
                 Err(format!("Failed to register recruitment: {}", e))
             }
         }
+    }
+}
+
+/// 募集データ作成のヘルパー関数（簡略版）
+pub fn create_recruitment_data_simple(
+    quest_alias: &str,
+    battle_type: BattleType,
+    channel_id: u64,
+    guild_id: u64,
+) -> RecruitmentData {
+    RecruitmentData {
+        quest: crate::models::quest::Quest {
+            id: 1,
+            target_id: 1,
+            quest_name: quest_alias.to_string(),
+            default_battle_type: 1,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        },
+        battle_type,
+        channel_id,
+        guild_id,
+        expiry_date: chrono::Utc::now() + chrono::Duration::days(7),
+        message_content: format!("{}の参加者を募集します。", quest_alias),
+        embed: poise::serenity_prelude::CreateEmbed::new()
+            .title("参加者一覧")
+            .description("現在参加者はいません。")
+            .color(0x0099ff),
+        reactions: battle_type.reactions(),
     }
 }

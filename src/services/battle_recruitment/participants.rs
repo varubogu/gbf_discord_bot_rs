@@ -1,10 +1,10 @@
 use poise::serenity_prelude::all::{
     ChannelId, Context, CreateEmbed, EditMessage, Message, MessageId, ReactionType,
 };
+use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{error, info, warn};
-use sea_orm::DatabaseTransaction;
 
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::BattleRecruitmentRepository;
@@ -40,7 +40,8 @@ impl ParticipantsService {
         info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
 
         // 募集情報の存在確認
-        let recruitment = self.battle_recruitment_repo
+        let recruitment = self
+            .battle_recruitment_repo
             .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
@@ -55,7 +56,7 @@ impl ParticipantsService {
         ctx: &Context,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<HashMap<String, Vec<String>>, String> {
+    ) -> Result<HashMap<String, Vec<String>>> {
         info!(
             "リアクション・メンバー取得開始: channel_id={}, message_id={}",
             channel_id, message_id
@@ -69,7 +70,7 @@ impl ParticipantsService {
             Ok(message) => message,
             Err(e) => {
                 error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {}", e));
+                return Err(format!("Failed to get message: {}", e).into());
             }
         };
 
@@ -118,7 +119,7 @@ impl ParticipantsService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment, String> {
+    ) -> Result<BattleRecruitment> {
         panic!();
         // info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
         //       guild_id, channel_id, message_id);
@@ -147,7 +148,7 @@ impl ParticipantsService {
         &self,
         participants: &[String],
         quest_name: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String> {
         warn!("ParticipantsService::create_participant_message - 仕様検討中です");
         info!("参加者メッセージ作成をエミュレート");
 
@@ -167,7 +168,7 @@ impl ParticipantsService {
         quest_name: &str,
         datetime: &str,
         participants: &[String],
-    ) -> Result<String, String> {
+    ) -> Result<String> {
         warn!("ParticipantsService::create_quest_datetime_message - 仕様検討中です");
         info!("クエスト・日時メッセージ作成をエミュレート");
 
@@ -194,7 +195,7 @@ impl ParticipantsService {
         message_id: u64,
         content: &str,
         participants_by_reaction: &HashMap<String, Vec<String>>,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         info!(
             "メッセージ更新開始: channel_id={}, message_id={}",
             channel_id, message_id
@@ -208,7 +209,7 @@ impl ParticipantsService {
             Ok(message) => message,
             Err(e) => {
                 error!("更新対象メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message for update: {}", e));
+                return Err(format!("Failed to get message for update: {}", e).into());
             }
         };
 
@@ -239,7 +240,7 @@ impl ParticipantsService {
             }
             Err(e) => {
                 error!("メッセージ更新エラー: {:?}", e);
-                Err(format!("Failed to update message: {}", e))
+                Err(format!("Failed to update message: {}", e).into())
             }
         }
     }
