@@ -206,6 +206,7 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 
 クリーンアーキテクチャに従った純粋なビジネスロジックのうち１つのオペレーションを担当。
 アプリケーション層の外側の層で、主にプレゼンテーション層から呼び出される。
+状態は持たず、純粋な関数のみを取り扱う。必要なものは全て関数の引数を通してやりとりを行う。
 
 #### 主な責務
 
@@ -218,7 +219,6 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 #### 許可事項
 
 - **PoiseContext、Serenity Contextのアクセス** - poiseフレームワークを最大限活用するため、Discord固有のコンテキストオブジェクトの利用を許可
-- **Discord API操作** - 必要に応じてpoise/serenityのAPIを直接呼び出すことを許可
 - **外部システム操作** - Discord Botとしての機能実装を優先し、必要な外部システム操作を許可
 
 #### 詳細責務
@@ -231,6 +231,7 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 
 **禁止事項**:
 
+- Discord API操作（serviceにContextを渡し、serviceに処理させる）
 - Repository層への直接アクセス
 - データベース固有の操作
 - 複数のユースケースを1つのクラスで処理
@@ -275,6 +276,7 @@ impl BattleRecruitmentFacade {
 ### アプリケーション層（service）
 
 クリーンアーキテクチャに従った純粋なビジネスロジックを担当。
+状態は持たず、純粋な関数のみを取り扱う。必要なものは全て関数の引数を通してやりとりを行う。
 
 #### 許可事項
 
