@@ -27,6 +27,7 @@ JunieやAIチャットが出力するmarkdownの設計書・説明書は
 開発時に従うべき詳細なルールは、テーマごとに以下のファイルに分割されています：
 
 - **[アーキテクチャルール](../docs/develop/rules/architecture.md)**: クリーンアーキテクチャの層間責務とRustらしい設計原則
+- **[データベーストランザクションルール](../docs/develop/rules/database.md)**: データベースとトランザクションの管理
 - **[依存性注入ルール](../docs/develop/rules/dependency_injection.md)**: DIパターンとDB接続管理
 - **[エラーハンドリングルール](../docs/develop/rules/error_handling.md)**: 構造化エラーと層別エラーハンドリング戦略
 - **[パフォーマンスルール](../docs/develop/rules/performance.md)**: DB最適化、メモリ管理、非同期処理
