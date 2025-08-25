@@ -1,5 +1,4 @@
-use crate::infrastructure::database::container::RepositoryContainer;
-use crate::services;
+use crate::services::battle_recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
@@ -22,38 +21,25 @@ pub async fn new_recruitment(
     let channel_id = ctx.channel_id().get();
 
     let result = async {
-        // 募集データを作成
-        let recruitment_data = services::battle_recruitment::new::create_recruitment_data_simple(
+        // 1. Service層で募集データ作成
+        let recruitment_data = new::create_recruitment_data(
             quest_alias,
             battle_type,
             channel_id,
             guild_id,
-        );
+            app_state,
+            None,
+        )
+        .await?;
 
-        // 募集メッセージ送信
-        let recruit_message = ctx.say(recruitment_data.message_content).await?;
-        let message = recruit_message.message().await?;
+        // 2. Service層でメッセージ送信
+        let message_id = new::send_recruitment_message(ctx, &recruitment_data).await?;
 
-        // リアクション追加
-        for reaction in &recruitment_data.reactions {
-            message.react(&ctx.http(), reaction.clone()).await?;
-        }
+        // 3. Service層でリアクション追加
+        new::add_recruitment_reactions(ctx, message_id, &recruitment_data.reactions).await?;
 
-        // データベースに保存
-        let repos = RepositoryContainer::new(&app_state.db_connection);
-        let battle_recruitment_repo = repos.battle_recruitment();
-
-        battle_recruitment_repo
-            .create_with_txn(
-                &txn,
-                guild_id as i64,
-                channel_id as i64,
-                message.id.get() as i64,
-                recruitment_data.quest.target_id,
-                battle_type as i32,
-                recruitment_data.expiry_date,
-            )
-            .await?;
+        // 4. Service層でデータ保存
+        new::save_recruitment(&recruitment_data, message_id, &txn, app_state).await?;
 
         Ok(())
     }
