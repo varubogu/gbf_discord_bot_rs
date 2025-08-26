@@ -6,6 +6,8 @@ pub mod event_schedules;
 pub mod guilds;
 pub mod last_process_times;
 pub mod message_texts;
+pub mod notification_rel_battle_recruitments;
+pub mod notification_rel_event_schedules;
 pub mod notifications;
 pub mod quest_aliases;
 pub mod quests;

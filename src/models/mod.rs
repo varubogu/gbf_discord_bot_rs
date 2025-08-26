@@ -7,6 +7,8 @@ pub(crate) mod event_schedules;
 pub(crate) mod guilds;
 pub(crate) mod last_process_times;
 pub(crate) mod message_texts;
+pub(crate) mod notification_rel_battle_recruitments;
+pub(crate) mod notification_rel_event_schedules;
 pub(crate) mod notifications;
 pub(crate) mod quest_aliases;
 pub(crate) mod quests;

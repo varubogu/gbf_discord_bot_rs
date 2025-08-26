@@ -4,6 +4,7 @@ mod m20250826_001129_init_schema;
 mod m20250826_002000_add_timestamp_constraints;
 mod m20250826_070513_table_rebuild;
 mod m20250826_195815_add_event_schedule_tables;
+mod m20250827_053000_notification_relation_tables;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250826_002000_add_timestamp_constraints::Migration),
             Box::new(m20250826_195815_add_event_schedule_tables::Migration),
             Box::new(m20250826_070513_table_rebuild::Migration),
+            Box::new(m20250827_053000_notification_relation_tables::Migration),
         ]
     }
 }
