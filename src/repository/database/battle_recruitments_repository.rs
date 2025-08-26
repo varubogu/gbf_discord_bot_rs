@@ -109,6 +109,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
             .into();
 
         active_model.recruit_end_message_id = Set(Some(message_id));
+        active_model.updated_at = Set(chrono::Utc::now());
         active_model
             .update(&self.connection)
             .await

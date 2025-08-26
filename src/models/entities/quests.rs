@@ -1,3 +1,5 @@
+use chrono::Utc;
+use sea_orm::Set;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -25,4 +27,13 @@ impl Related<super::quest_aliases::Entity> for Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl ActiveModelBehavior for ActiveModel {
+    fn new() -> Self {
+        let now = Utc::now();
+        Self {
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+    }
+}
