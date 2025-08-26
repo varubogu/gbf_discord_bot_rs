@@ -27,8 +27,6 @@ pub async fn recruit(
     ctx.defer().await?;
 
     let battle_type = BattleType::Default;
-    // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
-
     recruit::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
 }
 

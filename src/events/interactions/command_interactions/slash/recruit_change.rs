@@ -36,8 +36,6 @@ pub async fn recruit_change(
     ctx.defer().await?;
 
     let battle_type = BattleType::Default;
-    // let _event_datetime = RecruitmentService::parse_event_date(&event_date).await?;
-
     change_recruitment_information(&ctx, &recruit, &quest, &event_date, &battle_type).await
 }
 

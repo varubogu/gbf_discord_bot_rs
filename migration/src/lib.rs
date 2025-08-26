@@ -2,6 +2,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20250826_001129_init_schema;
 mod m20250826_002000_add_timestamp_constraints;
+mod m20250826_070513_table_rebuild;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20250826_001129_init_schema::Migration),
             Box::new(m20250826_002000_add_timestamp_constraints::Migration),
+            Box::new(m20250826_070513_table_rebuild::Migration),
         ]
     }
 }
