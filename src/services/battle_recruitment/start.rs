@@ -57,7 +57,7 @@ impl StartRecruitmentService {
 
         match self
             .repo
-            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .get_by_message(guild_id, channel_id, message_id)
             .await?
         {
             Some(recruitment) => {
@@ -201,7 +201,7 @@ impl StartRecruitmentService {
         );
 
         self.repo
-            .set_end_message(recruitment_id as i32, end_message_id as i64)
+            .set_end_message(recruitment_id as i32, MessageId::from(end_message_id))
             .await?;
 
         info!(

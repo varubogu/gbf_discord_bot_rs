@@ -10,9 +10,9 @@ use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 pub(crate) struct CancelParameter {
-    pub guild_id: i64,
-    pub channel_id: i64,
-    pub message_id: i64,
+    pub guild_id: u64,
+    pub channel_id: u64,
+    pub message_id: u64,
 }
 
 /// CancelRecruitmentService - 募集キャンセル処理を行うサービス（Repository依存注入対応）
@@ -31,6 +31,7 @@ impl<'a> CancelRecruitmentService<'a> {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
+        cancel_message_id: MessageId,
         txn: &sea_orm::DatabaseTransaction,
     ) -> Result<BattleRecruitments> {
         info!("CancelRecruitmentService::cancel_by_message - キャンセル処理開始");
@@ -41,7 +42,8 @@ impl<'a> CancelRecruitmentService<'a> {
             .await?;
 
         // 募集をキャンセル済み状態に更新
-        self.mark_recruitment_as_cancelled(recruitment.id).await?;
+        self.mark_recruitment_as_cancelled(recruitment.id, cancel_message_id)
+            .await?;
 
         info!(recruitment_id = recruitment.id, "キャンセル処理完了");
         Ok(recruitment)
@@ -61,7 +63,7 @@ impl<'a> CancelRecruitmentService<'a> {
 
         match self
             .repo
-            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .get_by_message(guild_id, channel_id, message_id)
             .await?
         {
             Some(recruitment) => {
@@ -78,14 +80,20 @@ impl<'a> CancelRecruitmentService<'a> {
     }
 
     /// 募集をキャンセル済み状態に更新（非トランザクション）
-    pub async fn mark_recruitment_as_cancelled(&self, recruitment_id: i32) -> Result<()> {
+    pub async fn mark_recruitment_as_cancelled(
+        &self,
+        recruitment_id: i32,
+        cancel_message_id: MessageId,
+    ) -> Result<()> {
         info!(
             "募集キャンセル済み状態更新: recruitment_id={}",
             recruitment_id
         );
 
         // 終了メッセージID = 0 でキャンセル状態を表現
-        self.repo.set_end_message(recruitment_id, 0).await?;
+        self.repo
+            .set_end_message(recruitment_id, cancel_message_id)
+            .await?;
 
         info!(
             "募集キャンセル済み状態更新完了: recruitment_id={}",
@@ -157,7 +165,7 @@ impl<'a> CancelRecruitmentService<'a> {
     }
 
     /// キャンセル通知メッセージ作成（非トランザクション）
-    pub async fn create_cancel_notification(&self, participants: &[String]) -> Result<String> {
+    pub async fn create_cancel_notification_text(&self, participants: &[String]) -> Result<String> {
         warn!("CancelRecruitmentService::create_cancel_notification - 仕様検討中です");
 
         if participants.is_empty() {
@@ -204,7 +212,7 @@ impl<'a> CancelRecruitmentService<'a> {
         channel_id: u64,
         original_message_id: u64,
         content: &str,
-    ) -> Result<()> {
+    ) -> Result<Message> {
         info!(
             "キャンセル返信送信: channel_id={}, original_message_id={}",
             channel_id, original_message_id
@@ -216,9 +224,9 @@ impl<'a> CancelRecruitmentService<'a> {
             MessageId::from(original_message_id),
         ));
 
-        channel.send_message(&ctx.http, message).await?;
+        let cancel_message = channel.send_message(&ctx.http, message).await?;
 
         info!("キャンセル返信送信完了");
-        Ok(())
+        Ok(cancel_message)
     }
 }

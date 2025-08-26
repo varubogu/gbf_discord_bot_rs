@@ -32,11 +32,6 @@ pub async fn cancel_recruitment(
             .await?;
         let original_content = original_message.content.clone();
 
-        // DBから募集情報を取得し、キャンセル済み状態に更新
-        let _recruitment = cancel_service
-            .cancel_by_message(guild_id, channel_id, message_id, &txn)
-            .await?;
-
         // リアクションから参加者一覧を取得
         let participants = cancel_service
             .get_participants_from_reactions(ctx.serenity_context(), channel_id, message_id)
@@ -54,15 +49,21 @@ pub async fn cancel_recruitment(
 
         // キャンセル通知メッセージを作成して送信
         let cancel_notification = cancel_service
-            .create_cancel_notification(&participants)
+            .create_cancel_notification_text(&participants)
             .await?;
-        cancel_service
+
+        let cancel_message = cancel_service
             .send_cancel_reply(
                 ctx.serenity_context(),
                 channel_id,
                 message_id,
                 &cancel_notification,
             )
+            .await?;
+
+        // DBから募集情報を取得し、キャンセル済み状態に更新
+        let _recruitment = cancel_service
+            .cancel_by_message(guild_id, channel_id, message_id, cancel_message.id, &txn)
             .await?;
 
         Ok::<(), crate::types::AppError>(())

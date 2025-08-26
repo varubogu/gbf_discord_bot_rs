@@ -26,7 +26,7 @@ impl GetRecruitmentService {
     ) -> Result<Option<BattleRecruitments>, String> {
         match self
             .battle_recruitment_repo
-            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .get_by_message(guild_id, channel_id, message_id)
             .await
         {
             Ok(recruitment) => Ok(recruitment),

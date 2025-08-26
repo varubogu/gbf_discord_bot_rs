@@ -11,15 +11,15 @@ use crate::repository::database::db_compat::Database;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BattleRecruitments {
     pub id: i32,
-    pub guild_id: i64,
-    pub channel_id: i64,
-    pub message_id: i64,
+    pub guild_id: u64,
+    pub channel_id: u64,
+    pub message_id: u64,
     pub quest_id: i32,
     pub battle_type_id: i32,
     pub quest_start_at: DateTime<Utc>,
     pub is_recruiting: bool,
     pub is_canceled: bool,
-    pub recruit_end_message_id: Option<i64>,
+    pub recruit_end_message_id: Option<u64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -46,9 +46,9 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
 impl Database {
     pub async fn create_battle_recruitment(
         &self,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
         quest_id: i32,
         battle_type_id: i32,
         quest_start_at: chrono::DateTime<chrono::Utc>,
@@ -68,9 +68,9 @@ impl Database {
 
     pub async fn get_battle_recruitment(
         &self,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
     ) -> Result<Option<BattleRecruitments>, DbErr> {
         let result = BattleRecruitmentEntity::find()
             .filter(battle_recruitments::Column::GuildId.eq(guild_id))
@@ -96,7 +96,7 @@ impl Database {
     pub async fn set_recruitment_end_message(
         &self,
         recruitment_id: i32,
-        message_id: i64,
+        message_id: u64,
     ) -> Result<(), DbErr> {
         let recruitment = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(&self.conn)

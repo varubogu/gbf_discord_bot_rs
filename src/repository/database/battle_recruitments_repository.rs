@@ -26,9 +26,9 @@ impl BattleRecruitmentsRepositoryImpl {
     pub async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
         quest_id: i32,
         battle_type_id: i32,
         quest_start_at: DateTime<Utc>,
@@ -54,9 +54,9 @@ impl BattleRecruitmentsRepositoryImpl {
 impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
     async fn create(
         &self,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
         quest_id: i32,
         battle_type_id: i32,
         quest_start_at: DateTime<Utc>,
@@ -79,9 +79,9 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
 
     async fn get_by_message(
         &self,
-        guild_id: i64,
-        channel_id: i64,
-        message_id: i64,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
     ) -> Result<Option<BattleRecruitments>> {
         let result = BattleRecruitmentEntity::find()
             .filter(Column::GuildId.eq(guild_id))
@@ -94,7 +94,11 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         Ok(result.map(BattleRecruitments::from))
     }
 
-    async fn set_end_message(&self, recruitment_id: i32, message_id: i64) -> Result<()> {
+    async fn set_end_message(
+        &self,
+        recruitment_id: i32,
+        message_id: poise::serenity_prelude::MessageId,
+    ) -> Result<()> {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(&self.connection)
             .await
@@ -104,7 +108,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
             })?
             .into();
 
-        active_model.recruit_end_message_id = Set(Some(message_id));
+        active_model.recruit_end_message_id = Set(Some(message_id.get()));
         active_model
             .update(&self.connection)
             .await

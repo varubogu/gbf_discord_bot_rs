@@ -87,9 +87,9 @@ pub async fn save_recruitment(
     battle_recruitment_repo
         .create_with_txn(
             txn,
-            recruitment_data.guild_id as i64,
-            recruitment_data.channel_id as i64,
-            message_id as i64,
+            recruitment_data.guild_id,
+            recruitment_data.channel_id,
+            message_id,
             recruitment_data.quest.id,
             recruitment_data.battle_type as i32,
             recruitment_data.expiry_date,

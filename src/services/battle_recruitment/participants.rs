@@ -42,7 +42,7 @@ impl ParticipantsService {
         // 募集情報の存在確認
         let recruitment = self
             .battle_recruitment_repo
-            .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
+            .get_by_message(guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
 
