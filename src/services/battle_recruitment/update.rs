@@ -3,8 +3,8 @@ use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, EditMessage,
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::models::battle_recruitment::BattleRecruitment;
-use crate::models::quest::Quest;
+use crate::models::battle_recruitments::BattleRecruitments;
+use crate::models::quests::Quest;
 use crate::types::battle_type::BattleType;
 
 pub(crate) struct UpdateParameter {

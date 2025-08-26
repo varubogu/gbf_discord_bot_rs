@@ -3,13 +3,13 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Se
 use serde::{Deserialize, Serialize};
 
 use crate::models::entities::{
-    battle_recruitment, battle_recruitment::Entity as BattleRecruitmentEntity,
+    battle_recruitments, battle_recruitments::Entity as BattleRecruitmentEntity,
 };
 use crate::repository::database::db_compat::Database;
 
 /// Battle recruitment domain model
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BattleRecruitment {
+pub struct BattleRecruitments {
     pub id: i32,
     pub guild_id: i64,
     pub channel_id: i64,
@@ -22,8 +22,8 @@ pub struct BattleRecruitment {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<battle_recruitment::Model> for BattleRecruitment {
-    fn from(model: battle_recruitment::Model) -> Self {
+impl From<battle_recruitments::Model> for BattleRecruitments {
+    fn from(model: battle_recruitments::Model) -> Self {
         Self {
             id: model.id,
             guild_id: model.guild_id,
@@ -48,8 +48,8 @@ impl Database {
         target_id: i32,
         battle_type_id: i32,
         expiry_date: chrono::DateTime<chrono::Utc>,
-    ) -> Result<BattleRecruitment, DbErr> {
-        let battle_recruitment = battle_recruitment::ActiveModel {
+    ) -> Result<BattleRecruitments, DbErr> {
+        let battle_recruitment = battle_recruitments::ActiveModel {
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
             message_id: Set(message_id),
@@ -68,11 +68,11 @@ impl Database {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-    ) -> Result<Option<BattleRecruitment>, DbErr> {
+    ) -> Result<Option<BattleRecruitments>, DbErr> {
         let result = BattleRecruitmentEntity::find()
-            .filter(battle_recruitment::Column::GuildId.eq(guild_id))
-            .filter(battle_recruitment::Column::ChannelId.eq(channel_id))
-            .filter(battle_recruitment::Column::MessageId.eq(message_id))
+            .filter(battle_recruitments::Column::GuildId.eq(guild_id))
+            .filter(battle_recruitments::Column::ChannelId.eq(channel_id))
+            .filter(battle_recruitments::Column::MessageId.eq(message_id))
             .one(&self.conn)
             .await?;
 
@@ -100,7 +100,7 @@ impl Database {
             .await?;
 
         if let Some(recruitment) = recruitment {
-            let mut active_model: battle_recruitment::ActiveModel = recruitment.into();
+            let mut active_model: battle_recruitments::ActiveModel = recruitment.into();
             active_model.recruit_end_message_id = Set(Some(message_id));
             active_model.update(&self.conn).await?;
         }

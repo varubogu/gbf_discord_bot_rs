@@ -1,0 +1,53 @@
+use crate::models::entities::{Quest as QuestEntity, QuestAlias as QuestAliasEntity};
+use crate::models::entities::{quest_aliases, quests};
+use crate::models::quests::Quest;
+use crate::repository::database::db_compat::Database;
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuestAlias {
+    pub id: i32,
+    pub target_id: i32,
+    pub alias: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<quest_aliases::Model> for QuestAlias {
+    fn from(model: quest_aliases::Model) -> Self {
+        Self {
+            id: model.id,
+            target_id: model.target_id,
+            alias: model.alias,
+            created_at: model.created_at,
+            updated_at: model.updated_at,
+        }
+    }
+}
+
+impl Database {
+    pub async fn get_quest_aliases(&self) -> Result<Vec<QuestAlias>, DbErr> {
+        let models = QuestAliasEntity::find().all(&self.conn).await?;
+
+        Ok(models.into_iter().map(|model| model.into()).collect())
+    }
+
+    pub async fn get_quest_by_alias(&self, alias: &str) -> Result<Option<Quest>, DbErr> {
+        let quest_alias = QuestAliasEntity::find()
+            .filter(quest_aliases::Column::Alias.eq(alias))
+            .one(&self.conn)
+            .await?;
+
+        if let Some(qa) = quest_alias {
+            let quest = QuestEntity::find()
+                .filter(quests::Column::TargetId.eq(qa.target_id))
+                .one(&self.conn)
+                .await?;
+
+            return Ok(quest.map(|q| q.into()));
+        }
+
+        Ok(None)
+    }
+}

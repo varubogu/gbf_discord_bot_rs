@@ -5,18 +5,18 @@ use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::BattleRecruitmentRepository;
+use crate::models::battle_recruitments::BattleRecruitments;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
 pub struct StartRecruitmentService {
-    repo: Arc<dyn BattleRecruitmentRepository>,
+    repo: Arc<dyn BattleRecruitmentsRepository>,
 }
 
 impl StartRecruitmentService {
     /// 新しいStartRecruitmentServiceを作成（依存性注入）
-    pub fn new(repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+    pub fn new(repo: Arc<dyn BattleRecruitmentsRepository>) -> Self {
         Self { repo }
     }
 
@@ -27,7 +27,7 @@ impl StartRecruitmentService {
         channel_id: u64,
         message_id: u64,
         txn: &DatabaseTransaction,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         info!("StartRecruitmentService::start_by_message - 開始処理開始");
 
         // 募集情報の存在確認
@@ -49,7 +49,7 @@ impl StartRecruitmentService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         info!(
             "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id

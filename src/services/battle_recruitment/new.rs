@@ -4,7 +4,7 @@ use poise::serenity_prelude::all::CreateEmbed;
 use tracing::{error, info};
 
 use crate::infrastructure::database::container::RepositoryContainer;
-use crate::models::quest::Quest;
+use crate::models::quests::Quest;
 use crate::types;
 use crate::types::battle_type::BattleType;
 use crate::types::{AppError, AppState, PoiseContext};
@@ -126,7 +126,7 @@ pub fn create_recruitment_data_simple(
     guild_id: u64,
 ) -> RecruitmentData {
     RecruitmentData {
-        quest: crate::models::quest::Quest {
+        quest: crate::models::quests::Quest {
             id: 1,
             target_id: 1,
             quest_name: quest_alias.to_string(),

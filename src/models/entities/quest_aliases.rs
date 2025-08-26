@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "quests_alias")]
+#[sea_orm(table_name = "quest_aliases")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
@@ -15,14 +15,14 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::quest::Entity",
+        belongs_to = "super::quests::Entity",
         from = "Column::TargetId",
-        to = "super::quest::Column::Id"
+        to = "super::quests::Column::Id"
     )]
     Quest,
 }
 
-impl Related<super::quest::Entity> for Entity {
+impl Related<super::quests::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Quest.def()
     }

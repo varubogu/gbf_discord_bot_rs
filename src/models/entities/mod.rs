@@ -1,10 +1,10 @@
-pub mod battle_recruitment;
-pub mod environment;
-pub mod message_text;
-pub mod quest;
-pub mod quest_alias;
+pub mod battle_recruitments;
+pub mod environments;
+pub mod message_texts;
+pub mod quest_aliases;
+pub mod quests;
 
-pub use environment::Entity as Environment;
-pub use message_text::Entity as MessageText;
-pub use quest::Entity as Quest;
-pub use quest_alias::Entity as QuestAlias;
+pub use environments::Entity as Environment;
+pub use message_texts::Entity as MessageText;
+pub use quest_aliases::Entity as QuestAlias;
+pub use quests::Entity as Quest;

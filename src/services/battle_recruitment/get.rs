@@ -1,17 +1,17 @@
 use std::sync::Arc;
 use tracing::error;
 
-use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::BattleRecruitmentRepository;
+use crate::models::battle_recruitments::BattleRecruitments;
+use crate::repository::BattleRecruitmentsRepository;
 
 /// 募集情報取得サービス
 pub struct GetRecruitmentService {
-    battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+    battle_recruitment_repo: Arc<dyn BattleRecruitmentsRepository>,
 }
 
 impl GetRecruitmentService {
     /// 依存性注入パターンに従ったコンストラクタ
-    pub fn new(battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+    pub fn new(battle_recruitment_repo: Arc<dyn BattleRecruitmentsRepository>) -> Self {
         Self {
             battle_recruitment_repo,
         }
@@ -23,7 +23,7 @@ impl GetRecruitmentService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Option<BattleRecruitment>, String> {
+    ) -> Result<Option<BattleRecruitments>, String> {
         match self
             .battle_recruitment_repo
             .get_by_message(guild_id as i64, channel_id as i64, message_id as i64)
@@ -41,7 +41,7 @@ impl GetRecruitmentService {
     pub async fn get_by_id(
         &self,
         recruitment_id: i32,
-    ) -> Result<Option<BattleRecruitment>, String> {
+    ) -> Result<Option<BattleRecruitments>, String> {
         // match self.battle_recruitment_repo.get_by_id(recruitment_id).await {
         //     Ok(recruitment) => Ok(recruitment),
         //     Err(e) => {

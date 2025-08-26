@@ -5,8 +5,8 @@ use poise::serenity_prelude::all::{
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::BattleRecruitmentRepository;
+use crate::models::battle_recruitments::BattleRecruitments;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 pub(crate) struct CancelParameter {
@@ -17,11 +17,11 @@ pub(crate) struct CancelParameter {
 
 /// CancelRecruitmentService - 募集キャンセル処理を行うサービス（Repository依存注入対応）
 pub struct CancelRecruitmentService<'a> {
-    repo: &'a dyn BattleRecruitmentRepository,
+    repo: &'a dyn BattleRecruitmentsRepository,
 }
 
 impl<'a> CancelRecruitmentService<'a> {
-    pub fn new(repo: &'a dyn BattleRecruitmentRepository) -> Self {
+    pub fn new(repo: &'a dyn BattleRecruitmentsRepository) -> Self {
         Self { repo }
     }
 
@@ -32,11 +32,13 @@ impl<'a> CancelRecruitmentService<'a> {
         channel_id: u64,
         message_id: u64,
         txn: &sea_orm::DatabaseTransaction,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         info!("CancelRecruitmentService::cancel_by_message - キャンセル処理開始");
 
         // 募集情報の存在確認
-        let recruitment = self.get_recruitment_from_db(guild_id, channel_id, message_id).await?;
+        let recruitment = self
+            .get_recruitment_from_db(guild_id, channel_id, message_id)
+            .await?;
 
         // 募集をキャンセル済み状態に更新
         self.mark_recruitment_as_cancelled(recruitment.id).await?;
@@ -51,7 +53,7 @@ impl<'a> CancelRecruitmentService<'a> {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         info!(
             "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id

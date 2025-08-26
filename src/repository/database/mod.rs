@@ -1,3 +1,3 @@
-pub mod battle_recruitment_repository;
+pub mod battle_recruitments_repository;
 pub mod db_compat;
 pub mod models_database;

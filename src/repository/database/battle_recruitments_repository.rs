@@ -1,8 +1,8 @@
-﻿use crate::models::battle_recruitment::BattleRecruitment;
-use crate::models::entities::battle_recruitment::{
+﻿use crate::models::battle_recruitments::BattleRecruitments;
+use crate::models::entities::battle_recruitments::{
     ActiveModel, Column, Entity as BattleRecruitmentEntity,
 };
-use crate::repository::BattleRecruitmentRepository;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -13,11 +13,11 @@ use sea_orm::{
 
 /// SeaORM を使用したバトル募集リポジトリの実装
 #[derive(Debug)]
-pub struct BattleRecruitmentRepositoryImpl {
+pub struct BattleRecruitmentsRepositoryImpl {
     connection: DatabaseConnection,
 }
 
-impl BattleRecruitmentRepositoryImpl {
+impl BattleRecruitmentsRepositoryImpl {
     pub fn new(connection: DatabaseConnection) -> Self {
         Self { connection }
     }
@@ -32,7 +32,7 @@ impl BattleRecruitmentRepositoryImpl {
         target_id: i32,
         battle_type_id: i32,
         expiry_date: DateTime<Utc>,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         let active_model = ActiveModel {
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
@@ -48,12 +48,12 @@ impl BattleRecruitmentRepositoryImpl {
             .await
             .map_err(|e| AppError::Database(e))?;
 
-        Ok(BattleRecruitment::from(result))
+        Ok(BattleRecruitments::from(result))
     }
 }
 
 #[async_trait]
-impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
+impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
     async fn create(
         &self,
         guild_id: i64,
@@ -62,7 +62,7 @@ impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
         target_id: i32,
         battle_type_id: i32,
         expiry_date: DateTime<Utc>,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         let active_model = ActiveModel {
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
@@ -78,7 +78,7 @@ impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
             .await
             .map_err(|e| AppError::Database(e))?;
 
-        Ok(BattleRecruitment::from(result))
+        Ok(BattleRecruitments::from(result))
     }
 
     async fn get_by_message(
@@ -86,7 +86,7 @@ impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-    ) -> Result<Option<BattleRecruitment>> {
+    ) -> Result<Option<BattleRecruitments>> {
         let result = BattleRecruitmentEntity::find()
             .filter(Column::GuildId.eq(guild_id))
             .filter(Column::ChannelId.eq(channel_id))
@@ -95,7 +95,7 @@ impl BattleRecruitmentRepository for BattleRecruitmentRepositoryImpl {
             .await
             .map_err(|e| AppError::Database(e))?;
 
-        Ok(result.map(BattleRecruitment::from))
+        Ok(result.map(BattleRecruitments::from))
     }
 
     async fn set_end_message(&self, recruitment_id: i32, message_id: i64) -> Result<()> {

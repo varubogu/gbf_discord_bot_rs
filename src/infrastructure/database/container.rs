@@ -1,4 +1,4 @@
-use crate::repository::database::battle_recruitment_repository::BattleRecruitmentRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
 use sea_orm::DatabaseConnection;
 
 /// Repository層のコンテナ（Rustらしいパターン）
@@ -7,7 +7,7 @@ use sea_orm::DatabaseConnection;
 /// 従来のDIコンテナパターンから、よりシンプルで効率的なアプローチに変更。
 #[derive(Debug)]
 pub struct RepositoryContainer {
-    battle_recruitment_repo: BattleRecruitmentRepositoryImpl,
+    battle_recruitment_repo: BattleRecruitmentsRepositoryImpl,
     // 他のrepositoryも追加可能
 }
 
@@ -20,7 +20,7 @@ impl RepositoryContainer {
     /// # 戻り値
     /// 新しいRepositoryContainerインスタンス
     pub fn new(db_connection: &DatabaseConnection) -> Self {
-        let battle_recruitment_repo = BattleRecruitmentRepositoryImpl::new(db_connection.clone());
+        let battle_recruitment_repo = BattleRecruitmentsRepositoryImpl::new(db_connection.clone());
 
         Self {
             battle_recruitment_repo,
@@ -28,7 +28,7 @@ impl RepositoryContainer {
     }
 
     /// BattleRecruitmentRepositoryへの参照を取得
-    pub fn battle_recruitment(&self) -> &BattleRecruitmentRepositoryImpl {
+    pub fn battle_recruitment(&self) -> &BattleRecruitmentsRepositoryImpl {
         &self.battle_recruitment_repo
     }
 }

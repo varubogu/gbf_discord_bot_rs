@@ -1,4 +1,4 @@
-use crate::models::message_text::MessageText;
+use crate::models::message_texts::MessageTexts;
 use crate::types::Result;
 use async_trait::async_trait;
 
@@ -11,5 +11,5 @@ pub trait MessageTextRepository: Send + Sync {
         &self,
         guild_id: i64,
         message_id: &str,
-    ) -> Result<Option<MessageText>>;
+    ) -> Result<Option<MessageTexts>>;
 }

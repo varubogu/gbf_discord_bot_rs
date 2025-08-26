@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use crate::models::battle_recruitment::BattleRecruitment;
-use crate::repository::BattleRecruitmentRepository;
+use crate::models::battle_recruitments::BattleRecruitments;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::battle_type::BattleType;
 use crate::types::{AppError, Result};
 
@@ -18,12 +18,12 @@ pub(crate) struct PaticipantsParameter {
 
 /// ParticipantsService - 募集参加者管理を行うサービス
 pub struct ParticipantsService {
-    battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>,
+    battle_recruitment_repo: Arc<dyn BattleRecruitmentsRepository>,
 }
 
 impl ParticipantsService {
     /// 新しいParticipantsServiceを作成（依存性注入）
-    pub fn new(battle_recruitment_repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
+    pub fn new(battle_recruitment_repo: Arc<dyn BattleRecruitmentsRepository>) -> Self {
         Self {
             battle_recruitment_repo,
         }
@@ -36,7 +36,7 @@ impl ParticipantsService {
         channel_id: u64,
         message_id: u64,
         txn: &DatabaseTransaction,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
 
         // 募集情報の存在確認
@@ -119,7 +119,7 @@ impl ParticipantsService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitment> {
+    ) -> Result<BattleRecruitments> {
         panic!();
         // info!("DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
         //       guild_id, channel_id, message_id);

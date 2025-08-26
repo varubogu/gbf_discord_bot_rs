@@ -1,14 +1,15 @@
-pub mod battle_recruitment_repository;
+pub mod battle_recruitments_repository;
 pub(crate) mod database;
-pub mod environment_repository;
-pub mod message_text_repository;
-pub mod quest_repository;
+pub mod environments_repository;
+pub mod message_texts_repository;
+pub mod quest_aliases_repository;
+pub mod quests_repository;
 
 // 抽象インターフェースをre-export
-pub use battle_recruitment_repository::BattleRecruitmentRepository;
-pub use environment_repository::EnvironmentRepository;
-pub use message_text_repository::MessageTextRepository;
-pub use quest_repository::QuestRepository;
+pub use battle_recruitments_repository::BattleRecruitmentsRepository;
+pub use environments_repository::EnvironmentRepository;
+pub use message_texts_repository::MessageTextRepository;
+pub use quests_repository::QuestRepository;
 
 /// リポジトリファクトリ
 /// データベース実装の詳細を隠蔽し、抽象インターフェースのみ公開
