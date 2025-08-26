@@ -20,4 +20,20 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
-impl ActiveModelBehavior for ActiveModel {}
+impl ActiveModelBehavior for ActiveModel {
+    fn new() -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            id: sea_orm::NotSet,
+            guild_id: sea_orm::NotSet,
+            channel_id: sea_orm::NotSet,
+            message_id: sea_orm::NotSet,
+            target_id: sea_orm::NotSet,
+            battle_type_id: sea_orm::NotSet,
+            expiry_date: sea_orm::NotSet,
+            recruit_end_message_id: sea_orm::NotSet,
+            created_at: sea_orm::Set(now),
+            updated_at: sea_orm::Set(now),
+        }
+    }
+}

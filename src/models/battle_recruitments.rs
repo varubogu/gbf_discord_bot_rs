@@ -49,15 +49,14 @@ impl Database {
         battle_type_id: i32,
         expiry_date: chrono::DateTime<chrono::Utc>,
     ) -> Result<BattleRecruitments, DbErr> {
-        let battle_recruitment = battle_recruitments::ActiveModel {
-            guild_id: Set(guild_id),
-            channel_id: Set(channel_id),
-            message_id: Set(message_id),
-            target_id: Set(target_id),
-            battle_type_id: Set(battle_type_id),
-            expiry_date: Set(expiry_date),
-            ..Default::default()
-        };
+        use sea_orm::ActiveModelBehavior;
+        let mut battle_recruitment = battle_recruitments::ActiveModel::new();
+        battle_recruitment.guild_id = Set(guild_id);
+        battle_recruitment.channel_id = Set(channel_id);
+        battle_recruitment.message_id = Set(message_id);
+        battle_recruitment.target_id = Set(target_id);
+        battle_recruitment.battle_type_id = Set(battle_type_id);
+        battle_recruitment.expiry_date = Set(expiry_date);
 
         let result = battle_recruitment.insert(&self.conn).await?;
         Ok(result.into())

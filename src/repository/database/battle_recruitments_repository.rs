@@ -7,8 +7,8 @@ use crate::types::{AppError, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
-    QueryFilter, Set,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction,
+    EntityTrait, QueryFilter, Set,
 };
 
 /// SeaORM を使用したバトル募集リポジトリの実装
@@ -33,15 +33,13 @@ impl BattleRecruitmentsRepositoryImpl {
         battle_type_id: i32,
         expiry_date: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
-        let active_model = ActiveModel {
-            guild_id: Set(guild_id),
-            channel_id: Set(channel_id),
-            message_id: Set(message_id),
-            target_id: Set(target_id),
-            battle_type_id: Set(battle_type_id),
-            expiry_date: Set(expiry_date),
-            ..Default::default()
-        };
+        let mut active_model = ActiveModel::new();
+        active_model.guild_id = Set(guild_id);
+        active_model.channel_id = Set(channel_id);
+        active_model.message_id = Set(message_id);
+        active_model.target_id = Set(target_id);
+        active_model.battle_type_id = Set(battle_type_id);
+        active_model.expiry_date = Set(expiry_date);
 
         let result = active_model
             .insert(txn)
@@ -63,15 +61,13 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         battle_type_id: i32,
         expiry_date: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
-        let active_model = ActiveModel {
-            guild_id: Set(guild_id),
-            channel_id: Set(channel_id),
-            message_id: Set(message_id),
-            target_id: Set(target_id),
-            battle_type_id: Set(battle_type_id),
-            expiry_date: Set(expiry_date),
-            ..Default::default()
-        };
+        let mut active_model = ActiveModel::new();
+        active_model.guild_id = Set(guild_id);
+        active_model.channel_id = Set(channel_id);
+        active_model.message_id = Set(message_id);
+        active_model.target_id = Set(target_id);
+        active_model.battle_type_id = Set(battle_type_id);
+        active_model.expiry_date = Set(expiry_date);
 
         let result = active_model
             .insert(&self.connection)
