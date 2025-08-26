@@ -58,7 +58,7 @@ pub async fn cancel(
     if let Some(interaction) = interaction {
         match interaction.data.custom_id.as_str() {
             "confirm_cancel" => {
-                match crate::facades::recruit::cancel::cancel_recruitment(
+                match crate::facades::recruitment::cancel::cancel_recruitment(
                     ctx,
                     _guild_id,
                     _channel_id,

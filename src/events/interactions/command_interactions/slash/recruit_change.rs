@@ -1,4 +1,4 @@
-use crate::facades::recruit::change::change_recruitment_information;
+use crate::facades::recruitment::change::change_recruitment_information;
 use crate::types::battle_type::BattleType;
 use crate::types::{PoiseContext, Result};
 use futures::Stream;

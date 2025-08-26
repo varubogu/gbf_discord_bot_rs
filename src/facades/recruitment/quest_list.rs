@@ -1,5 +1,5 @@
 use crate::models::quests::Quest;
-use crate::services::battle_recruitment::new;
+use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;

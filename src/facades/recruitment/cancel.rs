@@ -1,5 +1,5 @@
 use crate::infrastructure::database::container::RepositoryContainer;
-use crate::services::battle_recruitment::cancel::CancelRecruitmentService;
+use crate::services::recruitment::cancel::CancelRecruitmentService;
 use crate::types;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::{ChannelId, MessageId};

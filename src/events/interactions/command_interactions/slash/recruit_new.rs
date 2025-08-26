@@ -1,4 +1,4 @@
-use crate::facades::recruit;
+use crate::facades::recruitment;
 use crate::types::battle_type::BattleType;
 use crate::types::{PoiseContext, Result};
 use futures::Stream;
@@ -27,7 +27,7 @@ pub async fn recruit(
     ctx.defer().await?;
 
     let battle_type = BattleType::Default;
-    recruit::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
+    recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
 }
 
 async fn quest_auto_complete<'a>(
