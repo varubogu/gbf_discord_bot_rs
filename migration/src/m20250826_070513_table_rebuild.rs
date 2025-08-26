@@ -6,23 +6,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // テーブル削除（外部キー制約があるため先に削除）
-        manager
-            .drop_table(
-                Table::drop()
-                    .table(RecruitmentParticipants::Table)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_table(Table::drop().table(Bosses::Table).to_owned())
-            .await?;
-
-        manager
-            .drop_table(Table::drop().table(Users::Table).to_owned())
-            .await?;
-
         // schedules テーブルを notifications に名前変更
         manager
             .rename_table(
@@ -416,19 +399,4 @@ enum Notifications {
     MessageTextId,
     ParentScheduleId,
     ParentScheduleDetailId,
-}
-
-#[derive(DeriveIden)]
-enum Bosses {
-    Table,
-}
-
-#[derive(DeriveIden)]
-enum RecruitmentParticipants {
-    Table,
-}
-
-#[derive(DeriveIden)]
-enum Users {
-    Table,
 }
