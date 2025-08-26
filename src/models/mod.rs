@@ -1,6 +1,12 @@
 ﻿pub(crate) mod battle_recruitments;
+pub(crate) mod battle_types;
 pub(crate) mod entities;
 pub(crate) mod environments;
+pub(crate) mod event_schedule_details;
+pub(crate) mod event_schedules;
+pub(crate) mod guilds;
+pub(crate) mod last_process_times;
 pub(crate) mod message_texts;
+pub(crate) mod notifications;
 pub(crate) mod quest_aliases;
 pub(crate) mod quests;

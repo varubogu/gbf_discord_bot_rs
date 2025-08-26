@@ -1,6 +1,12 @@
 pub mod battle_recruitments;
+pub mod battle_types;
 pub mod environments;
+pub mod event_schedule_details;
+pub mod event_schedules;
+pub mod guilds;
+pub mod last_process_times;
 pub mod message_texts;
+pub mod notifications;
 pub mod quest_aliases;
 pub mod quests;
 

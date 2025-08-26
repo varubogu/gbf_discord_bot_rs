@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuestAlias {
     pub id: i32,
-    pub target_id: i32,
+    pub quest_id: i32,
     pub alias: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -18,7 +18,7 @@ impl From<quest_aliases::Model> for QuestAlias {
     fn from(model: quest_aliases::Model) -> Self {
         Self {
             id: model.id,
-            target_id: model.target_id,
+            quest_id: model.quest_id,
             alias: model.alias,
             created_at: model.created_at,
             updated_at: model.updated_at,
@@ -41,7 +41,7 @@ impl Database {
 
         if let Some(qa) = quest_alias {
             let quest = QuestEntity::find()
-                .filter(quests::Column::TargetId.eq(qa.target_id))
+                .filter(quests::Column::Id.eq(qa.quest_id))
                 .one(&self.conn)
                 .await?;
 

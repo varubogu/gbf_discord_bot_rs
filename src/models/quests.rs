@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Quest {
     pub id: i32,
-    pub target_id: i32,
-    pub quest_name: String,
-    pub default_battle_type: i32,
+    pub name: String,
+    pub default_battle_style: i32,
+    pub recruit_count: i32,
+    pub available_battle_styles: i32,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -18,9 +19,10 @@ impl From<quests::Model> for Quest {
     fn from(model: quests::Model) -> Self {
         Self {
             id: model.id,
-            target_id: model.target_id,
-            quest_name: model.quest_name,
-            default_battle_type: model.default_battle_type,
+            name: model.name,
+            default_battle_style: model.default_battle_style,
+            recruit_count: model.recruit_count,
+            available_battle_styles: model.available_battle_styles,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }
@@ -34,9 +36,9 @@ impl Database {
         Ok(models.into_iter().map(|model| model.into()).collect())
     }
 
-    pub async fn get_quest_by_target_id(&self, target_id: i32) -> Result<Option<Quest>, DbErr> {
+    pub async fn get_quest_by_id(&self, id: i32) -> Result<Option<Quest>, DbErr> {
         let quest = QuestEntity::find()
-            .filter(quests::Column::TargetId.eq(target_id))
+            .filter(quests::Column::Id.eq(id))
             .one(&self.conn)
             .await?;
 

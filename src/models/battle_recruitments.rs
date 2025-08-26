@@ -14,9 +14,11 @@ pub struct BattleRecruitments {
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_id: i64,
-    pub target_id: i32,
+    pub quest_id: i32,
     pub battle_type_id: i32,
-    pub expiry_date: DateTime<Utc>,
+    pub quest_start_at: DateTime<Utc>,
+    pub is_recruiting: bool,
+    pub is_canceled: bool,
     pub recruit_end_message_id: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -29,9 +31,11 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
             guild_id: model.guild_id,
             channel_id: model.channel_id,
             message_id: model.message_id,
-            target_id: model.target_id,
+            quest_id: model.quest_id,
             battle_type_id: model.battle_type_id,
-            expiry_date: model.expiry_date,
+            quest_start_at: model.quest_start_at,
+            is_recruiting: model.is_recruiting,
+            is_canceled: model.is_canceled,
             recruit_end_message_id: model.recruit_end_message_id,
             created_at: model.created_at,
             updated_at: model.updated_at,
@@ -45,18 +49,18 @@ impl Database {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-        target_id: i32,
+        quest_id: i32,
         battle_type_id: i32,
-        expiry_date: chrono::DateTime<chrono::Utc>,
+        quest_start_at: chrono::DateTime<chrono::Utc>,
     ) -> Result<BattleRecruitments, DbErr> {
         use sea_orm::ActiveModelBehavior;
         let mut battle_recruitment = battle_recruitments::ActiveModel::new();
         battle_recruitment.guild_id = Set(guild_id);
         battle_recruitment.channel_id = Set(channel_id);
         battle_recruitment.message_id = Set(message_id);
-        battle_recruitment.target_id = Set(target_id);
+        battle_recruitment.quest_id = Set(quest_id);
         battle_recruitment.battle_type_id = Set(battle_type_id);
-        battle_recruitment.expiry_date = Set(expiry_date);
+        battle_recruitment.quest_start_at = Set(quest_start_at);
 
         let result = battle_recruitment.insert(&self.conn).await?;
         Ok(result.into())

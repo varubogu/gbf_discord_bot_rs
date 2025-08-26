@@ -13,9 +13,9 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-        target_id: i32,
+        quest_id: i32,
         battle_type_id: i32,
-        expiry_date: DateTime<Utc>,
+        quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments>;
 
     /// メッセージIDで募集を取得

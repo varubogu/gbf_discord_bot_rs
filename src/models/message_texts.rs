@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct MessageTexts {
     pub id: i32,
     pub guild_id: i64,
-    pub message_id: String,
+    pub message_text_id: String,
     pub message_jp: String,
     pub message_en: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -19,7 +19,7 @@ impl From<message_texts::Model> for MessageTexts {
         Self {
             id: model.id,
             guild_id: model.guild_id,
-            message_id: model.message_id,
+            message_text_id: model.message_text_id,
             message_jp: model.message_jp,
             message_en: model.message_en,
             created_at: model.created_at,
@@ -36,7 +36,7 @@ impl Database {
     ) -> Result<Option<MessageTexts>, DbErr> {
         let model = MessageTextEntity::find()
             .filter(message_texts::Column::GuildId.eq(guild_id))
-            .filter(message_texts::Column::MessageId.eq(message_id))
+            .filter(message_texts::Column::MessageTextId.eq(message_id))
             .one(&self.conn)
             .await?;
 

@@ -40,7 +40,7 @@ pub async fn create_recruitment_data(
     if let Some(event_date) = event_date {
         recruitment_data.expiry_date = event_date.with_timezone(&chrono::Utc);
         recruitment_data.message_content = create_message_content(
-            &recruitment_data.quest.quest_name,
+            &recruitment_data.quest.name,
             &battle_type,
             &recruitment_data.expiry_date,
         );
@@ -90,7 +90,7 @@ pub async fn save_recruitment(
             recruitment_data.guild_id as i64,
             recruitment_data.channel_id as i64,
             message_id as i64,
-            recruitment_data.quest.target_id,
+            recruitment_data.quest.id,
             recruitment_data.battle_type as i32,
             recruitment_data.expiry_date,
         )
@@ -128,9 +128,10 @@ pub fn create_recruitment_data_simple(
     RecruitmentData {
         quest: crate::models::quests::Quest {
             id: 1,
-            target_id: 1,
-            quest_name: quest_alias.to_string(),
-            default_battle_type: 1,
+            name: quest_alias.to_string(),
+            default_battle_style: 1,
+            recruit_count: 6,
+            available_battle_styles: 1,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         },

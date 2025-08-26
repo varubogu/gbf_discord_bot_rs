@@ -29,17 +29,17 @@ impl BattleRecruitmentsRepositoryImpl {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-        target_id: i32,
+        quest_id: i32,
         battle_type_id: i32,
-        expiry_date: DateTime<Utc>,
+        quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
         active_model.guild_id = Set(guild_id);
         active_model.channel_id = Set(channel_id);
         active_model.message_id = Set(message_id);
-        active_model.target_id = Set(target_id);
+        active_model.quest_id = Set(quest_id);
         active_model.battle_type_id = Set(battle_type_id);
-        active_model.expiry_date = Set(expiry_date);
+        active_model.quest_start_at = Set(quest_start_at);
 
         let result = active_model
             .insert(txn)
@@ -57,17 +57,17 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
-        target_id: i32,
+        quest_id: i32,
         battle_type_id: i32,
-        expiry_date: DateTime<Utc>,
+        quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
         active_model.guild_id = Set(guild_id);
         active_model.channel_id = Set(channel_id);
         active_model.message_id = Set(message_id);
-        active_model.target_id = Set(target_id);
+        active_model.quest_id = Set(quest_id);
         active_model.battle_type_id = Set(battle_type_id);
-        active_model.expiry_date = Set(expiry_date);
+        active_model.quest_start_at = Set(quest_start_at);
 
         let result = active_model
             .insert(&self.connection)
