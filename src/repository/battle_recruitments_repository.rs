@@ -19,6 +19,18 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments>;
 
+    /// 新規募集を作成（トランザクション対応）
+    async fn create_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+        quest_id: i32,
+        battle_type_id: i32,
+        quest_start_at: DateTime<Utc>,
+    ) -> Result<BattleRecruitments>;
+
     /// メッセージIDで募集を取得
     async fn get_by_message(
         &self,
@@ -29,4 +41,6 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
 
     /// 募集終了メッセージを更新
     async fn set_end_message(&self, recruitment_id: i32, message_id: MessageId) -> Result<()>;
+
+    async fn set_canceled(&self, recruitment_id: i32, message_id: MessageId) -> Result<()>;
 }

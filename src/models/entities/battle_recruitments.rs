@@ -6,15 +6,15 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub guild_id: u64,
-    pub channel_id: u64,
-    pub message_id: u64,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
     pub quest_id: i32,
     pub battle_type_id: i32,
     pub quest_start_at: DateTimeUtc,
     pub is_recruiting: bool,
     pub is_canceled: bool,
-    pub recruit_end_message_id: Option<u64>,
+    pub recruit_end_message_id: Option<i64>,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

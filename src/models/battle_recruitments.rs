@@ -28,15 +28,15 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
     fn from(model: battle_recruitments::Model) -> Self {
         Self {
             id: model.id,
-            guild_id: model.guild_id,
-            channel_id: model.channel_id,
-            message_id: model.message_id,
+            guild_id: model.guild_id as u64,     // i64 → u64に変換
+            channel_id: model.channel_id as u64, // i64 → u64に変換
+            message_id: model.message_id as u64, // i64 → u64に変換
             quest_id: model.quest_id,
             battle_type_id: model.battle_type_id,
             quest_start_at: model.quest_start_at,
             is_recruiting: model.is_recruiting,
             is_canceled: model.is_canceled,
-            recruit_end_message_id: model.recruit_end_message_id,
+            recruit_end_message_id: model.recruit_end_message_id.map(|id| id as u64), // i64 → u64に変換
             created_at: model.created_at,
             updated_at: model.updated_at,
         }
@@ -55,9 +55,9 @@ impl Database {
     ) -> Result<BattleRecruitments, DbErr> {
         use sea_orm::ActiveModelBehavior;
         let mut battle_recruitment = battle_recruitments::ActiveModel::new();
-        battle_recruitment.guild_id = Set(guild_id);
-        battle_recruitment.channel_id = Set(channel_id);
-        battle_recruitment.message_id = Set(message_id);
+        battle_recruitment.guild_id = Set(guild_id as i64); // u64 → i64に変換
+        battle_recruitment.channel_id = Set(channel_id as i64); // u64 → i64に変換
+        battle_recruitment.message_id = Set(message_id as i64); // u64 → i64に変換
         battle_recruitment.quest_id = Set(quest_id);
         battle_recruitment.battle_type_id = Set(battle_type_id);
         battle_recruitment.quest_start_at = Set(quest_start_at);
@@ -73,9 +73,9 @@ impl Database {
         message_id: u64,
     ) -> Result<Option<BattleRecruitments>, DbErr> {
         let result = BattleRecruitmentEntity::find()
-            .filter(battle_recruitments::Column::GuildId.eq(guild_id))
-            .filter(battle_recruitments::Column::ChannelId.eq(channel_id))
-            .filter(battle_recruitments::Column::MessageId.eq(message_id))
+            .filter(battle_recruitments::Column::GuildId.eq(guild_id as i64)) // u64 → i64に変換
+            .filter(battle_recruitments::Column::ChannelId.eq(channel_id as i64)) // u64 → i64に変換
+            .filter(battle_recruitments::Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
             .one(&self.conn)
             .await?;
 
@@ -104,7 +104,7 @@ impl Database {
 
         if let Some(recruitment) = recruitment {
             let mut active_model: battle_recruitments::ActiveModel = recruitment.into();
-            active_model.recruit_end_message_id = Set(Some(message_id));
+            active_model.recruit_end_message_id = Set(Some(message_id as i64)); // u64 → i64に変換
             active_model.update(&self.conn).await?;
         }
 

@@ -1,13 +1,12 @@
-use chrono::{DateTime, Duration, Local};
+use chrono::{DateTime, Local};
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::CreateEmbed;
-use tracing::{error, info};
+use tracing::info;
 
-use crate::infrastructure::database::container::RepositoryContainer;
 use crate::models::quests::Quest;
 use crate::types;
+use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
-use crate::types::{AppError, AppState, PoiseContext};
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
@@ -29,7 +28,6 @@ pub async fn create_recruitment_data(
     battle_type: BattleType,
     channel_id: u64,
     guild_id: u64,
-    app_state: &AppState,
     event_date: Option<DateTime<Local>>,
 ) -> types::Result<RecruitmentData> {
     // 簡略版ヘルパー関数を使用（既存のFacadeとの互換性を保つため）
@@ -76,14 +74,11 @@ pub async fn add_recruitment_reactions(
 
 /// データ保存関数
 pub async fn save_recruitment(
+    txn: &DatabaseTransaction,
+    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
     recruitment_data: &RecruitmentData,
     message_id: u64,
-    txn: &DatabaseTransaction,
-    app_state: &AppState,
 ) -> types::Result<()> {
-    let repos = RepositoryContainer::new(&app_state.db_connection);
-    let battle_recruitment_repo = repos.battle_recruitment();
-
     battle_recruitment_repo
         .create_with_txn(
             txn,

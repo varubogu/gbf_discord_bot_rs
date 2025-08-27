@@ -1,3 +1,4 @@
+use crate::infrastructure::database::container::RepositoryContainer;
 use crate::models::quests::Quest;
 use crate::services::recruitment::new;
 use crate::types;
@@ -22,16 +23,14 @@ pub async fn quest_list(
     let channel_id = ctx.channel_id().get();
 
     let result = async {
+        // RepositoryContainerとRepositoryの取得
+        let repos = RepositoryContainer::new(&app_state.db_connection);
+        let battle_recruitment_repo = repos.battle_recruitment();
+
         // 1. Service層で募集データ作成
-        let recruitment_data = new::create_recruitment_data(
-            quest_alias,
-            battle_type,
-            channel_id,
-            guild_id,
-            app_state,
-            None,
-        )
-        .await?;
+        let recruitment_data =
+            new::create_recruitment_data(quest_alias, battle_type, channel_id, guild_id, None)
+                .await?;
 
         // 2. Service層でメッセージ送信
         let message_id = new::send_recruitment_message(ctx, &recruitment_data).await?;
@@ -40,7 +39,7 @@ pub async fn quest_list(
         new::add_recruitment_reactions(ctx, message_id, &recruitment_data.reactions).await?;
 
         // 4. Service層でデータ保存
-        new::save_recruitment(&recruitment_data, message_id, &txn, app_state).await?;
+        new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
         Ok(())
     }

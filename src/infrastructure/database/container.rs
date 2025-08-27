@@ -1,7 +1,7 @@
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
 use sea_orm::DatabaseConnection;
 
-/// Repository層のコンテナ（Rustらしいパターン）
+/// Repository層のコンテナ
 ///
 /// AppStateから共有のDB接続を受け取り、Repository群を管理します。
 /// 従来のDIコンテナパターンから、よりシンプルで効率的なアプローチに変更。
