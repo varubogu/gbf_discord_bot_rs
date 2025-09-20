@@ -1,39 +1,32 @@
 ﻿use poise::serenity_prelude::all::{
     ChannelId, Context, CreateMessage, EditMessage, Message, MessageId,
 };
+use poise::serenity_prelude::CacheHttp;
 use sea_orm::DatabaseTransaction;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
+use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
-
-/// キャンセル可能性チェックの結果
-#[derive(Debug, PartialEq)]
-pub enum CanCancelResult {
-    /// キャンセル可能
-    Success,
-    /// 既にキャンセル済み
-    AlreadyCancelled,
-    /// 募集メッセージは過去にあったが、削除済み
-    MessageDeleted,
-    /// 募集メッセージじゃない
-    NotRecruitMessage,
-    /// 募集がなく、メッセージもない
-    NotFound,
-}
 
 /// キャンセル可能性をチェックし、結果を返す
 pub async fn check_can_cancel_recruitment(
     ctx: &Context,
-    guild_id: u64,
-    channel_id: u64,
-    message_id: u64,
+    message: &Message,
     battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
 ) -> Result<CanCancelResult> {
+    let guild_id = message.guild_id.unwrap_or_default().to_string();
+    let channel_id = message.channel_id;
+    let message_id = message.id;
+
     info!(
-        "キャンセル可能性チェック開始: guild_id={}, channel_id={}, message_id={}",
-        guild_id, channel_id, message_id
+        "キャンセル可能性チェック開始: channel_type={}, guild_id={}, channel_id={}, message_id={}",
+        message.channel(ctx.http()).await,
+        message.guild_id.unwrap_or_default().to_string(),
+        message.channel_id,
+        message.id
     );
+    message.channel(ctx.http()).await.unwrap().;
 
     // DBから募集情報を取得（エラーの場合はNone扱い）
     let recruitment_opt = battle_recruitment_repo

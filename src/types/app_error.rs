@@ -38,4 +38,5 @@ impl From<String> for AppError {
     }
 }
 
+// TODO: Result -> AppResultへリネーム
 pub type Result<T> = std::result::Result<T, AppError>;

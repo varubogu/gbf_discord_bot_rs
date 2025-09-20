@@ -3,8 +3,9 @@ pub(crate) mod app_error;
 pub(crate) mod app_state;
 pub(crate) mod battle_type;
 pub(crate) mod discord_operation;
+pub(crate) mod domain_interface_result;
 pub(crate) mod poise_data;
-pub mod transaction;
+pub(crate) mod transaction;
 
 pub use app_config::AppConfig;
 // Re-export all public types for backward compatibility
