@@ -1,7 +1,6 @@
 ﻿use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateMessage, EditMessage, Message, MessageId,
+    ChannelId, Context, EditMessage, Message, MessageId,
 };
-use poise::serenity_prelude::CacheHttp;
 use sea_orm::DatabaseTransaction;
 use tracing::{error, info, warn};
 
@@ -15,26 +14,24 @@ pub async fn check_can_cancel_recruitment(
     message: &Message,
     battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
 ) -> Result<CanCancelResult> {
-    let guild_id = message.guild_id.unwrap_or_default().to_string();
+    let guild_id = message.guild_id.unwrap_or_default();
     let channel_id = message.channel_id;
     let message_id = message.id;
 
     info!(
-        "キャンセル可能性チェック開始: channel_type={}, guild_id={}, channel_id={}, message_id={}",
-        message.channel(ctx.http()).await,
-        message.guild_id.unwrap_or_default().to_string(),
-        message.channel_id,
-        message.id
+        "キャンセル可能性チェック開始: guild_id={}, channel_id={}, message_id={}",
+        guild_id,
+        channel_id,
+        message_id
     );
-    message.channel(ctx.http()).await.unwrap().;
 
     // DBから募集情報を取得（エラーの場合はNone扱い）
     let recruitment_opt = battle_recruitment_repo
-        .get_by_message(guild_id, channel_id, message_id)
+        .get_by_message(guild_id.clone().into(), channel_id.into(), message_id.into())
         .await?;
 
     // Discordからメッセージを取得（エラーの場合はNone扱い）
-    let discord_message_opt = get_discord_message(ctx, channel_id, message_id).await;
+    let discord_message_opt = get_discord_message(ctx, channel_id.into(), message_id.into()).await;
 
     let result = match (recruitment_opt, discord_message_opt) {
         // DBあり + メッセージあり
@@ -130,7 +127,7 @@ pub async fn get_recruitment_from_database(
 
 /// 募集をキャンセル済み状態に更新
 pub async fn mark_recruitment_as_cancelled(
-    txn: &DatabaseTransaction,
+    _txn: &DatabaseTransaction,
     recruitment_id: i32,
     cancel_message_id: MessageId,
     battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,

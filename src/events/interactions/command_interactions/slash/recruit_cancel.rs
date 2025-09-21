@@ -1,13 +1,8 @@
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::types;
 use crate::types::domain_interface_result::CanCancelResult;
-use crate::types::{AppError, PoiseContext};
-use poise::ReplyHandle;
-use poise::serenity_prelude::{
-    ButtonStyle, ComponentInteraction, ComponentInteractionCollector, CreateActionRow,
-    CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, Http, Message,
-};
-use std::time::Duration;
+use crate::types::PoiseContext;
+use poise::serenity_prelude::Message;
 use tracing::error;
 
 #[poise::command(
@@ -26,10 +21,27 @@ pub async fn cancel(
     ctx.defer().await?;
 
     // キャンセル可能か確認
-    match CancelFacade::confirm_cancel(ctx, &message).await {
-        Ok(_) => Ok(()), // 正常パターンと業務エラーを想定
-        CanCancelResult::AlreadyCancelled(_) => ctx.say("エラーが発生しました。").await,
-
+    match CancelFacade::can_cancel(ctx, &message).await {
+        Ok(CanCancelResult::Success) => {
+            // キャンセル可能な場合、確認付きでキャンセル処理を実行
+            CancelFacade::confirm_cancel(ctx, &message).await
+        }
+        Ok(CanCancelResult::AlreadyCancelled) => {
+            let _ = ctx.say("この募集は既にキャンセルされています。").await;
+            Ok(())
+        }
+        Ok(CanCancelResult::MessageDeleted) => {
+            let _ = ctx.say("募集メッセージが削除されています。").await;
+            Ok(())
+        }
+        Ok(CanCancelResult::NotRecruitMessage) => {
+            let _ = ctx.say("指定されたメッセージは募集メッセージではありません。").await;
+            Ok(())
+        }
+        Ok(CanCancelResult::NotFound) => {
+            let _ = ctx.say("指定された募集が見つかりません。").await;
+            Ok(())
+        }
         Err(e) => {
             // システムエラーを想定
             error!("{:?}", e);
@@ -38,63 +50,6 @@ pub async fn cancel(
             Ok(())
         }
     }
-    // キャンセル実行
-    match CancelFacade::execute_cancel(ctx, &message).await {
-        Ok()
-    }
 }
 
-async fn do_noting(
-    ctx: PoiseContext<'_>,
-    reply: ReplyHandle<'_>,
-    interaction: &ComponentInteraction,
-) -> types::Result<()> {
-    // キャンセルをキャンセルされたら確認ボタン削除
-    let reply_message = reply.into_message().await;
-    match reply_message {
-        Ok(msg) => msg.delete(ctx).await?,
-        Err(_) => error!("a"),
-    };
-    Ok(
-        match CancelFacade::send_result_response(
-            ctx,
-            interaction,
-            "キャンセルを取り消しました。".to_string(),
-        )
-        .await
-        {
-            Ok(_) => (),
-            Err(_) => (),
-        },
-    )
-}
-
-async fn cancel_execute(
-    ctx: PoiseContext<'_>,
-    message: Message,
-    http: &&Http,
-    interaction: &ComponentInteraction,
-) -> types::Result<()> {
-    let guild_id = ctx.guild_id().unwrap_or_default().get();
-    let channel_id = message.channel_id.get();
-    let message_id = message.id.get();
-
-    match CancelFacade::cancel_recruitment(ctx, guild_id, channel_id, message_id).await {
-        Ok(_) => {
-            match CancelFacade::send_result_response(
-                ctx,
-                interaction,
-                "募集がキャンセルされました。".to_string(),
-            )
-            .await
-            {
-                Ok(_) => Ok(()),
-                Err(_) => Ok(()),
-            }
-        }
-        Err(e) => match CancelFacade::send_error_response(http, &interaction, e).await {
-            Ok(_) => Ok(()),
-            Err(_) => Ok(()),
-        },
-    }
-}
+// 未使用の関数を削除（ファサードで処理されるため）

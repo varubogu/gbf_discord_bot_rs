@@ -16,44 +16,36 @@ use sea_orm::TransactionTrait;
 use std::time::Duration;
 use tracing::{error, info, instrument};
 
-#[derive(Debug)]
-pub struct RecruitmentCanCancelParameters {
-    pub guild_id: u64,
-    pub channel_id: u64,
-    pub message_id: u64,
+// 未使用の構造体を削除（必要に応じて後で追加）
+
+/// 募集をキャンセルできるか確認（公開関数）
+#[instrument]
+pub async fn can_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
+    check_can_cancel_recruitment_internal(ctx, message).await
 }
 
-#[derive(Debug)]
-pub struct RecruitmentCancelContext {
-    pub guild_id: u64,
-    pub channel_id: u64,
-    pub message_id: u64,
-    pub cancel_message_id: u64,
-    pub participants: Vec<String>,
-    pub original_content: String,
-    pub cancel_notification: String,
-}
-
-/// 募集をキャンセルできるか確認
+/// 募集キャンセルをユーザーに確認（公開関数）
 #[instrument]
 pub async fn confirm_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
-    // 募集をキャンセルできるか確認
-    can_cancel_recruitment(ctx, message)?;
-
-    // 業務エラー、システムエラーならErrとして終了
-
-    Ok(())
+    cancel_with_confirmation_internal(ctx, message).await
 }
 
-/// 募集をキャンセルできるか確認
+/// 募集をキャンセル実行（公開関数）
 #[instrument]
 pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
+    let guild_id = ctx.guild_id().unwrap_or_default().get();
+    let channel_id = message.channel_id.get();
+    let message_id = message.id.get();
+
+    // キャンセル処理を実行
+    cancel_recruitment_internal(ctx, guild_id, channel_id, message_id).await?;
+
     Ok(())
 }
 
-/// 募集をキャンセルできるか確認
+/// 募集をキャンセルできるか確認（内部関数）
 #[instrument]
-pub async fn can_cancel_recruitment(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
+async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
     info!("BattleRecruitmentFacade::cancel_recruitment - 募集をキャンセルします");
 
     let app_state = &ctx.data().app_state;
@@ -77,20 +69,20 @@ pub async fn can_cancel_recruitment(ctx: PoiseContext<'_>, message: &Message) ->
     match result {
         Ok(result) => {
             txn.commit().await?;
-            info!(message_id = %params.message_id, "募集キャンセル可能");
+            info!(message_id = %message.id, "募集キャンセル可能性チェック完了");
             Ok(result)
         }
         Err(e) => {
             txn.rollback().await?;
-            error!(error = %e, message_id = %params.message_id, "募集キャンセルエラー");
+            error!(error = %e, message_id = %message.id, "募集キャンセル可能性チェックエラー");
             Err(e)
         }
     }
 }
 
-/// 募集をキャンセルする
+/// 募集をキャンセルする（内部関数）
 #[instrument]
-pub async fn cancel_recruitment(
+async fn cancel_recruitment_internal(
     ctx: PoiseContext<'_>,
     guild_id: u64,
     channel_id: u64,
@@ -163,35 +155,42 @@ pub async fn cancel_recruitment(
     }
 }
 
-pub async fn cancel___(ctx: PoiseContext<'_>, message: Message) -> types::Result<()> {
-    let http = &ctx.http();
-
-    let guild_id = ctx.guild_id().unwrap_or_default().get();
-    let channel_id = message.channel_id.get();
-    let message_id = message.id.get();
-
+/// 募集キャンセル処理（確認付き）（内部関数）
+async fn cancel_with_confirmation_internal(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
     // キャンセル可能かチェック
-    let can_cancel_result = can_cancel_recruitment(ctx, guild_id, channel_id, message_id).await?;
+    let can_cancel_result = check_can_cancel_recruitment_internal(ctx, &message).await?;
 
     // チェック以前に終了するパターン
-    match is_exit(ctx, can_cancel_result).await {
-        Ok(_is_exit) => {
-            if _is_exit {
-                return Ok(());
-            } else {
-                // 処理続行
-            }
-        }
-        Err(e) => {
-            error!("{}", e);
-            return Ok(());
-        }
+    if let Err(e) = handle_cancel_check_result(ctx, can_cancel_result).await {
+        return Err(e);
     }
 
-    // キャンセル処理を続行するか確認するためのボタンを表示
+    // 確認ボタンを表示してユーザーの応答を待機
     let reply = confirm_interaction(ctx).await?;
+    let interaction = wait_for_user_confirmation(ctx, reply).await?;
 
-    // ボタンクリックを待機（30秒間）
+    // ユーザーの選択に応じて処理を実行
+    handle_user_choice(ctx, interaction, message).await
+}
+
+/// キャンセル可能性チェック結果の処理（内部関数）
+async fn handle_cancel_check_result(ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> types::Result<()> {
+    let (should_exit, exit_message) = is_exit(ctx, can_cancel_result).await;
+    if should_exit {
+        if !exit_message.is_empty() {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(exit_message)
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+/// ユーザーの確認応答を待機（内部関数）
+async fn wait_for_user_confirmation(ctx: PoiseContext<'_>, reply: ReplyHandle<'_>) -> types::Result<ComponentInteraction> {
     let component_interaction = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(Duration::from_secs(30))
         .filter(move |mci| {
@@ -200,9 +199,11 @@ pub async fn cancel___(ctx: PoiseContext<'_>, message: Message) -> types::Result
         })
         .await;
 
-    // インタラクションが無効になっていたらその時点で終了
-    let interaction = match component_interaction {
-        Some(interaction) => interaction,
+    match component_interaction {
+        Some(interaction) => {
+            interaction.defer(&ctx.http()).await?;
+            Ok(interaction)
+        }
         None => {
             reply
                 .edit(
@@ -212,65 +213,59 @@ pub async fn cancel___(ctx: PoiseContext<'_>, message: Message) -> types::Result
                         .components(vec![]),
                 )
                 .await?;
-            return Ok(());
-        }
-    };
-
-    // インタラクションを待機して後で応答
-    interaction.defer(http).await?;
-
-    // キャンセル処理続行確認のボタンを押した
-    match interaction.data.custom_id.as_str() {
-        "confirm_cancel" => {
-            let guild_id = ctx.guild_id().unwrap_or_default().get();
-            let channel_id = message.channel_id.get();
-            let message_id = message.id.get();
-
-            match cancel_recruitment(ctx, guild_id, channel_id, message_id).await {
-                Ok(_) => {
-                    match send_result_response(
-                        ctx,
-                        interaction,
-                        "募集がキャンセルされました。".to_string(),
-                    )
-                    .await
-                    {
-                        Ok(_) => Ok(()),
-                        Err(_) => Ok(()),
-                    }
-                }
-                Err(e) => match send_error_response(http, &interaction, e).await {
-                    Ok(_) => Ok(()),
-                    Err(_) => Ok(()),
-                },
-            }
-        }
-        "deny_cancel" => {
-            // キャンセルをキャンセルされたら確認ボタン削除
-            let reply_message = reply.into_message().await;
-            match reply_message {
-                Ok(msg) => msg.delete(ctx).await?,
-                Err(_) => error!("a"),
-            };
-            match send_result_response(ctx, interaction, "キャンセルを取り消しました。".to_string())
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(_) => Ok(()),
-            }
-        }
-        _ => {
-            match send_result_response(ctx, interaction, "エラーが発生しました。".to_string()).await
-            {
-                Ok(_) => Ok(()),
-                Err(_) => Ok(()),
-            }
+            Err(AppError::Business {
+                message: "User confirmation timeout".to_string(),
+            })
         }
     }
 }
 
-/// 事前処理で終了するか判定
-pub async fn is_exit(ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> (bool, String) {
+/// ユーザーの選択に応じた処理実行（内部関数）
+async fn handle_user_choice(
+    ctx: PoiseContext<'_>,
+    interaction: ComponentInteraction,
+    message: &Message,
+) -> types::Result<()> {
+    match interaction.data.custom_id.as_str() {
+        "confirm_cancel" => handle_confirm_cancel(ctx, interaction, message).await,
+        "deny_cancel" => handle_deny_cancel(ctx, interaction).await,
+        _ => handle_unknown_choice(ctx, interaction).await,
+    }
+}
+
+/// キャンセル確認時の処理（内部関数）
+async fn handle_confirm_cancel(
+    ctx: PoiseContext<'_>,
+    interaction: ComponentInteraction,
+    message: &Message,
+) -> types::Result<()> {
+    let guild_id = ctx.guild_id().unwrap_or_default().get();
+    let channel_id = message.channel_id.get();
+    let message_id = message.id.get();
+
+    match cancel_recruitment_internal(ctx, guild_id, channel_id, message_id).await {
+        Ok(_) => {
+            send_result_response(ctx, &interaction, "募集がキャンセルされました。".to_string()).await
+        }
+        Err(e) => {
+            send_error_response(&ctx.http(), &interaction, e).await?;
+            Ok(())
+        }
+    }
+}
+
+/// キャンセル拒否時の処理（内部関数）
+async fn handle_deny_cancel(ctx: PoiseContext<'_>, interaction: ComponentInteraction) -> types::Result<()> {
+    send_result_response(ctx, &interaction, "キャンセルを取り消しました。".to_string()).await
+}
+
+/// 不明な選択時の処理（内部関数）
+async fn handle_unknown_choice(ctx: PoiseContext<'_>, interaction: ComponentInteraction) -> types::Result<()> {
+    send_result_response(ctx, &interaction, "エラーが発生しました。".to_string()).await
+}
+
+/// 事前処理で終了するか判定（内部関数）
+async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> (bool, String) {
     match can_cancel_result {
         CanCancelResult::Success => (false, "".to_string()),
         CanCancelResult::AlreadyCancelled => {
@@ -285,18 +280,10 @@ pub async fn is_exit(ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) 
     }
 }
 
-async fn send_cancel_response(ctx: PoiseContext<'_>, content: String) -> types::Result<()> {
-    ctx.send(
-        poise::CreateReply::default()
-            .content("指定された募集が見つかりません。")
-            .ephemeral(true),
-    )
-    .await?;
-    Ok(())
-}
+// 未使用の関数を削除
 
-/// 確認メッセージ表示
-pub async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle> {
+/// 確認メッセージ表示（内部関数）
+async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle> {
     // 確認メッセージとボタンを作成
     let confirm_button = CreateButton::new("confirm_cancel")
         .label("はい")
@@ -321,8 +308,8 @@ pub async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHa
     Ok(reply)
 }
 
-/// コマンドのエラーレスポンス送信
-pub async fn send_error_response(
+/// コマンドのエラーレスポンス送信（内部関数）
+async fn send_error_response(
     http: &&Http,
     interaction: &ComponentInteraction,
     e: AppError,
@@ -341,8 +328,8 @@ pub async fn send_error_response(
     Ok(())
 }
 
-/// コマンドのレスポンスを返す送信
-pub async fn send_result_response(
+/// コマンドのレスポンスを返す送信（内部関数）
+async fn send_result_response(
     ctx: PoiseContext<'_>,
     interaction: &ComponentInteraction,
     content: String,
