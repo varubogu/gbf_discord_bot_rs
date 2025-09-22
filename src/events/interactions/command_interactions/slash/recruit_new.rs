@@ -18,7 +18,7 @@ pub async fn recruit(
 
     #[description = "Quest departure date and time"]
     #[description_localized("ja", "クエスト出発日時")]
-    event_date: String,
+    _event_date: String,
     // Temporarily removing BattleType parameter until traits are implemented
     // #[description = "Quest Combat Style"]
     // #[description_localized("ja", "クエストの戦闘スタイル")]
@@ -30,6 +30,7 @@ pub async fn recruit(
     recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
 }
 
+#[allow(dead_code)]
 async fn quest_auto_complete<'a>(
     _ctx: PoiseContext<'_>,
     partial: &'a str,
