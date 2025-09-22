@@ -1,11 +1,12 @@
 use crate::events::handlers;
 use crate::types::{AppError, PoiseData, Result};
 
+#[allow(dead_code)]
 pub async fn event_handler(
     ctx: &poise::serenity_prelude::Context,
     event: &poise::serenity_prelude::FullEvent,
     _framework: poise::FrameworkContext<'_, PoiseData, AppError>,
-    data: &PoiseData,
+    _data: &PoiseData,
 ) -> Result<()> {
     match event {
         poise::serenity_prelude::FullEvent::Ready { data_about_bot } => {

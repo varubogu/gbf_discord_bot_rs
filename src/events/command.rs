@@ -1,5 +1,6 @@
 use crate::types::{AppError, PoiseData};
 
+#[allow(dead_code)]
 pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
     use crate::events::interactions::command_interactions::slash;
     vec![
