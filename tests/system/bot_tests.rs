@@ -1,4 +1,4 @@
-use gbf_discord_bot_rs::services::database::connection::is_database_available;
+use gbf_discord_bot_rs::infrastructure::database::connection::connection_manager::is_database_available;
 use std::env;
 use tokio::test;
 

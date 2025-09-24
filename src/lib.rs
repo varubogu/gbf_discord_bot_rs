@@ -1,12 +1,12 @@
 pub mod constants;
 mod events;
 mod facades;
-mod infrastructure;
+pub mod infrastructure;
 mod models;
 mod repository;
 pub mod services;
 mod types;
-mod utils;
+pub mod utils;
 
 // Library interface for gbf_discord_bot_rs
 // This exposes modules for use by examples and external code
