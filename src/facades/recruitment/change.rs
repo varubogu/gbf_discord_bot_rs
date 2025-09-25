@@ -5,7 +5,7 @@ use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
 /// 募集内容を更新する（クロージャパターン）
-#[instrument]
+#[instrument(level = "debug", skip(ctx))]
 pub async fn change_recruitment_information(
     ctx: &PoiseContext<'_>,
     recruit: &String,

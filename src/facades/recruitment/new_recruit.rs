@@ -7,7 +7,7 @@ use sea_orm::TransactionTrait;
 use tracing::{info, instrument};
 
 /// 新しい募集を開始する
-#[instrument]
+#[instrument(level = "debug", skip(ctx))]
 pub async fn new_recruitment(
     ctx: &PoiseContext<'_>,
     quest_alias: &str,

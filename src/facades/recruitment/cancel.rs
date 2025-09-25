@@ -19,19 +19,43 @@ use tracing::{error, info, instrument};
 // 未使用の構造体を削除（必要に応じて後で追加）
 
 /// 募集をキャンセルできるか確認（公開関数）
-#[instrument]
+#[instrument(
+    level = "debug", 
+    skip(ctx, message),
+    fields(
+        guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
+        channel_id = %message.channel_id.get(),
+        message_id = %message.id.get()
+    )
+)]
 pub async fn can_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
     check_can_cancel_recruitment_internal(ctx, message).await
 }
 
 /// 募集キャンセルをユーザーに確認（公開関数）
-#[instrument]
+#[instrument(
+    level = "debug", 
+    skip(ctx, message),
+    fields(
+        guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
+        channel_id = %message.channel_id.get(),
+        message_id = %message.id.get()
+    )
+)]
 pub async fn confirm_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
     cancel_with_confirmation_internal(ctx, message).await
 }
 
 /// 募集をキャンセル実行（公開関数）
-#[instrument]
+#[instrument(
+    level = "debug", 
+    skip(ctx, message),
+    fields(
+        guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
+        channel_id = %message.channel_id.get(),
+        message_id = %message.id.get()
+    )
+)]
 pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
     let guild_id = ctx.guild_id().unwrap_or_default().get();
     let channel_id = message.channel_id.get();
@@ -44,7 +68,15 @@ pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::
 }
 
 /// 募集をキャンセルできるか確認（内部関数）
-#[instrument]
+#[instrument(
+    level = "debug", 
+    skip(ctx, message),
+    fields(
+        guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
+        channel_id = %message.channel_id.get(),
+        message_id = %message.id.get()
+    )
+)]
 async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
     info!("BattleRecruitmentFacade::cancel_recruitment - 募集をキャンセルします");
 
@@ -81,7 +113,6 @@ async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &
 }
 
 /// 募集をキャンセルする（内部関数）
-#[instrument]
 async fn cancel_recruitment_internal(
     ctx: PoiseContext<'_>,
     guild_id: u64,

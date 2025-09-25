@@ -5,7 +5,7 @@ use std::pin::Pin;
 use tracing::{error, info, instrument};
 
 /// 参加者を更新する（クロージャパターン）
-#[instrument]
+#[instrument(level = "debug", skip(ctx))]
 pub async fn update_participants<F>(
     ctx: PoiseContext<'_>,
     guild_id: u64,

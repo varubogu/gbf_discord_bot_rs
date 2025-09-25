@@ -5,7 +5,7 @@ use std::pin::Pin;
 use tracing::{error, info, instrument};
 
 /// 募集を開始する（クロージャパターン）
-#[instrument]
+#[instrument(level = "debug", skip(ctx))]
 pub async fn start_recruitment<F>(
     ctx: PoiseContext<'_>,
     guild_id: u64,
