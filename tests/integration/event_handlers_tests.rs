@@ -1,4 +1,4 @@
-use gbf_discord_bot_rs::infrastructure::database::connection::connection_manager::is_database_available;
+use gbf_discord_bot_rs::test_utils;
 use tokio::test;
 
 // This test file contains integration tests for event handlers
@@ -8,7 +8,7 @@ use tokio::test;
 #[test]
 async fn test_database_environment_variables() {
     // Skip this test if no database connection info is available
-    let (available, missing) = is_database_available();
+    let (available, missing) = test_utils::check_database_availability();
     if !available {
         println!(
             "Skipping event handler test: database connection info not set - missing: {:?}",

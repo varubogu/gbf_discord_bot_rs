@@ -1,10 +1,10 @@
 use chrono::{Datelike, Local, Timelike};
-use gbf_discord_bot_rs::utils::date_parser;
+use gbf_discord_bot_rs::test_utils;
 
 #[tokio::test]
 async fn test_date_parser_integration() {
     // Test that the default expiry date is correctly set to today at 21:00
-    let default_date = date_parser::default_expiry_date().await;
+    let default_date = test_utils::get_default_expiry_date().await;
     let now = Local::now();
 
     // Check that the date is today
@@ -18,7 +18,7 @@ async fn test_date_parser_integration() {
     assert_eq!(default_date.second(), 0);
 
     // Test parsing a date string
-    let parsed_date = date_parser::parse_event_date("12/25 15:30").await.unwrap();
+    let parsed_date = test_utils::parse_event_date("12/25 15:30").await.unwrap();
 
     // Check that the parsed date is correct
     assert_eq!(parsed_date.year(), now.year());

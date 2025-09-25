@@ -49,8 +49,19 @@ async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConn
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+    // Initialize logging with proper configuration
+    // RUST_LOG環境変数でログレベルを制御可能
+    let log_level = env::var("RUST_LOG")
+        .unwrap_or_else(|_| "info".to_string())
+        .parse::<tracing::Level>()
+        .unwrap_or(tracing::Level::INFO);
+    
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .with_target(false)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .init();
     info!("Starting Granblue Fantasy Discord Bot...");
 
     // Load environment variables

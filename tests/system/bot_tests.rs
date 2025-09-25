@@ -1,4 +1,4 @@
-use gbf_discord_bot_rs::infrastructure::database::connection::connection_manager::is_database_available;
+use gbf_discord_bot_rs::test_utils;
 use std::env;
 use tokio::test;
 
@@ -15,7 +15,7 @@ async fn test_database_environment_variables() {
         return;
     }
 
-    let (available, missing) = is_database_available();
+    let (available, missing) = test_utils::check_database_availability();
     if !available {
         println!("Skipping database test: missing variables: {:?}", missing);
         return;
