@@ -14,7 +14,7 @@ use poise::serenity_prelude::{
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
-use tracing::{error, info, instrument};
+use tracing::{error, info, instrument, warn};
 
 // 未使用の構造体を削除（必要に応じて後で追加）
 
@@ -57,7 +57,16 @@ pub async fn confirm_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::
     )
 )]
 pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
-    let guild_id = ctx.guild_id().unwrap_or_default().get();
+    // guild_idを取得（message.guild_idがNoneの場合、ctx.guild_id()から取得）
+    let guild_id = if let Some(guild_id) = ctx.guild_id() {
+        guild_id.get()
+    } else {
+        warn!("guild_idを取得できませんでした");
+        return Err(AppError::Business {
+            message: "ギルド情報を取得できませんでした".to_string(),
+        });
+    };
+    
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();
 
@@ -91,7 +100,7 @@ async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &
 
         // DBの募集情報とDiscordメッセージの状況をチェック
         let can_cancel_result =
-            check_can_cancel_recruitment(ctx.serenity_context(), message, battle_recruitment_repo)
+            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo)
                 .await?;
 
         Ok::<CanCancelResult, crate::types::AppError>(can_cancel_result)
@@ -270,7 +279,15 @@ async fn handle_confirm_cancel(
     interaction: ComponentInteraction,
     message: &Message,
 ) -> types::Result<()> {
-    let guild_id = ctx.guild_id().unwrap_or_default().get();
+    let guild_id = if let Some(guild_id) = ctx.guild_id() {
+        guild_id.get()
+    } else {
+        warn!("guild_idを取得できませんでした");
+        return Err(AppError::Business {
+            message: "ギルド情報を取得できませんでした".to_string(),
+        });
+    };
+    
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();
 

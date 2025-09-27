@@ -10,11 +10,18 @@ use crate::types::{AppError, PoiseContext, Result};
 
 /// キャンセル可能性をチェックし、結果を返す
 pub async fn check_can_cancel_recruitment(
-    ctx: &Context,
+    ctx: PoiseContext<'_>,
     message: &Message,
     battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
 ) -> Result<CanCancelResult> {
-    let guild_id = message.guild_id.unwrap_or_default();
+    let guild_id = if let Some(guild_id) = ctx.guild_id() {
+        guild_id.get()
+    } else {
+        warn!("guild_idを取得できませんでした");
+        return Err(AppError::Business {
+            message: "ギルド情報を取得できませんでした".to_string(),
+        });
+    };
     let channel_id = message.channel_id;
     let message_id = message.id;
 
@@ -56,13 +63,13 @@ pub async fn check_can_cancel_recruitment(
 
 /// Discordからメッセージを取得
 pub async fn get_discord_message(
-    ctx: &Context,
+    ctx: PoiseContext<'_>,
     channel_id: u64,
     message_id: u64,
 ) -> Result<Message> {
     let channel = ChannelId::from(channel_id);
     let message = channel
-        .message(&ctx.http, MessageId::from(message_id))
+        .message(&ctx.http(), MessageId::from(message_id))
         .await?;
     Ok(message)
 }
