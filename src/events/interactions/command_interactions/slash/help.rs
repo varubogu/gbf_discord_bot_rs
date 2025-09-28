@@ -27,6 +27,20 @@ pub async fn help(ctx: PoiseContext<'_>) -> Result<()> {
             false,
         )
         .field(
+            "/gspread_load",
+            "Load data from server-specific Google Spreadsheet.\n\
+            Usage: `/gspread_load`\n\
+            Note: Requires the 'gbf_bot_control' role.",
+            false,
+        )
+        .field(
+            "/gspread_push",
+            "Push data from database to server-specific Google Spreadsheet.\n\
+            Usage: `/gspread_push`\n\
+            Note: Requires the 'gbf_bot_control' role.",
+            false,
+        )
+        .field(
             "/help",
             "Show this help message.\n\
             Usage: `/help`",

@@ -1,6 +1,7 @@
 use crate::constants::ROLL_GBF_BOT_CONTROLS;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::all::Member;
+use std::env;
 
 /// Checks if a member has the specified role name
 pub async fn has_role(
@@ -34,4 +35,23 @@ pub async fn has_bot_control_permission(
     member: &Member,
 ) -> Result<(), String> {
     has_role(ctx, member, ROLL_GBF_BOT_CONTROLS).await
+}
+
+/// Checks if the current guild is the bot administrator server
+pub async fn is_bot_admin_server(
+    ctx: &PoiseContext<'_>,
+) -> Result<bool, String> {
+    let guild_id = ctx.guild_id()
+        .ok_or("Guild ID not found")?
+        .to_string();
+    
+    // 環境変数から管理者専用サーバーのIDを取得
+    let admin_server_id = env::var("BOT_ADMIN_SERVER_ID")
+        .unwrap_or_else(|_| String::new());
+    
+    if admin_server_id.is_empty() {
+        return Ok(false);
+    }
+    
+    Ok(guild_id == admin_server_id)
 }
