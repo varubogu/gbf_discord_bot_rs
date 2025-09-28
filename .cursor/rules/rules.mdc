@@ -1,0 +1,319 @@
+---
+description: GBF Discord Bot Rust プロジェクトの開発ルール
+globs:
+alwaysApply: true
+---
+
+# GBF Discord Bot Rust プロジェクトルール
+
+このプロジェクトは、`docs/develop/rules` に定義されたルールに準拠して開発を行います。
+
+## 基本方針
+
+- **日本語でのコミュニケーション**: すべてのコメント、ドキュメント、エラーメッセージは日本語で記述
+- **クリーンアーキテクチャの遵守**: 層別責務の明確化と依存関係の制御
+- **Rustらしいコーディング**: Rustのイディオムとベストプラクティスに従う
+- **品質重視**: テスト、ドキュメント、セキュリティを重視した開発
+
+## アーキテクチャルール
+
+### 層別責務の遵守
+
+```
+プレゼンテーション層（event,commandなど）>アプリケーション層（facade,service）>データアクセス層（repository）
+```
+
+#### プレゼンテーション層
+- Facade層を呼び出す（1対1の関係）
+- Discord API操作の実装
+- クロージャパターンの実装
+- **禁止**: Service層・Repository層への直接アクセス
+
+#### Facade層
+- Service層の協調
+- トランザクション境界管理
+- **許可**: PoiseContext・Discord API操作
+
+#### Service層
+- 単一業務処理実行
+- ドメインルール実装
+- Repository層呼び出し
+- **禁止**: 他Service層への直接依存
+
+#### Repository層
+- データ永続化・取得の抽象化
+- エンティティ変換
+- トランザクション引数受け取り
+- **禁止**: ビジネスロジック実装
+
+### トランザクション管理
+
+- **Facade層でのみ**: トランザクション生成（begin）とコミット・ロールバック
+- **Service層**: トランザクションを引数として受け取り、Repository層に渡す
+- **Repository層**: 受け取ったトランザクションでDB操作を実行
+
+## コーディングスタイル
+
+### 命名規則
+
+```rust
+// 構造体・列挙型・型エイリアス: PascalCase
+pub struct BattleRecruitmentFacade;
+pub enum ValidationError;
+
+// 関数・メソッド・変数: snake_case
+pub fn start_recruitment() {}
+let user_id = 123;
+
+// 定数: SCREAMING_SNAKE_CASE
+pub const DEFAULT_MAX_PARTICIPANTS: u32 = 4;
+```
+
+### エラーハンドリング
+
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ValidationError {
+    #[error("必須フィールドが未入力です: {field}")]
+    RequiredFieldMissing { field: String },
+}
+```
+
+### ログ出力
+
+```rust
+use tracing::{error, warn, info, debug};
+
+// ERROR: システムエラー、予期しない例外
+error!(error = %e, user_id = %user_id, "ユーザー作成に失敗しました");
+
+// WARN: 業務例外、リトライ可能なエラー
+warn!(recruitment_id = %id, "募集が満員のため参加を拒否しました");
+
+// INFO: 重要な業務処理の開始・終了
+info!(quest_name = %quest_name, "募集作成を開始しました");
+```
+
+## データベースルール
+
+### トランザクション管理
+
+```rust
+// Facade層でのトランザクション管理
+let txn = app_state.db().begin().await?;
+
+let result = async {
+    // 処理実行
+    Ok(())
+}.await;
+
+match result {
+    Ok(_) => {
+        txn.commit().await?;
+        info!("処理完了");
+        Ok(())
+    }
+    Err(e) => {
+        txn.rollback().await?;
+        error!(error = %e, "エラーが発生しました");
+        Err(e)
+    }
+}
+```
+
+### 禁止事項
+
+- トランザクション外でのDB操作
+- Service層・Repository層でのトランザクション生成・コミット・ロールバック
+- 長時間保持するトランザクション
+
+## 依存性注入ルール
+
+### コンストラクタインジェクション
+
+```rust
+// ✅ 正しい実装
+impl BattleRecruitmentFacade {
+    pub fn new(
+        tx_manager: Arc<TransactionManager>,
+        service: Arc<dyn NewRecruitmentService>,
+    ) -> Self {
+        Self { tx_manager, service }
+    }
+}
+
+// ❌ 間違った実装
+impl BattleRecruitmentFacade {
+    pub fn new() -> Self {
+        let service = NewRecruitmentService::new(); // 禁止
+        Self { service }
+    }
+}
+```
+
+### DB接続管理
+
+- main関数でのDB接続初期化
+- 依存性注入による配布
+- シングルトン的DB接続（グローバル変数ではなく）
+
+## セキュリティルール
+
+### 入力検証
+
+```rust
+// プレゼンテーション層での必須入力検証
+pub fn validate_quest_alias(alias: &str) -> Result<String, ValidationError> {
+    if alias.is_empty() {
+        return Err(ValidationError::RequiredFieldMissing {
+            field: "quest_alias".to_string()
+        });
+    }
+    // その他の検証...
+    Ok(alias.to_lowercase())
+}
+```
+
+### SQLインジェクション対策
+
+```rust
+// ✅ 推奨: ORMを使用した安全なクエリ
+let recruitments = battle_recruitment::Entity::find()
+    .filter(battle_recruitment::Column::QuestName.eq(quest_name))
+    .all(tx)
+    .await?;
+```
+
+### 権限チェック
+
+```rust
+// Discord権限の確認
+pub fn check_admin_permissions(ctx: &PoiseContext) -> Result<(), PermissionError> {
+    let member = ctx.author_member().ok_or(PermissionError::MemberInfoRequired)?;
+    
+    if !member.permissions(ctx.cache())?.contains(Permissions::ADMINISTRATOR) {
+        return Err(PermissionError::AdminRequired);
+    }
+    Ok(())
+}
+```
+
+## テストルール
+
+### 単体テスト
+
+```rust
+#[tokio::test]
+async fn test_create_recruitment_success() {
+    // Arrange
+    let mut mock_repo = MockTestBattleRecruitmentRepository::new();
+    let service = NewRecruitmentService::new(Arc::new(mock_repo));
+    
+    // Act
+    let result = service.create_recruitment(&create_data, &mock_tx).await;
+    
+    // Assert
+    assert!(result.is_ok());
+}
+```
+
+### 統合テスト
+
+```rust
+#[tokio::test]
+async fn test_create_recruitment_end_to_end() {
+    let ctx = IntegrationTestContext::new().await;
+    let result = ctx.facade.create_new_recruitment(create_data).await;
+    assert!(result.is_ok());
+    ctx.cleanup().await;
+}
+```
+
+## パフォーマンスルール
+
+### メモリ効率
+
+```rust
+// ✅ 推奨: 借用の活用
+pub fn format_message(&self, recruitment: &Recruitment) -> String {
+    format!("募集: {}", recruitment.quest_name())
+}
+
+// ❌ 避けるべき: 不要なclone
+pub fn bad_format(&self, recruitment: Recruitment) -> String {
+    let cloned = recruitment.clone(); // 避けるべき
+    format!("募集: {}", cloned.quest_name())
+}
+```
+
+### 非同期最適化
+
+```rust
+// 並行処理による最適化
+let notification_futures: Vec<_> = participants.iter()
+    .map(|participant| self.send_notification(participant))
+    .collect();
+
+futures::future::try_join_all(notification_futures).await?;
+```
+
+## ワークフロールール
+
+### 追加時の手順
+
+1. **設計・計画**: 要件定義、アーキテクチャ設計
+2. **実装**: コード実装、単体テスト、統合テスト
+3. **ドキュメント更新**: API仕様書、ユーザードキュメント
+4. **検証・デプロイ**: コードレビュー、システムテスト
+
+### 修正時の手順
+
+1. **問題分析**: 根本原因分析、影響範囲調査
+2. **修正実装**: コード修正、テスト更新
+3. **ドキュメント更新**: 変更内容反映、CHANGELOG更新
+4. **検証**: 動作確認、既存機能への影響確認
+
+### 削除時の手順
+
+1. **削除準備**: 削除対象特定、依存関係調査
+2. **段階的削除**: 非推奨マーキング、代替手段提供
+3. **実削除**: コード削除、関連テスト削除
+4. **後処理**: ドキュメント削除、クリーンアップ
+
+## 禁止事項
+
+### 全般的禁止事項
+
+- グローバル変数の使用
+- `unwrap()`の本番コードでの使用
+- `panic!()`の使用（回復不可能な状況を除く）
+- 長すぎる関数（100行超）
+- 深すぎるネスト（5レベル超）
+
+### プロジェクト固有禁止事項
+
+- 各層での個別DB接続作成
+- Service層・Repository層でのトランザクション管理
+- エラーメッセージの英語記述
+- 機密情報のログ出力
+
+## 品質保証
+
+### 必須チェック項目
+
+- [ ] Clippy警告の解消
+- [ ] フォーマッターの適用
+- [ ] テストカバレッジの確認
+- [ ] セキュリティチェック
+- [ ] パフォーマンステスト
+
+### コードレビュー
+
+- アーキテクチャルールの遵守確認
+- セキュリティ要件の確認
+- テスト品質の確認
+- ドキュメント更新の確認
+
+このルールは、プロジェクトの品質と保守性を向上させるための指針です。開発チーム全体で遵守し、コードレビュー時に積極的にチェックすることで、保守しやすく品質の高いコードベースを維持します。
