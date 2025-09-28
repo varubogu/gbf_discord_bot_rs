@@ -11,6 +11,7 @@ Discordサーバー内でマルチバトルの参加者を募集する機能で�
 - クエスト別名によるオートコンプリート機能
 - バトル種類の選択（DEFAULT, ALL_ELEMENT, SYSTEM, RELIC_BUSTER, SUPER_ULTIMATE_BAHAMUT）
 - クエスト開始日時の設定（サーバーごとのデフォルト日時）
+- バトル種類に応じたリアクション自動付与
 - リアクションによる参加者管理
 - 募集メッセージの自動更新
 
@@ -97,6 +98,36 @@ pub enum BattleType {
     System,
     RelicBuster,
     SuperUltimateBahamut,
+}
+
+impl BattleType {
+    /// バトル種類に応じたリアクションを取得
+    pub fn get_reactions(&self) -> Vec<ReactionType> {
+        match self {
+            BattleType::Default => vec![ReactionType::Unicode("✋️".to_string())],
+            BattleType::AllElement => vec![
+                ReactionType::Unicode("🔴".to_string()), // 火
+                ReactionType::Unicode("🔵".to_string()), // 水
+                ReactionType::Unicode("🟤".to_string()), // 土
+                ReactionType::Unicode("🟢".to_string()), // 風
+                ReactionType::Unicode("🟡".to_string()), // 光
+                ReactionType::Unicode("🟣".to_string()), // 闇
+                ReactionType::Unicode("⚪️".to_string()), // 全属性対応
+            ],
+            BattleType::System => vec![ReactionType::Unicode("✋️".to_string())],
+            BattleType::RelicBuster => vec![ReactionType::Unicode("✋️".to_string())],
+            BattleType::SuperUltimateBahamut => vec![
+                ReactionType::Unicode("🔴".to_string()), // 火
+                ReactionType::Unicode("🔵".to_string()), // 水
+                ReactionType::Unicode("🟤".to_string()), // 土
+                ReactionType::Unicode("🟢".to_string()), // 風
+                ReactionType::Unicode("🟡".to_string()), // 光
+                ReactionType::Unicode("🟣".to_string()), // 闇
+                ReactionType::Unicode("⚪️".to_string()), // 全属性対応
+                ReactionType::Unicode("🔟".to_string()), // 10%担当
+            ],
+        }
+    }
 }
 ```
 
@@ -224,13 +255,36 @@ pub async fn handle_reaction_add(
     // 募集情報取得
     let recruitment = get_recruitment_by_message(reaction.message_id).await?;
     
-    // 参加者情報更新
-    let participants = get_participants_from_reactions(&recruitment).await?;
+    // 参加者情報更新（全てのリアクションを対象）
+    let participants = get_participants_from_all_reactions(&recruitment).await?;
     
     // メッセージ更新
     update_recruitment_message(ctx, &recruitment, &participants).await?;
     
     Ok(())
+}
+
+/// 全てのリアクションから参加者を取得
+pub async fn get_participants_from_all_reactions(
+    recruitment: &BattleRecruitments,
+) -> types::Result<Vec<Participant>> {
+    let message = get_message(recruitment.message_id).await?;
+    let mut participants = Vec::new();
+    
+    // 全てのリアクションを取得
+    for reaction in &message.reactions {
+        for user in &reaction.users {
+            if user.id != BOT_USER_ID {
+                participants.push(Participant {
+                    user_id: user.id,
+                    reaction_emoji: reaction.emoji.to_string(),
+                    added_at: chrono::Utc::now(),
+                });
+            }
+        }
+    }
+    
+    Ok(participants)
 }
 ```
 
@@ -250,6 +304,7 @@ pub async fn handle_reaction_add(
 3. **DiscordError**: Discord API操作エラー
    - 権限不足
    - チャンネルアクセスエラー
+   - リアクション取得エラー
 
 ### エラーレスポンス
 
@@ -263,6 +318,9 @@ match error {
     }
     DatabaseError::ConnectionFailed => {
         ctx.say("データベース接続エラーが発生しました").await?;
+    }
+    DiscordError::ReactionFetchFailed => {
+        ctx.say("リアクション情報の取得に失敗しました").await?;
     }
     _ => {
         ctx.say("不明なエラーが発生しました").await?;
@@ -347,9 +405,14 @@ error!(error = %e, "募集作成に失敗しました");
 - 統計情報の提供
 - サーバーごとのデフォルト開始日時設定
 - バトル種類のカスタマイズ機能
+- カスタムリアクションの設定
+- リアクション別参加者統計
+- 参加者一覧の詳細表示
 
 ### 技術的拡張
 - マイクロサービス化
 - イベント駆動アーキテクチャ
 - リアルタイム通知機能
 - スーパーアルティメットバハムート専用の最適化
+- リアクション処理の最適化
+- 参加者一覧表示の最適化
