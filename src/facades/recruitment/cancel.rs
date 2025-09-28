@@ -8,9 +8,7 @@ use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow,
-    CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, Http, Message,
-    MessageId,
+    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow, CreateButton, EditInteractionResponse, Http, Message, MessageId
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -362,15 +360,13 @@ async fn send_error_response(
     interaction: &ComponentInteraction,
     e: AppError,
 ) -> Result<(), AppError> {
-    // エラーが発生した場合は、ボタンは残したままエラーメッセージを表示
+    // defer()済みのインタラクションにはedit_responseを使用
     interaction
-        .create_response(
+        .edit_response(
             http,
-            CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new()
-                    .content(format!("キャンセル処理中にエラーが発生しました: {}", e))
-                    .ephemeral(true),
-            ),
+            EditInteractionResponse::new()
+                .content(format!("キャンセル処理中にエラーが発生しました: {}", e))
+                .components(vec![]),
         )
         .await?;
     Ok(())
@@ -382,14 +378,13 @@ async fn send_result_response(
     interaction: &ComponentInteraction,
     content: String,
 ) -> types::Result<()> {
+    // defer()済みのインタラクションにはedit_responseを使用
     interaction
-        .create_response(
+        .edit_response(
             &ctx.serenity_context().http,
-            CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::new()
-                    .content(content)
-                    .components(vec![]),
-            ),
+            EditInteractionResponse::new()
+                .content(content)
+                .components(vec![]),
         )
         .await?;
     Ok(())
