@@ -211,7 +211,7 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 #### 主な責務
 
 - service層の総括
-- service層を呼び出す
+- service層を呼び出す（静的ディスパッチによる関数切り替えによりテストも対応する）
 - service層を呼び出すためのパラメータを作成（service側が特定の構造体などを求めている場合のみ）
 - DBトランザクションを利用する場合、この階層でやる必要があるため、抽象化されたトランザクションの使用は許可される
 - 上記以外の層については触れてはいけない
@@ -239,37 +239,42 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 **実装パターン**:
 
 ```rust
-impl BattleRecruitmentFacade {
-  pub async fn create_new_recruitment(
-    &self, 
-    ctx: &PoiseContext, 
-    quest_alias: &str, 
-    battle_type: BattleType
-  ) -> Result<RecruitmentResult, PoiseError> {
-    self.tx_manager.execute_in_transaction(|tx_ctx| {
-      Box::pin(async move {
-        // 1. クエスト情報の取得
-        let quest_info = self.quest_service.get_quest_info(quest_alias).await?;
-
-        // 2. 募集の作成
-        let recruitment = self.recruitment_service.create_recruitment(&quest_info, battle_type, tx_ctx).await?;
-
-        // 3. Discord APIを直接使用してメッセージ送信
-        let message = ctx.channel_id()
-          .send_message(&ctx.http(), |m| {
-            m.content(format!("募集を開始しました: {}", recruitment.quest_name))
-             .embed(|e| {
-               e.title("バトル募集")
-                .description(&recruitment.description)
-                .color(0x00ff00)
-             })
-          }).await?;
-
-        // 4. 結果の返却
-        Ok(RecruitmentResult { recruitment_id: recruitment.id, message_id: message.id })
-      })
-    }).await
-  }
+// Facade層は関数ベースで実装
+pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
+    // 1. 権限チェック
+    let is_admin_server = is_bot_admin_server(ctx).await?;
+    if !is_admin_server {
+        ctx.say("このコマンドは管理者専用サーバーでのみ実行可能です").await?;
+        return Ok(());
+    }
+    
+    // 2. トランザクション管理
+    let app_state = &ctx.data().app_state;
+    let txn = app_state.db().begin().await?;
+    
+    let result = async {
+        // 3. Service層の協調（静的ディスパッチ）
+        let loader_service = GlobalLoaderServiceImpl::new();
+        loader_service.open_spreadsheet().await?;
+        let data = loader_service.load_global_table_data().await?;
+        let converted_data = loader_service.convert_global_data(data).await?;
+        loader_service.save_global_data(converted_data).await?;
+        Ok(())
+    }.await;
+    
+    // 4. トランザクション完了
+    match result {
+        Ok(_) => {
+            txn.commit().await?;
+            ctx.say("処理完了").await?;
+            Ok(())
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            ctx.say("処理失敗").await?;
+            Err(e)
+        }
+    }
 }
 ```
 

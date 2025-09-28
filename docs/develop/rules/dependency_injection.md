@@ -2,35 +2,41 @@
 
 ## 基本方針
 
-- **コンストラクタインジェクション**: すべての依存関係はコンストラクタで受け取る
-- **抽象化の活用**: traitによる抽象化を用いた依存関係の定義を推奨
+- **静的ディスパッチ**: パフォーマンス最優先で静的ディスパッチを使用
+- **関数切り替え**: テストのために処理の差し替え可能な関数切り替えを実装
 - **シングルトン的DB接続**: DB接続プールは実質的にシングルトンとして機能するが、グローバル変数ではなく依存性注入によって管理
 
 ## 具体的実装指針
 
-### コンストラクタインジェクションの詳細ルール
+### 静的ディスパッチによる関数切り替え
 
-- **必須**: すべての依存関係はコンストラクタ（`new`メソッド）で受け取る
-- **禁止**: `new()`メソッド内での他のオブジェクトの`new()`呼び出し
-- **推奨**: traitによる抽象化を用いた依存関係の定義
+- **必須**: パフォーマンス最優先で静的ディスパッチを使用
+- **関数切り替え**: テスト用の処理差し替えを関数レベルで実装
+- **禁止**: 動的ディスパッチ（`Arc<dyn Trait>`）の使用
 
 **実装例**:
 
 ```rust
-// ✅ 正しい実装
-impl TransactionManager {
-    pub fn new(db_service: Arc<dyn DatabaseService>, repos: RepositoryContainer) -> Self {
-        Self { db_service, repos }
-    }
+// ✅ 正しい実装: 静的ディスパッチ
+pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
+    // 直接インスタンス化（静的ディスパッチ）
+    let loader_service = GlobalLoaderServiceImpl::new();
+    loader_service.open_spreadsheet().await?;
+    // ...
 }
 
-// ❌ 間違った実装
-impl TransactionManager {
-    pub async fn new() -> Result<Self, PoiseError> {
-        let db_manager = DatabaseConnectionManager::new().await?; // 禁止
-        let repos = RepositoryContainer::new().await?; // 禁止
-        // ...
-    }
+// ✅ テスト用の関数切り替え
+#[cfg(test)]
+pub async fn execute_global_load_test(ctx: &PoiseContext<'_>) -> Result<()> {
+    let loader_service = MockGlobalLoaderServiceImpl::new();
+    loader_service.open_spreadsheet().await?;
+    // ...
+}
+
+// ❌ 間違い: 動的ディスパッチ
+pub async fn execute_global_load_wrong(ctx: &PoiseContext<'_>) -> Result<()> {
+    let loader_service = Arc::new(GlobalLoaderServiceImpl::new()); // 禁止
+    // ...
 }
 ```
 
