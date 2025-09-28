@@ -1,7 +1,8 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
-    edit_original_message_as_cancelled, get_participants_from_reactions, send_cancel_reply_message,
+    delete_cancelling_message, delete_confirmation_message, edit_original_message_as_cancelled, 
+    get_participants_from_reactions, send_cancel_reply_message, show_cancelling_message,
 };
 use crate::types;
 use crate::types::domain_interface_result::CanCancelResult;
@@ -277,6 +278,9 @@ async fn handle_confirm_cancel(
     interaction: ComponentInteraction,
     message: &Message,
 ) -> types::Result<()> {
+    // 「キャンセル中...」に変更
+    show_cancelling_message(ctx, &interaction).await?;
+
     let guild_id = if let Some(guild_id) = ctx.guild_id() {
         guild_id.get()
     } else {
@@ -291,7 +295,8 @@ async fn handle_confirm_cancel(
 
     match cancel_recruitment_internal(ctx, guild_id, channel_id, message_id).await {
         Ok(_) => {
-            send_result_response(ctx, &interaction, "募集がキャンセルされました。".to_string()).await
+            // キャンセル処理完了後、「キャンセル中...」メッセージを削除
+            delete_cancelling_message(ctx, &interaction).await
         }
         Err(e) => {
             send_error_response(&ctx.http(), &interaction, e).await?;
@@ -302,7 +307,7 @@ async fn handle_confirm_cancel(
 
 /// キャンセル拒否時の処理（内部関数）
 async fn handle_deny_cancel(ctx: PoiseContext<'_>, interaction: ComponentInteraction) -> types::Result<()> {
-    send_result_response(ctx, &interaction, "キャンセルを取り消しました。".to_string()).await
+    delete_confirmation_message(ctx, &interaction).await
 }
 
 /// 不明な選択時の処理（内部関数）

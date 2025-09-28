@@ -1,5 +1,5 @@
 ﻿use poise::serenity_prelude::all::{
-    ChannelId, Context, EditMessage, Message, MessageId,
+    ChannelId, ComponentInteraction, EditInteractionResponse, EditMessage, Message, MessageId,
 };
 use sea_orm::DatabaseTransaction;
 use tracing::{error, info, warn};
@@ -273,4 +273,51 @@ pub async fn send_cancel_reply_message(
     info!("キャンセル返信送信完了");
 
     Ok(cancel_reply.message().await?.id)
+}
+
+/// 確認メッセージを削除する
+pub async fn delete_confirmation_message(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+) -> Result<()> {
+    info!("確認メッセージを削除します");
+
+    // メッセージを削除
+    interaction.message.delete(&ctx.serenity_context().http).await?;
+    
+    info!("確認メッセージの削除完了");
+    Ok(())
+}
+
+/// キャンセル中表示に変更する
+pub async fn show_cancelling_message(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+) -> Result<()> {
+    info!("キャンセル中表示に変更します");
+    
+    interaction
+        .edit_response(
+            &ctx.serenity_context().http,
+            EditInteractionResponse::new()
+                .content("キャンセル中...")
+                .components(vec![]),
+        )
+        .await?;
+    
+    info!("キャンセル中表示への変更完了");
+    Ok(())
+}
+
+/// キャンセル中メッセージを削除する
+pub async fn delete_cancelling_message(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+) -> Result<()> {
+    info!("キャンセル中メッセージを削除します");
+    
+    interaction.message.delete(&ctx.serenity_context().http).await?;
+    
+    info!("キャンセル中メッセージの削除完了");
+    Ok(())
 }
