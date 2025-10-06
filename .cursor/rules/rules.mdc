@@ -8,6 +8,15 @@ alwaysApply: true
 
 このプロジェクトは、`docs/develop/rules` に定義されたルールに準拠して開発を行います。
 
+## 設計書構成
+
+設計書は以下の構成で管理されています：
+
+- `docs/develop/architecture/`: アーキテクチャ・設計指針（抽象的な概念レベル）
+- `docs/develop/features/`: 機能別設計書（機能要件・仕様）
+- `docs/develop/database/`: データベース実装設計書
+- `docs/develop/rules/`: コーディングルール、開発ルール
+
 ## 基本方針
 
 - **日本語でのコミュニケーション**: すべてのコメント、ドキュメント、エラーメッセージは日本語で記述
