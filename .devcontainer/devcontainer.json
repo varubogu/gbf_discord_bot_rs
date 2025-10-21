@@ -25,7 +25,8 @@
 	},
 	"vscode": {
 		"extensions": [
-			"Anthropic.claude-code"
+			"Anthropic.claude-code",
+			"openai.chatgpt"
 		]
 	}
   },
