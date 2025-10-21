@@ -226,34 +226,9 @@ sequenceDiagram
     C-->>U: 募集完了通知
 ```
 
-### 2. 募集内容変更フロー（計画）
+### 2. 募集内容変更フロー
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Command
-    participant F as Facade
-    participant S as Service
-    participant R as Repository
-    participant D as Discord
-
-    U->>C: /recruit_change message recruit quest event_date
-    C->>F: change_recruitment_information()
-    F->>F: authorize(actor, message_owner, has_gbf_bot_control)
-    F->>R: get_recruitment_by_message()
-    R-->>F: recruitment
-    F->>S: regenerate_recruit_content()
-    S->>D: edit_message()
-    D-->>S: ok
-    S->>D: send_update_notification()
-    D-->>S: notification_id
-    S->>R: update_owner_if_needed()
-    S->>R: update_recruitment()
-    R-->>S: ok
-    S-->>F: ok
-    F-->>C: success
-    C-->>U: 更新完了通知
-```
+募集内容の変更は現行仕様では未提供ですが、既存フローを前提に Facade 層での権限判定と Discord メッセージ更新が実行できるよう設計しており、追加要件に合わせて拡張しやすい構造としています。
 
 ### 3. 募集キャンセルフロー
 
