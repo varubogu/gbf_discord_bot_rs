@@ -2,3 +2,7 @@
 .local/
 .tmp/
 .env
+
+
+# AI ignore
+.claude/
