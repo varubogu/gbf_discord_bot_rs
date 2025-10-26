@@ -3,6 +3,8 @@ pub mod battle_types;
 pub mod environments;
 pub mod event_schedule_details;
 pub mod event_schedules;
+pub mod guild_spreadsheet_exports;
+pub mod guild_spreadsheet_imports;
 pub mod guilds;
 pub mod last_process_times;
 pub mod message_texts;
@@ -13,6 +15,8 @@ pub mod quest_aliases;
 pub mod quests;
 
 pub use environments::Entity as Environment;
+pub use guild_spreadsheet_exports::Entity as GuildSpreadsheetExport;
+pub use guild_spreadsheet_imports::Entity as GuildSpreadsheetImport;
 pub use message_texts::Entity as MessageText;
 pub use quest_aliases::Entity as QuestAlias;
 pub use quests::Entity as Quest;

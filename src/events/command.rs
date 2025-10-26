@@ -10,6 +10,7 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::environ_load::environ_load(),
         slash::gspread_load::gspread_load(),
         slash::gspread_push::gspread_push(),
+        slash::gspread_regist::gspread_regist(),
         slash::gspread_global_load::gspread_global_load(),
         slash::gspread_global_push::gspread_global_push(),
     ]

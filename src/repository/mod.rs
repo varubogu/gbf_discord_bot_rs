@@ -1,6 +1,7 @@
 pub mod battle_recruitments_repository;
 pub(crate) mod database;
 pub mod environments_repository;
+pub mod guild_spreadsheet_config_repository;
 pub mod message_texts_repository;
 pub mod quest_aliases_repository;
 pub mod quests_repository;
@@ -8,6 +9,9 @@ pub mod quests_repository;
 // 抽象インターフェースをre-export
 pub use battle_recruitments_repository::BattleRecruitmentsRepository;
 pub use environments_repository::EnvironmentRepository;
+pub use guild_spreadsheet_config_repository::{
+    GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait,
+};
 pub use message_texts_repository::MessageTextRepository;
 pub use quests_repository::QuestRepository;
 

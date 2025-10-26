@@ -23,6 +23,7 @@ pub trait GoogleAuthServiceTrait: Send + Sync {
 }
 
 /// Google認証サービス実装
+#[derive(Clone)]
 pub struct GoogleAuthService {
     service_account_key_file: String,
     client_cache: Arc<RwLock<Option<Sheets<HttpsConnector<HttpConnector>>>>>,

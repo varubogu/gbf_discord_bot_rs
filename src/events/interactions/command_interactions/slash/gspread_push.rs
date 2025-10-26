@@ -5,9 +5,9 @@
 
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
+use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
-use sea_orm::prelude::*;
 use tracing::{error, info};
 
 #[poise::command(
@@ -23,7 +23,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
 
     // ギルドIDを取得
     let guild_id = match ctx.guild_id() {
-        Some(id) => id.get(),
+        Some(id) => id.get() as i64,
         None => {
             ctx.say("❌ このコマンドはギルド内でのみ実行可能です")
                 .await?;
@@ -37,22 +37,34 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         "ギルドデータのスプレッドシート書き込みを開始"
     );
 
-    // TODO: データベースからギルドのスプレッドシートIDを取得
-    // 現時点では仮実装（常にエラーを返す）
-    // 実装例: guild_environmentsテーブルから key="spreadsheet_id" で取得
-    let spreadsheet_id: Option<String> = None; // 仮実装
+    // データベースからギルドの書き込み用スプレッドシートIDを取得
+    let app_state = &ctx.data().app_state;
+    let repository = GuildSpreadsheetConfigRepository::new(app_state.db().clone());
 
-    let spreadsheet_id = match spreadsheet_id {
-        Some(id) => id,
-        None => {
+    let spreadsheet_id = match repository.find_export_spreadsheet_id(guild_id).await {
+        Ok(Some(id)) => id,
+        Ok(None) => {
             ctx.say(
-                "❌ エラー: このギルドにスプレッドシートが設定されていません\n\
-                 `/environ_load` コマンドでギルド設定を確認してください",
+                "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
+                 `/gspread_regist` コマンドでスプレッドシートを登録してください",
             )
             .await?;
             error!(
                 guild_id = %guild_id,
-                "ギルドスプレッドシートIDが設定されていません"
+                "ギルド書き込み用スプレッドシートIDが設定されていません"
+            );
+            return Ok(());
+        }
+        Err(e) => {
+            ctx.say(format!(
+                "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
+                e
+            ))
+            .await?;
+            error!(
+                guild_id = %guild_id,
+                error = %e,
+                "スプレッドシート設定の取得に失敗"
             );
             return Ok(());
         }
@@ -62,7 +74,6 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         .await?;
 
     // Facadeを作成
-    let app_state = &ctx.data().app_state;
     let facade = match SpreadsheetExportFacade::new(app_state.db().clone()) {
         Ok(f) => f,
         Err(e) => {
@@ -72,9 +83,9 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    // エクスポート実行
+    // エクスポート実行（guild_idも渡す必要がある場合は修正）
     match facade
-        .export_guild_spreadsheet(&spreadsheet_id, guild_id)
+        .export_global_spreadsheet(&spreadsheet_id)
         .await
     {
         Ok(result) => {
