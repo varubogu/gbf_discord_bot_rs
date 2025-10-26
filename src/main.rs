@@ -1,4 +1,5 @@
 pub mod constants;
+mod errors;
 mod events;
 mod facades;
 mod infrastructure;
