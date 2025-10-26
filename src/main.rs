@@ -11,6 +11,8 @@ mod utils;
 
 use crate::events::{command::commands, handler::event_handler};
 use crate::types::{AppConfig, AppError, AppState, PoiseData, Result};
+use crate::utils::error_formatter::ErrorFormatter;
+use crate::utils::startup_validator::StartupValidator;
 use migration::{Migrator, MigratorTrait};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use sea_orm::{ConnectOptions, Database};
@@ -70,12 +72,33 @@ async fn main() -> Result<()> {
     let dotenv_path = Path::new(&config_folder).join(".env");
     dotenv::from_path(dotenv_path).ok();
 
+    // Startup validation - check all required environment variables and files
+    info!("Running startup validation...");
+    match StartupValidator::validate_all().await {
+        Ok(validator) => {
+            validator.display_results();
+            info!("✅ All startup validations passed");
+        }
+        Err(e) => {
+            eprintln!("{}", e);
+            error!("❌ Startup validation failed, exiting");
+            std::process::exit(1);
+        }
+    }
+
     // Load configuration using a structured approach
     let config = AppConfig::from_env()?;
     info!("Configuration loaded successfully");
 
     // Initialise a database with an optimised connection pool
-    let db_connection = initialize_database(&config.database_url).await?;
+    let db_connection = initialize_database(&config.database_url).await.map_err(|e| {
+        // データベース接続エラーの場合、詳細な情報を表示
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&config.database_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
     info!("Database connection pool initialised successfully");
 
     // Create AppState
