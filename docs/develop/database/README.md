@@ -64,6 +64,8 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 | guild_event_schedules | ギルドイベントスケジュール | Reference | [guild_event_schedules.md](tables/guild/guild_event_schedules.md) |
 | guild_event_schedule_details | ギルドイベント詳細スケジュール | Reference | [guild_event_schedule_details.md](tables/guild/guild_event_schedule_details.md) |
 | guild_last_process_times | ギルド最終処理実行日時 | History | [guild_last_process_times.md](tables/guild/guild_last_process_times.md) |
+| guild_spreadsheet_imports | ギルドスプレッドシート取込設定 | Reference | [guild_spreadsheet_imports.md](tables/guild/guild_spreadsheet_imports.md) |
+| guild_spreadsheet_exports | ギルドスプレッドシート出力設定 | Reference | [guild_spreadsheet_exports.md](tables/guild/guild_spreadsheet_exports.md) |
 
 ### コミュニティテーブル（Community Scope）
 
@@ -87,6 +89,8 @@ elements ──→ event_schedules ──→ event_schedule_details ──→ sc
 
 [ギルド固有データ]
 guild_environments
+guild_spreadsheet_imports
+guild_spreadsheet_exports
 guild_messages
 guild_channels ──→ channel_types (Global)
 guild_event_schedules ──→ guild_event_schedule_details
@@ -155,7 +159,8 @@ Application Layer
 | スプレッドシート種別 | 環境変数 | 対象テーブル | コマンド実行権限 |
 |------------------|---------|------------|---------------|
 | **グローバル用** | `GSPREAD_GLOBAL_URL` | All Scopeテーブル | BOT_ADMIN_SERVER限定 |
-| **ギルド用** | ギルドごとに設定 | Guild/Community Scopeテーブル | gbf_bot_controlロール |
+| **ギルド読み込み用** | `guild_spreadsheet_imports`テーブル | Guild Scopeテーブル（`/gspread_load`） | gbf_bot_controlロール |
+| **ギルド書き込み用** | `guild_spreadsheet_exports`テーブル | Guild Scopeテーブル（`/gspread_push`） | gbf_bot_controlロール |
 
 ## セキュリティとアクセス制御
 

@@ -201,6 +201,7 @@ pub async fn has_all_roles(
 | `/event_edit` | `gbf_event_manager` | 将来実装 |
 | `/recruit_force_cancel` | `gbf_recruitment_manager` | 将来実装 |
 | `/recruit_stats` | `gbf_recruitment_manager` | 将来実装 |
+| `/gspread_regist` | `gbf_bot_control` | 設計済み（スプレッドシート登録） |
 
 ## エラーハンドリング
 

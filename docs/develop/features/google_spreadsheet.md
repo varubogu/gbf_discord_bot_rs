@@ -30,10 +30,11 @@ Googleスプレッドシートを使用してPostgreSQLデータベースとの�
 
 **用途**: ギルド固有のカスタムデータ管理
 
-- **対象データ**: guild_environments、guild_messages、guild_event_schedulesなど
+- **対象データ**: guild_messages、guild_event_schedulesなど（ギルド固有データ）＋ スプレッドシート設定テーブル（guild_spreadsheet_imports / guild_spreadsheet_exports）
 - **実行権限**: gbf_bot_controlロール保持者
 - **影響範囲**: 実行したギルドのみ
 - **コマンド**:
+  - `/gspread_regist` - ギルド用スプレッドシート登録
   - `/gspread_load` - スプレッドシート → PostgreSQL
   - `/gspread_push` - PostgreSQL → スプレッドシート
 
@@ -73,6 +74,15 @@ Googleスプレッドシートを使用してPostgreSQLデータベースとの�
 1. `/gspread_global_push`または`/gspread_push`コマンドを実行
 2. PostgreSQLのデータがスプレッドシートに書き込まれる
 3. Googleドライブの版履歴機能でバックアップが保存される
+
+### ユースケース5: ギルド初期セットアップでのスプレッドシート登録
+
+**シナリオ**: 新しくBotを導入したギルドがスプレッドシート連携を開始したい
+
+1. ギルド管理者がGoogleスプレッドシートを用意し、サービスアカウントに閲覧権限を付与
+2. `/gspread_regist`コマンドでスプレッドシートURLを登録
+3. `guild_spreadsheet_imports`と`guild_spreadsheet_exports`にスプレッドシートIDが保存される
+4. `/gspread_load`や`/gspread_push`で同期が可能になる
 
 ## スプレッドシート構成
 
@@ -136,6 +146,61 @@ Googleスプレッドシートを使用してPostgreSQLデータベースとの�
 
 - **実行可能者**: gbf_bot_controlロール保持者
 - **レスポンス**: 通常メッセージ（デフォルト）
+
+## `/gspread_regist` コマンド設計
+
+ギルドごとの読み込み用/書き込み用スプレッドシートIDを専用テーブル（`guild_spreadsheet_imports`, `guild_spreadsheet_exports`）に登録し、`/gspread_load`および`/gspread_push`を実行するための前提条件を整える。
+
+### 目的
+
+- Bot導入直後のギルドでもUI操作のみでスプレッドシート連携を開始できるようにする
+- `GLOBAL_SPREADSHEET_ID`のギルド版をDB管理し、環境変数の乱立を防ぐ
+- スプレッドシート権限ミスを早期検知し、実行前に通知する
+
+### コマンド仕様
+
+| 引数 | 型 | 必須 | 説明 |
+|------|----|------|------|
+| `load_spreadsheet_url` | String (最大512文字) | ✅ | ギルドデータ読み込みに利用するGoogleスプレッドシート。IDのみの入力も許可し、正規化後に`guild_spreadsheet_imports`へ保存。 |
+| `push_spreadsheet_url` | String (最大512文字) | ✅ | ギルドデータ書き込みに利用するGoogleスプレッドシート。同一シートを使う場合は`load_spreadsheet_url`と同じ値を指定。 |
+
+### 処理フロー
+
+1. **権限チェック**: `gbf_bot_control`ロールを保持しているか検証
+2. **guild_id取得**: コマンド実行ギルドのIDを取得（DM禁止）
+3. **URL正規化**:
+   - 両URL/IDとも`https://docs.google.com/spreadsheets/d/{id}`形式へ正規化
+   - 正規表現`^[A-Za-z0-9-_]{20,80}$`で`spreadsheet_id`を検証
+4. **権限確認**:
+   - 2つの`spreadsheet_id`それぞれに対しGoogle Sheets APIの`spreadsheets.get`を発行
+   - 403/404の場合は共有設定不足としてユーザーへ案内
+5. **Facade処理** (`GuildSpreadsheetRegistrationFacade`):
+   - `TransactionManager`でトランザクション開始
+   - `GuildSpreadsheetConfigService`が `guild_spreadsheet_imports` と `guild_spreadsheet_exports` に対し `upsert(guild_id, spreadsheet_id)` を実行
+   - 片方のみ更新したい要件に備え、Facadeは引数の差異を検知して必要分のみ更新
+   - コミット後に正規化済みURLを含むレスポンスを生成
+6. **レスポンス**:
+   - 成功: `✅ ギルドスプレッドシートを登録しました`と両URLを表示
+   - 失敗: `PresentationError`を通じて日本語メッセージ化
+
+### バリデーションとエラー
+
+- **URL形式エラー**: `❌ エラー: GoogleスプレッドシートのURL形式が正しくありません`
+- **共有権限不足**: `❌ エラー: サービスアカウントに閲覧権限がありません。Googleスプレッドシートの共有設定を確認してください`
+- **DB書き込み失敗**: リトライ不可のため即時ロールバックし、`❌ ギルド設定の保存に失敗しました`を返す
+- **同時実行**: PK(`guild_id`)で自然排他されるが、Facade側で`INSERT ... ON CONFLICT`を利用して冪等性を担保
+
+### データ永続化
+
+- テーブル: `guild_spreadsheet_imports`（読み込み用）
+- テーブル: `guild_spreadsheet_exports`（書き込み用）
+- いずれも `guild_id` をPK、`spreadsheet_id`を値として保持（最小構成）
+
+### 他コマンドとの関係
+
+- `/gspread_load`は`guild_spreadsheet_imports`を必須依存とし、未登録時は`/gspread_regist`実行を促す
+- `/gspread_push`は`guild_spreadsheet_exports`を必須依存とし、未登録時はエラー応答で登録を案内
+- 将来的に閲覧用コマンドを追加し、両テーブルの内容を管理者が確認できるようにする
 
 ## 認証方式
 
@@ -233,7 +298,7 @@ GOOGLE_SERVICE_ACCOUNT_KEY_FILE=/path/to/service-account-key.json
 
 ### Q4: スプレッドシートURLはどこで管理する？
 
-**A**: グローバルスプレッドシートは環境変数で管理します。ギルドスプレッドシートは環境変数またはデータベース（guild_environmentsテーブル）で管理できます。
+**A**: グローバルスプレッドシートは環境変数で管理します。ギルドスプレッドシートは専用テーブル（guild_spreadsheet_imports / guild_spreadsheet_exports）で管理し、環境変数はフォールバック用途に限定します。
 
 ### Q5: 既存データは上書きされる？
 

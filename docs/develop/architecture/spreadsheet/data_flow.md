@@ -2,16 +2,17 @@
 
 ## 概要
 
-本設計書では、Googleスプレッドシート連携機能における4つの主要なデータフロー（グローバルデータ読み込み・書き込み、ギルドデータ読み込み・書き込み）の全体像、各層の責務、トランザクション境界、エラーハンドリングポイント、並行処理設計を定義します。
+本設計書では、Googleスプレッドシート連携機能における主要なデータフロー（グローバルデータ読み込み・書き込み、ギルドデータ読み込み・書き込み、ギルドスプレッドシート登録）の全体像、各層の責務、トランザクション境界、エラーハンドリングポイント、並行処理設計を定義します。
 
 ## データフロー全体像
 
-スプレッドシート機能は、以下の4つの主要なデータフローを持ちます：
+スプレッドシート機能は、以下の5つの主要なデータフローを持ちます：
 
 1. **グローバルデータ読み込みフロー** (`/gspread_global_load`) - スプレッドシート → PostgreSQL
 2. **グローバルデータ書き込みフロー** (`/gspread_global_push`) - PostgreSQL → スプレッドシート
 3. **ギルドデータ読み込みフロー** (`/gspread_load`) - スプレッドシート → PostgreSQL（guild_id自動付与）
 4. **ギルドデータ書き込みフロー** (`/gspread_push`) - PostgreSQL → スプレッドシート（guild_idフィルタリング）
+5. **ギルドスプレッドシート登録フロー** (`/gspread_regist`) - Discord → PostgreSQL（guild_spreadsheet_imports / guild_spreadsheet_exports更新）
 
 ### アーキテクチャ層構成
 
@@ -352,7 +353,7 @@ sequenceDiagram
     User->>Event: /gspread_load（ギルド内で実行）
     Event->>Event: 権限チェック（gbf_bot_controlロール）
     Event->>Event: guild_id取得
-    Event->>Event: スプレッドシートURL取得（guild_environments or 環境変数）
+    Event->>Event: スプレッドシートID取得（guild_spreadsheet_imports or 環境変数）
     Event->>Facade: load_guild_data(spreadsheet_url, guild_id)
 
     Facade->>AuthSvc: authenticate()
@@ -412,7 +413,7 @@ sequenceDiagram
 
 - **権限チェック**: gbf_bot_controlロール保持者のみ実行可能
 - **guild_id取得**: 実行されたギルドのIDを取得
-- **スプレッドシートURL取得**: guild_environmentsテーブルまたは環境変数から取得
+- **スプレッドシートID取得**: guild_spreadsheet_importsテーブルを参照（未登録時のみ環境変数をフォールバック）
 
 #### Facade層
 
@@ -494,7 +495,7 @@ sequenceDiagram
     User->>Event: /gspread_push（ギルド内で実行）
     Event->>Event: 権限チェック（gbf_bot_controlロール）
     Event->>Event: guild_id取得
-    Event->>Event: スプレッドシートURL取得
+    Event->>Event: スプレッドシートID取得（guild_spreadsheet_exports or 環境変数）
     Event->>Facade: push_guild_data(spreadsheet_url, guild_id)
 
     Facade->>AuthSvc: authenticate()
@@ -573,6 +574,98 @@ pub async fn find_by_guild_id_with_txn(
 
 ---
 
+## ギルドスプレッドシート登録フロー
+
+### 概要
+
+`/gspread_regist`コマンドでギルド固有のスプレッドシートIDを登録し、読み込み用は`guild_spreadsheet_imports`、書き込み用は`guild_spreadsheet_exports`に保存するフロー。登録済みIDは`/gspread_load`および`/gspread_push`の前提条件となる。
+
+### シーケンス図
+
+```mermaid
+sequenceDiagram
+    participant User as Discord User
+    participant Event as Presentation層
+    participant Facade as SpreadsheetRegistrationFacade
+    participant Validator as SpreadsheetUrlValidatorService
+    participant AuthSvc as GoogleAuthService
+    participant SheetsAPI as Google Sheets API
+    participant TxManager as TransactionManager
+    participant LoadRepo as GuildSpreadsheetImportRepository
+    participant PushRepo as GuildSpreadsheetExportRepository
+    participant DB as PostgreSQL
+
+    User->>Event: /gspread_regist（ギルド内で実行）
+    Event->>Event: 権限チェック（gbf_bot_controlロール）
+    Event->>Event: guild_id取得 + パラメータ検証
+    Event->>Facade: register_guild_spreadsheet(guild_id, load_url, push_url)
+
+    Facade->>Validator: normalize(load_spreadsheet_url)
+    Validator-->>Facade: SpreadsheetInfo { spreadsheet_id: load_id, canonical_url: load_url }
+    Facade->>Validator: normalize(push_spreadsheet_url)
+    Validator-->>Facade: SpreadsheetInfo { spreadsheet_id: push_id, canonical_url: push_url }
+
+    Facade->>AuthSvc: authenticate()
+    AuthSvc-->>Facade: GoogleSheetsClient
+
+    Facade->>SheetsAPI: spreadsheets.get(load_id)
+    SheetsAPI-->>Facade: SpreadsheetMetadata（読み込み先のアクセス確認）
+    Facade->>SheetsAPI: spreadsheets.get(push_id)
+    SheetsAPI-->>Facade: SpreadsheetMetadata（書き込み先のアクセス確認）
+
+    Note over Facade: トランザクション開始
+    Facade->>TxManager: begin_transaction()
+    TxManager->>DB: BEGIN
+
+    Facade->>LoadRepo: upsert(txn, guild_id, load_id)
+    LoadRepo->>DB: INSERT ... ON CONFLICT DO UPDATE
+    DB-->>LoadRepo: OK
+
+    Facade->>PushRepo: upsert(txn, guild_id, push_id)
+    PushRepo->>DB: INSERT ... ON CONFLICT DO UPDATE
+    DB-->>PushRepo: OK
+
+    Facade->>TxManager: commit()
+    TxManager->>DB: COMMIT
+
+    Facade-->>Event: RegistrationResult { load_url, push_url }
+    Event->>User: 成功メッセージ（正規化URL）
+```
+
+### 各層の責務
+
+#### Presentation層
+
+- Slashコマンドオプション（読み込み用/書き込み用URL）の取得と最大文字数チェック
+- `gbf_bot_control`ロールと`guild_id`の検証
+- Facadeから戻った結果を整形し、ユーザー向けに日本語で通知
+
+#### Facade層
+
+- `SpreadsheetUrlValidatorService`によるURL正規化／ID抽出を実行
+- `GoogleAuthService`でSheets APIクライアントを取得し、`spreadsheets.get`でアクセス権を確認
+- `TransactionManager`でトランザクションを開始し、`GuildSpreadsheetImportRepository` / `GuildSpreadsheetExportRepository`への永続化処理を統括
+- 例外を`FacadeError`→`PresentationError`へ変換し、ユーザーに伝達しやすい形に変換
+
+#### Service層
+
+- **SpreadsheetUrlValidatorService**: URL/ID形式チェックと正規化を担当
+- **GuildSpreadsheetConfigService**: 読み込み/書き込みそれぞれのRepositoryを束ね、`upsert_load` `upsert_push` APIを提供
+
+#### Repository層
+
+- `GuildSpreadsheetImportRepository`: `guild_spreadsheet_imports`への`INSERT ... ON CONFLICT DO UPDATE`を提供
+- `GuildSpreadsheetExportRepository`: `guild_spreadsheet_exports`への`INSERT ... ON CONFLICT DO UPDATE`を提供
+
+### バリデーションとエラー
+
+- **URL形式エラー**: `docs.google.com/spreadsheets/d/`以外のURL、ID長不足を検出し、ユーザーにフォーマット例を提示
+- **権限不足**: Google Sheets APIで403/404を検出した場合は共有設定ミスを警告し、処理を中断
+- **DB更新失敗**: `GuildSpreadsheetImportRepository` / `GuildSpreadsheetExportRepository`からの例外をFacadeで捕捉し、ロールバックして再実行を促す
+- **同時実行**: 各テーブルのPK（`guild_id`）で自然排他されるが、Facade側でリトライポリシー（例: 3回まで）を検討
+
+---
+
 ## トランザクション管理
 
 ### トランザクション開始タイミング
@@ -583,6 +676,7 @@ pub async fn find_by_guild_id_with_txn(
 | グローバル書き込み | データ取得開始前 | データの一貫性確保 |
 | ギルド読み込み | データ変換・バリデーション完了後 | 外部API呼び出しをトランザクション外で実行 |
 | ギルド書き込み | データ取得開始前 | データの一貫性確保 |
+| ギルド登録 | DB更新直前 | Google APIによる事前検証を完了させた後に一括更新 |
 
 ### コミット/ロールバックの条件
 
@@ -596,6 +690,9 @@ pub async fn find_by_guild_id_with_txn(
 **書き込みフロー**:
 - 全テーブルのデータ取得が成功
 
+**登録フロー**:
+- `guild_spreadsheet_imports`および`guild_spreadsheet_exports`へのUPSERTが成功し、`commit()`が正常終了
+
 #### ロールバック条件
 
 | エラーシナリオ | ロールバック | 理由 |
@@ -608,6 +705,7 @@ pub async fn find_by_guild_id_with_txn(
 | INSERT失敗 | 必要 | トランザクション内 |
 | SELECT失敗（書き込みフロー） | 必要 | トランザクション内 |
 | スプレッドシート書き込み失敗 | 不要 | トランザクション外（外部API） |
+| ギルド登録のUPSERT失敗 | 必要 | トランザクション内での更新失敗 |
 
 ### Facade層での一元管理
 
