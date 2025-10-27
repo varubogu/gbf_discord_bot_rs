@@ -90,12 +90,16 @@ Googleスプレッドシートを使用してPostgreSQLデータベースとの�
 
 すべてのスプレッドシートは「テーブル名」という特殊シートを持ち、どのテーブルを同期するかを定義します。
 
-| 列名 | 説明 | 値の例 |
-|-----|------|-------|
-| table_name_jp | テーブル日本語名（シート名） | "クエスト情報" |
-| table_name_en | テーブル物理名（PostgreSQL） | "quests" |
-| table_io | 処理方向 | "in", "out", "in,out" |
-| table_type | テーブルタイプ | "reference", "transaction", "history" |
+| 行/列 | 内容 | 備考 |
+|-------|------|------|
+| 1行目 | `sheet_name`, `table_name`, `table_scope`, `table_io`, `table_type` などのマッピングキー | スネークケースで記述 |
+| 2行目 | 各列の日本語説明 | プログラムでは使用しない |
+| 3行目以降 | テーブル定義データ | 必須列が空の場合はスキップ |
+
+- `table_io`: `"in"`, `"out"`, `"in,out"`（または `"out,in"` / `"both"`）
+- `table_type`: `"reference"`, `"transaction"`, `"history"`
+- `table_scope`: 将来拡張用（未使用なら空でも可）
+- 未定義のキー名が含まれていても無視されるため、柔軟に列を追加できる
 
 **table_io の意味**:
 - `in` - スプレッドシート → PostgreSQL（読み込み専用）

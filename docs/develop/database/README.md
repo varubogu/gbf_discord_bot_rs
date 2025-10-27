@@ -144,9 +144,12 @@ Application Layer
 
 #### 「テーブル名」シート
 - テーブルのメタ情報を定義
-- 列: `table_name_jp`, `table_name_en`, `table_io`, `table_type`
+- **1行目**: マッピングキー（`sheet_name`, `table_name`, `table_scope`, `table_io`, `table_type` など）
+- **2行目**: 日本語説明（任意）
+- **3行目以降**: データ行
 - `table_io`: `in`（読み込み）、`out`（書き込み）、`in,out`（双方向）
 - `table_type`: `reference`, `transaction`, `history`
+- 未定義のキー名は無視される
 
 #### 各テーブルシート
 - シート名 = テーブル日本語名

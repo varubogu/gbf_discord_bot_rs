@@ -280,15 +280,25 @@ pub trait TableDefinitionService: Send + Sync {
 
 **「テーブル名」シートの構造**:
 
-| table_name_jp | table_name_en | table_io | table_type |
-|--------------|---------------|----------|-----------|
-| クエスト情報 | quests | in,out | reference |
-| 募集履歴 | battle_recruitments | out | history |
+- **1行目**: マッピングキー（スネークケース）
+- **2行目**: 日本語の説明（プログラムでは使用しない）
+- **3行目以降**: テーブル定義データ
+
+| 1行目（キー名） | 説明（2行目の例） | 値の例（3行目以降） |
+|----------------|-------------------|----------------------|
+| `sheet_name`   | シート名          | `クエスト情報`       |
+| `table_name`   | テーブル名        | `quests`             |
+| `table_scope`  | テーブルの対象    | `global`             |
+| `table_io`     | 入力・出力        | `in,out`             |
+| `table_type`   | テーブル種類      | `reference`          |
+
+- 未対応のキーは無視される
+- `table_scope` は将来拡張用（未使用の場合は空でも可）
 
 **table_ioの解釈**:
 - `"in"` → `TableIo::In` - 読み込み専用（load操作のみ）
 - `"out"` → `TableIo::Out` - 書き込み専用（push操作のみ）
-- `"in,out"` → `TableIo::InOut` - 双方向
+- `"in,out"` / `"out,in"` / `"both"` → `TableIo::Both` - 双方向
 
 **table_typeの解釈**:
 - `"reference"` → `TableType::Reference` - マスターデータ
