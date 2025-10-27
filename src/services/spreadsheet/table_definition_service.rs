@@ -2,11 +2,11 @@
 ///
 /// スプレッドシートの「テーブル名」シートを解析し、テーブル定義を取得します。
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
-
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::errors::{BusinessRuleError, ExternalServiceError};
+use crate::errors::BusinessRuleError;
 
 /// テーブル定義
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,6 +15,8 @@ pub struct TableDefinition {
     pub table_name_jp: String,
     /// テーブル物理名（PostgreSQLテーブル名）
     pub table_name_en: String,
+    /// テーブルのスコープ（グローバル/ギルドなど）
+    pub table_scope: Option<String>,
     /// 処理方向
     pub table_io: TableIO,
     /// テーブルタイプ
@@ -105,43 +107,68 @@ impl TableDefinitionService {
         Self
     }
 
+    /// 利用可能なヘッダーマッピングを抽出
+    fn build_header_mapping(header_row: &[String]) -> Result<HeaderMapping, BusinessRuleError> {
+        let mut key_to_index: HashMap<String, usize> = HashMap::new();
+
+        for (index, raw_key) in header_row.iter().enumerate() {
+            let key = raw_key.trim();
+            if key.is_empty() {
+                continue;
+            }
+            key_to_index.insert(key.to_lowercase(), index);
+        }
+
+        HeaderMapping::try_from(key_to_index)
+    }
+
     /// 行データをTableDefinitionに変換
-    fn parse_row(row: &[String]) -> Result<TableDefinition, BusinessRuleError> {
-        // 列数チェック（最低4列必要: table_name_jp, table_name_en, table_io, table_type）
-        if row.len() < 4 {
-            return Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
-                reason: format!("列数が不足しています（必要: 4列, 実際: {}列）", row.len()),
-            });
-        }
+    fn parse_row(
+        row: &[String],
+        mapping: &HeaderMapping,
+        row_number: usize,
+    ) -> Result<TableDefinition, BusinessRuleError> {
+        let table_name_jp =
+            mapping
+                .sheet_name(row)
+                .ok_or_else(|| BusinessRuleError::TableDefinitionError {
+                    table_name: "テーブル名シート".to_string(),
+                    reason: format!("sheet_nameが空です（行: {}）", row_number),
+                })?;
 
-        let table_name_jp = row[0].trim().to_string();
-        let table_name_en = row[1].trim().to_string();
-        let table_io_str = row[2].trim();
-        let table_type_str = row[3].trim();
+        let table_name_en =
+            mapping
+                .table_name(row)
+                .ok_or_else(|| BusinessRuleError::TableDefinitionError {
+                    table_name: "テーブル名シート".to_string(),
+                    reason: format!("table_nameが空です（行: {}）", row_number),
+                })?;
 
-        // 必須フィールドチェック
-        if table_name_jp.is_empty() {
-            return Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
-                reason: "table_name_jpが空です".to_string(),
-            });
-        }
+        let table_io_str =
+            mapping
+                .table_io(row)
+                .ok_or_else(|| BusinessRuleError::TableDefinitionError {
+                    table_name: "テーブル名シート".to_string(),
+                    reason: format!("table_ioが空です（行: {}）", row_number),
+                })?;
 
-        if table_name_en.is_empty() {
-            return Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
-                reason: "table_name_enが空です".to_string(),
-            });
-        }
+        let table_type_str =
+            mapping
+                .table_type(row)
+                .ok_or_else(|| BusinessRuleError::TableDefinitionError {
+                    table_name: "テーブル名シート".to_string(),
+                    reason: format!("table_typeが空です（行: {}）", row_number),
+                })?;
 
-        // table_ioとtable_typeをパース
         let table_io = TableIO::from_str(table_io_str)?;
         let table_type = TableType::from_str(table_type_str)?;
 
+        let table_scope = mapping.table_scope(row).map(|scope| scope.to_string());
+
         Ok(TableDefinition {
-            table_name_jp,
-            table_name_en,
+            table_name_jp: table_name_jp.to_string(),
+            table_name_en: table_name_en.to_string(),
+            table_scope,
             table_io,
             table_type,
         })
@@ -151,6 +178,84 @@ impl TableDefinitionService {
 impl Default for TableDefinitionService {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// ヘッダーマッピング情報
+struct HeaderMapping {
+    sheet_name_idx: usize,
+    table_name_idx: usize,
+    table_io_idx: usize,
+    table_type_idx: usize,
+    table_scope_idx: Option<usize>,
+}
+
+impl HeaderMapping {
+    fn try_from(mut indices: HashMap<String, usize>) -> Result<Self, BusinessRuleError> {
+        let sheet_name_idx = indices.remove("sheet_name").ok_or_else(|| {
+            BusinessRuleError::TableDefinitionError {
+                table_name: "テーブル名シート".to_string(),
+                reason: "必須列 sheet_name が存在しません".to_string(),
+            }
+        })?;
+
+        let table_name_idx = indices.remove("table_name").ok_or_else(|| {
+            BusinessRuleError::TableDefinitionError {
+                table_name: "テーブル名シート".to_string(),
+                reason: "必須列 table_name が存在しません".to_string(),
+            }
+        })?;
+
+        let table_io_idx =
+            indices
+                .remove("table_io")
+                .ok_or_else(|| BusinessRuleError::TableDefinitionError {
+                    table_name: "テーブル名シート".to_string(),
+                    reason: "必須列 table_io が存在しません".to_string(),
+                })?;
+
+        let table_type_idx = indices.remove("table_type").ok_or_else(|| {
+            BusinessRuleError::TableDefinitionError {
+                table_name: "テーブル名シート".to_string(),
+                reason: "必須列 table_type が存在しません".to_string(),
+            }
+        })?;
+
+        let table_scope_idx = indices.remove("table_scope");
+
+        Ok(Self {
+            sheet_name_idx,
+            table_name_idx,
+            table_io_idx,
+            table_type_idx,
+            table_scope_idx,
+        })
+    }
+
+    fn value_at<'a>(&self, row: &'a [String], index: usize) -> Option<&'a str> {
+        row.get(index)
+            .map(|value| value.trim())
+            .and_then(|value| if value.is_empty() { None } else { Some(value) })
+    }
+
+    fn sheet_name<'a>(&self, row: &'a [String]) -> Option<&'a str> {
+        self.value_at(row, self.sheet_name_idx)
+    }
+
+    fn table_name<'a>(&self, row: &'a [String]) -> Option<&'a str> {
+        self.value_at(row, self.table_name_idx)
+    }
+
+    fn table_io<'a>(&self, row: &'a [String]) -> Option<&'a str> {
+        self.value_at(row, self.table_io_idx)
+    }
+
+    fn table_type<'a>(&self, row: &'a [String]) -> Option<&'a str> {
+        self.value_at(row, self.table_type_idx)
+    }
+
+    fn table_scope<'a>(&self, row: &'a [String]) -> Option<&'a str> {
+        self.table_scope_idx.and_then(|idx| self.value_at(row, idx))
     }
 }
 
@@ -167,14 +272,30 @@ impl TableDefinitionServiceTrait for TableDefinitionService {
             });
         }
 
-        // 1行目はヘッダーなのでスキップ、2行目以降をパース
+        // ヘッダー行の解析
+        let header_row = &rows[0];
+        let mut mapping = Self::build_header_mapping(header_row)?;
+
+        // 2行目は説明行としてスキップ、3行目以降をパース
         let mut definitions = Vec::new();
-        for (index, row) in rows.iter().enumerate().skip(1) {
-            match Self::parse_row(row) {
+        for (index, row) in rows.iter().enumerate().skip(2) {
+            let row_number = index + 1; // シート上の行番号（1始まり）
+
+            // 行がすべて空の場合はスキップ
+            if row.iter().all(|cell| cell.trim().is_empty()) {
+                tracing::debug!(
+                    row_index = row_number,
+                    "空行のためテーブル定義をスキップします"
+                );
+                continue;
+            }
+
+            match Self::parse_row(row, &mapping, row_number) {
                 Ok(def) => {
                     tracing::debug!(
                         table_name = %def.table_name_en,
                         table_io = ?def.table_io,
+                        table_scope = ?def.table_scope,
                         "テーブル定義を解析しました"
                     );
                     definitions.push(def);
@@ -217,21 +338,31 @@ mod tests {
 
         let rows = vec![
             vec![
-                "table_name_jp".to_string(),
-                "table_name_en".to_string(),
+                "sheet_name".to_string(),
+                "table_name".to_string(),
+                "table_scope".to_string(),
                 "table_io".to_string(),
                 "table_type".to_string(),
             ],
             vec![
-                "クエスト情報".to_string(),
-                "quests".to_string(),
-                "in,out".to_string(),
-                "reference".to_string(),
+                "シート名".to_string(),
+                "テーブル名".to_string(),
+                "テーブルの対象".to_string(),
+                "入力・出力".to_string(),
+                "テーブル種類".to_string(),
             ],
             vec![
                 "マルチバトル戦術".to_string(),
                 "battle_types".to_string(),
+                "guild".to_string(),
                 "in".to_string(),
+                "reference".to_string(),
+            ],
+            vec![
+                "クエスト情報".to_string(),
+                "quests".to_string(),
+                "global".to_string(),
+                "in,out".to_string(),
                 "reference".to_string(),
             ],
         ];
@@ -241,10 +372,12 @@ mod tests {
 
         let definitions = result.unwrap();
         assert_eq!(definitions.len(), 2);
-        assert_eq!(definitions[0].table_name_en, "quests");
-        assert_eq!(definitions[0].table_io, TableIO::Both);
-        assert_eq!(definitions[1].table_name_en, "battle_types");
-        assert_eq!(definitions[1].table_io, TableIO::In);
+        assert_eq!(definitions[0].table_name_en, "battle_types");
+        assert_eq!(definitions[0].table_scope.as_deref(), Some("guild"));
+        assert_eq!(definitions[0].table_io, TableIO::In);
+        assert_eq!(definitions[1].table_name_en, "quests");
+        assert_eq!(definitions[1].table_scope.as_deref(), Some("global"));
+        assert_eq!(definitions[1].table_io, TableIO::Both);
     }
 
     #[tokio::test]
@@ -267,8 +400,14 @@ mod tests {
 
     #[test]
     fn test_table_type_from_str() {
-        assert_eq!(TableType::from_str("reference").unwrap(), TableType::Reference);
-        assert_eq!(TableType::from_str("transaction").unwrap(), TableType::Transaction);
+        assert_eq!(
+            TableType::from_str("reference").unwrap(),
+            TableType::Reference
+        );
+        assert_eq!(
+            TableType::from_str("transaction").unwrap(),
+            TableType::Transaction
+        );
         assert_eq!(TableType::from_str("history").unwrap(), TableType::History);
         assert!(TableType::from_str("invalid").is_err());
     }
