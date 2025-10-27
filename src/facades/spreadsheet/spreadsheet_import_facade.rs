@@ -61,7 +61,18 @@ impl SpreadsheetImportFacade {
         info!("グローバルスプレッドシートのインポートを開始します");
 
         // Google Sheets APIクライアントを取得
-        let sheets_client = self.google_auth_service.get_sheets_client().await?;
+        let sheets_client = self
+            .google_auth_service
+            .get_sheets_client()
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    error_debug = ?e,
+                    "Google Sheets APIクライアントの取得に失敗しました"
+                );
+                FacadeError::from(e)
+            })?;
 
         // TableDefinitionServiceとDataConverterServiceを作成
         let table_def_service = TableDefinitionService::new();

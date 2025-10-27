@@ -95,11 +95,16 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             Ok(())
         }
         Err(e) => {
+            error!(
+                user_id = %ctx.author().id,
+                error = %e,
+                error_debug = ?e,
+                "グローバルスプレッドシート読み込み中にFacadeエラーが発生しました"
+            );
+
             let error_msg = PresentationError::from(e).to_string();
             ctx.say(format!("❌ グローバルスプレッドシート読み込み失敗\n\n{}", error_msg))
                 .await?;
-
-            error!("グローバルスプレッドシート読み込み失敗");
 
             Ok(())
         }
