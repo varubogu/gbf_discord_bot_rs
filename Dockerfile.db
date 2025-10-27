@@ -1,5 +1,5 @@
 # base image
-FROM postgres:latest
+FROM postgres:18
 
 ENV ENTRY_FOLDER=docker-entrypoint-initdb.d
 

@@ -150,7 +150,7 @@ dev_up() {
         # コンテナの起動
         docker run -d \
             --name dev-db \
-            -v pgdata:/var/lib/postgresql/data \
+            -v pgdata:/var/lib/postgresql \
             -e POSTGRES_USER=${DB_USER} \
             -e POSTGRES_PASSWORD=${DB_PASSWORD} \
             -e POSTGRES_DB=${DB_NAME} \
