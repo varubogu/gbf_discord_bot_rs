@@ -2,13 +2,12 @@
 ///
 /// Google Cloud PlatformのサービスアカウントによるOAuth2認証を提供します。
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
-
 use async_trait::async_trait;
 use google_sheets4::{
+    Sheets,
     hyper::{self, client::HttpConnector},
     hyper_rustls::{self, HttpsConnector},
     oauth2::{ServiceAccountAuthenticator, ServiceAccountKey},
-    Sheets,
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -19,7 +18,9 @@ use crate::errors::ExternalServiceError;
 #[async_trait]
 pub trait GoogleAuthServiceTrait: Send + Sync {
     /// Google Sheets APIクライアントを取得
-    async fn get_sheets_client(&self) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError>;
+    async fn get_sheets_client(
+        &self,
+    ) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError>;
 }
 
 /// Google認証サービス実装
@@ -42,7 +43,12 @@ impl GoogleAuthService {
     }
 
     /// サービスアカウント認証を実行
-    async fn authenticate(&self) -> Result<google_sheets4::oauth2::authenticator::Authenticator<HttpsConnector<HttpConnector>>, ExternalServiceError> {
+    async fn authenticate(
+        &self,
+    ) -> Result<
+        google_sheets4::oauth2::authenticator::Authenticator<HttpsConnector<HttpConnector>>,
+        ExternalServiceError,
+    > {
         // サービスアカウントキーファイルを読み込み
         let key_file_content = tokio::fs::read_to_string(&self.service_account_key_file)
             .await
@@ -71,7 +77,9 @@ impl GoogleAuthService {
     }
 
     /// Google Sheets APIクライアントを作成
-    async fn create_sheets_client(&self) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError> {
+    async fn create_sheets_client(
+        &self,
+    ) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError> {
         // 認証
         let auth = self.authenticate().await?;
 
@@ -97,7 +105,9 @@ impl GoogleAuthService {
 
 #[async_trait]
 impl GoogleAuthServiceTrait for GoogleAuthService {
-    async fn get_sheets_client(&self) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError> {
+    async fn get_sheets_client(
+        &self,
+    ) -> Result<Sheets<HttpsConnector<HttpConnector>>, ExternalServiceError> {
         // キャッシュをチェック
         {
             let cache = self.client_cache.read().await;
@@ -130,11 +140,16 @@ mod tests {
     #[ignore] // 実際のサービスアカウントキーが必要なため、デフォルトではスキップ
     async fn test_google_auth_service() {
         dotenv::dotenv().ok();
-        let key_file = std::env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE").expect("環境変数が設定されていません");
+        let key_file =
+            std::env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE").expect("環境変数が設定されていません");
 
         let service = GoogleAuthService::new(key_file);
         let result = service.get_sheets_client().await;
 
-        assert!(result.is_ok(), "Google認証に失敗しました: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Google認証に失敗しました: {:?}",
+            result.err()
+        );
     }
 }

@@ -2,7 +2,6 @@
 ///
 /// アプリケーション起動時に環境変数とファイルをチェックし、
 /// 問題があれば分かりやすく表示します
-
 use std::path::Path;
 use thiserror::Error;
 
@@ -53,11 +52,7 @@ pub struct ValidationResult {
 }
 
 impl ValidationResult {
-    pub fn new(
-        category: ValidationCategory,
-        item_name: String,
-        status: ValidationStatus,
-    ) -> Self {
+    pub fn new(category: ValidationCategory, item_name: String, status: ValidationStatus) -> Self {
         Self {
             category,
             item_name,
@@ -230,12 +225,10 @@ impl EnvValidator {
                     ValidationResult::new(category, var_name.to_string(), ValidationStatus::Error)
                         .with_message("設定されていません".to_string())
                 } else {
-                    ValidationResult::new(
-                        category,
-                        var_name.to_string(),
-                        ValidationStatus::Warning,
-                    )
-                    .with_message("NOT SET (スプレッドシート機能を使用する場合は必須)".to_string())
+                    ValidationResult::new(category, var_name.to_string(), ValidationStatus::Warning)
+                        .with_message(
+                            "NOT SET (スプレッドシート機能を使用する場合は必須)".to_string(),
+                        )
                 }
             }
         }
@@ -313,10 +306,7 @@ impl EnvValidator {
                 ValidationStatus::Error,
             )
             .with_message(format!("無効なJSON形式: {}", e))
-            .with_help(format!(
-                "ファイル内容を確認してください: cat {}",
-                file_path
-            )),
+            .with_help(format!("ファイル内容を確認してください: cat {}", file_path)),
         }
     }
 }
@@ -421,7 +411,11 @@ impl StartupValidator {
         if self.is_valid() {
             println!("Validation Result: ✅ PASSED");
             if warning_count > 0 {
-                println!("  ({} warning{})", warning_count, if warning_count > 1 { "s" } else { "" });
+                println!(
+                    "  ({} warning{})",
+                    warning_count,
+                    if warning_count > 1 { "s" } else { "" }
+                );
             }
             println!("\nProceeding with application startup...");
         } else {
@@ -435,7 +429,11 @@ impl StartupValidator {
 
             // エラー詳細
             println!("\n❌ Errors:");
-            for result in self.results.iter().filter(|r| r.status == ValidationStatus::Error) {
+            for result in self
+                .results
+                .iter()
+                .filter(|r| r.status == ValidationStatus::Error)
+            {
                 if let Some(msg) = &result.message {
                     println!("  - {}: {}", result.item_name, msg);
                 }
@@ -444,7 +442,11 @@ impl StartupValidator {
             // 警告詳細
             if warning_count > 0 {
                 println!("\n⚠️  Warnings:");
-                for result in self.results.iter().filter(|r| r.status == ValidationStatus::Warning) {
+                for result in self
+                    .results
+                    .iter()
+                    .filter(|r| r.status == ValidationStatus::Warning)
+                {
                     if let Some(msg) = &result.message {
                         println!("  - {}: {}", result.item_name, msg);
                     }
@@ -483,7 +485,10 @@ impl StartupValidator {
             None => String::new(),
         };
 
-        println!("  {}{}{} {}{}", result.item_name, dots, status_symbol, status_symbol, msg);
+        println!(
+            "  {}{}{} {}{}",
+            result.item_name, dots, status_symbol, status_symbol, msg
+        );
     }
 }
 
@@ -628,9 +633,8 @@ mod tests {
         temp_file.write_all(valid_json.as_bytes()).unwrap();
         temp_file.flush().unwrap();
 
-        let result = EnvValidator::validate_service_account_key(
-            temp_file.path().to_str().unwrap()
-        ).await;
+        let result =
+            EnvValidator::validate_service_account_key(temp_file.path().to_str().unwrap()).await;
 
         assert_eq!(result.status, ValidationStatus::Ok);
         assert!(result.message.is_some());
@@ -647,9 +651,8 @@ mod tests {
         temp_file.write_all(b"{ invalid json }").unwrap();
         temp_file.flush().unwrap();
 
-        let result = EnvValidator::validate_service_account_key(
-            temp_file.path().to_str().unwrap()
-        ).await;
+        let result =
+            EnvValidator::validate_service_account_key(temp_file.path().to_str().unwrap()).await;
 
         assert_eq!(result.status, ValidationStatus::Error);
         assert!(result.message.is_some());
@@ -670,9 +673,8 @@ mod tests {
         temp_file.write_all(incomplete_json.as_bytes()).unwrap();
         temp_file.flush().unwrap();
 
-        let result = EnvValidator::validate_service_account_key(
-            temp_file.path().to_str().unwrap()
-        ).await;
+        let result =
+            EnvValidator::validate_service_account_key(temp_file.path().to_str().unwrap()).await;
 
         assert_eq!(result.status, ValidationStatus::Error);
         assert!(result.message.is_some());
@@ -683,9 +685,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_service_account_key_file_not_found() {
-        let result = EnvValidator::validate_service_account_key(
-            "/nonexistent/path/to/keyfile.json"
-        ).await;
+        let result =
+            EnvValidator::validate_service_account_key("/nonexistent/path/to/keyfile.json").await;
 
         assert_eq!(result.status, ValidationStatus::Error);
         assert!(result.message.is_some());

@@ -1,7 +1,6 @@
 /// Repository層エラー
 ///
 /// データアクセス関連のエラーを定義します。
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]

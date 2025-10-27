@@ -2,7 +2,6 @@
 ///
 /// gbf_bot_controlロール保持者が実行可能
 /// ギルド用の読み込み・書き込みスプレッドシートをデータベースに登録します
-
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
 use crate::services::permission::check_bot_control_role;
@@ -46,7 +45,8 @@ pub async fn gspread_regist(
         "ギルドスプレッドシート登録を開始"
     );
 
-    ctx.say("🔄 ギルドスプレッドシートを登録しています...").await?;
+    ctx.say("🔄 ギルドスプレッドシートを登録しています...")
+        .await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
@@ -87,8 +87,11 @@ pub async fn gspread_regist(
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドスプレッドシート登録失敗\n\n{}", error_msg))
-                .await?;
+            ctx.say(format!(
+                "❌ ギルドスプレッドシート登録失敗\n\n{}",
+                error_msg
+            ))
+            .await?;
 
             error!(
                 guild_id = %guild_id,

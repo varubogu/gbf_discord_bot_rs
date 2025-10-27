@@ -3,14 +3,13 @@
 /// ギルドスプレッドシート設定に関するビジネスロジック
 /// - スプレッドシートへのアクセス権限確認
 /// - Repository層への委譲
-
 use crate::errors::{BusinessRuleError, ExternalServiceError};
 use crate::repository::GuildSpreadsheetConfigRepositoryTrait;
 use crate::services::spreadsheet::{GoogleAuthServiceTrait, SpreadsheetUrlServiceTrait};
 use async_trait::async_trait;
+use google_sheets4::Sheets;
 use google_sheets4::hyper::client::HttpConnector;
 use google_sheets4::hyper_rustls::HttpsConnector;
-use google_sheets4::Sheets;
 use sea_orm::DatabaseTransaction;
 
 #[async_trait]

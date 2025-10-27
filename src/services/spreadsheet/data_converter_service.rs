@@ -2,7 +2,6 @@
 ///
 /// PostgreSQLデータ型とスプレッドシート文字列の相互変換を行います。
 /// 設計書: docs/develop/design/spreadsheet/data_conversion.md
-
 use async_trait::async_trait;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone};
 use serde_json::Value as JsonValue;
@@ -100,20 +99,24 @@ impl DataConverterService {
 
     /// 整数型変換（i32）
     fn parse_integer(value: &str, field_name: &str) -> Result<i32, ValidationError> {
-        value.parse::<i32>().map_err(|_| ValidationError::TypeConversionError {
-            field: field_name.to_string(),
-            value: value.to_string(),
-            expected_type: "integer (i32)".to_string(),
-        })
+        value
+            .parse::<i32>()
+            .map_err(|_| ValidationError::TypeConversionError {
+                field: field_name.to_string(),
+                value: value.to_string(),
+                expected_type: "integer (i32)".to_string(),
+            })
     }
 
     /// 整数型変換（i64）
     fn parse_bigint(value: &str, field_name: &str) -> Result<i64, ValidationError> {
-        value.parse::<i64>().map_err(|_| ValidationError::TypeConversionError {
-            field: field_name.to_string(),
-            value: value.to_string(),
-            expected_type: "bigint (i64)".to_string(),
-        })
+        value
+            .parse::<i64>()
+            .map_err(|_| ValidationError::TypeConversionError {
+                field: field_name.to_string(),
+                value: value.to_string(),
+                expected_type: "bigint (i64)".to_string(),
+            })
     }
 
     /// ブール型変換
@@ -201,11 +204,12 @@ impl DataConverterService {
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .map(|s| {
-                s.parse::<i32>().map_err(|_| ValidationError::TypeConversionError {
-                    field: field_name.to_string(),
-                    value: s.to_string(),
-                    expected_type: "integer array (comma-separated i32)".to_string(),
-                })
+                s.parse::<i32>()
+                    .map_err(|_| ValidationError::TypeConversionError {
+                        field: field_name.to_string(),
+                        value: s.to_string(),
+                        expected_type: "integer array (comma-separated i32)".to_string(),
+                    })
             })
             .collect()
     }
@@ -243,16 +247,18 @@ impl DataConverterServiceTrait for DataConverterService {
             PostgresValue::TimestampTz(v) => v.to_rfc3339(),
             PostgresValue::Date(v) => v.format("%Y-%m-%d").to_string(),
             PostgresValue::Uuid(v) => v.to_string(),
-            PostgresValue::Json(v) => serde_json::to_string(v).map_err(|_| {
-                ValidationError::TypeConversionError {
+            PostgresValue::Json(v) => {
+                serde_json::to_string(v).map_err(|_| ValidationError::TypeConversionError {
                     field: "json".to_string(),
                     value: format!("{:?}", v),
                     expected_type: "JSON string".to_string(),
-                }
-            })?,
-            PostgresValue::IntegerArray(v) => {
-                v.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",")
+                })?
             }
+            PostgresValue::IntegerArray(v) => v
+                .iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
             PostgresValue::TextArray(v) => v.join(","),
         })
     }
@@ -269,10 +275,18 @@ impl DataConverterServiceTrait for DataConverterService {
         }
 
         match target_type {
-            PostgresType::Integer => Self::parse_integer(value, field_name).map(PostgresValue::Integer),
-            PostgresType::BigInt => Self::parse_bigint(value, field_name).map(PostgresValue::BigInt),
-            PostgresType::Text | PostgresType::Varchar => Ok(PostgresValue::Text(value.to_string())),
-            PostgresType::Boolean => Self::parse_boolean(value, field_name).map(PostgresValue::Boolean),
+            PostgresType::Integer => {
+                Self::parse_integer(value, field_name).map(PostgresValue::Integer)
+            }
+            PostgresType::BigInt => {
+                Self::parse_bigint(value, field_name).map(PostgresValue::BigInt)
+            }
+            PostgresType::Text | PostgresType::Varchar => {
+                Ok(PostgresValue::Text(value.to_string()))
+            }
+            PostgresType::Boolean => {
+                Self::parse_boolean(value, field_name).map(PostgresValue::Boolean)
+            }
             PostgresType::Timestamp => {
                 Self::parse_timestamp(value, field_name).map(PostgresValue::Timestamp)
             }
@@ -304,7 +318,11 @@ impl DataConverterServiceTrait for DataConverterService {
         for (index, column) in schema.iter().enumerate() {
             let value = row.get(index).map(|s| s.as_str()).unwrap_or("");
 
-            match self.from_spreadsheet_string(value, column.postgres_type.clone(), &column.column_name) {
+            match self.from_spreadsheet_string(
+                value,
+                column.postgres_type.clone(),
+                &column.column_name,
+            ) {
                 Ok(PostgresValue::Null) if !column.nullable => {
                     errors.push(ValidationError::RequiredFieldMissing {
                         field: column.column_name.clone(),
@@ -432,8 +450,7 @@ mod tests {
         let result = DataConverterService::parse_text_array("a,b,c", "test_field").unwrap();
         assert_eq!(result, vec!["a", "b", "c"]);
 
-        let result =
-            DataConverterService::parse_text_array("foo, bar, baz", "test_field").unwrap();
+        let result = DataConverterService::parse_text_array("foo, bar, baz", "test_field").unwrap();
         assert_eq!(result, vec!["foo", "bar", "baz"]);
 
         let result = DataConverterService::parse_text_array("", "test_field").unwrap();
@@ -449,15 +466,21 @@ mod tests {
             ""
         );
         assert_eq!(
-            service.to_spreadsheet_string(&PostgresValue::Integer(123)).unwrap(),
+            service
+                .to_spreadsheet_string(&PostgresValue::Integer(123))
+                .unwrap(),
             "123"
         );
         assert_eq!(
-            service.to_spreadsheet_string(&PostgresValue::Text("hello".to_string())).unwrap(),
+            service
+                .to_spreadsheet_string(&PostgresValue::Text("hello".to_string()))
+                .unwrap(),
             "hello"
         );
         assert_eq!(
-            service.to_spreadsheet_string(&PostgresValue::Boolean(true)).unwrap(),
+            service
+                .to_spreadsheet_string(&PostgresValue::Boolean(true))
+                .unwrap(),
             "true"
         );
         assert_eq!(

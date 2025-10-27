@@ -1,11 +1,11 @@
 /// Facade層エラー
 ///
 /// 複数のService層エラーを統合します。
-
 use thiserror::Error;
 
 use super::{
-    repository::RepositoryError, service::{BusinessRuleError, ExternalServiceError, ValidationError}
+    repository::RepositoryError,
+    service::{BusinessRuleError, ExternalServiceError, ValidationError},
 };
 
 #[derive(Error, Debug)]

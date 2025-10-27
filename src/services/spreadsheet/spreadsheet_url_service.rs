@@ -1,7 +1,6 @@
 /// SpreadsheetUrlService
 ///
 /// GoogleスプレッドシートのURLからIDを抽出し、正規化する
-
 use crate::errors::ValidationError;
 use regex::Regex;
 
@@ -32,8 +31,7 @@ impl SpreadsheetUrlService {
             url_pattern: Regex::new(r"https://docs\.google\.com/spreadsheets/d/([A-Za-z0-9-_]+)")
                 .expect("正規表現パターンが不正です"),
             // スプレッドシートIDは20〜80文字の英数字とハイフン、アンダースコア
-            id_pattern: Regex::new(r"^[A-Za-z0-9-_]{20,80}$")
-                .expect("正規表現パターンが不正です"),
+            id_pattern: Regex::new(r"^[A-Za-z0-9-_]{20,80}$").expect("正規表現パターンが不正です"),
         }
     }
 }
@@ -73,10 +71,7 @@ impl SpreadsheetUrlServiceTrait for SpreadsheetUrlService {
     }
 
     fn build_spreadsheet_url(&self, spreadsheet_id: &str) -> String {
-        format!(
-            "https://docs.google.com/spreadsheets/d/{}",
-            spreadsheet_id
-        )
+        format!("https://docs.google.com/spreadsheets/d/{}", spreadsheet_id)
     }
 }
 
@@ -111,7 +106,8 @@ mod tests {
     #[test]
     fn test_extract_from_url_with_trailing_slash() {
         let service = SpreadsheetUrlService::new();
-        let url = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/";
+        let url =
+            "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/";
         let result = service.extract_spreadsheet_id(url);
         assert!(result.is_ok());
     }

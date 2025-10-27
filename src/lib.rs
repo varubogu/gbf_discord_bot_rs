@@ -31,7 +31,9 @@ pub mod test_utils {
     }
 
     /// Test utility to parse event date
-    pub async fn parse_event_date(date_str: &str) -> Result<chrono::DateTime<chrono::Local>, String> {
+    pub async fn parse_event_date(
+        date_str: &str,
+    ) -> Result<chrono::DateTime<chrono::Local>, String> {
         date_parser::parse_event_date(date_str).await
     }
 }

@@ -1,7 +1,7 @@
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::types;
-use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::PoiseContext;
+use crate::types::domain_interface_result::CanCancelResult;
 use poise::serenity_prelude::Message;
 use tracing::error;
 
@@ -35,7 +35,9 @@ pub async fn cancel(
             Ok(())
         }
         Ok(CanCancelResult::NotRecruitMessage) => {
-            let _ = ctx.say("指定されたメッセージは募集メッセージではありません。").await;
+            let _ = ctx
+                .say("指定されたメッセージは募集メッセージではありません。")
+                .await;
             Ok(())
         }
         Ok(CanCancelResult::NotFound) => {

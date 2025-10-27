@@ -2,13 +2,12 @@
 ///
 /// PostgreSQLデータをGoogle Sheetsに書き込みます。
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
-
 use async_trait::async_trait;
 use google_sheets4::{
+    Sheets,
     api::{ClearValuesRequest, UpdateValuesResponse, ValueRange},
     hyper::client::HttpConnector,
     hyper_rustls::HttpsConnector,
-    Sheets,
 };
 
 use crate::errors::{ExternalServiceError, ValidationError};
@@ -196,7 +195,11 @@ where
         // Google Sheets APIでデータを書き込み
         let result = sheets_client
             .spreadsheets()
-            .values_update(value_range, spreadsheet_id, &Self::build_data_range(sheet_name))
+            .values_update(
+                value_range,
+                spreadsheet_id,
+                &Self::build_data_range(sheet_name),
+            )
             .value_input_option("RAW")
             .doit()
             .await

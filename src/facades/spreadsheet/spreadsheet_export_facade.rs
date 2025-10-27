@@ -2,7 +2,6 @@
 ///
 /// PostgreSQLデータをGoogle Sheetsに書き込みます。
 /// トランザクション管理を行い、複数のServiceを協調させます。
-
 use std::collections::HashMap;
 use std::env;
 
@@ -39,9 +38,12 @@ impl SpreadsheetExportFacade {
     /// 新しいFacadeを作成
     pub fn new(db: DatabaseConnection) -> Result<Self, FacadeError> {
         // 環境変数からサービスアカウントキーファイルパスを取得
-        let service_account_key_file = env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE")
-            .map_err(|_| FacadeError::Initialization {
-                message: "環境変数 GOOGLE_SERVICE_ACCOUNT_KEY_FILE が設定されていません".to_string(),
+        let service_account_key_file =
+            env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE").map_err(|_| {
+                FacadeError::Initialization {
+                    message: "環境変数 GOOGLE_SERVICE_ACCOUNT_KEY_FILE が設定されていません"
+                        .to_string(),
+                }
             })?;
 
         let google_auth_service = GoogleAuthService::new(service_account_key_file);
@@ -159,10 +161,7 @@ impl SpreadsheetExportFacade {
                             "テーブルの書き込みに失敗しました"
                         );
                         failure_count += 1;
-                        errors.push(format!(
-                            "テーブル「{}」: {}",
-                            table_def.table_name_en, e
-                        ));
+                        errors.push(format!("テーブル「{}」: {}", table_def.table_name_en, e));
                     }
                 }
             }

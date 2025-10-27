@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{CreateEmbed, ReactionType, Message};
+use poise::serenity_prelude::{CreateEmbed, Message, ReactionType};
 use thiserror::Error;
 
 /// Discord操作を抽象化する列挙型

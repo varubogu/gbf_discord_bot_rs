@@ -2,7 +2,6 @@
 ///
 /// gbf_bot_controlロール保持者が実行可能
 /// PostgreSQLからギルドデータをスプレッドシートに書き込みます
-
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
@@ -84,10 +83,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     };
 
     // エクスポート実行（guild_idも渡す必要がある場合は修正）
-    match facade
-        .export_global_spreadsheet(&spreadsheet_id)
-        .await
-    {
+    match facade.export_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
                 format!(

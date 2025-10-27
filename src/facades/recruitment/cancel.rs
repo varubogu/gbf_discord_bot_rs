@@ -1,7 +1,7 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
-    delete_cancelling_message, delete_confirmation_message, edit_original_message_as_cancelled, 
+    delete_cancelling_message, delete_confirmation_message, edit_original_message_as_cancelled,
     get_participants_from_reactions, send_cancel_reply_message, show_cancelling_message,
 };
 use crate::types;
@@ -9,7 +9,8 @@ use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow, CreateButton, EditInteractionResponse, Http, Message, MessageId
+    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow,
+    CreateButton, EditInteractionResponse, Http, Message, MessageId,
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -27,7 +28,10 @@ use tracing::{error, info, instrument, warn};
         message_id = %message.id.get()
     )
 )]
-pub async fn can_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
+pub async fn can_cancel(
+    ctx: PoiseContext<'_>,
+    message: &Message,
+) -> types::Result<CanCancelResult> {
     check_can_cancel_recruitment_internal(ctx, message).await
 }
 
@@ -65,7 +69,7 @@ pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::
             message: "ギルド情報を取得できませんでした".to_string(),
         });
     };
-    
+
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();
 
@@ -85,7 +89,10 @@ pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::
         message_id = %message.id.get()
     )
 )]
-async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &Message) -> types::Result<CanCancelResult> {
+async fn check_can_cancel_recruitment_internal(
+    ctx: PoiseContext<'_>,
+    message: &Message,
+) -> types::Result<CanCancelResult> {
     info!("BattleRecruitmentFacade::cancel_recruitment - 募集をキャンセルします");
 
     let app_state = &ctx.data().app_state;
@@ -99,8 +106,7 @@ async fn check_can_cancel_recruitment_internal(ctx: PoiseContext<'_>, message: &
 
         // DBの募集情報とDiscordメッセージの状況をチェック
         let can_cancel_result =
-            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo)
-                .await?;
+            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo).await?;
 
         Ok::<CanCancelResult, crate::types::AppError>(can_cancel_result)
     }
@@ -195,7 +201,10 @@ async fn cancel_recruitment_internal(
 }
 
 /// 募集キャンセル処理（確認付き）（内部関数）
-async fn cancel_with_confirmation_internal(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
+async fn cancel_with_confirmation_internal(
+    ctx: PoiseContext<'_>,
+    message: &Message,
+) -> types::Result<()> {
     // キャンセル可能かチェック
     let can_cancel_result = check_can_cancel_recruitment_internal(ctx, &message).await?;
 
@@ -213,7 +222,10 @@ async fn cancel_with_confirmation_internal(ctx: PoiseContext<'_>, message: &Mess
 }
 
 /// キャンセル可能性チェック結果の処理（内部関数）
-async fn handle_cancel_check_result(ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> types::Result<()> {
+async fn handle_cancel_check_result(
+    ctx: PoiseContext<'_>,
+    can_cancel_result: CanCancelResult,
+) -> types::Result<()> {
     let (should_exit, exit_message) = is_exit(ctx, can_cancel_result).await;
     if should_exit {
         if !exit_message.is_empty() {
@@ -229,7 +241,10 @@ async fn handle_cancel_check_result(ctx: PoiseContext<'_>, can_cancel_result: Ca
 }
 
 /// ユーザーの確認応答を待機（内部関数）
-async fn wait_for_user_confirmation(ctx: PoiseContext<'_>, reply: ReplyHandle<'_>) -> types::Result<ComponentInteraction> {
+async fn wait_for_user_confirmation(
+    ctx: PoiseContext<'_>,
+    reply: ReplyHandle<'_>,
+) -> types::Result<ComponentInteraction> {
     let component_interaction = ComponentInteractionCollector::new(ctx.serenity_context())
         .timeout(Duration::from_secs(30))
         .filter(move |mci| {
@@ -289,7 +304,7 @@ async fn handle_confirm_cancel(
             message: "ギルド情報を取得できませんでした".to_string(),
         });
     };
-    
+
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();
 
@@ -306,12 +321,18 @@ async fn handle_confirm_cancel(
 }
 
 /// キャンセル拒否時の処理（内部関数）
-async fn handle_deny_cancel(ctx: PoiseContext<'_>, interaction: ComponentInteraction) -> types::Result<()> {
+async fn handle_deny_cancel(
+    ctx: PoiseContext<'_>,
+    interaction: ComponentInteraction,
+) -> types::Result<()> {
     delete_confirmation_message(ctx, &interaction).await
 }
 
 /// 不明な選択時の処理（内部関数）
-async fn handle_unknown_choice(ctx: PoiseContext<'_>, interaction: ComponentInteraction) -> types::Result<()> {
+async fn handle_unknown_choice(
+    ctx: PoiseContext<'_>,
+    interaction: ComponentInteraction,
+) -> types::Result<()> {
     send_result_response(ctx, &interaction, "エラーが発生しました。".to_string()).await
 }
 

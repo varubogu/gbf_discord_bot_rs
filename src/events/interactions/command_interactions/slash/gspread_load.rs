@@ -2,7 +2,6 @@
 ///
 /// gbf_bot_controlロール保持者が実行可能
 /// スプレッドシートからギルドデータをPostgreSQLに読み込みます
-
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
@@ -84,10 +83,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     };
 
     // インポート実行（guild_idも渡す必要がある場合は修正）
-    match facade
-        .import_global_spreadsheet(&spreadsheet_id)
-        .await
-    {
+    match facade.import_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
                 format!(
@@ -134,8 +130,11 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{}", error_msg))
-                .await?;
+            ctx.say(format!(
+                "❌ ギルドスプレッドシート読み込み失敗\n\n{}",
+                error_msg
+            ))
+            .await?;
 
             error!(
                 guild_id = %guild_id,

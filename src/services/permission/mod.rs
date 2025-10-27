@@ -38,16 +38,11 @@ pub async fn has_bot_control_permission(
 }
 
 /// Checks if the current guild is the bot administrator server
-pub async fn is_bot_admin_server(
-    ctx: &PoiseContext<'_>,
-) -> Result<bool, String> {
-    let guild_id = ctx.guild_id()
-        .ok_or("Guild ID not found")?
-        .to_string();
+pub async fn is_bot_admin_server(ctx: &PoiseContext<'_>) -> Result<bool, String> {
+    let guild_id = ctx.guild_id().ok_or("Guild ID not found")?.to_string();
 
     // 環境変数から管理者専用サーバーのIDを取得
-    let admin_server_id = env::var("BOT_ADMIN_SERVER_ID")
-        .unwrap_or_else(|_| String::new());
+    let admin_server_id = env::var("BOT_ADMIN_SERVER_ID").unwrap_or_else(|_| String::new());
 
     if admin_server_id.is_empty() {
         return Ok(false);
@@ -88,15 +83,18 @@ pub async fn check_bot_admin_server(
 pub async fn check_bot_control_role(
     ctx: poise::Context<'_, crate::types::PoiseData, crate::types::AppError>,
 ) -> Result<bool, crate::types::AppError> {
-    let member = ctx.author_member().await.ok_or_else(|| {
-        crate::types::AppError::Config {
+    let member = ctx
+        .author_member()
+        .await
+        .ok_or_else(|| crate::types::AppError::Config {
             message: "メンバー情報を取得できませんでした".to_string(),
-        }
-    })?;
+        })?;
 
-    let guild_id = ctx.guild_id().ok_or_else(|| crate::types::AppError::Config {
-        message: "ギルド情報を取得できませんでした".to_string(),
-    })?;
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| crate::types::AppError::Config {
+            message: "ギルド情報を取得できませんでした".to_string(),
+        })?;
 
     // Send制約を満たすため、guild()を使わずにHTTP経由でロール情報を取得
     let roles = ctx
@@ -112,7 +110,10 @@ pub async fn check_bot_control_role(
             message: format!("ロール '{}' が見つかりません", ROLL_GBF_BOT_CONTROLS),
         })?;
 
-    let has_permission = member.roles.iter().any(|role_id| role_id.eq(&control_role.id));
+    let has_permission = member
+        .roles
+        .iter()
+        .any(|role_id| role_id.eq(&control_role.id));
 
     if !has_permission {
         return Err(crate::types::AppError::Config {

@@ -2,7 +2,6 @@
 ///
 /// Bot管理者専用サーバーでのみ実行可能
 /// PostgreSQLからグローバルデータをスプレッドシートに書き込みます
-
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
 use crate::services::permission::check_bot_admin_server;
@@ -14,7 +13,10 @@ use tracing::{error, info};
     slash_command,
     check = "check_bot_admin_server",
     name_localized("ja", "グローバル書き込み"),
-    description_localized("ja", "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）")
+    description_localized(
+        "ja",
+        "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）"
+    )
 )]
 pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保
@@ -97,11 +99,8 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ グローバルデータ書き込み失敗\n\n{}",
-                error_msg
-            ))
-            .await?;
+            ctx.say(format!("❌ グローバルデータ書き込み失敗\n\n{}", error_msg))
+                .await?;
 
             error!("グローバルデータ書き込み失敗");
 

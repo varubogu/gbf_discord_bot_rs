@@ -2,9 +2,8 @@
 ///
 /// Google Sheetsからデータを読み込み、PostgreSQL用のデータ構造に変換します。
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
-
 use async_trait::async_trait;
-use google_sheets4::{hyper::client::HttpConnector, hyper_rustls::HttpsConnector, Sheets};
+use google_sheets4::{Sheets, hyper::client::HttpConnector, hyper_rustls::HttpsConnector};
 
 use crate::errors::{ExternalServiceError, ValidationError};
 use crate::services::spreadsheet::{
@@ -331,7 +330,10 @@ mod tests {
 
     #[test]
     fn test_build_range() {
-        let range = SpreadsheetReaderService::<TableDefinitionService, DataConverterService>::build_range("クエスト");
+        let range =
+            SpreadsheetReaderService::<TableDefinitionService, DataConverterService>::build_range(
+                "クエスト",
+            );
         assert_eq!(range, "'クエスト'!A2:ZZ");
     }
 
@@ -339,8 +341,7 @@ mod tests {
     async fn test_convert_raw_row() {
         let table_def_service = TableDefinitionService::new();
         let converter_service = DataConverterService::new();
-        let reader_service =
-            SpreadsheetReaderService::new(table_def_service, converter_service);
+        let reader_service = SpreadsheetReaderService::new(table_def_service, converter_service);
 
         let schema = vec![
             ColumnSchema {
@@ -362,7 +363,10 @@ mod tests {
         assert_eq!(row_data.row_number, 2);
         assert_eq!(row_data.values.len(), 2);
         assert_eq!(row_data.values[0], PostgresValue::Integer(123));
-        assert_eq!(row_data.values[1], PostgresValue::Text("テスト".to_string()));
+        assert_eq!(
+            row_data.values[1],
+            PostgresValue::Text("テスト".to_string())
+        );
         assert_eq!(errors.len(), 0);
     }
 
@@ -370,8 +374,7 @@ mod tests {
     async fn test_convert_raw_row_with_errors() {
         let table_def_service = TableDefinitionService::new();
         let converter_service = DataConverterService::new();
-        let reader_service =
-            SpreadsheetReaderService::new(table_def_service, converter_service);
+        let reader_service = SpreadsheetReaderService::new(table_def_service, converter_service);
 
         let schema = vec![
             ColumnSchema {
@@ -394,7 +397,10 @@ mod tests {
         assert_eq!(row_data.row_number, 2);
         assert_eq!(row_data.values.len(), 2);
         assert_eq!(row_data.values[0], PostgresValue::Null); // エラー時はNULL
-        assert_eq!(row_data.values[1], PostgresValue::Text("テスト".to_string()));
+        assert_eq!(
+            row_data.values[1],
+            PostgresValue::Text("テスト".to_string())
+        );
         assert_eq!(errors.len(), 1); // 1つのエラー
     }
 }

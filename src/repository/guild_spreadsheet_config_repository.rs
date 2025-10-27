@@ -1,7 +1,6 @@
 /// ギルドスプレッドシート設定リポジトリ
 ///
 /// guild_spreadsheet_imports と guild_spreadsheet_exports テーブルへのアクセスを提供
-
 use crate::errors::RepositoryError;
 use crate::models::entities::{guild_spreadsheet_exports, guild_spreadsheet_imports};
 use async_trait::async_trait;

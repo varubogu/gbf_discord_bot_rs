@@ -1,4 +1,4 @@
-﻿use poise::serenity_prelude::all::{
+use poise::serenity_prelude::all::{
     ChannelId, ComponentInteraction, EditInteractionResponse, EditMessage, Message, MessageId,
 };
 use sea_orm::DatabaseTransaction;
@@ -27,14 +27,16 @@ pub async fn check_can_cancel_recruitment(
 
     info!(
         "キャンセル可能性チェック開始: guild_id={}, channel_id={}, message_id={}",
-        guild_id,
-        channel_id,
-        message_id
+        guild_id, channel_id, message_id
     );
 
     // DBから募集情報を取得（エラーの場合はNone扱い）
     let recruitment_opt = battle_recruitment_repo
-        .get_by_message(guild_id.clone().into(), channel_id.into(), message_id.into())
+        .get_by_message(
+            guild_id.clone().into(),
+            channel_id.into(),
+            message_id.into(),
+        )
         .await?;
 
     // Discordからメッセージを取得（エラーの場合はNone扱い）
@@ -283,8 +285,11 @@ pub async fn delete_confirmation_message(
     info!("確認メッセージを削除します");
 
     // メッセージを削除
-    interaction.message.delete(&ctx.serenity_context().http).await?;
-    
+    interaction
+        .message
+        .delete(&ctx.serenity_context().http)
+        .await?;
+
     info!("確認メッセージの削除完了");
     Ok(())
 }
@@ -295,7 +300,7 @@ pub async fn show_cancelling_message(
     interaction: &ComponentInteraction,
 ) -> Result<()> {
     info!("キャンセル中表示に変更します");
-    
+
     interaction
         .edit_response(
             &ctx.serenity_context().http,
@@ -304,7 +309,7 @@ pub async fn show_cancelling_message(
                 .components(vec![]),
         )
         .await?;
-    
+
     info!("キャンセル中表示への変更完了");
     Ok(())
 }
@@ -315,9 +320,12 @@ pub async fn delete_cancelling_message(
     interaction: &ComponentInteraction,
 ) -> Result<()> {
     info!("キャンセル中メッセージを削除します");
-    
-    interaction.message.delete(&ctx.serenity_context().http).await?;
-    
+
+    interaction
+        .message
+        .delete(&ctx.serenity_context().http)
+        .await?;
+
     info!("キャンセル中メッセージの削除完了");
     Ok(())
 }

@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| "info".to_string())
         .parse::<tracing::Level>()
         .unwrap_or(tracing::Level::INFO);
-    
+
     tracing_subscriber::fmt()
         .with_max_level(log_level)
         .with_target(false)
@@ -91,14 +91,16 @@ async fn main() -> Result<()> {
     info!("Configuration loaded successfully");
 
     // Initialise a database with an optimised connection pool
-    let db_connection = initialize_database(&config.database_url).await.map_err(|e| {
-        // データベース接続エラーの場合、詳細な情報を表示
-        if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&config.database_url);
-            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-        }
-        e
-    })?;
+    let db_connection = initialize_database(&config.database_url)
+        .await
+        .map_err(|e| {
+            // データベース接続エラーの場合、詳細な情報を表示
+            if let AppError::Database(ref db_err) = e {
+                let masked_url = ErrorFormatter::mask_database_url(&config.database_url);
+                eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+            }
+            e
+        })?;
     info!("Database connection pool initialised successfully");
 
     // Create AppState

@@ -1,7 +1,6 @@
 /// Service層エラー
 ///
 /// ビジネスロジック関連のエラーを定義します。
-
 use thiserror::Error;
 
 /// バリデーションエラー
@@ -69,10 +68,7 @@ pub enum BusinessRuleError {
     GuildIdMismatch { expected: String, actual: String },
 
     #[error("テーブル定義エラー: {table_name} (理由: {reason})")]
-    TableDefinitionError {
-        table_name: String,
-        reason: String,
-    },
+    TableDefinitionError { table_name: String, reason: String },
 }
 
 /// 外部サービスエラー

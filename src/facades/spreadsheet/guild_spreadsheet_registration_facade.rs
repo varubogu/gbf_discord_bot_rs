@@ -2,15 +2,14 @@
 ///
 /// ギルドスプレッドシート登録のユースケースを実現
 /// トランザクション管理と複数サービスの協調を担当
-
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument};
 
 use crate::errors::FacadeError;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
-    GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait, GoogleAuthService,
-    GoogleAuthServiceTrait, SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
+    GoogleAuthService, GoogleAuthServiceTrait, GuildSpreadsheetConfigService,
+    GuildSpreadsheetConfigServiceTrait, SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
 };
 
 /// 登録結果
@@ -113,12 +112,7 @@ impl GuildSpreadsheetRegistrationFacade {
         // トランザクション内で登録処理を実行
         let result = async {
             config_service
-                .register_spreadsheets(
-                    &txn,
-                    guild_id,
-                    &load_spreadsheet_id,
-                    &push_spreadsheet_id,
-                )
+                .register_spreadsheets(&txn, guild_id, &load_spreadsheet_id, &push_spreadsheet_id)
                 .await
                 .map_err(|e| {
                     error!(error = %e, "スプレッドシート登録に失敗しました");

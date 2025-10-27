@@ -1,7 +1,6 @@
 /// エラーフォーマッター
 ///
 /// 実行時エラーを分かりやすく整形して表示します
-
 use sea_orm::DbErr;
 use std::error::Error;
 

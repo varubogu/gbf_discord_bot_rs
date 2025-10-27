@@ -1,7 +1,6 @@
 /// Presentation層エラー
 ///
 /// Discordユーザー向けエラーメッセージ。
-
 use thiserror::Error;
 
 use super::{facade::FacadeError, service::ExternalServiceError};
