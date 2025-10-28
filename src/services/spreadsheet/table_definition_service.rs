@@ -11,10 +11,10 @@ use crate::errors::BusinessRuleError;
 /// テーブル定義
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableDefinition {
-    /// テーブル日本語名（シート名として使用）
-    pub table_name_jp: String,
-    /// テーブル物理名（PostgreSQLテーブル名）
-    pub table_name_en: String,
+    /// シート名
+    pub sheet_name: String,
+    /// テーブル名
+    pub table_name: String,
     /// テーブルのスコープ（グローバル/ギルドなど）
     pub table_scope: Option<String>,
     /// 処理方向
@@ -42,7 +42,7 @@ impl TableIO {
             "out" => Ok(TableIO::Out),
             "in,out" | "out,in" | "both" => Ok(TableIO::Both),
             _ => Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: format!("不正なtable_io値: {}", s),
             }),
         }
@@ -78,7 +78,7 @@ impl TableType {
             "transaction" => Ok(TableType::Transaction),
             "history" => Ok(TableType::History),
             _ => Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: format!("不正なtable_type値: {}", s),
             }),
         }
@@ -128,19 +128,19 @@ impl TableDefinitionService {
         mapping: &HeaderMapping,
         row_number: usize,
     ) -> Result<TableDefinition, BusinessRuleError> {
-        let table_name_jp =
+        let sheet_name =
             mapping
                 .sheet_name(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
-                    table_name: "テーブル名シート".to_string(),
+                    table_name: "tablesシート".to_string(),
                     reason: format!("sheet_nameが空です（行: {}）", row_number),
                 })?;
 
-        let table_name_en =
+        let table_name =
             mapping
                 .table_name(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
-                    table_name: "テーブル名シート".to_string(),
+                    table_name: "tablesシート".to_string(),
                     reason: format!("table_nameが空です（行: {}）", row_number),
                 })?;
 
@@ -148,7 +148,7 @@ impl TableDefinitionService {
             mapping
                 .table_io(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
-                    table_name: "テーブル名シート".to_string(),
+                    table_name: "tablesシート".to_string(),
                     reason: format!("table_ioが空です（行: {}）", row_number),
                 })?;
 
@@ -156,7 +156,7 @@ impl TableDefinitionService {
             mapping
                 .table_type(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
-                    table_name: "テーブル名シート".to_string(),
+                    table_name: "tablesシート".to_string(),
                     reason: format!("table_typeが空です（行: {}）", row_number),
                 })?;
 
@@ -166,8 +166,8 @@ impl TableDefinitionService {
         let table_scope = mapping.table_scope(row).map(|scope| scope.to_string());
 
         Ok(TableDefinition {
-            table_name_jp: table_name_jp.to_string(),
-            table_name_en: table_name_en.to_string(),
+            sheet_name: sheet_name.to_string(),
+            table_name: table_name.to_string(),
             table_scope,
             table_io,
             table_type,
@@ -194,14 +194,14 @@ impl HeaderMapping {
     fn try_from(mut indices: HashMap<String, usize>) -> Result<Self, BusinessRuleError> {
         let sheet_name_idx = indices.remove("sheet_name").ok_or_else(|| {
             BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: "必須列 sheet_name が存在しません".to_string(),
             }
         })?;
 
         let table_name_idx = indices.remove("table_name").ok_or_else(|| {
             BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: "必須列 table_name が存在しません".to_string(),
             }
         })?;
@@ -210,13 +210,13 @@ impl HeaderMapping {
             indices
                 .remove("table_io")
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
-                    table_name: "テーブル名シート".to_string(),
+                    table_name: "tablesシート".to_string(),
                     reason: "必須列 table_io が存在しません".to_string(),
                 })?;
 
         let table_type_idx = indices.remove("table_type").ok_or_else(|| {
             BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: "必須列 table_type が存在しません".to_string(),
             }
         })?;
@@ -267,7 +267,7 @@ impl TableDefinitionServiceTrait for TableDefinitionService {
     ) -> Result<Vec<TableDefinition>, BusinessRuleError> {
         if rows.is_empty() {
             return Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: "シートが空です".to_string(),
             });
         }
@@ -293,7 +293,7 @@ impl TableDefinitionServiceTrait for TableDefinitionService {
             match Self::parse_row(row, &mapping, row_number) {
                 Ok(def) => {
                     tracing::debug!(
-                        table_name = %def.table_name_en,
+                        table_name = %def.table_name,
                         table_io = ?def.table_io,
                         table_scope = ?def.table_scope,
                         "テーブル定義を解析しました"
@@ -313,7 +313,7 @@ impl TableDefinitionServiceTrait for TableDefinitionService {
 
         if definitions.is_empty() {
             return Err(BusinessRuleError::TableDefinitionError {
-                table_name: "テーブル名シート".to_string(),
+                table_name: "tablesシート".to_string(),
                 reason: "有効なテーブル定義が見つかりません".to_string(),
             });
         }
@@ -372,10 +372,10 @@ mod tests {
 
         let definitions = result.unwrap();
         assert_eq!(definitions.len(), 2);
-        assert_eq!(definitions[0].table_name_en, "battle_types");
+        assert_eq!(definitions[0].table_name, "battle_types");
         assert_eq!(definitions[0].table_scope.as_deref(), Some("guild"));
         assert_eq!(definitions[0].table_io, TableIO::In);
-        assert_eq!(definitions[1].table_name_en, "quests");
+        assert_eq!(definitions[1].table_name, "quests");
         assert_eq!(definitions[1].table_scope.as_deref(), Some("global"));
         assert_eq!(definitions[1].table_io, TableIO::Both);
     }

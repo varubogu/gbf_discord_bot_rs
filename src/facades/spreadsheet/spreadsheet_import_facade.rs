@@ -130,17 +130,17 @@ impl SpreadsheetImportFacade {
 
             for table_def in import_tables {
                 // スキーマを取得（TODO: 実際の実装）
-                let schema = match schemas.get(&table_def.table_name_en) {
+                let schema = match schemas.get(&table_def.table_name) {
                     Some(s) => s,
                     None => {
                         warn!(
-                            table_name = %table_def.table_name_en,
+                            table_name = %table_def.table_name,
                             "スキーマが見つかりません。スキップします"
                         );
                         failure_count += 1;
                         errors.push(format!(
                             "テーブル「{}」: スキーマが見つかりません",
-                            table_def.table_name_en
+                            table_def.table_name
                         ));
                         continue;
                     }
@@ -164,7 +164,7 @@ impl SpreadsheetImportFacade {
                         // TODO: データベースに保存する処理
                         // 現時点ではログ出力のみ
                         info!(
-                            table_name = %table_def.table_name_en,
+                            table_name = %table_def.table_name,
                             row_count = read_result.rows.len(),
                             error_count = read_result.errors.len(),
                             "テーブルデータを読み込みました"
@@ -175,12 +175,12 @@ impl SpreadsheetImportFacade {
                     }
                     Err(e) => {
                         error!(
-                            table_name = %table_def.table_name_en,
+                            table_name = %table_def.table_name,
                             error = %e,
                             "テーブルの読み込みに失敗しました"
                         );
                         failure_count += 1;
-                        errors.push(format!("テーブル「{}」: {}", table_def.table_name_en, e));
+                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
                     }
                 }
             }

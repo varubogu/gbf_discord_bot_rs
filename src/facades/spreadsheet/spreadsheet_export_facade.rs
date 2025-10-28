@@ -124,7 +124,7 @@ impl SpreadsheetExportFacade {
                 let rows: Vec<Vec<PostgresValue>> = Vec::new();
 
                 info!(
-                    table_name = %table_def.table_name_en,
+                    table_name = %table_def.table_name,
                     row_count = rows.len(),
                     "データベースからデータを取得しました"
                 );
@@ -145,7 +145,7 @@ impl SpreadsheetExportFacade {
                         }
 
                         info!(
-                            table_name = %table_def.table_name_en,
+                            table_name = %table_def.table_name,
                             rows_written = write_result.rows_written,
                             error_count = write_result.errors.len(),
                             "テーブルデータを書き込みました"
@@ -156,12 +156,12 @@ impl SpreadsheetExportFacade {
                     }
                     Err(e) => {
                         error!(
-                            table_name = %table_def.table_name_en,
+                            table_name = %table_def.table_name,
                             error = %e,
                             "テーブルの書き込みに失敗しました"
                         );
                         failure_count += 1;
-                        errors.push(format!("テーブル「{}」: {}", table_def.table_name_en, e));
+                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
                     }
                 }
             }

@@ -133,8 +133,8 @@ where
         table_definition: &TableDefinition,
         rows: Vec<Vec<PostgresValue>>,
     ) -> Result<WriteResult, ExternalServiceError> {
-        let table_name = &table_definition.table_name_en;
-        let sheet_name = &table_definition.table_name_jp;
+        let table_name = &table_definition.table_name;
+        let sheet_name = &table_definition.sheet_name;
 
         tracing::info!(
             table_name = %table_name,
@@ -228,11 +228,11 @@ where
         spreadsheet_id: &str,
         table_definition: &TableDefinition,
     ) -> Result<(), ExternalServiceError> {
-        let sheet_name = &table_definition.table_name_jp;
+        let sheet_name = &table_definition.sheet_name;
         let range = Self::build_data_range(sheet_name);
 
         tracing::debug!(
-            table_name = %table_definition.table_name_en,
+            table_name = %table_definition.table_name,
             sheet_name = %sheet_name,
             range = %range,
             "シートデータをクリアします"
@@ -275,16 +275,16 @@ where
                 }
                 Err(e) => {
                     tracing::error!(
-                        table_name = %table_def.table_name_en,
+                        table_name = %table_def.table_name,
                         error = %e,
                         "テーブルの書き込みに失敗しました"
                     );
                     // エラーがあっても他のテーブルは書き込み続行
                     results.push(WriteResult {
-                        table_name: table_def.table_name_en.clone(),
+                        table_name: table_def.table_name.clone(),
                         rows_written: 0,
                         errors: vec![WriteError {
-                            table_name: table_def.table_name_en.clone(),
+                            table_name: table_def.table_name.clone(),
                             row_number: 0,
                             message: e.to_string(),
                         }],

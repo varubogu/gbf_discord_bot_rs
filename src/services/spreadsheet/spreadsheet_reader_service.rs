@@ -125,9 +125,9 @@ where
         &self,
         sheets_client: &Sheets<HttpsConnector<HttpConnector>>,
         spreadsheet_id: &str,
-    ) -> Result<Vec<TableDefinition>, ExternalServiceError> {
-        // 「テーブル名」シートを読み込み
-        let range = "テーブル名!A2:D";
+    ) -> Result<Vec<TableDefinition>, ExternalServiceError> {   tracing::info!("テーブル定義シートの読み込みを開始します");
+        // 「tables」シートを読み込み
+        let range = "tables!A1:E";
 
         let result = sheets_client
             .spreadsheets()
@@ -173,11 +173,11 @@ where
         schema: &[ColumnSchema],
     ) -> Result<ReadResult, ExternalServiceError> {
         // シート名（日本語テーブル名）からセル範囲を構築
-        let range = Self::build_range(&table_definition.table_name_jp);
+        let range = Self::build_range(&table_definition.sheet_name);
 
         tracing::info!(
-            table_name = %table_definition.table_name_en,
-            sheet_name = %table_definition.table_name_jp,
+            table_name = %table_definition.table_name,
+            sheet_name = %table_definition.sheet_name,
             range = %range,
             "テーブルデータの読み込みを開始します"
         );
@@ -191,7 +191,7 @@ where
             .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
                 message: format!(
                     "シート「{}」の読み込みに失敗しました: {}",
-                    table_definition.table_name_jp, e
+                    table_definition.sheet_name, e
                 ),
             })?;
 
@@ -212,7 +212,7 @@ where
             return Err(ExternalServiceError::GoogleSheetsApiError {
                 message: format!(
                     "シート「{}」にヘッダー行が存在しません",
-                    table_definition.table_name_jp
+                    table_definition.sheet_name
                 ),
             });
         }
@@ -229,7 +229,7 @@ where
             return Err(ExternalServiceError::GoogleSheetsApiError {
                 message: format!(
                     "シート「{}」に必要なカラムが不足しています: {}",
-                    table_definition.table_name_jp,
+                    table_definition.sheet_name,
                     missing_columns.join(", ")
                 ),
             });
@@ -237,11 +237,11 @@ where
 
         if string_rows.len() == 1 {
             tracing::info!(
-                table_name = %table_definition.table_name_en,
+                table_name = %table_definition.table_name,
                 "シートにデータが存在しません（ヘッダーのみ）"
             );
             return Ok(ReadResult {
-                table_name: table_definition.table_name_en.clone(),
+                table_name: table_definition.table_name.clone(),
                 rows: Vec::new(),
                 errors: Vec::new(),
             });
@@ -253,7 +253,7 @@ where
 
         if has_description_row {
             tracing::debug!(
-                table_name = %table_definition.table_name_en,
+                table_name = %table_definition.table_name,
                 "説明行（2行目）をスキップします"
             );
         }
@@ -268,7 +268,7 @@ where
 
             if row.iter().all(|cell| cell.trim().is_empty()) {
                 tracing::debug!(
-                    table_name = %table_definition.table_name_en,
+                    table_name = %table_definition.table_name,
                     row_index = row_number,
                     "空行のためスキップします"
                 );
@@ -283,7 +283,7 @@ where
             // エラーがあれば記録
             for error in row_errors {
                 errors.push(ReadError {
-                    table_name: table_definition.table_name_en.clone(),
+                    table_name: table_definition.table_name.clone(),
                     row_number,
                     message: error.to_string(),
                 });
@@ -293,14 +293,14 @@ where
         }
 
         tracing::info!(
-            table_name = %table_definition.table_name_en,
+            table_name = %table_definition.table_name,
             row_count = rows.len(),
             error_count = errors.len(),
             "テーブルデータの読み込みが完了しました"
         );
 
         Ok(ReadResult {
-            table_name: table_definition.table_name_en.clone(),
+            table_name: table_definition.table_name.clone(),
             rows,
             errors,
         })
@@ -327,11 +327,11 @@ where
         // 各テーブルを順次読み込み
         for table_def in table_definitions {
             // スキーマを取得
-            let schema = match schemas.get(&table_def.table_name_en) {
+            let schema = match schemas.get(&table_def.table_name) {
                 Some(s) => s,
                 None => {
                     tracing::warn!(
-                        table_name = %table_def.table_name_en,
+                        table_name = %table_def.table_name,
                         "スキーマが見つかりません。スキップします"
                     );
                     continue;
@@ -348,16 +348,16 @@ where
                 }
                 Err(e) => {
                     tracing::error!(
-                        table_name = %table_def.table_name_en,
+                        table_name = %table_def.table_name,
                         error = %e,
                         "テーブルの読み込みに失敗しました"
                     );
                     // エラーがあっても他のテーブルは読み込み続行
                     results.push(ReadResult {
-                        table_name: table_def.table_name_en.clone(),
+                        table_name: table_def.table_name.clone(),
                         rows: Vec::new(),
                         errors: vec![ReadError {
-                            table_name: table_def.table_name_en.clone(),
+                            table_name: table_def.table_name.clone(),
                             row_number: 0,
                             message: e.to_string(),
                         }],
