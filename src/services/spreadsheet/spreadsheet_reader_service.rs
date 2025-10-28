@@ -4,6 +4,7 @@
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
 use async_trait::async_trait;
 use google_sheets4::{Sheets, hyper::client::HttpConnector, hyper_rustls::HttpsConnector};
+use std::collections::HashMap;
 
 use crate::errors::{ExternalServiceError, ValidationError};
 use crate::services::spreadsheet::{
@@ -92,9 +93,9 @@ where
         }
     }
 
-    /// シート名からセル範囲を取得（A2以降、ヘッダー除く）
+    /// シート名からセル範囲を取得（ヘッダー行を含む）
     fn build_range(sheet_name: &str) -> String {
-        format!("'{}'!A2:ZZ", sheet_name)
+        format!("'{}'!A1:ZZ", sheet_name)
     }
 
     /// 生の文字列行をPostgreSQL値に変換
@@ -194,13 +195,50 @@ where
                 ),
             })?;
 
-        // 値を取得
-        let values = result.1.values.unwrap_or_default();
+        // 文字列に変換
+        let string_rows: Vec<Vec<String>> = result
+            .1
+            .values
+            .unwrap_or_default()
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|cell| cell.as_str().unwrap_or("").to_string())
+                    .collect()
+            })
+            .collect();
 
-        if values.is_empty() {
+        if string_rows.is_empty() {
+            return Err(ExternalServiceError::GoogleSheetsApiError {
+                message: format!(
+                    "シート「{}」にヘッダー行が存在しません",
+                    table_definition.table_name_jp
+                ),
+            });
+        }
+
+        let header_mapping = DataHeaderMapping::new(&string_rows[0]);
+
+        let missing_columns: Vec<String> = schema
+            .iter()
+            .map(|column| column.column_name.clone())
+            .filter(|column| !header_mapping.contains(column))
+            .collect();
+
+        if !missing_columns.is_empty() {
+            return Err(ExternalServiceError::GoogleSheetsApiError {
+                message: format!(
+                    "シート「{}」に必要なカラムが不足しています: {}",
+                    table_definition.table_name_jp,
+                    missing_columns.join(", ")
+                ),
+            });
+        }
+
+        if string_rows.len() == 1 {
             tracing::info!(
                 table_name = %table_definition.table_name_en,
-                "シートにデータが存在しません（空のテーブル）"
+                "シートにデータが存在しません（ヘッダーのみ）"
             );
             return Ok(ReadResult {
                 table_name: table_definition.table_name_en.clone(),
@@ -209,19 +247,35 @@ where
             });
         }
 
+        let has_description_row =
+            string_rows.len() >= 3 && string_rows[1].iter().any(|cell| !cell.trim().is_empty());
+        let data_start_index = if has_description_row { 2 } else { 1 };
+
+        if has_description_row {
+            tracing::debug!(
+                table_name = %table_definition.table_name_en,
+                "説明行（2行目）をスキップします"
+            );
+        }
+
         // 各行を変換
         let mut rows = Vec::new();
         let mut errors = Vec::new();
 
-        for (index, row) in values.into_iter().enumerate() {
-            // 行番号（スプレッドシート上は2行目から、ヘッダーが1行目）
-            let row_number = index + 2;
+        for (index, row) in string_rows.iter().enumerate().skip(data_start_index) {
+            // 行番号（スプレッドシート上の番号。ヘッダーは1行目）
+            let row_number = index + 1;
 
-            // JSON値を文字列に変換
-            let raw_values: Vec<String> = row
-                .into_iter()
-                .map(|cell| cell.as_str().unwrap_or("").to_string())
-                .collect();
+            if row.iter().all(|cell| cell.trim().is_empty()) {
+                tracing::debug!(
+                    table_name = %table_definition.table_name_en,
+                    row_index = row_number,
+                    "空行のためスキップします"
+                );
+                continue;
+            }
+
+            let raw_values = header_mapping.collect_row(row, schema);
 
             // スキーマに基づいて変換
             let (row_data, row_errors) = self.convert_raw_row(raw_values, schema, row_number);
@@ -321,6 +375,49 @@ where
     }
 }
 
+/// データシートのヘッダーマッピング
+struct DataHeaderMapping {
+    column_to_index: HashMap<String, usize>,
+}
+
+impl DataHeaderMapping {
+    fn new(header_row: &[String]) -> Self {
+        let mut column_to_index = HashMap::new();
+        for (index, column_name) in header_row.iter().enumerate() {
+            let key = column_name.trim().to_lowercase();
+            if key.is_empty() {
+                continue;
+            }
+            column_to_index.insert(key, index);
+        }
+        Self { column_to_index }
+    }
+
+    fn contains(&self, column_name: &str) -> bool {
+        self.column_to_index
+            .contains_key(&column_name.to_lowercase())
+    }
+
+    fn value<'a>(&self, row: &'a [String], column_name: &str) -> Option<&'a str> {
+        self.column_to_index
+            .get(&column_name.to_lowercase())
+            .and_then(|index| row.get(*index))
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+    }
+
+    fn collect_row(&self, row: &[String], schema: &[ColumnSchema]) -> Vec<String> {
+        schema
+            .iter()
+            .map(|column| {
+                self.value(row, &column.column_name)
+                    .unwrap_or("")
+                    .to_string()
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -334,7 +431,7 @@ mod tests {
             SpreadsheetReaderService::<TableDefinitionService, DataConverterService>::build_range(
                 "クエスト",
             );
-        assert_eq!(range, "'クエスト'!A2:ZZ");
+        assert_eq!(range, "'クエスト'!A1:ZZ");
     }
 
     #[tokio::test]
@@ -368,6 +465,40 @@ mod tests {
             PostgresValue::Text("テスト".to_string())
         );
         assert_eq!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_data_header_mapping_collects_in_schema_order() {
+        let header = vec![
+            "name".to_string(),
+            "id".to_string(),
+            "guild_id".to_string(),
+            "updated_at".to_string(),
+        ];
+        let mapping = DataHeaderMapping::new(&header);
+
+        let schema = vec![
+            ColumnSchema {
+                column_name: "id".to_string(),
+                postgres_type: PostgresType::Integer,
+                nullable: false,
+            },
+            ColumnSchema {
+                column_name: "name".to_string(),
+                postgres_type: PostgresType::Text,
+                nullable: false,
+            },
+        ];
+
+        let row = vec![
+            "ジョブ名".to_string(),
+            "42".to_string(),
+            "1".to_string(),
+            "2025-01-01 00:00:00".to_string(),
+        ];
+
+        let collected = mapping.collect_row(&row, &schema);
+        assert_eq!(collected, vec!["42".to_string(), "ジョブ名".to_string()]);
     }
 
     #[tokio::test]
