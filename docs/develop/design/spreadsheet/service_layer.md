@@ -294,6 +294,7 @@ pub trait TableDefinitionService: Send + Sync {
 
 - 未対応のキーは無視される
 - `table_scope` は将来拡張用（未使用の場合は空でも可）
+- キー名でマッピングするため列順は不問、追加列も許容する
 
 **table_ioの解釈**:
 - `"in"` → `TableIo::In` - 読み込み専用（load操作のみ）
