@@ -16,7 +16,7 @@
 	// "forwardPorts": [5432],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "rustc --version",
+	"postCreateCommand": "rustc --version && sudo apt-get update && sudo apt-get install -y postgresql-client",
 
 	// Configure tool-specific properties.
   "customizations" : {
