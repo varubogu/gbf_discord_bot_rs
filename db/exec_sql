@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# スクリプトのディレクトリを取得
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# init.sqlのパスを絶対パスで指定
+psql -h db -U postgres -d postgres -f "${SCRIPT_DIR}/init.sql"
