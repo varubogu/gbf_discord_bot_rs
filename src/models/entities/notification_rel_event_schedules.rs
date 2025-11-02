@@ -1,12 +1,13 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "notification_rel_event_schedules")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub event_schedule_id: i32,
-    pub event_schedule_detail_id: Option<i32>,
+    pub event_schedule_id: Uuid,
+    pub event_schedule_detail_id: Option<Uuid>,
     #[sea_orm(primary_key, auto_increment = false)]
     pub notification_id: i32,
     pub created_at: DateTimeUtc,

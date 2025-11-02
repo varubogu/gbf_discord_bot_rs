@@ -36,7 +36,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::guilds::Entity",
         from = "Column::GuildId",
-        to = "super::guilds::Column::DiscordGuildId"
+        to = "super::guilds::Column::GuildId"
     )]
     Guild,
 }

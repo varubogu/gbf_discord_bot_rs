@@ -1,5 +1,7 @@
 pub mod battle_recruitments;
 pub mod battle_types;
+pub mod channel_types;
+pub mod elements;
 pub mod environments;
 pub mod event_schedule_details;
 pub mod event_schedules;
@@ -14,6 +16,8 @@ pub mod notifications;
 pub mod quest_aliases;
 pub mod quests;
 
+pub use channel_types::Entity as ChannelType;
+pub use elements::Entity as Element;
 pub use environments::Entity as Environment;
 pub use guild_spreadsheet_exports::Entity as GuildSpreadsheetExport;
 pub use guild_spreadsheet_imports::Entity as GuildSpreadsheetImport;

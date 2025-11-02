@@ -4,17 +4,17 @@ use crate::models::entities::{
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventScheduleDetail {
-    pub id: i32,
+    pub id: Uuid,
     pub profile: String,
     pub start_day_relative: String,
     pub time: String,
     pub schedule_name: String,
     pub message_text_id: String,
-    pub guild_id: i64,
-    pub channel_id: i64,
+    pub notification_channel_type: i32,
     pub reactions: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -29,8 +29,7 @@ impl From<event_schedule_details::Model> for EventScheduleDetail {
             time: model.time,
             schedule_name: model.schedule_name,
             message_text_id: model.message_text_id,
-            guild_id: model.guild_id,
-            channel_id: model.channel_id,
+            notification_channel_type: model.notification_channel_type,
             reactions: model.reactions,
             created_at: model.created_at,
             updated_at: model.updated_at,
@@ -47,7 +46,7 @@ impl Database {
 
     pub async fn get_event_schedule_detail_by_id(
         &self,
-        id: i32,
+        id: Uuid,
     ) -> Result<Option<EventScheduleDetail>, DbErr> {
         let event_schedule_detail = EventScheduleDetailEntity::find()
             .filter(event_schedule_details::Column::Id.eq(id))
@@ -63,18 +62,6 @@ impl Database {
     ) -> Result<Vec<EventScheduleDetail>, DbErr> {
         let models = EventScheduleDetailEntity::find()
             .filter(event_schedule_details::Column::Profile.eq(profile))
-            .all(&self.conn)
-            .await?;
-
-        Ok(models.into_iter().map(|model| model.into()).collect())
-    }
-
-    pub async fn get_event_schedule_details_by_guild(
-        &self,
-        guild_id: i64,
-    ) -> Result<Vec<EventScheduleDetail>, DbErr> {
-        let models = EventScheduleDetailEntity::find()
-            .filter(event_schedule_details::Column::GuildId.eq(guild_id))
             .all(&self.conn)
             .await?;
 

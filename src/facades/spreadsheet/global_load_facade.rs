@@ -4,6 +4,7 @@ use crate::services::spreadsheet::global_loader_service::{
 };
 use crate::types::{PoiseContext, Result};
 use sea_orm::TransactionTrait;
+use std::env;
 use tracing::{error, info, instrument};
 
 /// グローバルスプレッドシートからデータを読み込み
@@ -41,8 +42,21 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
     let txn = app_state.db().begin().await?;
 
     let result = async {
+        let spreadsheet_id =
+            env::var("GLOBAL_SPREADSHEET_ID").map_err(|_| crate::types::AppError::Config {
+                message: "環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string(),
+            })?;
+
+        let service_account_key_file =
+            env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE").map_err(|_| {
+                crate::types::AppError::Config {
+                    message: "環境変数 GOOGLE_SERVICE_ACCOUNT_KEY_FILE が設定されていません"
+                        .to_string(),
+                }
+            })?;
+
         // Service層のインスタンス化（静的ディスパッチ）
-        let loader_service = GlobalLoaderServiceImpl::new();
+        let loader_service = GlobalLoaderServiceImpl::new(spreadsheet_id, service_account_key_file);
 
         // スプレッドシート接続
         loader_service.open_spreadsheet().await?;
@@ -54,7 +68,9 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
         let converted_data = loader_service.convert_global_data(table_data).await?;
 
         // データベース保存
-        loader_service.save_global_data(converted_data).await?;
+        loader_service
+            .save_global_data(&txn, converted_data)
+            .await?;
 
         Ok(())
     }

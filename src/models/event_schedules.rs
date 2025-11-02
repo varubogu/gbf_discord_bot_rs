@@ -2,10 +2,11 @@ use crate::models::entities::{event_schedules, event_schedules::Entity as EventS
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSchedule {
-    pub id: i32,
+    pub id: Uuid,
     pub event_type: String,
     pub event_count: i64,
     pub profile: String,
@@ -39,7 +40,7 @@ impl Database {
         Ok(models.into_iter().map(|model| model.into()).collect())
     }
 
-    pub async fn get_event_schedule_by_id(&self, id: i32) -> Result<Option<EventSchedule>, DbErr> {
+    pub async fn get_event_schedule_by_id(&self, id: Uuid) -> Result<Option<EventSchedule>, DbErr> {
         let event_schedule = EventScheduleEntity::find()
             .filter(event_schedules::Column::Id.eq(id))
             .one(&self.conn)

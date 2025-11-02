@@ -126,7 +126,7 @@ pub fn create_recruitment_data_simple(
             name: quest_alias.to_string(),
             default_battle_style: 1,
             recruit_count: 6,
-            available_battle_styles: 1,
+            available_battle_styles: "default".to_string(),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         },

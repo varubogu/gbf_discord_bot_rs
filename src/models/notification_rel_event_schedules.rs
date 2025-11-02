@@ -5,11 +5,12 @@ use crate::models::entities::{
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotificationRelEventSchedule {
-    pub event_schedule_id: i32,
-    pub event_schedule_detail_id: Option<i32>,
+    pub event_schedule_id: Uuid,
+    pub event_schedule_detail_id: Option<Uuid>,
     pub notification_id: i32,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
@@ -38,7 +39,7 @@ impl Database {
 
     pub async fn get_notification_rel_event_schedule_by_ids(
         &self,
-        event_schedule_id: i32,
+        event_schedule_id: Uuid,
         notification_id: i32,
     ) -> Result<Option<NotificationRelEventSchedule>, DbErr> {
         let relation = NotificationRelEventScheduleEntity::find()
@@ -52,7 +53,7 @@ impl Database {
 
     pub async fn get_notification_rel_event_schedules_by_event_schedule(
         &self,
-        event_schedule_id: i32,
+        event_schedule_id: Uuid,
     ) -> Result<Vec<NotificationRelEventSchedule>, DbErr> {
         let models = NotificationRelEventScheduleEntity::find()
             .filter(notification_rel_event_schedules::Column::EventScheduleId.eq(event_schedule_id))
@@ -76,7 +77,7 @@ impl Database {
 
     pub async fn get_notification_rel_event_schedules_by_detail(
         &self,
-        event_schedule_detail_id: i32,
+        event_schedule_detail_id: Uuid,
     ) -> Result<Vec<NotificationRelEventSchedule>, DbErr> {
         let models = NotificationRelEventScheduleEntity::find()
             .filter(

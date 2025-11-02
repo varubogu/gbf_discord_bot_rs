@@ -9,7 +9,7 @@ pub struct Model {
     pub name: String,
     pub default_battle_style: i32,
     pub recruit_count: i32,
-    pub available_battle_styles: i32,
+    pub available_battle_styles: String,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

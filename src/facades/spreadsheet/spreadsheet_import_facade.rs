@@ -2,17 +2,16 @@
 ///
 /// Google Sheetsからデータを読み込み、PostgreSQLに保存します。
 /// トランザクション管理を行い、複数のServiceを協調させます。
-use std::collections::HashMap;
-use std::env;
+use std::{collections::HashMap, env};
 
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument, warn};
 
-use crate::errors::{FacadeError, PresentationError};
+use crate::errors::FacadeError;
 use crate::services::spreadsheet::{
-    ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait,
-    SpreadsheetReaderService, SpreadsheetReaderServiceTrait, TableDefinition,
-    TableDefinitionService, TableIO,
+    DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, RegisteredTableSchema,
+    SchemaExtractorService, SchemaExtractorServiceTrait, SpreadsheetReaderService,
+    SpreadsheetReaderServiceTrait, TableDefinition, TableDefinitionService, TableIO,
 };
 
 /// インポート結果
@@ -26,6 +25,8 @@ pub struct ImportResult {
     pub total_rows: usize,
     /// エラーメッセージ
     pub errors: Vec<String>,
+    /// 警告メッセージ
+    pub warnings: Vec<String>,
 }
 
 /// スプレッドシートインポートFacade
@@ -94,9 +95,9 @@ impl SpreadsheetImportFacade {
             "テーブル定義を読み込みました"
         );
 
-        // TODO: 実際のスキーマ定義をモデルから取得する
-        // 現時点では空のHashMapを使用（実装時に置き換え）
-        let schemas: HashMap<String, Vec<ColumnSchema>> = HashMap::new();
+        // SeaORMエンティティからスキーマ定義を取得
+        let schema_extractor = SchemaExtractorService::new();
+        let registered_tables = schema_extractor.extract_registered_tables();
 
         // インポート対象のテーブルのみをフィルタ（table_io = In or Both）
         let import_tables: Vec<TableDefinition> = table_definitions
@@ -111,6 +112,7 @@ impl SpreadsheetImportFacade {
                 failure_count: 0,
                 total_rows: 0,
                 errors: vec!["インポート対象のテーブルが見つかりません".to_string()],
+                warnings: Vec::new(),
             });
         }
 
@@ -127,28 +129,21 @@ impl SpreadsheetImportFacade {
             let mut failure_count = 0;
             let mut total_rows = 0;
             let mut errors = Vec::new();
+            let mut warnings = Vec::new();
 
-            for table_def in import_tables {
-                // スキーマを取得（TODO: 実際の実装）
-                let schema = match schemas.get(&table_def.table_name) {
-                    Some(s) => s,
-                    None => {
-                        warn!(
-                            table_name = %table_def.table_name,
-                            "スキーマが見つかりません。スキップします"
-                        );
-                        failure_count += 1;
-                        errors.push(format!(
-                            "テーブル「{}」: スキーマが見つかりません",
-                            table_def.table_name
-                        ));
-                        continue;
-                    }
+            let mut import_table_map: HashMap<String, TableDefinition> = import_tables
+                .into_iter()
+                .map(|def| (def.table_name.clone(), def))
+                .collect();
+
+            for table in &registered_tables {
+                let table_def = match take_table_definition(&mut import_table_map, table) {
+                    Some(def) => def,
+                    None => continue,
                 };
 
-                // データを読み込み
                 match reader_service
-                    .read_table_data(&sheets_client, spreadsheet_id, &table_def, schema)
+                    .read_table_data(&sheets_client, spreadsheet_id, &table_def, &table.schema)
                     .await
                 {
                     Ok(read_result) => {
@@ -161,8 +156,6 @@ impl SpreadsheetImportFacade {
                             }
                         }
 
-                        // TODO: データベースに保存する処理
-                        // 現時点ではログ出力のみ
                         info!(
                             table_name = %table_def.table_name,
                             row_count = read_result.rows.len(),
@@ -185,11 +178,24 @@ impl SpreadsheetImportFacade {
                 }
             }
 
+            for leftover in import_table_map.into_values() {
+                warn!(
+                    table_name = %leftover.table_name,
+                    sheet_name = %leftover.sheet_name,
+                    "このBotでは未対応のテーブルのためスキップしました"
+                );
+                warnings.push(format!(
+                    "⚠️ テーブル「{}」（シート: {}）はBotで扱わないため無視しました",
+                    leftover.table_name, leftover.sheet_name
+                ));
+            }
+
             Ok(ImportResult {
                 success_count,
                 failure_count,
                 total_rows,
                 errors,
+                warnings,
             })
         }
         .await;
@@ -239,6 +245,13 @@ impl std::fmt::Display for ImportResult {
             self.success_count, self.failure_count, self.total_rows
         )?;
 
+        if !self.warnings.is_empty() {
+            write!(f, "\n\n⚠️ 警告:\n")?;
+            for warning in &self.warnings {
+                write!(f, "  - {}\n", warning)?;
+            }
+        }
+
         if !self.errors.is_empty() {
             write!(f, "\n\n❌ エラー詳細:\n")?;
             for error in &self.errors {
@@ -248,4 +261,22 @@ impl std::fmt::Display for ImportResult {
 
         Ok(())
     }
+}
+
+/// テーブル定義マップから該当エントリを取り出す（本名・別名対応）
+fn take_table_definition(
+    definitions: &mut HashMap<String, TableDefinition>,
+    table: &RegisteredTableSchema,
+) -> Option<TableDefinition> {
+    if let Some(definition) = definitions.remove(&table.table_name) {
+        return Some(definition);
+    }
+
+    for alias in &table.aliases {
+        if let Some(definition) = definitions.remove(alias) {
+            return Some(definition);
+        }
+    }
+
+    None
 }

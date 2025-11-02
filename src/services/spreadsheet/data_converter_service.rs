@@ -88,6 +88,27 @@ pub struct ColumnSchema {
 pub struct DataConverterService;
 
 impl DataConverterService {
+    const TIMESTAMP_FORMATS: &'static [&'static str] = &[
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H",
+        "%Y-%m-%dT%H",
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%dT%H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%Y/%m/%dT%H:%M",
+        "%Y/%m/%d %H",
+        "%Y/%m/%dT%H",
+    ];
+
+    const DATE_ONLY_FORMATS: &'static [&'static str] = &["%Y-%m-%d", "%Y/%m/%d"];
+
+    const SUPPORTED_TIMESTAMP_FORMAT_MESSAGE: &'static str = "YYYY-MM-DD HH:MM[:SS], YYYY-MM-DDTHH:MM[:SS], YYYY/MM/DD HH:MM[:SS], YYYY/MM/DD, YYYY-MM-DD, RFC3339";
+
     pub fn new() -> Self {
         Self
     }
@@ -134,16 +155,33 @@ impl DataConverterService {
 
     /// 日時型変換（Timestamp）
     fn parse_timestamp(value: &str, field_name: &str) -> Result<NaiveDateTime, ValidationError> {
-        // ISO 8601形式: "YYYY-MM-DD HH:MM:SS"
-        NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S")
-            .or_else(|_| {
-                // ISO 8601形式（T付き）: "YYYY-MM-DDTHH:MM:SS"
-                NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S")
-            })
-            .map_err(|_| ValidationError::DateTimeFormatError {
-                value: value.to_string(),
-                supported_formats: "YYYY-MM-DD HH:MM:SS, YYYY-MM-DDTHH:MM:SS".to_string(),
-            })
+        let trimmed = value.trim();
+
+        for format in Self::TIMESTAMP_FORMATS {
+            if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, format) {
+                return Ok(dt);
+            }
+        }
+
+        for format in Self::DATE_ONLY_FORMATS {
+            if let Ok(date) = NaiveDate::parse_from_str(trimmed, format) {
+                return date.and_hms_opt(0, 0, 0).ok_or_else(|| {
+                    ValidationError::DateTimeFormatError {
+                        value: trimmed.to_string(),
+                        supported_formats: Self::SUPPORTED_TIMESTAMP_FORMAT_MESSAGE.to_string(),
+                    }
+                });
+            }
+        }
+
+        if let Ok(dt) = DateTime::parse_from_rfc3339(trimmed) {
+            return Ok(dt.naive_utc());
+        }
+
+        Err(ValidationError::DateTimeFormatError {
+            value: trimmed.to_string(),
+            supported_formats: Self::SUPPORTED_TIMESTAMP_FORMAT_MESSAGE.to_string(),
+        })
     }
 
     /// 日時型変換（TimestampTz）
@@ -161,7 +199,7 @@ impl DataConverterService {
                     .and_then(|opt| {
                         opt.ok_or_else(|| ValidationError::DateTimeFormatError {
                             value: value.to_string(),
-                            supported_formats: "RFC3339, YYYY-MM-DD HH:MM:SS".to_string(),
+                            supported_formats: Self::SUPPORTED_TIMESTAMP_FORMAT_MESSAGE.to_string(),
                         })
                     })
             })
@@ -317,6 +355,7 @@ impl DataConverterServiceTrait for DataConverterService {
 
         for (index, column) in schema.iter().enumerate() {
             let value = row.get(index).map(|s| s.as_str()).unwrap_or("");
+            let trimmed_value = value.trim();
 
             match self.from_spreadsheet_string(
                 value,
@@ -324,10 +363,19 @@ impl DataConverterServiceTrait for DataConverterService {
                 &column.column_name,
             ) {
                 Ok(PostgresValue::Null) if !column.nullable => {
-                    errors.push(ValidationError::RequiredFieldMissing {
-                        field: column.column_name.clone(),
-                    });
-                    converted.push(PostgresValue::Null);
+                    if trimmed_value.is_empty()
+                        && matches!(
+                            column.postgres_type,
+                            PostgresType::Text | PostgresType::Varchar
+                        )
+                    {
+                        converted.push(PostgresValue::Text(String::new()));
+                    } else {
+                        errors.push(ValidationError::RequiredFieldMissing {
+                            field: column.column_name.clone(),
+                        });
+                        converted.push(PostgresValue::Null);
+                    }
                 }
                 Ok(postgres_value) => {
                     converted.push(postgres_value);

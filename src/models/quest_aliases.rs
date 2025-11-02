@@ -10,6 +10,7 @@ pub struct QuestAlias {
     pub id: i32,
     pub quest_id: i32,
     pub alias: String,
+    pub alias_kana_small: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -20,6 +21,7 @@ impl From<quest_aliases::Model> for QuestAlias {
             id: model.id,
             quest_id: model.quest_id,
             alias: model.alias,
+            alias_kana_small: model.alias_kana_small,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

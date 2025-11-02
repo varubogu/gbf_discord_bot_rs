@@ -2,13 +2,12 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "environments")]
+#[sea_orm(table_name = "channel_types")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub key: String,
-    pub value: String,
-    pub created_at: DateTimeUtc,
-    pub updated_at: DateTimeUtc,
+    pub id: i32,
+    pub name: String,
+    pub memo: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

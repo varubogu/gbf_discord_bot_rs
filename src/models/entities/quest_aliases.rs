@@ -8,6 +8,7 @@ pub struct Model {
     pub id: i32,
     pub quest_id: i32,
     pub alias: String,
+    pub alias_kana_small: String,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

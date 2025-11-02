@@ -1,5 +1,7 @@
-﻿pub(crate) mod battle_recruitments;
+pub(crate) mod battle_recruitments;
 pub(crate) mod battle_types;
+pub(crate) mod channel_types;
+pub(crate) mod elements;
 pub(crate) mod entities;
 pub(crate) mod environments;
 pub(crate) mod event_schedule_details;

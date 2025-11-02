@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Environments {
-    pub id: i32,
     pub key: String,
     pub value: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -18,7 +17,6 @@ pub struct Environments {
 impl From<environments::Model> for Environments {
     fn from(model: environments::Model) -> Self {
         Self {
-            id: model.id,
             key: model.key,
             value: model.value,
             created_at: model.created_at,

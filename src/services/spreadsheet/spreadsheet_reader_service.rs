@@ -125,7 +125,8 @@ where
         &self,
         sheets_client: &Sheets<HttpsConnector<HttpConnector>>,
         spreadsheet_id: &str,
-    ) -> Result<Vec<TableDefinition>, ExternalServiceError> {   tracing::info!("テーブル定義シートの読み込みを開始します");
+    ) -> Result<Vec<TableDefinition>, ExternalServiceError> {
+        tracing::info!("テーブル定義シートの読み込みを開始します");
         // 「tables」シートを読み込み
         let range = "tables!A1:E";
 
