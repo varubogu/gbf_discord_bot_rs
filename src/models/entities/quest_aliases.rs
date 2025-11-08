@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "quest_aliases")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     pub id: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
     pub quest_id: i32,
     pub alias: String,
     pub alias_kana_small: String,

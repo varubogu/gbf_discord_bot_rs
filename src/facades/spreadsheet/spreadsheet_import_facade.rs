@@ -4,14 +4,21 @@
 /// トランザクション管理を行い、複数のServiceを協調させます。
 use std::{collections::HashMap, env};
 
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use chrono::{DateTime, Utc};
+use sea_orm::DbErr;
+use sea_orm::sea_query::{Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue};
+use sea_orm::{
+    ConnectionTrait, DatabaseBackend, DatabaseConnection, DatabaseTransaction, Statement,
+    TransactionTrait,
+};
 use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
 use crate::services::spreadsheet::{
-    DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, RegisteredTableSchema,
-    SchemaExtractorService, SchemaExtractorServiceTrait, SpreadsheetReaderService,
-    SpreadsheetReaderServiceTrait, TableDefinition, TableDefinitionService, TableIO,
+    ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresType,
+    PostgresValue, RegisteredTableSchema, RowData, SchemaExtractorService,
+    SchemaExtractorServiceTrait, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
+    TableDefinition, TableDefinitionService, TableIO,
 };
 
 /// インポート結果
@@ -163,8 +170,47 @@ impl SpreadsheetImportFacade {
                             "テーブルデータを読み込みました"
                         );
 
-                        total_rows += read_result.rows.len();
-                        success_count += 1;
+                        match persist_table_data(
+                            &txn,
+                            &table_def.table_name,
+                            &table.schema,
+                            &read_result.rows,
+                        )
+                        .await
+                        {
+                            Ok((inserted_rows, persist_warnings)) => {
+                                total_rows += inserted_rows;
+                                if !persist_warnings.is_empty() {
+                                    warnings.extend(persist_warnings);
+                                }
+                                success_count += 1;
+                            }
+                            Err(FacadeError::Database { source }) => {
+                                let message = format!(
+                                    "テーブル『{}』: DB書き込みに失敗しました: {}",
+                                    table_def.table_name, source
+                                );
+                                error!(
+                                    table_name = %table_def.table_name,
+                                    db_error = %source,
+                                    "テーブルデータの保存に失敗しました"
+                                );
+                                failure_count += 1;
+                                errors.push(message);
+                            }
+                            Err(other) => {
+                                error!(
+                                    table_name = %table_def.table_name,
+                                    error = %other,
+                                    "テーブルデータの保存に失敗しました"
+                                );
+                                failure_count += 1;
+                                errors.push(format!(
+                                    "テーブル『{}』: {}",
+                                    table_def.table_name, other
+                                ));
+                            }
+                        }
                     }
                     Err(e) => {
                         error!(
@@ -279,4 +325,132 @@ fn take_table_definition(
     }
 
     None
+}
+
+async fn persist_table_data(
+    txn: &DatabaseTransaction,
+    table_name: &str,
+    schema: &[ColumnSchema],
+    rows: &[RowData],
+) -> Result<(usize, Vec<String>), FacadeError> {
+    let mut warnings = Vec::new();
+
+    let mut delete = Query::delete();
+    delete.from_table(Alias::new(table_name));
+    let (delete_sql, delete_values) = delete.build(PostgresQueryBuilder);
+    txn.execute(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        delete_sql,
+        delete_values,
+    ))
+    .await
+    .map_err(FacadeError::from)?;
+
+    if rows.is_empty() {
+        return Ok((0, warnings));
+    }
+
+    // created_atとupdated_atを除外したスキーマを作成
+    let filtered_schema: Vec<_> = schema
+        .iter()
+        .filter(|col| col.column_name != "created_at" && col.column_name != "updated_at")
+        .collect();
+
+    let mut insert = Query::insert();
+    insert
+        .into_table(Alias::new(table_name))
+        .columns(filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())));
+
+    let mut inserted_rows = 0usize;
+
+    for row in rows {
+        if row.values.len() != schema.len() {
+            warnings.push(format!(
+                "テーブル「{}」行{}: 列数が一致しないためスキップしました (期待{}列/実際{}列)",
+                table_name,
+                row.row_number,
+                schema.len(),
+                row.values.len()
+            ));
+            continue;
+        }
+
+        // created_atとupdated_atに対応する値を除外
+        let filtered_values: Vec<_> = row
+            .values
+            .iter()
+            .zip(schema.iter())
+            .filter(|(_, column)| column.column_name != "created_at" && column.column_name != "updated_at")
+            .map(|(value, column)| Expr::value(postgres_value_to_sea_value(value, column)))
+            .collect();
+
+        insert.values(filtered_values).map_err(|err| FacadeError::Database {
+            source: DbErr::Custom(format!(
+                "テーブル「{}」のINSERT値生成に失敗しました: {}",
+                table_name, err
+            )),
+        })?;
+
+        inserted_rows += 1;
+    }
+
+    if inserted_rows == 0 {
+        return Ok((0, warnings));
+    }
+
+    let (insert_sql, insert_values) = insert.build(PostgresQueryBuilder);
+    txn.execute(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        insert_sql,
+        insert_values,
+    ))
+    .await
+    .map_err(FacadeError::from)?;
+
+    Ok((inserted_rows, warnings))
+}
+
+fn postgres_value_to_sea_value(value: &PostgresValue, column: &ColumnSchema) -> SeaValue {
+    match value {
+        PostgresValue::Null => match column.postgres_type {
+            PostgresType::Integer => SeaValue::Int(None),
+            PostgresType::BigInt => SeaValue::BigInt(None),
+            PostgresType::Boolean => SeaValue::Bool(None),
+            PostgresType::Timestamp => SeaValue::ChronoDateTime(None),
+            PostgresType::TimestampTz => SeaValue::ChronoDateTimeUtc(None),
+            PostgresType::Date => SeaValue::ChronoDate(None),
+            PostgresType::Uuid => SeaValue::Uuid(None),
+            PostgresType::Json | PostgresType::JsonB => SeaValue::Json(None),
+            PostgresType::IntegerArray => SeaValue::Array(ArrayType::Int, None),
+            PostgresType::TextArray => SeaValue::Array(ArrayType::String, None),
+            _ => SeaValue::String(None),
+        },
+        PostgresValue::Integer(v) => SeaValue::Int(Some(*v)),
+        PostgresValue::BigInt(v) => SeaValue::BigInt(Some(*v)),
+        PostgresValue::Text(v) => SeaValue::String(Some(Box::new(v.clone()))),
+        PostgresValue::Boolean(v) => SeaValue::Bool(Some(*v)),
+        PostgresValue::Timestamp(v) => SeaValue::ChronoDateTime(Some(Box::new(*v))),
+        PostgresValue::TimestampTz(v) => {
+            #[allow(deprecated)]
+            let utc = DateTime::<Utc>::from_naive_utc_and_offset(v.naive_utc(), Utc);
+            SeaValue::ChronoDateTimeUtc(Some(Box::new(utc)))
+        }
+        PostgresValue::Date(v) => SeaValue::ChronoDate(Some(Box::new(*v))),
+        PostgresValue::Uuid(v) => SeaValue::Uuid(Some(Box::new(*v))),
+        PostgresValue::Json(v) => SeaValue::Json(Some(Box::new(v.clone()))),
+        PostgresValue::IntegerArray(v) => SeaValue::Array(
+            ArrayType::Int,
+            Some(Box::new(
+                v.iter().map(|n| SeaValue::Int(Some(*n))).collect(),
+            )),
+        ),
+        PostgresValue::TextArray(v) => SeaValue::Array(
+            ArrayType::String,
+            Some(Box::new(
+                v.iter()
+                    .map(|s| SeaValue::String(Some(Box::new(s.clone()))))
+                    .collect(),
+            )),
+        ),
+    }
 }

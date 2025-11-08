@@ -1,7 +1,3 @@
 #!/usr/bin/env bash
 
-# スクリプトのディレクトリを取得
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# init.sqlのパスを絶対パスで指定
-psql -h db -U postgres -d postgres -f "${SCRIPT_DIR}/init.sql"
+psql -h gbf_discord_bot_rs_devcontainer-db-1.orb.local -U postgres -d postgres -f init.sql

@@ -26,8 +26,13 @@ impl Database {
         Ok(models.into_iter().map(ChannelType::from).collect())
     }
 
-    pub async fn get_channel_type_by_id(&self, id: i32) -> Result<Option<ChannelType>, DbErr> {
-        let model = ChannelTypeEntity::find_by_id(id).one(&self.conn).await?;
+    pub async fn get_channel_type_by_id(
+        &self,
+        channel_type: i32,
+    ) -> Result<Option<ChannelType>, DbErr> {
+        let model = ChannelTypeEntity::find_by_id(channel_type)
+            .one(&self.conn)
+            .await?;
         Ok(model.map(ChannelType::from))
     }
 }

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+psql -h gbf_discord_bot_rs_devcontainer-db-1.orb.local -U postgres -d postgres -f drop.sql
