@@ -27,8 +27,11 @@ impl SpreadsheetUrlService {
     pub fn new() -> Self {
         Self {
             // GoogleスプレッドシートのURLパターン
-            // https://docs.google.com/spreadsheets/d/{id}/... の形式
-            url_pattern: Regex::new(r"https://docs\.google\.com/spreadsheets/d/([A-Za-z0-9-_]+)")
+            // 厳格なチェック：
+            // - HTTPSのみ許可
+            // - docs.google.com ドメインのみ（サブドメイン不可）
+            // - /spreadsheets/d/{id} のパス構造を強制
+            url_pattern: Regex::new(r"^https://docs\.google\.com/spreadsheets/d/([A-Za-z0-9-_]+)(?:/|$)")
                 .expect("正規表現パターンが不正です"),
             // スプレッドシートIDは20〜80文字の英数字とハイフン、アンダースコア
             id_pattern: Regex::new(r"^[A-Za-z0-9-_]{20,80}$").expect("正規表現パターンが不正です"),
@@ -46,13 +49,38 @@ impl SpreadsheetUrlServiceTrait for SpreadsheetUrlService {
     fn extract_spreadsheet_id(&self, url_or_id: &str) -> Result<String, ValidationError> {
         let trimmed = url_or_id.trim();
 
+        // 空文字チェック
+        if trimmed.is_empty() {
+            return Err(ValidationError::InvalidFormat {
+                field: "spreadsheet_url_or_id".to_string(),
+                reason: "スプレッドシートURLまたはIDを入力してください".to_string(),
+            });
+        }
+
         // URLの場合、IDを抽出
-        if let Some(captures) = self.url_pattern.captures(trimmed) {
-            if let Some(id_match) = captures.get(1) {
-                let id = id_match.as_str().to_string();
-                self.validate_spreadsheet_id(&id)?;
-                return Ok(id);
+        if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+            // HTTPSでない場合はエラー
+            if trimmed.starts_with("http://") {
+                return Err(ValidationError::InvalidFormat {
+                    field: "spreadsheet_url".to_string(),
+                    reason: "セキュリティ上の理由により、HTTPSのURLのみ許可されています".to_string(),
+                });
             }
+
+            // 正規表現でIDを抽出
+            if let Some(captures) = self.url_pattern.captures(trimmed) {
+                if let Some(id_match) = captures.get(1) {
+                    let id = id_match.as_str().to_string();
+                    self.validate_spreadsheet_id(&id)?;
+                    return Ok(id);
+                }
+            }
+
+            // URLパターンにマッチしなかった場合
+            return Err(ValidationError::InvalidFormat {
+                field: "spreadsheet_url".to_string(),
+                reason: "有効なGoogleスプレッドシートのURLを入力してください（https://docs.google.com/spreadsheets/d/... の形式）".to_string(),
+            });
         }
 
         // ID形式の場合、そのまま検証して返す
@@ -173,5 +201,62 @@ mod tests {
             result.unwrap(),
             "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
         );
+    }
+
+    #[test]
+    fn test_reject_http_url() {
+        let service = SpreadsheetUrlService::new();
+        let url = "http://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit";
+        let result = service.extract_spreadsheet_id(url);
+        assert!(result.is_err());
+        match result {
+            Err(ValidationError::InvalidFormat { reason, .. }) => {
+                assert!(reason.contains("HTTPS"));
+            }
+            _ => panic!("Expected InvalidFormat error for HTTP URL"),
+        }
+    }
+
+    #[test]
+    fn test_reject_wrong_domain() {
+        let service = SpreadsheetUrlService::new();
+        let url = "https://evil.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit";
+        let result = service.extract_spreadsheet_id(url);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reject_subdomain() {
+        let service = SpreadsheetUrlService::new();
+        let url = "https://subdomain.docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit";
+        let result = service.extract_spreadsheet_id(url);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_accept_url_with_query_params() {
+        let service = SpreadsheetUrlService::new();
+        let url = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?usp=sharing";
+        let result = service.extract_spreadsheet_id(url);
+        // パラメータは無視され、IDのみが抽出される
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        );
+    }
+
+    #[test]
+    fn test_reject_empty_string() {
+        let service = SpreadsheetUrlService::new();
+        let result = service.extract_spreadsheet_id("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reject_whitespace_only() {
+        let service = SpreadsheetUrlService::new();
+        let result = service.extract_spreadsheet_id("   ");
+        assert!(result.is_err());
     }
 }
