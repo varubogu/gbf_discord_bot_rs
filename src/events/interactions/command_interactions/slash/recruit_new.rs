@@ -1,4 +1,6 @@
 use crate::facades::recruitment;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::services::quest::search::QuestSearchService;
 use crate::types::battle_type::BattleType;
 use crate::types::{PoiseContext, Result};
 use futures::Stream;
@@ -30,18 +32,23 @@ pub async fn recruit(
     recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
 }
 
-#[allow(dead_code)]
 async fn quest_auto_complete<'a>(
-    _ctx: PoiseContext<'_>,
+    ctx: PoiseContext<'_>,
     partial: &'a str,
 ) -> impl Stream<Item = String> + 'a {
-    const QUEST_LIST: &[&str] = &["Amanda", "Bob", "Christian", "Danny", "Ester", "Falk"];
+    // AppStateからDB接続を取得してRepositoryを作成
+    let db_conn = ctx.data().app_state.db().clone();
+    let quest_repository = SeaOrmQuestRepository::new(db_conn);
 
-    let filtered_items: Vec<String> = QUEST_LIST
-        .iter()
-        .filter(|name| name.starts_with(partial))
-        .map(|name| name.to_string())
-        .collect();
+    // Service層を使って検索
+    let search_service = QuestSearchService::new(&quest_repository);
+    let results = search_service
+        .search_for_autocomplete(partial)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "クエスト検索に失敗しました");
+            vec![]
+        });
 
-    futures::stream::iter(filtered_items)
+    futures::stream::iter(results)
 }

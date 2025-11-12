@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "quest_aliases")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: i32,
-    #[sea_orm(primary_key, auto_increment = false)]
     pub quest_id: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub sequence_no: i32,
     pub alias: String,
     pub alias_kana_small: String,
     pub created_at: DateTimeUtc,

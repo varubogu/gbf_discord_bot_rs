@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuestAlias {
-    pub id: i32,
     pub quest_id: i32,
+    pub sequence_no: i32,
     pub alias: String,
     pub alias_kana_small: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -18,8 +18,8 @@ pub struct QuestAlias {
 impl From<quest_aliases::Model> for QuestAlias {
     fn from(model: quest_aliases::Model) -> Self {
         Self {
-            id: model.id,
             quest_id: model.quest_id,
+            sequence_no: model.sequence_no,
             alias: model.alias,
             alias_kana_small: model.alias_kana_small,
             created_at: model.created_at,
