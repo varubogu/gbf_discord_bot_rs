@@ -1,5 +1,6 @@
 use crate::facades::recruitment;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::services::datetime_parser;
 use crate::services::quest::search::QuestSearchService;
 use crate::types::battle_type::BattleType;
 use crate::types::{PoiseContext, Result};
@@ -20,7 +21,7 @@ pub async fn recruit(
 
     #[description = "Quest departure date and time"]
     #[description_localized("ja", "クエスト出発日時")]
-    _event_date: String,
+    event_date: String,
     // Temporarily removing BattleType parameter until traits are implemented
     // #[description = "Quest Combat Style"]
     // #[description_localized("ja", "クエストの戦闘スタイル")]
@@ -29,7 +30,11 @@ pub async fn recruit(
     ctx.defer().await?;
 
     let battle_type = BattleType::Default;
-    recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_type).await
+
+    // 日時文字列をDateTime<Local>に変換
+    let parsed_date = datetime_parser::parse_event_date(&event_date)?;
+
+    recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_type, Some(parsed_date)).await
 }
 
 async fn quest_auto_complete<'a>(

@@ -3,6 +3,7 @@ use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
+use chrono::{DateTime, Local};
 use sea_orm::TransactionTrait;
 use tracing::{info, instrument};
 
@@ -12,6 +13,7 @@ pub async fn new_recruitment(
     ctx: &PoiseContext<'_>,
     quest_alias: &str,
     battle_type: BattleType,
+    event_date: Option<DateTime<Local>>,
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
@@ -29,7 +31,7 @@ pub async fn new_recruitment(
 
         // 1. 募集データ作成
         let recruitment_data =
-            new::create_recruitment_data(quest_alias, battle_type, channel_id, guild_id, None)
+            new::create_recruitment_data(quest_alias, battle_type, channel_id, guild_id, event_date)
                 .await?;
 
         // 2. メッセージ送信
