@@ -9,10 +9,10 @@ use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
 
 /// キャンセル可能性をチェックし、結果を返す
-pub async fn check_can_cancel_recruitment(
+pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmentsRepository>(
     ctx: PoiseContext<'_>,
     message: &Message,
-    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
+    battle_recruitment_repo: &R,
 ) -> Result<CanCancelResult> {
     let guild_id = if let Some(guild_id) = ctx.guild_id() {
         guild_id.get()
@@ -77,9 +77,9 @@ pub async fn get_discord_message(
 }
 
 /// メッセージIDから募集をキャンセルする
-pub async fn cancel_recruitment_by_message(
+pub async fn cancel_recruitment_by_message<R: crate::repository::BattleRecruitmentsRepository>(
     txn: &DatabaseTransaction,
-    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
+    battle_recruitment_repo: &R,
     guild_id: u64,
     channel_id: u64,
     message_id: u64,
@@ -106,11 +106,11 @@ pub async fn cancel_recruitment_by_message(
 }
 
 /// DBから募集情報を取得
-pub async fn get_recruitment_from_database(
+pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitmentsRepository>(
     guild_id: u64,
     channel_id: u64,
     message_id: u64,
-    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
+    battle_recruitment_repo: &R,
 ) -> Result<BattleRecruitments> {
     info!(
         "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
@@ -135,11 +135,11 @@ pub async fn get_recruitment_from_database(
 }
 
 /// 募集をキャンセル済み状態に更新
-pub async fn mark_recruitment_as_cancelled(
+pub async fn mark_recruitment_as_cancelled<R: crate::repository::BattleRecruitmentsRepository>(
     _txn: &DatabaseTransaction,
     recruitment_id: i32,
     cancel_message_id: MessageId,
-    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
+    battle_recruitment_repo: &R,
 ) -> Result<()> {
     info!(
         "募集キャンセル済み状態更新: recruitment_id={}",

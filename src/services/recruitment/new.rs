@@ -24,8 +24,8 @@ pub struct RecruitmentData {
 }
 
 /// 募集データを作成する（QuestRepositoryを使用）
-pub async fn create_recruitment_data(
-    quest_repository: &dyn QuestRepository,
+pub async fn create_recruitment_data<Q: QuestRepository>(
+    quest_repository: &Q,
     quest_name_or_alias: &str,
     battle_type: BattleType,
     channel_id: u64,
@@ -118,9 +118,9 @@ pub async fn add_recruitment_reactions(
 }
 
 /// データ保存関数
-pub async fn save_recruitment(
+pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository>(
     txn: &DatabaseTransaction,
-    battle_recruitment_repo: &dyn crate::repository::BattleRecruitmentsRepository,
+    battle_recruitment_repo: &R,
     recruitment_data: &RecruitmentData,
     message_id: u64,
 ) -> types::Result<()> {
