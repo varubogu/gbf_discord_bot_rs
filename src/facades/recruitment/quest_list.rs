@@ -1,5 +1,6 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::models::quests::Quest;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
@@ -26,10 +27,11 @@ pub async fn quest_list(
         // RepositoryContainerとRepositoryの取得
         let repos = RepositoryContainer::new(&app_state.db_connection);
         let battle_recruitment_repo = repos.battle_recruitment();
+        let quest_repository = SeaOrmQuestRepository::new(app_state.db().clone());
 
-        // 1. Service層で募集データ作成
+        // 1. Service層で募集データ作成（QuestRepositoryを使用）
         let recruitment_data =
-            new::create_recruitment_data(quest_alias, battle_type, channel_id, guild_id, None)
+            new::create_recruitment_data(&quest_repository, quest_alias, battle_type, channel_id, guild_id, None)
                 .await?;
 
         // 2. Service層でメッセージ送信

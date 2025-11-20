@@ -4,6 +4,7 @@ use poise::serenity_prelude::all::CreateEmbed;
 use tracing::info;
 
 use crate::models::quests::Quest;
+use crate::repository::QuestRepository;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
@@ -22,29 +23,67 @@ pub struct RecruitmentData {
     pub reactions: Vec<poise::serenity_prelude::ReactionType>,
 }
 
-/// 募集データを作成する（純粋なビジネスロジック）
+/// 募集データを作成する（QuestRepositoryを使用）
 pub async fn create_recruitment_data(
-    quest_alias: &str,
+    quest_repository: &dyn QuestRepository,
+    quest_name_or_alias: &str,
     battle_type: BattleType,
     channel_id: u64,
     guild_id: u64,
     event_date: Option<DateTime<Local>>,
 ) -> types::Result<RecruitmentData> {
-    // 簡略版ヘルパー関数を使用（既存のFacadeとの互換性を保つため）
-    let mut recruitment_data =
-        create_recruitment_data_simple(quest_alias, battle_type, channel_id, guild_id);
+    // クエスト名またはエイリアスで検索
+    let search_results = quest_repository
+        .search_by_name_or_alias(quest_name_or_alias)
+        .await?;
 
-    // イベント日時を指定されたものに更新（指定されている場合）
-    if let Some(event_date) = event_date {
-        recruitment_data.expiry_date = event_date.with_timezone(&chrono::Utc);
-        recruitment_data.message_content = create_message_content(
-            &recruitment_data.quest.name,
-            &battle_type,
-            &recruitment_data.expiry_date,
-        );
-    }
+    // 最初にマッチしたクエストを使用
+    let quest_search_result = search_results
+        .first()
+        .ok_or_else(|| types::AppError::NotFound(format!(
+            "クエスト '{}' が見つかりませんでした",
+            quest_name_or_alias
+        )))?;
 
-    Ok(recruitment_data)
+    // クエストの詳細情報を取得
+    let quest = quest_repository
+        .get_by_target_id(quest_search_result.quest_id)
+        .await?
+        .ok_or_else(|| types::AppError::NotFound(format!(
+            "クエストID {} の詳細情報が見つかりませんでした",
+            quest_search_result.quest_id
+        )))?;
+
+    // イベント日時の決定
+    let expiry_date = if let Some(event_date) = event_date {
+        event_date.with_timezone(&chrono::Utc)
+    } else {
+        chrono::Utc::now() + chrono::Duration::days(7)
+    };
+
+    // questのdefault_battle_styleからBattleTypeを決定
+    let actual_battle_type = BattleType::from_value(quest.default_battle_style)
+        .unwrap_or(battle_type);
+
+    // メッセージ内容を作成
+    let message_content = create_message_content(&quest.name, &actual_battle_type, &expiry_date);
+
+    // BattleTypeに応じた初期参加者一覧を作成
+    let initial_participants_text = create_initial_participants_text(&actual_battle_type);
+
+    Ok(RecruitmentData {
+        quest,
+        battle_type: actual_battle_type,
+        channel_id,
+        guild_id,
+        expiry_date,
+        message_content,
+        embed: poise::serenity_prelude::CreateEmbed::new()
+            .title("参加者一覧")
+            .description(&initial_participants_text)
+            .color(0x0099ff),
+        reactions: actual_battle_type.reactions(),
+    })
 }
 
 /// Discord操作関数（メッセージ送信）
@@ -52,8 +91,14 @@ pub async fn send_recruitment_message(
     ctx: &PoiseContext<'_>,
     recruitment_data: &RecruitmentData,
 ) -> types::Result<u64> {
-    let recruit_message = ctx.say(recruitment_data.message_content.clone()).await?;
-    let message = recruit_message.message().await?;
+    use poise::serenity_prelude::all::CreateMessage;
+
+    // メッセージにEmbedを含めて送信
+    let builder = CreateMessage::new()
+        .content(recruitment_data.message_content.clone())
+        .embed(recruitment_data.embed.clone());
+
+    let message = ctx.channel_id().send_message(ctx.http(), builder).await?;
     Ok(message.id.get())
 }
 
@@ -79,6 +124,7 @@ pub async fn save_recruitment(
     recruitment_data: &RecruitmentData,
     message_id: u64,
 ) -> types::Result<()> {
+    // battle_type_idはquestsテーブルのdefault_battle_styleを使用
     battle_recruitment_repo
         .create_with_txn(
             txn,
@@ -86,7 +132,7 @@ pub async fn save_recruitment(
             recruitment_data.channel_id,
             message_id,
             recruitment_data.quest.id,
-            recruitment_data.battle_type as i32,
+            recruitment_data.quest.default_battle_style,
             recruitment_data.expiry_date,
         )
         .await?;
@@ -96,7 +142,7 @@ pub async fn save_recruitment(
 }
 
 /// メッセージ内容を作成する（純粋関数）
-fn create_message_content(
+pub fn create_message_content(
     quest_name: &str,
     battle_type: &BattleType,
     expiry_date: &DateTime<chrono::Utc>,
@@ -113,32 +159,24 @@ fn create_message_content(
     message_text
 }
 
-/// 募集データ作成のヘルパー関数（簡略版）
-pub fn create_recruitment_data_simple(
-    quest_alias: &str,
-    battle_type: BattleType,
-    channel_id: u64,
-    guild_id: u64,
-) -> RecruitmentData {
-    RecruitmentData {
-        quest: crate::models::quests::Quest {
-            id: 1,
-            name: quest_alias.to_string(),
-            default_battle_style: 1,
-            recruit_count: 6,
-            available_battle_styles: "default".to_string(),
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        },
-        battle_type,
-        channel_id,
-        guild_id,
-        expiry_date: chrono::Utc::now() + chrono::Duration::days(7),
-        message_content: format!("{}の参加者を募集します。", quest_alias),
-        embed: poise::serenity_prelude::CreateEmbed::new()
-            .title("参加者一覧")
-            .description("現在参加者はいません。")
-            .color(0x0099ff),
-        reactions: battle_type.reactions(),
+/// BattleTypeに応じた初期参加者一覧テキストを作成
+/// すべてのリアクション絵文字を「なし」で表示
+fn create_initial_participants_text(battle_type: &BattleType) -> String {
+    let reactions = battle_type.reactions();
+    let mut text = String::new();
+
+    for reaction in reactions {
+        // ReactionTypeから絵文字文字列を取得
+        let emoji = match reaction {
+            ReactionType::Unicode(emoji_str) => emoji_str,
+            _ => continue,
+        };
+        text.push_str(&format!("{} なし\n", emoji));
+    }
+
+    if text.is_empty() {
+        "現在参加者はいません。".to_string()
+    } else {
+        text
     }
 }
