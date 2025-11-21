@@ -91,15 +91,15 @@ pub async fn send_recruitment_message(
     ctx: &PoiseContext<'_>,
     recruitment_data: &RecruitmentData,
 ) -> types::Result<u64> {
-    use poise::serenity_prelude::all::CreateMessage;
+    use poise::CreateReply;
 
-    // メッセージにEmbedを含めて送信
-    let builder = CreateMessage::new()
+    // deferした応答を完了させる形でメッセージを送信
+    let reply = CreateReply::default()
         .content(recruitment_data.message_content.clone())
         .embed(recruitment_data.embed.clone());
 
-    let message = ctx.channel_id().send_message(ctx.http(), builder).await?;
-    Ok(message.id.get())
+    let message = ctx.send(reply).await?;
+    Ok(message.message().await?.id.get())
 }
 
 /// Discord操作関数（リアクション追加）
