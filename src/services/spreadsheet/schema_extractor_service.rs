@@ -107,7 +107,7 @@ mod tests {
         let schemas = service.extract_all_schemas();
 
         // 登録した全テーブルが含まれているか確認
-        assert!(schemas.contains_key("battle_types"));
+        assert!(schemas.contains_key("battle_styles"));
         assert!(schemas.contains_key("environments"));
         assert!(schemas.contains_key("quests"));
         assert!(schemas.contains_key("quest_aliases"));

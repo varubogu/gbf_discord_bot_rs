@@ -1,10 +1,10 @@
-use crate::models::entities::{battle_types, battle_types::Entity as BattleTypeEntity};
+use crate::models::entities::{battle_styles, battle_styles::Entity as BattleStyleEntity};
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BattleType {
+pub struct BattleStyle {
     pub id: i32,
     pub display_name: String,
     pub reactions: Option<String>,
@@ -13,8 +13,8 @@ pub struct BattleType {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl From<battle_types::Model> for BattleType {
-    fn from(model: battle_types::Model) -> Self {
+impl From<battle_styles::Model> for BattleStyle {
+    fn from(model: battle_styles::Model) -> Self {
         Self {
             id: model.id,
             display_name: model.display_name,
@@ -27,15 +27,15 @@ impl From<battle_types::Model> for BattleType {
 }
 
 impl Database {
-    pub async fn get_battle_types(&self) -> Result<Vec<BattleType>, DbErr> {
-        let models = BattleTypeEntity::find().all(&self.conn).await?;
+    pub async fn get_battle_styles(&self) -> Result<Vec<BattleStyle>, DbErr> {
+        let models = BattleStyleEntity::find().all(&self.conn).await?;
 
         Ok(models.into_iter().map(|model| model.into()).collect())
     }
 
-    pub async fn get_battle_type_by_id(&self, id: i32) -> Result<Option<BattleType>, DbErr> {
-        let battle_type = BattleTypeEntity::find()
-            .filter(battle_types::Column::Id.eq(id))
+    pub async fn get_battle_type_by_id(&self, id: i32) -> Result<Option<BattleStyle>, DbErr> {
+        let battle_type = BattleStyleEntity::find()
+            .filter(battle_styles::Column::Id.eq(id))
             .one(&self.conn)
             .await?;
 
@@ -45,9 +45,9 @@ impl Database {
     pub async fn get_battle_type_by_display_name(
         &self,
         display_name: &str,
-    ) -> Result<Option<BattleType>, DbErr> {
-        let battle_type = BattleTypeEntity::find()
-            .filter(battle_types::Column::DisplayName.eq(display_name))
+    ) -> Result<Option<BattleStyle>, DbErr> {
+        let battle_type = BattleStyleEntity::find()
+            .filter(battle_styles::Column::DisplayName.eq(display_name))
             .one(&self.conn)
             .await?;
 

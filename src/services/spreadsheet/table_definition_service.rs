@@ -353,7 +353,7 @@ mod tests {
             ],
             vec![
                 "マルチバトル戦術".to_string(),
-                "battle_types".to_string(),
+                "battle_styles".to_string(),
                 "guild".to_string(),
                 "in".to_string(),
                 "reference".to_string(),

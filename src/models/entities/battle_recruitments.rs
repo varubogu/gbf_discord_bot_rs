@@ -28,11 +28,11 @@ pub enum Relation {
     )]
     Quest,
     #[sea_orm(
-        belongs_to = "super::battle_types::Entity",
+        belongs_to = "super::battle_styles::Entity",
         from = "Column::BattleStyleId",
-        to = "super::battle_types::Column::Id"
+        to = "super::battle_styles::Column::Id"
     )]
-    BattleType,
+    BattleStyle,
     #[sea_orm(
         belongs_to = "super::guilds::Entity",
         from = "Column::GuildId",
@@ -47,9 +47,9 @@ impl Related<super::quests::Entity> for Entity {
     }
 }
 
-impl Related<super::battle_types::Entity> for Entity {
+impl Related<super::battle_styles::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::BattleType.def()
+        Relation::BattleStyle.def()
     }
 }
 

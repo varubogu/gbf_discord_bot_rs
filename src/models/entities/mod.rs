@@ -1,5 +1,5 @@
 pub mod battle_recruitments;
-pub mod battle_types;
+pub mod battle_styles;
 pub mod channel_types;
 pub mod elements;
 pub mod environments;

@@ -7,7 +7,7 @@ use sea_orm::{ColumnTrait, ColumnType, EntityTrait, Iden, Iterable};
 
 use crate::services::spreadsheet::{ColumnSchema, PostgresType};
 
-mod battle_types;
+mod battle_styles;
 mod channel_types;
 mod elements;
 mod environments;
@@ -17,7 +17,7 @@ mod message_texts;
 mod quest_aliases;
 mod quests;
 
-pub use battle_types::BattleTypesTable;
+pub use battle_styles::BattleStylesTable;
 pub use channel_types::ChannelTypesTable;
 pub use elements::ElementsTable;
 pub use environments::EnvironmentsTable;
@@ -48,7 +48,7 @@ impl TableRegistration {
 /// 全テーブルの登録情報を取得
 pub fn table_registrations() -> Vec<TableRegistration> {
     vec![
-        TableRegistration::new::<BattleTypesTable>(),
+        TableRegistration::new::<BattleStylesTable>(),
         TableRegistration::new::<ChannelTypesTable>(),
         TableRegistration::new::<EnvironmentsTable>(),
         TableRegistration::new::<EventSchedulesTable>(),
@@ -193,7 +193,7 @@ mod tests {
         let schemas = register_all_tables();
 
         // 登録した全テーブルが含まれているか確認
-        assert!(schemas.contains_key("battle_types"));
+        assert!(schemas.contains_key("battle_styles"));
         assert!(schemas.contains_key("environments"));
         assert!(schemas.contains_key("event_schedules"));
         assert!(schemas.contains_key("event_schedule_details"));
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_table_config_read_columns() {
         // BattleTypesTableで除外動作を確認
-        let columns = BattleTypesTable::read_columns();
+        let columns = BattleStylesTable::read_columns();
 
         // created_atとupdated_atが含まれていないこと
         assert!(!columns.iter().any(|col| col.column_name == "created_at"));
