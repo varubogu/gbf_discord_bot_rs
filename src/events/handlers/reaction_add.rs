@@ -1,14 +1,14 @@
 use crate::facades::recruitment::participants::update_participants;
 use crate::types::PoiseData;
 use poise::serenity_prelude::{Context, Reaction};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 pub async fn on_reaction_add(
     ctx: &Context,
     reaction: &Reaction,
     data: &PoiseData,
 ) -> Result<(), String> {
-    info!("Reaction added:");
+    debug!("Reaction added:");
 
     // Extract required IDs from reaction
     let guild_id = reaction.guild_id.map(|id| id.get()).unwrap_or(0);
@@ -18,7 +18,7 @@ pub async fn on_reaction_add(
     // ボットのリアクションは無視
     if let Ok(user) = reaction.user(&ctx.http).await {
         if user.bot {
-            info!("ボットのリアクションを無視します");
+            debug!("ボットのリアクションを無視します");
             return Ok(());
         }
     }
