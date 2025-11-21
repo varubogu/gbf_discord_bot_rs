@@ -90,6 +90,10 @@ async fn main() -> Result<()> {
     let config = AppConfig::from_env()?;
     info!("Configuration loaded successfully");
 
+    // Check if we should only run migrations
+    let args: Vec<String> = env::args().collect();
+    let migrate_only = args.iter().any(|arg| arg == "migrate-only");
+
     // Initialise a database with an optimised connection pool
     let db_connection = initialize_database(&config.database_url)
         .await
@@ -102,6 +106,12 @@ async fn main() -> Result<()> {
             e
         })?;
     info!("Database connection pool initialised successfully");
+
+    // If migrate_only flag is set, exit after migrations
+    if migrate_only {
+        info!("Migration completed successfully, exiting");
+        return Ok(());
+    }
 
     // Create AppState
     let app_state = AppState::new(db_connection, config);
