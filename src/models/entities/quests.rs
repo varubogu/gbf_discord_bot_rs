@@ -7,9 +7,9 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    pub default_battle_style: i32,
+    pub default_battle_style_id: i32,
     pub recruit_count: i32,
-    pub available_battle_styles: String,
+    pub available_battle_style_ids: String,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -20,7 +20,7 @@ pub enum Relation {
     QuestAlias,
     #[sea_orm(
         belongs_to = "super::battle_types::Entity",
-        from = "Column::DefaultBattleStyle",
+        from = "Column::DefaultBattleStyleId",
         to = "super::battle_types::Column::Id"
     )]
     BattleType,

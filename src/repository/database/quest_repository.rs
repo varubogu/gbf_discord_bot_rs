@@ -32,9 +32,9 @@ impl QuestRepository for SeaOrmQuestRepository {
             .map(|q| Quest {
                 id: q.id,
                 name: q.name,
-                default_battle_style: q.default_battle_style,
+                default_battle_style_id: q.default_battle_style_id,
                 recruit_count: q.recruit_count,
-                available_battle_styles: q.available_battle_styles,
+                available_battle_style_ids: q.available_battle_style_ids,
                 created_at: q.created_at,
                 updated_at: q.updated_at,
             })
@@ -50,9 +50,9 @@ impl QuestRepository for SeaOrmQuestRepository {
         Ok(quest.map(|q| Quest {
             id: q.id,
             name: q.name,
-            default_battle_style: q.default_battle_style,
+            default_battle_style_id: q.default_battle_style_id,
             recruit_count: q.recruit_count,
-            available_battle_styles: q.available_battle_styles,
+            available_battle_style_ids: q.available_battle_style_ids,
             created_at: q.created_at,
             updated_at: q.updated_at,
         }))

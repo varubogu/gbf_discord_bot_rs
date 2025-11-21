@@ -10,7 +10,7 @@ pub struct Model {
     pub channel_id: i64,
     pub message_id: i64,
     pub quest_id: i32,
-    pub battle_type_id: i32,
+    pub battle_style_id: i32,
     pub quest_start_at: DateTimeUtc,
     pub is_recruiting: bool,
     pub is_canceled: bool,
@@ -29,7 +29,7 @@ pub enum Relation {
     Quest,
     #[sea_orm(
         belongs_to = "super::battle_types::Entity",
-        from = "Column::BattleTypeId",
+        from = "Column::BattleStyleId",
         to = "super::battle_types::Column::Id"
     )]
     BattleType,
@@ -68,7 +68,7 @@ impl ActiveModelBehavior for ActiveModel {
             channel_id: sea_orm::NotSet,
             message_id: sea_orm::NotSet,
             quest_id: sea_orm::NotSet,
-            battle_type_id: sea_orm::NotSet,
+            battle_style_id: sea_orm::NotSet,
             quest_start_at: sea_orm::NotSet,
             is_recruiting: sea_orm::Set(true),
             is_canceled: sea_orm::Set(false),

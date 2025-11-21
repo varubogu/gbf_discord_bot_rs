@@ -61,8 +61,8 @@ pub async fn create_recruitment_data<Q: QuestRepository>(
         chrono::Utc::now() + chrono::Duration::days(7)
     };
 
-    // questのdefault_battle_styleからBattleTypeを決定
-    let actual_battle_type = BattleType::from_value(quest.default_battle_style)
+    // questのdefault_battle_style_idからBattleTypeを決定
+    let actual_battle_type = BattleType::from_value(quest.default_battle_style_id)
         .unwrap_or(battle_type);
 
     // メッセージ内容を作成
@@ -124,7 +124,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     recruitment_data: &RecruitmentData,
     message_id: u64,
 ) -> types::Result<()> {
-    // battle_type_idはquestsテーブルのdefault_battle_styleを使用
+    // battle_style_idはquestsテーブルのdefault_battle_style_idを使用
     battle_recruitment_repo
         .create_with_txn(
             txn,
@@ -132,7 +132,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
             recruitment_data.channel_id,
             message_id,
             recruitment_data.quest.id,
-            recruitment_data.quest.default_battle_style,
+            recruitment_data.quest.default_battle_style_id,
             recruitment_data.expiry_date,
         )
         .await?;

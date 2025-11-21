@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 pub struct Quest {
     pub id: i32,
     pub name: String,
-    pub default_battle_style: i32,
+    pub default_battle_style_id: i32,
     pub recruit_count: i32,
-    pub available_battle_styles: String,
+    pub available_battle_style_ids: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -20,9 +20,9 @@ impl From<quests::Model> for Quest {
         Self {
             id: model.id,
             name: model.name,
-            default_battle_style: model.default_battle_style,
+            default_battle_style_id: model.default_battle_style_id,
             recruit_count: model.recruit_count,
-            available_battle_styles: model.available_battle_styles,
+            available_battle_style_ids: model.available_battle_style_ids,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

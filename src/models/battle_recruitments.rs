@@ -15,7 +15,7 @@ pub struct BattleRecruitments {
     pub channel_id: u64,
     pub message_id: u64,
     pub quest_id: i32,
-    pub battle_type_id: i32,
+    pub battle_style_id: i32,
     pub quest_start_at: DateTime<Utc>,
     pub is_recruiting: bool,
     pub is_canceled: bool,
@@ -32,7 +32,7 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
             channel_id: model.channel_id as u64, // i64 → u64に変換
             message_id: model.message_id as u64, // i64 → u64に変換
             quest_id: model.quest_id,
-            battle_type_id: model.battle_type_id,
+            battle_style_id: model.battle_style_id,
             quest_start_at: model.quest_start_at,
             is_recruiting: model.is_recruiting,
             is_canceled: model.is_canceled,
@@ -59,7 +59,7 @@ impl Database {
         battle_recruitment.channel_id = Set(channel_id as i64); // u64 → i64に変換
         battle_recruitment.message_id = Set(message_id as i64); // u64 → i64に変換
         battle_recruitment.quest_id = Set(quest_id);
-        battle_recruitment.battle_type_id = Set(battle_type_id);
+        battle_recruitment.battle_style_id = Set(battle_type_id);
         battle_recruitment.quest_start_at = Set(quest_start_at);
 
         let result = battle_recruitment.insert(&self.conn).await?;
