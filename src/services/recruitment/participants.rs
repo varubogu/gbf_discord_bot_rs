@@ -46,6 +46,27 @@ impl ParticipantsService {
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
 
+        // キャンセル済みの募集は処理を終了
+        if recruitment.is_canceled {
+            info!(recruitment_id = recruitment.id, "キャンセル済み募集のため処理をスキップします");
+            return Err(AppError::Business {
+                message: "この募集はキャンセル済みです".to_string(),
+            });
+        }
+
+        // 期限切れの募集は処理を終了
+        let now = chrono::Utc::now();
+        if recruitment.quest_start_at < now {
+            info!(
+                recruitment_id = recruitment.id,
+                quest_start_at = %recruitment.quest_start_at,
+                "期限切れ募集のため処理をスキップします"
+            );
+            return Err(AppError::Business {
+                message: "この募集は期限切れです".to_string(),
+            });
+        }
+
         info!(recruitment_id = recruitment.id, "参加者更新処理完了");
         Ok(recruitment)
     }

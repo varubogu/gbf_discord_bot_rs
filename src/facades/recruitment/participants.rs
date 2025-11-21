@@ -26,10 +26,19 @@ pub async fn update_participants(
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
         let quest_repo = SeaOrmQuestRepository::new(db.clone());
 
-        // 募集情報の存在確認
-        let recruitment = participants_service
+        // 募集情報の存在確認（キャンセル済み・期限切れチェック含む）
+        let recruitment = match participants_service
             .update_participants_by_message(guild_id, channel_id, message_id, &txn)
-            .await?;
+            .await
+        {
+            Ok(recruitment) => recruitment,
+            Err(types::AppError::Business { message }) => {
+                // キャンセル済み・期限切れの場合は静かに処理を終了
+                info!("募集更新スキップ: {}", message);
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
 
         // メッセージのリアクションとユーザーを取得
         let participants_by_reaction = participants_service
