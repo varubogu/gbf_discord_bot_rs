@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::CreateEmbed;
 use tracing::info;
@@ -32,7 +32,7 @@ pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepositor
     battle_style_id: Option<i32>,
     channel_id: u64,
     guild_id: u64,
-    event_date: Option<DateTime<Local>>,
+    event_date: Option<DateTime<Utc>>,
 ) -> types::Result<RecruitmentData> {
     // クエスト名またはエイリアスで検索
     let search_results = quest_repository
@@ -56,12 +56,8 @@ pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepositor
             quest_search_result.quest_id
         )))?;
 
-    // イベント日時の決定
-    let expiry_date = if let Some(event_date) = event_date {
-        event_date.with_timezone(&chrono::Utc)
-    } else {
-        chrono::Utc::now() + chrono::Duration::days(7)
-    };
+    // イベント日時の決定（既にUTCで受け取っている）
+    let expiry_date = event_date.unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::days(7));
 
     // battle_style_idの決定：パラメータで指定されていればそれを使用、未指定ならquestのdefault_battle_style_idを使用
     let actual_battle_style_id = battle_style_id.unwrap_or(quest.default_battle_style_id);
@@ -168,8 +164,9 @@ pub fn create_message_content(
         message_text.push_str("\n参加属性を選んでください");
     }
 
-    let local_date = expiry_date.with_timezone(&Local);
-    message_text.push_str(&format!("\n開催日時：{}", local_date.format("%m/%d %H:%M")));
+    // 表示用にJST変換（UTC+9）
+    let jst_date = *expiry_date + chrono::Duration::hours(9);
+    message_text.push_str(&format!("\n開催日時：{} (JST)", jst_date.format("%m/%d %H:%M")));
 
     message_text
 }

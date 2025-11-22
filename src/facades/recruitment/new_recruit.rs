@@ -1,12 +1,13 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::database::schedule::NotificationRepository;
 use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Duration, Utc};
 use sea_orm::TransactionTrait;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 /// 新しい募集を開始する
 #[instrument(level = "debug", skip(ctx))]
@@ -14,7 +15,7 @@ pub async fn new_recruitment(
     ctx: &PoiseContext<'_>,
     quest_alias: &str,
     battle_style_id: Option<i32>,
-    event_date: Option<DateTime<Local>>,
+    event_date: Option<DateTime<Utc>>,
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
@@ -52,6 +53,28 @@ pub async fn new_recruitment(
 
         // 4. データ保存
         new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
+
+        // 5. 出発時刻の通知を登録（出発5分前）
+        let notification_repo = NotificationRepository::new(conn.clone());
+        let notify_time = recruitment_data.expiry_date - Duration::minutes(5);
+
+        debug!(
+            expiry_date = %recruitment_data.expiry_date,
+            notify_time = %notify_time,
+            "募集の出発通知を登録します"
+        );
+
+        notification_repo
+            .create_with_txn(
+                &txn,
+                notify_time,
+                guild_id as i64,
+                channel_id as i64,
+                "RECRUIT_DEPARTURE_REMINDER".to_string(),
+            )
+            .await?;
+
+        info!("募集の出発通知を登録しました");
 
         Ok(())
     }

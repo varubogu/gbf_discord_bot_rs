@@ -3,7 +3,7 @@ use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
 /// アプリケーションの共有状態（AppStateパターン）
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AppState {
     pub db_connection: Arc<DatabaseConnection>,
     pub config: AppConfig,

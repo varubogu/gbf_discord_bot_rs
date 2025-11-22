@@ -127,6 +127,7 @@ async fn main() -> Result<()> {
     let discord_token = app_state.config.discord_token.clone();
 
     // Create a poise framework with AppState
+    let app_state_for_framework = app_state.clone();
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
@@ -140,7 +141,9 @@ async fn main() -> Result<()> {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 
                 // PoiseDataにAppStateを設定
-                let data = PoiseData { app_state };
+                let data = PoiseData {
+                    app_state: app_state_for_framework,
+                };
                 info!("Poise framework initialized with AppState");
 
                 Ok(data)
@@ -152,6 +155,19 @@ async fn main() -> Result<()> {
         .await?;
 
     info!("Discord client created, starting bot...");
+
+    // スケジュール通知タイマーをバックグラウンドで起動
+    let app_state_for_scheduler = std::sync::Arc::new(app_state.clone());
+    let http = client.http.clone();
+    tokio::spawn(async move {
+        use crate::events::handlers::schedule_handler::ScheduleNotificationTimer;
+        let timer = std::sync::Arc::new(ScheduleNotificationTimer::new(
+            app_state_for_scheduler,
+            http,
+        ));
+        timer.start().await;
+    });
+    info!("スケジュール通知タイマーを起動しました");
 
     // Start the bot
     if let Err(e) = client.start().await {

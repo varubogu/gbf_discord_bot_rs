@@ -1,7 +1,7 @@
 use crate::types::AppError;
 
 /// アプリケーション設定
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AppConfig {
     pub database_url: String,
     pub discord_token: String,

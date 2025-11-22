@@ -1,3 +1,4 @@
+use crate::facades::scheduler::SchedulerFacade;
 use crate::services::permission::is_bot_admin_server;
 use crate::services::spreadsheet::global_loader_service::{
     GlobalLoaderService, GlobalLoaderServiceImpl,
@@ -5,7 +6,8 @@ use crate::services::spreadsheet::global_loader_service::{
 use crate::types::{PoiseContext, Result};
 use sea_orm::TransactionTrait;
 use std::env;
-use tracing::{error, info, instrument};
+use std::sync::Arc;
+use tracing::{error, info, instrument, warn};
 
 /// グローバルスプレッドシートからデータを読み込み
 ///
@@ -82,6 +84,25 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
             ctx.say("グローバルスプレッドシートからデータ読み込み完了")
                 .await?;
             info!("グローバルスプレッドシート読み込み処理完了");
+
+            // スケジュール生成を自動実行
+            info!("イベントスケジュールから通知スケジュールを生成します");
+            let app_state_arc = Arc::new(app_state.clone());
+            let scheduler_facade = SchedulerFacade::new(app_state_arc);
+
+            match scheduler_facade.generate_schedules().await {
+                Ok(_) => {
+                    ctx.say("✅ 通知スケジュールの生成が完了しました")
+                        .await?;
+                    info!("通知スケジュール生成完了");
+                }
+                Err(e) => {
+                    warn!(error = %e, "通知スケジュール生成に失敗しました（データ読み込みは成功）");
+                    ctx.say("⚠️ データ読み込みは完了しましたが、スケジュール生成に失敗しました")
+                        .await?;
+                }
+            }
+
             Ok(())
         }
         Err(e) => {

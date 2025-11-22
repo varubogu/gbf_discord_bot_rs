@@ -13,5 +13,9 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::gspread_regist::gspread_regist(),
         slash::gspread_global_load::gspread_global_load(),
         slash::gspread_global_push::gspread_global_push(),
+        slash::schedule_generate::schedule_generate(),
+        slash::schedule_list::schedule_list(),
+        slash::schedule_history::schedule_history(),
+        slash::schedule_stats::schedule_stats(),
     ]
 }
