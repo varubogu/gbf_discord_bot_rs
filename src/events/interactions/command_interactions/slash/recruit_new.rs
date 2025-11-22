@@ -29,14 +29,14 @@ pub async fn recruit(
     #[description = "battle style"]
     #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
     #[autocomplete = "battle_style_auto_complete"]
-    battle_style_id: Option<i32>,
+    battle_style: Option<i32>,
 ) -> Result<()> {
     ctx.defer().await?;
 
     // 日時文字列をDateTime<Local>に変換
     let parsed_date = datetime_parser::parse_event_date(&event_date)?;
 
-    recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style_id, Some(parsed_date)).await
+    recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style, Some(parsed_date)).await
 }
 
 async fn quest_auto_complete<'a>(

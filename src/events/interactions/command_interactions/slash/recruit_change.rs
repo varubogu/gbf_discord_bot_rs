@@ -35,11 +35,11 @@ pub async fn recruit_change(
     #[description = "battle style"]
     #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
     #[autocomplete = "battle_style_auto_complete"]
-    battle_style_id: Option<i32>,
+    battle_style: Option<i32>,
 ) -> Result<()> {
     ctx.defer().await?;
 
-    change_recruitment_information(&ctx, &recruit, &quest, &event_date, battle_style_id).await
+    change_recruitment_information(&ctx, &recruit, &quest, &event_date, battle_style).await
 }
 
 async fn auto_complete_quest<'a>(
