@@ -8,7 +8,6 @@ use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::types;
 use crate::types::PoiseContext;
-use crate::types::battle_type::BattleType;
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）

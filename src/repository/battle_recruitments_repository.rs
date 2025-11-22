@@ -15,7 +15,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         channel_id: u64,
         message_id: u64,
         quest_id: i32,
-        battle_type_id: i32,
+        battle_style_id: i32,
         quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments>;
 
@@ -27,7 +27,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         channel_id: u64,
         message_id: u64,
         quest_id: i32,
-        battle_type_id: i32,
+        battle_style_id: i32,
         quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments>;
 

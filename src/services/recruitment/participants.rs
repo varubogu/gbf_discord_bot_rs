@@ -8,7 +8,6 @@ use tracing::{error, info};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::BattleRecruitmentsRepository;
-use crate::types::battle_type::BattleType;
 use crate::types::{AppError, Result};
 
 pub(crate) struct PaticipantsParameter {

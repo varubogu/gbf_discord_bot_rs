@@ -5,7 +5,6 @@ use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::models::quests::Quest;
-use crate::types::battle_type::BattleType;
 
 pub(crate) struct UpdateParameter {
     pub quest: Quest,

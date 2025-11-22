@@ -50,7 +50,7 @@ impl Database {
         channel_id: u64,
         message_id: u64,
         quest_id: i32,
-        battle_type_id: i32,
+        battle_style_id: i32,
         quest_start_at: chrono::DateTime<chrono::Utc>,
     ) -> Result<BattleRecruitments, DbErr> {
         use sea_orm::ActiveModelBehavior;
@@ -59,7 +59,7 @@ impl Database {
         battle_recruitment.channel_id = Set(channel_id as i64); // u64 → i64に変換
         battle_recruitment.message_id = Set(message_id as i64); // u64 → i64に変換
         battle_recruitment.quest_id = Set(quest_id);
-        battle_recruitment.battle_style_id = Set(battle_type_id);
+        battle_recruitment.battle_style_id = Set(battle_style_id);
         battle_recruitment.quest_start_at = Set(quest_start_at);
 
         let result = battle_recruitment.insert(&self.conn).await?;

@@ -372,7 +372,7 @@ mod tests {
 
         let definitions = result.unwrap();
         assert_eq!(definitions.len(), 2);
-        assert_eq!(definitions[0].table_name, "battle_types");
+        assert_eq!(definitions[0].table_name, "battle_styles");
         assert_eq!(definitions[0].table_scope.as_deref(), Some("guild"));
         assert_eq!(definitions[0].table_io, TableIO::In);
         assert_eq!(definitions[1].table_name, "quests");

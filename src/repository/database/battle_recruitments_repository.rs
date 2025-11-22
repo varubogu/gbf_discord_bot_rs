@@ -31,7 +31,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         channel_id: u64,
         message_id: u64,
         quest_id: i32,
-        battle_type_id: i32,
+        battle_style_id: i32,
         quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
@@ -39,7 +39,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model.channel_id = Set(channel_id as i64); // u64 → i64に変換
         active_model.message_id = Set(message_id as i64); // u64 → i64に変換
         active_model.quest_id = Set(quest_id);
-        active_model.battle_style_id = Set(battle_type_id);
+        active_model.battle_style_id = Set(battle_style_id);
         active_model.quest_start_at = Set(quest_start_at);
 
         let result = active_model
@@ -57,7 +57,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         channel_id: u64,
         message_id: u64,
         quest_id: i32,
-        battle_type_id: i32,
+        battle_style_id: i32,
         quest_start_at: DateTime<Utc>,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
@@ -65,7 +65,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model.channel_id = Set(channel_id as i64); // u64 → i64に変換
         active_model.message_id = Set(message_id as i64); // u64 → i64に変換
         active_model.quest_id = Set(quest_id);
-        active_model.battle_style_id = Set(battle_type_id);
+        active_model.battle_style_id = Set(battle_style_id);
         active_model.quest_start_at = Set(quest_start_at);
 
         let result = active_model

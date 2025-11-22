@@ -16,7 +16,7 @@ pub async fn help(ctx: PoiseContext<'_>) -> Result<()> {
         .field(
             "/recruit",
             "Create a battle_recruitment recruitment with reactions for different elements.\n\
-            Usage: `/recruit quest:<quest_name> [battle_type:<type>] [event_date:<date>]`",
+            Usage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`",
             false,
         )
         .field(

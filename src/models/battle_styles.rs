@@ -33,24 +33,24 @@ impl Database {
         Ok(models.into_iter().map(|model| model.into()).collect())
     }
 
-    pub async fn get_battle_type_by_id(&self, id: i32) -> Result<Option<BattleStyle>, DbErr> {
-        let battle_type = BattleStyleEntity::find()
+    pub async fn get_battle_style_by_id(&self, id: i32) -> Result<Option<BattleStyle>, DbErr> {
+        let battle_style = BattleStyleEntity::find()
             .filter(battle_styles::Column::Id.eq(id))
             .one(&self.conn)
             .await?;
 
-        Ok(battle_type.map(|bt| bt.into()))
+        Ok(battle_style.map(|bt| bt.into()))
     }
 
-    pub async fn get_battle_type_by_display_name(
+    pub async fn get_battle_style_by_display_name(
         &self,
         display_name: &str,
     ) -> Result<Option<BattleStyle>, DbErr> {
-        let battle_type = BattleStyleEntity::find()
+        let battle_style = BattleStyleEntity::find()
             .filter(battle_styles::Column::DisplayName.eq(display_name))
             .one(&self.conn)
             .await?;
 
-        Ok(battle_type.map(|bt| bt.into()))
+        Ok(battle_style.map(|bt| bt.into()))
     }
 }
