@@ -5,6 +5,7 @@ use tracing::info;
 
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
+use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::battle_type::BattleType;
@@ -14,7 +15,8 @@ use sea_orm::DatabaseTransaction;
 #[derive(Debug, Clone)]
 pub struct RecruitmentData {
     pub quest: Quest,
-    pub battle_type: BattleType,
+    pub battle_style_id: i32,
+    pub battle_style_name: String,
     pub channel_id: u64,
     pub guild_id: u64,
     pub expiry_date: DateTime<chrono::Utc>,
@@ -23,11 +25,12 @@ pub struct RecruitmentData {
     pub reactions: Vec<poise::serenity_prelude::ReactionType>,
 }
 
-/// 募集データを作成する（QuestRepositoryを使用）
-pub async fn create_recruitment_data<Q: QuestRepository>(
+/// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
+pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepository>(
     quest_repository: &Q,
+    battle_style_repository: &B,
     quest_name_or_alias: &str,
-    battle_type: BattleType,
+    battle_style_id: Option<i32>,
     channel_id: u64,
     guild_id: u64,
     event_date: Option<DateTime<Local>>,
@@ -61,19 +64,31 @@ pub async fn create_recruitment_data<Q: QuestRepository>(
         chrono::Utc::now() + chrono::Duration::days(7)
     };
 
-    // questのdefault_battle_style_idからBattleTypeを決定
-    let actual_battle_type = BattleType::from_value(quest.default_battle_style_id)
-        .unwrap_or(battle_type);
+    // battle_style_idの決定：パラメータで指定されていればそれを使用、未指定ならquestのdefault_battle_style_idを使用
+    let actual_battle_style_id = battle_style_id.unwrap_or(quest.default_battle_style_id);
+
+    // battle_stylesテーブルから攻略方法の詳細を取得
+    let battle_style = battle_style_repository
+        .get_by_id(actual_battle_style_id)
+        .await?
+        .ok_or_else(|| types::AppError::NotFound(format!(
+            "攻略方法ID {} が見つかりませんでした",
+            actual_battle_style_id
+        )))?;
+
+    // reactionsをパース
+    let reactions = parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"));
 
     // メッセージ内容を作成
-    let message_content = create_message_content(&quest.name, &actual_battle_type, &expiry_date);
+    let message_content = create_message_content(&quest.name, &battle_style.display_name, &expiry_date);
 
-    // BattleTypeに応じた初期参加者一覧を作成
-    let initial_participants_text = create_initial_participants_text(&actual_battle_type);
+    // 初期参加者一覧を作成
+    let initial_participants_text = create_initial_participants_text(&reactions);
 
     Ok(RecruitmentData {
         quest,
-        battle_type: actual_battle_type,
+        battle_style_id: actual_battle_style_id,
+        battle_style_name: battle_style.display_name,
         channel_id,
         guild_id,
         expiry_date,
@@ -82,7 +97,7 @@ pub async fn create_recruitment_data<Q: QuestRepository>(
             .title("参加者一覧")
             .description(&initial_participants_text)
             .color(0x0099ff),
-        reactions: actual_battle_type.reactions(),
+        reactions,
     })
 }
 
@@ -124,7 +139,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     recruitment_data: &RecruitmentData,
     message_id: u64,
 ) -> types::Result<()> {
-    // battle_style_idはquestsテーブルのdefault_battle_style_idを使用
+    // battle_style_idは実際に使用されたものを保存
     battle_recruitment_repo
         .create_with_txn(
             txn,
@@ -132,7 +147,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
             recruitment_data.channel_id,
             message_id,
             recruitment_data.quest.id,
-            recruitment_data.quest.default_battle_style_id,
+            recruitment_data.battle_style_id,
             recruitment_data.expiry_date,
         )
         .await?;
@@ -144,12 +159,13 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
 /// メッセージ内容を作成する（純粋関数）
 pub fn create_message_content(
     quest_name: &str,
-    battle_type: &BattleType,
+    battle_style_name: &str,
     expiry_date: &DateTime<chrono::Utc>,
 ) -> String {
     let mut message_text = format!("{}の参加者を募集します。", quest_name);
 
-    if *battle_type == BattleType::AllElement {
+    // 攻略方法が「6属性」の場合は追加メッセージを表示
+    if battle_style_name == "6属性" {
         message_text.push_str("\n参加属性を選んでください");
     }
 
@@ -159,10 +175,19 @@ pub fn create_message_content(
     message_text
 }
 
-/// BattleTypeに応じた初期参加者一覧テキストを作成
+/// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）
+fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
+    reactions_str
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|emoji| ReactionType::Unicode(emoji.to_string()))
+        .collect()
+}
+
+/// 初期参加者一覧テキストを作成
 /// すべてのリアクション絵文字を「なし」で表示
-fn create_initial_participants_text(battle_type: &BattleType) -> String {
-    let reactions = battle_type.reactions();
+fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
     let mut text = String::new();
 
     for reaction in reactions {

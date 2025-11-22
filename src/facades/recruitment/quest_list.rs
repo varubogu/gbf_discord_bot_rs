@@ -1,10 +1,10 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::models::quests::Quest;
+use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
-use crate::types::battle_type::BattleType;
 use sea_orm::TransactionTrait;
 use tracing::{info, instrument};
 
@@ -13,7 +13,7 @@ use tracing::{info, instrument};
 pub async fn quest_list(
     ctx: &PoiseContext<'_>,
     quest_alias: &str,
-    battle_type: BattleType,
+    battle_style_id: Option<i32>,
 ) -> types::Result<Vec<Quest>> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
@@ -28,11 +28,19 @@ pub async fn quest_list(
         let repos = RepositoryContainer::new(&app_state.db_connection);
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new(app_state.db().clone());
+        let battle_style_repository = SeaOrmBattleStyleRepository::new(app_state.db().clone());
 
-        // 1. Service層で募集データ作成（QuestRepositoryを使用）
+        // 1. Service層で募集データ作成（QuestRepository, BattleStyleRepositoryを使用）
         let recruitment_data =
-            new::create_recruitment_data(&quest_repository, quest_alias, battle_type, channel_id, guild_id, None)
-                .await?;
+            new::create_recruitment_data(
+                &quest_repository,
+                &battle_style_repository,
+                quest_alias,
+                battle_style_id,
+                channel_id,
+                guild_id,
+                None
+            ).await?;
 
         // 2. Service層でメッセージ送信
         let message_id = new::send_recruitment_message(ctx, &recruitment_data).await?;

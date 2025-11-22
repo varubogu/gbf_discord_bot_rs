@@ -1,8 +1,10 @@
 use crate::facades::recruitment::change::change_recruitment_information;
-use crate::types::battle_type::BattleType;
+use crate::repository::database::battle_style_repository::{
+    BattleStyleRepository, SeaOrmBattleStyleRepository,
+};
 use crate::types::{PoiseContext, Result};
 use futures::Stream;
-use poise::serenity_prelude::Message;
+use poise::serenity_prelude::{AutocompleteChoice, Message};
 
 #[poise::command(
     slash_command,
@@ -29,14 +31,15 @@ pub async fn recruit_change(
     #[description = "Quest departure date and time"]
     #[description_localized("ja", "クエスト出発日時")]
     event_date: String,
-    // #[description = "Quest Combat Style"]
-    // #[description_localized("ja", "クエストの戦闘スタイル")]
-    // battle_type: Option<BattleType>,
+
+    #[description = "battle style"]
+    #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
+    #[autocomplete = "battle_style_auto_complete"]
+    battle_style_id: Option<i32>,
 ) -> Result<()> {
     ctx.defer().await?;
 
-    let battle_type = BattleType::Default;
-    change_recruitment_information(&ctx, &recruit, &quest, &event_date, &battle_type).await
+    change_recruitment_information(&ctx, &recruit, &quest, &event_date, battle_style_id).await
 }
 
 async fn auto_complete_quest<'a>(
@@ -67,4 +70,28 @@ async fn auto_complete_recruit<'a>(
         .collect();
 
     futures::stream::iter(filtered_items)
+}
+
+async fn battle_style_auto_complete(
+    ctx: PoiseContext<'_>,
+    _partial: &str,
+) -> Vec<AutocompleteChoice> {
+    // AppStateからDB接続を取得してRepositoryを作成
+    let db_conn = ctx.data().app_state.db().clone();
+    let battle_style_repository = SeaOrmBattleStyleRepository::new(db_conn);
+
+    // すべての攻略方法を取得
+    let battle_styles = battle_style_repository
+        .get_all()
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "攻略方法の取得に失敗しました");
+            vec![]
+        });
+
+    // AutocompleteChoiceに変換
+    battle_styles
+        .into_iter()
+        .map(|style| AutocompleteChoice::new(style.display_name, style.id))
+        .collect()
 }

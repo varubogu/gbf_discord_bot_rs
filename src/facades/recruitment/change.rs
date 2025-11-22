@@ -1,6 +1,5 @@
 use crate::types;
 use crate::types::PoiseContext;
-use crate::types::battle_type::BattleType;
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -11,7 +10,7 @@ pub async fn change_recruitment_information(
     recruit: &String,
     quest: &String,
     event_date: &String,
-    battle_type: &BattleType,
+    battle_style_id: Option<i32>,
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::update_recruitment_information - 募集内容を更新します");
 
