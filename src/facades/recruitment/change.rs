@@ -1,15 +1,17 @@
 use crate::types;
 use crate::types::PoiseContext;
+use chrono::{DateTime, Utc};
+use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
 /// 募集内容を更新する（クロージャパターン）
-#[instrument(level = "debug", skip(ctx))]
+#[instrument(level = "debug", skip(ctx, message))]
 pub async fn change_recruitment_information(
     ctx: &PoiseContext<'_>,
-    recruit: &String,
-    quest: &String,
-    event_date: &String,
+    message: &Message,
+    quest: &str,
+    event_date: DateTime<Utc>,
     battle_style_id: Option<i32>,
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::update_recruitment_information - 募集内容を更新します");

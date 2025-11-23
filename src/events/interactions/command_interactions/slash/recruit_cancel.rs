@@ -11,7 +11,7 @@ use tracing::error;
     name_localized("ja", "募集キャンセル"),
     description_localized("ja", "マルチバトル募集をキャンセル")
 )]
-pub async fn cancel(
+pub async fn recruit_cancel(
     ctx: PoiseContext<'_>,
 
     #[description = "recruit message"]

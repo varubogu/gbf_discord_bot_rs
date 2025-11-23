@@ -1,14 +1,14 @@
 use crate::facades::recruitment::change::change_recruitment_information;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
+use crate::services::datetime_parser;
 use crate::types::{PoiseContext, Result};
-use futures::Stream;
-use poise::serenity_prelude::{AutocompleteChoice, Message};
+use poise::serenity_prelude::Message;
+
+use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
+    // context_menu_command = "recruit_change",
     slash_command,
-    name_localized("ja", "募集内容変更"),
+    name_localized("ja", "マルチバトル募集内容変更"),
     description_localized("ja", "マルチバトル募集内容を変更します。")
 )]
 pub async fn recruit_change(
@@ -18,14 +18,9 @@ pub async fn recruit_change(
     #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
     message: Message,
 
-    #[description = "recruit content"]
-    #[description_localized("ja", "募集中の内容")]
-    #[autocomplete = "auto_complete_recruit"]
-    recruit: String,
-
     #[description = "quest name or alias"]
     #[description_localized("ja", "クエスト名またはクエスト別名")]
-    #[autocomplete = "auto_complete_quest"]
+    #[autocomplete = "quest_auto_complete"]
     quest: String,
 
     #[description = "Quest departure date and time"]
@@ -39,59 +34,16 @@ pub async fn recruit_change(
 ) -> Result<()> {
     ctx.defer().await?;
 
-    change_recruitment_information(&ctx, &recruit, &quest, &event_date, battle_style).await
-}
+    // 日時文字列をDateTime<Utc>に変換
+    let parsed_date = datetime_parser::parse_event_date(&event_date)?;
 
-async fn auto_complete_quest<'a>(
-    _ctx: PoiseContext<'_>,
-    partial: &'a str,
-) -> impl Stream<Item = String> + 'a {
-    const QUEST_LIST: &[&str] = &["Amanda", "Bob", "Christian", "Danny", "Ester", "Falk"];
-
-    let filtered_items: Vec<String> = QUEST_LIST
-        .iter()
-        .filter(|name| name.starts_with(partial))
-        .map(|name| name.to_string())
-        .collect();
-
-    futures::stream::iter(filtered_items)
-}
-
-async fn auto_complete_recruit<'a>(
-    _ctx: PoiseContext<'_>,
-    partial: &'a str,
-) -> impl Stream<Item = String> + 'a {
-    const RECRUIT_LIST: &[&str] = &["Amanda", "Bob", "Christian", "Danny", "Ester", "Falk"];
-
-    let filtered_items: Vec<String> = RECRUIT_LIST
-        .iter()
-        .filter(|name| name.starts_with(partial))
-        .map(|name| name.to_string())
-        .collect();
-
-    futures::stream::iter(filtered_items)
-}
-
-async fn battle_style_auto_complete(
-    ctx: PoiseContext<'_>,
-    _partial: &str,
-) -> Vec<AutocompleteChoice> {
-    // AppStateからDB接続を取得してRepositoryを作成
-    let db_conn = ctx.data().app_state.db().clone();
-    let battle_style_repository = SeaOrmBattleStyleRepository::new(db_conn);
-
-    // すべての攻略方法を取得
-    let battle_styles = battle_style_repository
-        .get_all()
-        .await
-        .unwrap_or_else(|e| {
-            tracing::error!(error = %e, "攻略方法の取得に失敗しました");
-            vec![]
-        });
-
-    // AutocompleteChoiceに変換
-    battle_styles
-        .into_iter()
-        .map(|style| AutocompleteChoice::new(style.display_name, style.id))
-        .collect()
+    // 募集内容変更を実行
+    change_recruitment_information(
+        &ctx,
+        &message,
+        &quest,
+        parsed_date,
+        battle_style,
+    )
+    .await
 }
