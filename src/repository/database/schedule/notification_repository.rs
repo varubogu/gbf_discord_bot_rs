@@ -135,6 +135,22 @@ impl NotificationRepository {
         Ok(notifications)
     }
 
+    /// 通知IDで通知を削除（トランザクション付き）
+    pub async fn delete_by_id_with_txn(&self, txn: &DatabaseTransaction, notification_id: i32) -> Result<u64> {
+        debug!(notification_id = %notification_id, "通知を削除します");
+
+        let result = notifications::Entity::delete_by_id(notification_id)
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, notification_id = %notification_id, "通知の削除に失敗しました");
+                e
+            })?;
+
+        debug!(notification_id = %notification_id, deleted_count = result.rows_affected, "通知を削除しました");
+        Ok(result.rows_affected)
+    }
+
     /// すべての通知を削除（トランザクション付き）
     pub async fn delete_all_with_txn(&self, txn: &DatabaseTransaction) -> Result<u64> {
         debug!("すべての通知を削除します");

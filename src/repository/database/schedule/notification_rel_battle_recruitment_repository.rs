@@ -55,4 +55,32 @@ impl NotificationRelBattleRecruitmentRepository {
         let model = active_model.insert(txn).await?;
         Ok(model)
     }
+
+    /// 通知IDに紐づくリレーションを削除（トランザクション内）
+    pub async fn delete_by_notification_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        notification_id: i32,
+    ) -> Result<u64> {
+        let result = notification_rel_battle_recruitments::Entity::delete_many()
+            .filter(notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id))
+            .exec(txn)
+            .await?;
+
+        Ok(result.rows_affected)
+    }
+
+    /// 募集IDに紐づくリレーションを削除（トランザクション内）
+    pub async fn delete_by_recruit_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        recruit_id: i32,
+    ) -> Result<u64> {
+        let result = notification_rel_battle_recruitments::Entity::delete_many()
+            .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
+            .exec(txn)
+            .await?;
+
+        Ok(result.rows_affected)
+    }
 }
