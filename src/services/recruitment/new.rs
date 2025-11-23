@@ -133,9 +133,9 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     battle_recruitment_repo: &R,
     recruitment_data: &RecruitmentData,
     message_id: u64,
-) -> types::Result<()> {
+) -> types::Result<crate::models::battle_recruitments::BattleRecruitments> {
     // battle_style_idは実際に使用されたものを保存
-    battle_recruitment_repo
+    let recruitment = battle_recruitment_repo
         .create_with_txn(
             txn,
             recruitment_data.guild_id,
@@ -148,7 +148,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
         .await?;
 
     info!("Successfully registered recruitment in database");
-    Ok(())
+    Ok(recruitment)
 }
 
 /// メッセージ内容を作成する（純粋関数）

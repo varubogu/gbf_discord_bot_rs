@@ -1,7 +1,7 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::NotificationRepository;
+use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::new;
 use crate::types;
 use crate::types::PoiseContext;
@@ -52,7 +52,7 @@ pub async fn new_recruitment(
         new::add_recruitment_reactions(ctx, message_id, &recruitment_data.reactions).await?;
 
         // 4. データ保存
-        new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
+        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
         // 5. 出発時刻の通知を登録（出発5分前）
         let notification_repo = NotificationRepository::new(conn.clone());
@@ -64,7 +64,7 @@ pub async fn new_recruitment(
             "募集の出発通知を登録します"
         );
 
-        notification_repo
+        let notification = notification_repo
             .create_with_txn(
                 &txn,
                 notify_time,
@@ -75,6 +75,14 @@ pub async fn new_recruitment(
             .await?;
 
         info!("募集の出発通知を登録しました");
+
+        // 6. 通知と募集のリレーションを作成
+        let rel_repo = NotificationRelBattleRecruitmentRepository::new(conn.clone());
+        rel_repo
+            .create_with_txn(&txn, recruitment.id, notification.id)
+            .await?;
+
+        info!("募集と通知のリレーションを登録しました");
 
         Ok(())
     }
