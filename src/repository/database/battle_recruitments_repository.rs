@@ -139,4 +139,33 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
 
         Ok(())
     }
+
+    async fn update_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+        quest_id: i32,
+        battle_style_id: i32,
+        quest_start_at: DateTime<Utc>,
+    ) -> Result<()> {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(txn)
+            .await
+            .map_err(|e| AppError::Database(e))?
+            .ok_or_else(|| AppError::Business {
+                message: "Recruitment not found".to_string(),
+            })?
+            .into();
+
+        active_model.quest_id = Set(quest_id);
+        active_model.battle_style_id = Set(battle_style_id);
+        active_model.quest_start_at = Set(quest_start_at);
+
+        active_model
+            .update(txn)
+            .await
+            .map_err(|e| AppError::Database(e))?;
+
+        Ok(())
+    }
 }

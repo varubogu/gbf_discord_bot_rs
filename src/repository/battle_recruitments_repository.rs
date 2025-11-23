@@ -43,4 +43,14 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     async fn set_end_message(&self, recruitment_id: i32, message_id: MessageId) -> Result<()>;
 
     async fn set_canceled(&self, recruitment_id: i32, message_id: MessageId) -> Result<()>;
+
+    /// 募集情報を更新（トランザクション対応）
+    async fn update_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        quest_id: i32,
+        battle_style_id: i32,
+        quest_start_at: DateTime<Utc>,
+    ) -> Result<()>;
 }

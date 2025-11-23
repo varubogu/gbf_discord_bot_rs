@@ -19,31 +19,46 @@ pub async fn recruit_change(
     message: Message,
 
     #[description = "quest name or alias"]
-    #[description_localized("ja", "クエスト名またはクエスト別名")]
+    #[description_localized("ja", "クエスト名またはクエスト別名（変更する場合のみ指定）")]
     #[autocomplete = "quest_auto_complete"]
-    quest: String,
+    quest: Option<String>,
 
     #[description = "Quest departure date and time"]
-    #[description_localized("ja", "クエスト出発日時")]
-    event_date: String,
+    #[description_localized("ja", "クエスト出発日時（変更する場合のみ指定）")]
+    event_date: Option<String>,
 
     #[description = "battle style"]
-    #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
+    #[description_localized("ja", "マルチ攻略方法（変更する場合のみ指定）")]
     #[autocomplete = "battle_style_auto_complete"]
     battle_style: Option<i32>,
 ) -> Result<()> {
     ctx.defer().await?;
 
-    // 日時文字列をDateTime<Utc>に変換
-    let parsed_date = datetime_parser::parse_event_date(&event_date)?;
+    // パラメータが何も指定されていない場合はエラー
+    if quest.is_none() && event_date.is_none() && battle_style.is_none() {
+        return Err(crate::types::AppError::Business {
+            message: "変更する項目を少なくとも1つ指定してください。".to_string(),
+        });
+    }
+
+    // 日時文字列をDateTime<Utc>に変換（指定されている場合のみ）
+    let parsed_date = if let Some(date_str) = event_date {
+        Some(datetime_parser::parse_event_date(&date_str)?)
+    } else {
+        None
+    };
 
     // 募集内容変更を実行
     change_recruitment_information(
         &ctx,
         &message,
-        &quest,
+        quest.as_deref(),
         parsed_date,
         battle_style,
     )
-    .await
+    .await?;
+
+    // 処理完了をユーザーに通知
+    ctx.say("募集内容を更新しました。").await?;
+    Ok(())
 }

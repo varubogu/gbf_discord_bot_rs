@@ -134,6 +134,7 @@ async fn main() -> Result<()> {
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
+            on_error: |error| Box::pin(error_handler(error)),
             ..Default::default()
         })
         .setup(move |ctx, _ready, framework| {
@@ -178,7 +179,30 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
 async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
-    error!("Poise framework error: {:?}", error);
+    use poise::FrameworkError;
+
+    match error {
+        // コマンド実行時のエラー
+        FrameworkError::Command { error, ctx, .. } => {
+            // ログには詳細なエラー情報を出力
+            error!(
+                error = %error,
+                command = %ctx.command().name,
+                user_id = %ctx.author().id,
+                guild_id = ?ctx.guild_id(),
+                "コマンド実行エラー"
+            );
+
+            // Discord上にはユーザーフレンドリーなメッセージのみ表示
+            let user_message = error.user_message();
+            if let Err(e) = ctx.say(user_message).await {
+                error!(error = %e, "エラーメッセージの送信に失敗しました");
+            }
+        }
+        // その他のエラー
+        other => {
+            error!("Poise framework error: {:?}", other);
+        }
+    }
 }

@@ -38,5 +38,32 @@ impl From<String> for AppError {
     }
 }
 
+impl AppError {
+    /// Discord上でユーザーに表示するメッセージを取得
+    /// 技術的な詳細は含めず、ユーザーフレンドリーなメッセージのみ返す
+    pub fn user_message(&self) -> String {
+        match self {
+            AppError::Database(_) => {
+                "データベースエラーが発生しました。管理者に連絡してください。".to_string()
+            }
+            AppError::Discord(_) => {
+                "Discord APIエラーが発生しました。しばらく待ってから再度お試しください。".to_string()
+            }
+            AppError::Business { message } => message.clone(),
+            AppError::Config { message } => {
+                format!("設定エラー: {}", message)
+            }
+            AppError::Validation { field } => {
+                format!("入力エラー: {} の値が不正です。", field)
+            }
+            AppError::Generic(msg) => msg.clone(),
+            AppError::NotFound(msg) => msg.clone(),
+            AppError::DiscordOperation(e) => {
+                format!("Discord操作エラー: {}", e)
+            }
+        }
+    }
+}
+
 // TODO: Result -> AppResultへリネーム
 pub type Result<T> = std::result::Result<T, AppError>;
