@@ -126,17 +126,8 @@ impl QuestRepository for SeaOrmQuestRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::database::connection::is_database_available;
 
-    async fn setup_test_db() -> Result<SeaOrmQuestRepository, String> {
-        let (available, missing) = is_database_available();
-        if !available {
-            return Err(format!(
-                "Database connection info not set - missing: {:?}",
-                missing
-            ));
-        }
-
+    async fn setup_test_db() -> std::result::Result<SeaOrmQuestRepository, String> {
         let conn = match crate::repository::database::db_compat::Database::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
