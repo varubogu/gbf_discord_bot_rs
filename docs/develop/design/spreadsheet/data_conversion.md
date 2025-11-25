@@ -210,32 +210,99 @@ pub fn parse_datetime(value: &str, field: &str) -> Result<DateTime<Utc>, Validat
 
 ---
 
-### UUID変換
+### UUID変換と自動採番
 
 **入力**: UUID文字列
 **出力**: `Uuid`
 
-**変換ルール**:
+UUID型カラムでは、スプレッドシート上の値が空の場合に自動的に新規UUIDを生成し、データベースに登録後、スプレッドシートにも書き戻します。
+
+#### UUID自動採番の目的
+
+- **ユーザビリティ向上**: UUIDを手動で入力する必要をなくす
+- **データ整合性保証**: スプレッドシートとデータベースのUUIDを常に一致させる
+- **重複防止**: 毎回異なるUUIDを自動生成することで、主キー重複を防ぐ
+
+#### 変換ルール
+
 ```rust
 use uuid::Uuid;
 
 pub fn parse_uuid(value: &str, field: &str) -> Result<Uuid, ValidationError> {
-    if value.is_empty() {
-        return Ok(Uuid::new_v4()); // 空文字列は新規UUID生成
+    if value.is_empty() || value.eq_ignore_ascii_case("null") {
+        // 空文字列またはNULLの場合は新規UUID生成
+        return Ok(Uuid::new_v4());
     }
 
+    // 既存のUUID文字列はそのまま解析
     Uuid::parse_str(value).map_err(|_| ValidationError::UuidFormatError {
         value: value.to_string(),
     })
 }
 ```
 
-**サンプル**:
+#### スプレッドシートへの書き戻し処理
+
+UUID自動生成後、以下の手順でスプレッドシートに書き戻されます：
+
+1. **読み込み時にUUID生成**: スプレッドシート読み込み時、空のUUID列を検出して新規UUIDを生成
+2. **生成情報の追跡**: 生成されたUUID、シート名、行番号、列番号を記録
+3. **データベースへの登録**: 生成されたUUIDを含むデータをトランザクション内でデータベースに登録
+4. **スプレッドシート書き戻し**: データベースコミット前に、Google Sheets APIを使用して該当セルにUUIDを書き込み
+5. **トランザクションコミット**: スプレッドシート書き戻しが成功した場合のみデータベースをコミット
+
+#### エラーハンドリング
+
+UUID書き戻しに失敗した場合の挙動：
+
+- **ロールバック**: データベーストランザクションをロールバック
+- **エラー通知**: ユーザーに「UUID書き戻し失敗によりDB登録もキャンセルした」旨を通知
+- **理由**: 次回読み込み時に同じ空行が再度処理され、異なるUUIDが生成されることでPK重複エラーを防ぐため
+
+```rust
+// UUID書き戻し失敗時の処理（概念）
+if let Err(e) = write_back_uuids_to_spreadsheet(&generated_uuids).await {
+    error!("UUID書き戻しに失敗したため、トランザクションをロールバックします");
+    txn.rollback().await?;
+    return Err(FacadeError::ExternalService {
+        source: ExternalServiceError::GoogleSheetsApiError {
+            message: format!(
+                "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {}",
+                e
+            ),
+        },
+    });
+}
+```
+
+#### サンプル
+
+**スプレッドシート上の入力**:
+| quest_id | quest_name | recruit_count |
+|----------|------------|--------------|
+| (空) | プロトバハムートHL | 30 |
+| 550e8400-e29b-41d4-a716-446655440000 | アルティメットバハムートHL | 18 |
+
+**処理後**:
+| quest_id | quest_name | recruit_count |
+|----------|------------|--------------|
+| 7b3f2a9c-8e45-4d1f-b3c9-1a5e8f6d2c4b | プロトバハムートHL | 30 |
+| 550e8400-e29b-41d4-a716-446655440000 | アルティメットバハムートHL | 18 |
+
+**変換サマリ**:
 | 入力 | 出力 | 備考 |
 |------|------|------|
-| `"550e8400-e29b-41d4-a716-446655440000"` | 対応するUUID | 正常 |
-| `""` | 新規UUID | 自動生成 |
+| `"550e8400-e29b-41d4-a716-446655440000"` | 対応するUUID | 既存UUIDをそのまま使用 |
+| `""` | `Uuid::new_v4()` | 新規UUID自動生成 + スプレッドシート書き戻し |
+| `"null"` | `Uuid::new_v4()` | 新規UUID自動生成 + スプレッドシート書き戻し |
 | `"invalid-uuid"` | エラー | UuidFormatError |
+
+#### 実装上の注意点
+
+- **トランザクション順序**: スプレッドシート書き戻し → データベースコミットの順序を厳守
+- **書き戻し失敗時の完全ロールバック**: 部分的な成功を許容しない
+- **A1記法への変換**: 列番号（0始まり）をA1記法の列文字列（"A", "B", "AA"など）に変換
+- **ログ出力**: 生成されたUUID数、書き戻し成功/失敗をログに記録
 
 ---
 
