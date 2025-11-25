@@ -5,6 +5,7 @@ pub mod elements;
 pub mod environments;
 pub mod event_schedule_details;
 pub mod event_schedules;
+pub mod guild_channels;
 pub mod guild_spreadsheet_exports;
 pub mod guild_spreadsheet_imports;
 pub mod guilds;

@@ -1,4 +1,4 @@
-use crate::models::entities::guilds;
+use crate::models::entities::{guild_channels, guilds};
 use crate::repository::database::schedule::{NotificationRepository, ScheduleRepository};
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::services::schedule::{NotificationService, ScheduleCalculator};
@@ -6,6 +6,7 @@ use crate::types::{AppState, Result};
 use chrono::Utc;
 use poise::serenity_prelude::Http;
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, TransactionTrait};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
@@ -51,15 +52,15 @@ impl SchedulerFacade {
                 return Ok(());
             }
 
-            // 通知対象のギルドとチャンネルを取得
-            let guild_channels = self.get_notification_guild_channels().await?;
+            // 通知対象のギルドとチャンネルを取得（channel_type別）
+            let guild_channels_by_type = self.get_notification_guild_channels_by_type().await?;
 
             debug!(
-                guild_channels = guild_channels.len(),
+                channel_types = guild_channels_by_type.len(),
                 "通知対象のギルド・チャンネルを取得しました"
             );
 
-            if guild_channels.is_empty() {
+            if guild_channels_by_type.is_empty() {
                 warn!("通知対象のギルド・チャンネルが登録されていません");
                 return Ok(());
             }
@@ -68,7 +69,7 @@ impl SchedulerFacade {
             let calculated_schedules = calculator.calculate_schedules(
                 event_schedules,
                 event_schedule_details,
-                guild_channels,
+                guild_channels_by_type,
             )?;
 
             debug!(
@@ -115,23 +116,29 @@ impl SchedulerFacade {
         Ok(())
     }
 
-    /// 通知対象のギルド・チャンネル一覧を取得
-    async fn get_notification_guild_channels(&self) -> Result<Vec<(i64, i64)>> {
-        let guilds = guilds::Entity::find()
-            .filter(guilds::Column::RecruitChannelId.is_not_null())
+    /// 通知対象のギルド・チャンネル一覧をchannel_type別に取得
+    /// 戻り値: HashMap<channel_type, Vec<(guild_id, channel_id)>>
+    async fn get_notification_guild_channels_by_type(&self) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
+        let guild_channels = guild_channels::Entity::find()
             .all(self.app_state.db())
             .await?;
 
-        let guild_channels: Vec<(i64, i64)> = guilds
-            .into_iter()
-            .filter_map(|guild| {
-                guild
-                    .recruit_channel_id
-                    .map(|channel_id| (guild.guild_id, channel_id))
-            })
-            .collect();
+        let mut channels_by_type: HashMap<i32, Vec<(i64, i64)>> = HashMap::new();
 
-        Ok(guild_channels)
+        for gc in guild_channels {
+            channels_by_type
+                .entry(gc.channel_type)
+                .or_insert_with(Vec::new)
+                .push((gc.guild_id, gc.channel_id));
+        }
+
+        debug!(
+            channel_types = channels_by_type.len(),
+            total_channels = channels_by_type.values().map(|v| v.len()).sum::<usize>(),
+            "channel_type別のギルド・チャンネルを取得しました"
+        );
+
+        Ok(channels_by_type)
     }
 
     /// 計算されたスケジュールをDBに保存

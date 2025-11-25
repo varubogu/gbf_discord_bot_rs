@@ -1,6 +1,7 @@
 use crate::models::entities::{event_schedule_details, event_schedules};
 use crate::types::Result;
 use chrono::{DateTime, Duration, NaiveTime, Utc};
+use std::collections::HashMap;
 use tracing::{debug, error, warn};
 
 /// スケジュール計算サービス
@@ -25,12 +26,12 @@ impl ScheduleCalculator {
         &self,
         event_schedules: Vec<event_schedules::Model>,
         event_schedule_details: Vec<event_schedule_details::Model>,
-        guild_channels: Vec<(i64, i64)>, // (guild_id, channel_id) のペア
+        guild_channels_by_type: HashMap<i32, Vec<(i64, i64)>>, // channel_type -> Vec<(guild_id, channel_id)>
     ) -> Result<Vec<CalculatedSchedule>> {
         debug!(
             event_count = event_schedules.len(),
             detail_count = event_schedule_details.len(),
-            guild_count = guild_channels.len(),
+            channel_types = guild_channels_by_type.len(),
             "スケジュール計算を開始します"
         );
 
@@ -50,8 +51,22 @@ impl ScheduleCalculator {
             );
 
             for detail in matching_details {
+                // notification_channel_typeに対応するギルド・チャンネルを取得
+                let guild_channels = match guild_channels_by_type.get(&detail.notification_channel_type) {
+                    Some(channels) => channels,
+                    None => {
+                        warn!(
+                            channel_type = detail.notification_channel_type,
+                            profile = %event_schedule.profile,
+                            schedule_name = %detail.schedule_name,
+                            "該当するchannel_typeのギルド・チャンネルが登録されていません"
+                        );
+                        continue;
+                    }
+                };
+
                 // 各ギルド・チャンネルに対してスケジュールを生成
-                for (guild_id, channel_id) in &guild_channels {
+                for (guild_id, channel_id) in guild_channels {
                     match self.calculate_datetime(event_schedule, detail) {
                         Ok(schedule_datetime) => {
                             results.push(CalculatedSchedule {

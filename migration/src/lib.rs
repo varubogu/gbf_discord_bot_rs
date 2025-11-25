@@ -15,6 +15,7 @@ mod m20251110_061759_rename_quest_aliases_id_to_sequence_no;
 mod m20251121_000000_rename_battle_style_columns;
 mod m20251121_000001_rename_battle_types_to_battle_styles;
 mod m20251122_000000_add_recruitment_notification_message;
+mod m20251124_create_guild_channels;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251121_000000_rename_battle_style_columns::Migration),
             Box::new(m20251121_000001_rename_battle_types_to_battle_styles::Migration),
             Box::new(m20251122_000000_add_recruitment_notification_message::Migration),
+            Box::new(m20251124_create_guild_channels::Migration),
         ]
     }
 }
