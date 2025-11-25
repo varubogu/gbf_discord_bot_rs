@@ -1,5 +1,6 @@
 mod autocomplete;
 
+pub(crate) mod channel_register;
 pub(crate) mod environ_load;
 pub(crate) mod gspread_global_load;
 pub(crate) mod gspread_global_push;

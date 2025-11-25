@@ -4,6 +4,7 @@ use crate::types::{AppError, PoiseData};
 pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
     use crate::events::interactions::command_interactions::slash;
     vec![
+        slash::channel_register::channel_register(),
         slash::recruit_new::recruit_new(),
         slash::recruit_cancel::recruit_cancel(),
         slash::recruit_change::recruit_change(),

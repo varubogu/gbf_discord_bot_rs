@@ -13,6 +13,9 @@ pub async fn event_handler(
             println!("Connected as {}", data_about_bot.user.name);
             handlers::ready::on_ready(ctx).await?;
         }
+        poise::serenity_prelude::FullEvent::GuildCreate { guild, .. } => {
+            handlers::guild_create::on_guild_create(ctx, guild, data).await?;
+        }
         poise::serenity_prelude::FullEvent::ReactionAdd { add_reaction } => {
             println!(
                 "reaction add user is {}",
