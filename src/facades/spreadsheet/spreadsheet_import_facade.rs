@@ -14,12 +14,14 @@ use sea_orm::{
 use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
+use crate::facades::scheduler::SchedulerFacade;
 use crate::services::spreadsheet::{
     ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresType,
     PostgresValue, RegisteredTableSchema, RowData, SchemaExtractorService,
     SchemaExtractorServiceTrait, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
     TableDefinition, TableDefinitionService, TableIO,
 };
+use crate::types::AppState;
 
 /// インポート結果
 #[derive(Debug, Clone)]
@@ -40,11 +42,15 @@ pub struct ImportResult {
 pub struct SpreadsheetImportFacade {
     db: DatabaseConnection,
     google_auth_service: GoogleAuthService,
+    app_state: std::sync::Arc<AppState>,
 }
 
 impl SpreadsheetImportFacade {
     /// 新しいFacadeを作成
-    pub fn new(db: DatabaseConnection) -> Result<Self, FacadeError> {
+    pub fn new(
+        db: DatabaseConnection,
+        app_state: std::sync::Arc<AppState>,
+    ) -> Result<Self, FacadeError> {
         // 環境変数からサービスアカウントキーファイルパスを取得
         let service_account_key_file =
             env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE").map_err(|_| {
@@ -59,6 +65,7 @@ impl SpreadsheetImportFacade {
         Ok(Self {
             db,
             google_auth_service,
+            app_state,
         })
     }
 
@@ -255,6 +262,19 @@ impl SpreadsheetImportFacade {
                     total_rows = import_result.total_rows,
                     "グローバルスプレッドシートのインポートが完了しました"
                 );
+
+                // インポート成功後、スケジュールを自動再生成
+                info!("スケジュール自動再生成を開始します");
+                let scheduler_facade = SchedulerFacade::new(self.app_state.clone());
+                if let Err(e) = scheduler_facade.generate_schedules().await {
+                    warn!(
+                        error = %e,
+                        "スケジュール自動再生成に失敗しました（インポート自体は成功）"
+                    );
+                } else {
+                    info!("スケジュール自動再生成が完了しました");
+                }
+
                 Ok(import_result)
             }
             Err(e) => {

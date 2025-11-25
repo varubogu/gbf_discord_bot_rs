@@ -7,6 +7,7 @@ use crate::facades::spreadsheet::SpreadsheetImportFacade;
 use crate::services::permission::check_bot_admin_server;
 use crate::types::{PoiseContext, Result};
 use std::env;
+use std::sync::Arc;
 use tracing::{error, info};
 
 #[poise::command(
@@ -42,8 +43,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
         .await?;
 
     // Facadeを作成
-    let app_state = &ctx.data().app_state;
-    let facade = match SpreadsheetImportFacade::new(app_state.db().clone()) {
+    let app_state = Arc::new(ctx.data().app_state.clone());
+    let facade = match SpreadsheetImportFacade::new(app_state.db().clone(), app_state.clone()) {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
