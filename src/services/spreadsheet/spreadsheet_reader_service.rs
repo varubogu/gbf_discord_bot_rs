@@ -21,6 +21,19 @@ pub struct ReadResult {
     pub rows: Vec<RowData>,
     /// 読み込み時に発生したエラー
     pub errors: Vec<ReadError>,
+    /// 自動生成されたUUID情報（行番号、列番号、UUID）
+    pub generated_uuids: Vec<GeneratedUuid>,
+}
+
+/// 自動生成されたUUID情報
+#[derive(Debug, Clone)]
+pub struct GeneratedUuid {
+    /// スプレッドシート上の行番号（1始まり）
+    pub row_number: usize,
+    /// スプレッドシート上の列番号（0始まり）
+    pub column_index: usize,
+    /// 生成されたUUID
+    pub uuid: uuid::Uuid,
 }
 
 /// 行データ
@@ -104,14 +117,14 @@ where
         raw_values: Vec<String>,
         schema: &[ColumnSchema],
         row_number: usize,
-    ) -> (RowData, Vec<ValidationError>) {
-        let (values, errors) = self
+    ) -> (RowData, Vec<ValidationError>, Vec<(usize, uuid::Uuid)>) {
+        let (values, errors, generated_uuids) = self
             .data_converter_service
-            .convert_row_to_postgres(raw_values, schema);
+            .convert_row_to_postgres_with_uuid_tracking(raw_values, schema);
 
         let row_data = RowData { row_number, values };
 
-        (row_data, errors)
+        (row_data, errors, generated_uuids)
     }
 }
 
@@ -245,6 +258,7 @@ where
                 table_name: table_definition.table_name.clone(),
                 rows: Vec::new(),
                 errors: Vec::new(),
+                generated_uuids: Vec::new(),
             });
         }
 
@@ -262,6 +276,7 @@ where
         // 各行を変換
         let mut rows = Vec::new();
         let mut errors = Vec::new();
+        let mut generated_uuids = Vec::new();
 
         for (index, row) in string_rows.iter().enumerate().skip(data_start_index) {
             // 行番号（スプレッドシート上の番号。ヘッダーは1行目）
@@ -279,7 +294,8 @@ where
             let raw_values = header_mapping.collect_row(row, schema);
 
             // スキーマに基づいて変換
-            let (row_data, row_errors) = self.convert_raw_row(raw_values, schema, row_number);
+            let (row_data, row_errors, row_generated_uuids) =
+                self.convert_raw_row(raw_values, schema, row_number);
 
             // エラーがあれば記録
             for error in row_errors {
@@ -290,6 +306,15 @@ where
                 });
             }
 
+            // 生成されたUUIDを記録
+            for (column_index, uuid) in row_generated_uuids {
+                generated_uuids.push(GeneratedUuid {
+                    row_number,
+                    column_index,
+                    uuid,
+                });
+            }
+
             rows.push(row_data);
         }
 
@@ -297,6 +322,7 @@ where
             table_name = %table_definition.table_name,
             row_count = rows.len(),
             error_count = errors.len(),
+            generated_uuid_count = generated_uuids.len(),
             "テーブルデータの読み込みが完了しました"
         );
 
@@ -304,6 +330,7 @@ where
             table_name: table_definition.table_name.clone(),
             rows,
             errors,
+            generated_uuids,
         })
     }
 
@@ -362,6 +389,7 @@ where
                             row_number: 0,
                             message: e.to_string(),
                         }],
+                        generated_uuids: Vec::new(),
                     });
                 }
             }

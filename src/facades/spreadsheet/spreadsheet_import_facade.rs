@@ -19,7 +19,8 @@ use crate::services::spreadsheet::{
     ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresType,
     PostgresValue, RegisteredTableSchema, RowData, SchemaExtractorService,
     SchemaExtractorServiceTrait, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
-    TableDefinition, TableDefinitionService, TableIO,
+    SpreadsheetWriterService, SpreadsheetWriterServiceTrait, TableDefinition,
+    TableDefinitionService, TableIO,
 };
 use crate::types::AppState;
 
@@ -36,6 +37,23 @@ pub struct ImportResult {
     pub errors: Vec<String>,
     /// 警告メッセージ
     pub warnings: Vec<String>,
+    /// 自動生成されたUUID情報（テーブル名、シート名、行番号、列番号、UUID）
+    pub generated_uuids: Vec<GeneratedUuidInfo>,
+}
+
+/// 自動生成されたUUID情報
+#[derive(Debug, Clone)]
+pub struct GeneratedUuidInfo {
+    /// テーブル名
+    pub table_name: String,
+    /// シート名
+    pub sheet_name: String,
+    /// スプレッドシート上の行番号（1始まり）
+    pub row_number: usize,
+    /// スプレッドシート上の列番号（0始まり）
+    pub column_index: usize,
+    /// 生成されたUUID
+    pub uuid: uuid::Uuid,
 }
 
 /// スプレッドシートインポートFacade
@@ -127,6 +145,7 @@ impl SpreadsheetImportFacade {
                 total_rows: 0,
                 errors: vec!["インポート対象のテーブルが見つかりません".to_string()],
                 warnings: Vec::new(),
+                generated_uuids: Vec::new(),
             });
         }
 
@@ -144,6 +163,7 @@ impl SpreadsheetImportFacade {
             let mut total_rows = 0;
             let mut errors = Vec::new();
             let mut warnings = Vec::new();
+            let mut all_generated_uuids = Vec::new();
 
             let mut import_table_map: HashMap<String, TableDefinition> = import_tables
                 .into_iter()
@@ -170,10 +190,22 @@ impl SpreadsheetImportFacade {
                             }
                         }
 
+                        // 生成されたUUIDを記録
+                        for generated_uuid in &read_result.generated_uuids {
+                            all_generated_uuids.push(GeneratedUuidInfo {
+                                table_name: table_def.table_name.clone(),
+                                sheet_name: table_def.sheet_name.clone(),
+                                row_number: generated_uuid.row_number,
+                                column_index: generated_uuid.column_index,
+                                uuid: generated_uuid.uuid,
+                            });
+                        }
+
                         info!(
                             table_name = %table_def.table_name,
                             row_count = read_result.rows.len(),
                             error_count = read_result.errors.len(),
+                            generated_uuid_count = read_result.generated_uuids.len(),
                             "テーブルデータを読み込みました"
                         );
 
@@ -249,12 +281,43 @@ impl SpreadsheetImportFacade {
                 total_rows,
                 errors,
                 warnings,
+                generated_uuids: all_generated_uuids,
             })
         }
         .await;
 
         match result {
             Ok(import_result) => {
+                // 生成されたUUIDをスプレッドシートに書き戻し（コミット前に実施）
+                if !import_result.generated_uuids.is_empty() {
+                    info!(
+                        uuid_count = import_result.generated_uuids.len(),
+                        "生成されたUUIDをスプレッドシートに書き戻します"
+                    );
+
+                    if let Err(e) = self
+                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &import_result.generated_uuids)
+                        .await
+                    {
+                        error!(
+                            error = %e,
+                            "UUID書き戻しに失敗したため、トランザクションをロールバックします"
+                        );
+                        txn.rollback().await?;
+                        return Err(FacadeError::ExternalService {
+                            source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
+                                message: format!(
+                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {}",
+                                    e
+                                ),
+                            },
+                        });
+                    } else {
+                        info!("UUID書き戻しが完了しました");
+                    }
+                }
+
+                // UUID書き戻しが成功した場合のみコミット
                 txn.commit().await?;
                 info!(
                     success = import_result.success_count,
@@ -301,6 +364,71 @@ impl SpreadsheetImportFacade {
         // TODO: 実装を完成させる（現時点ではグローバルと同様）
         self.import_global_spreadsheet(spreadsheet_id).await
     }
+
+    /// 生成されたUUIDをスプレッドシートに書き戻す
+    #[instrument(level = "info", skip(self, sheets_client, generated_uuids))]
+    async fn write_back_generated_uuids(
+        &self,
+        sheets_client: &google_sheets4::Sheets<
+            google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+        >,
+        spreadsheet_id: &str,
+        generated_uuids: &[GeneratedUuidInfo],
+    ) -> Result<(), FacadeError> {
+        use google_sheets4::api::ValueRange;
+
+        // シート名ごとにグループ化
+        let mut updates_by_sheet: HashMap<String, Vec<(usize, usize, String)>> = HashMap::new();
+
+        for uuid_info in generated_uuids {
+            updates_by_sheet
+                .entry(uuid_info.sheet_name.clone())
+                .or_insert_with(Vec::new)
+                .push((
+                    uuid_info.row_number,
+                    uuid_info.column_index,
+                    uuid_info.uuid.to_string(),
+                ));
+        }
+
+        // シートごとに書き込み
+        for (sheet_name, updates) in updates_by_sheet {
+            for (row_number, column_index, uuid_str) in updates {
+                // A1記法に変換（列番号をアルファベットに変換）
+                let column_letter = column_index_to_letter(column_index);
+                let range = format!("'{}'!{}{}", sheet_name, column_letter, row_number);
+
+                let value_range = ValueRange {
+                    values: Some(vec![vec![serde_json::Value::String(uuid_str.clone())]]),
+                    range: Some(range.clone()),
+                    ..Default::default()
+                };
+
+                sheets_client
+                    .spreadsheets()
+                    .values_update(value_range, spreadsheet_id, &range)
+                    .value_input_option("USER_ENTERED")
+                    .doit()
+                    .await
+                    .map_err(|e| {
+                        FacadeError::ExternalService {
+                            source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
+                                message: format!("UUID書き戻しに失敗しました: {}", e),
+                            },
+                        }
+                    })?;
+
+                tracing::debug!(
+                    sheet_name = %sheet_name,
+                    range = %range,
+                    uuid = %uuid_str,
+                    "UUIDを書き戻しました"
+                );
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl std::fmt::Display for ImportResult {
@@ -345,6 +473,22 @@ fn take_table_definition(
     }
 
     None
+}
+
+/// 列番号（0始まり）をA1記法の列文字列に変換
+/// 例: 0 -> "A", 1 -> "B", 25 -> "Z", 26 -> "AA"
+fn column_index_to_letter(index: usize) -> String {
+    let mut result = String::new();
+    let mut n = index + 1; // A1記法は1始まり
+
+    while n > 0 {
+        n -= 1; // 0ベースに変換
+        let remainder = n % 26;
+        result.insert(0, (b'A' + remainder as u8) as char);
+        n /= 26;
+    }
+
+    result
 }
 
 async fn persist_table_data(

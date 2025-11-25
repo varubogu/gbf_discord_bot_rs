@@ -30,6 +30,13 @@ pub trait DataConverterServiceTrait: Send + Sync {
         schema: &[ColumnSchema],
     ) -> (Vec<PostgresValue>, Vec<ValidationError>);
 
+    /// 複数の値を一括変換（エラーと生成されたUUIDを収集）
+    fn convert_row_to_postgres_with_uuid_tracking(
+        &self,
+        row: Vec<String>,
+        schema: &[ColumnSchema],
+    ) -> (Vec<PostgresValue>, Vec<ValidationError>, Vec<(usize, Uuid)>);
+
     /// PostgreSQL行をスプレッドシート行に変換
     fn convert_row_to_spreadsheet(
         &self,
@@ -307,8 +314,8 @@ impl DataConverterServiceTrait for DataConverterService {
         target_type: PostgresType,
         field_name: &str,
     ) -> Result<PostgresValue, ValidationError> {
-        // NULL値チェック
-        if Self::is_null_value(value) {
+        // NULL値チェック（UUID型の場合は空文字列でも自動生成するためスキップ）
+        if Self::is_null_value(value) && target_type != PostgresType::Uuid {
             return Ok(PostgresValue::Null);
         }
 
@@ -332,7 +339,14 @@ impl DataConverterServiceTrait for DataConverterService {
                 Self::parse_timestamptz(value, field_name).map(PostgresValue::TimestampTz)
             }
             PostgresType::Date => Self::parse_date(value, field_name).map(PostgresValue::Date),
-            PostgresType::Uuid => Self::parse_uuid(value, field_name).map(PostgresValue::Uuid),
+            PostgresType::Uuid => {
+                // UUID型: 空文字列の場合は新規UUIDを生成
+                if Self::is_null_value(value) {
+                    Ok(PostgresValue::Uuid(Uuid::new_v4()))
+                } else {
+                    Self::parse_uuid(value, field_name).map(PostgresValue::Uuid)
+                }
+            }
             PostgresType::Json | PostgresType::JsonB => {
                 Self::parse_json(value, field_name).map(PostgresValue::Json)
             }
@@ -350,8 +364,18 @@ impl DataConverterServiceTrait for DataConverterService {
         row: Vec<String>,
         schema: &[ColumnSchema],
     ) -> (Vec<PostgresValue>, Vec<ValidationError>) {
+        let (converted, errors, _) = self.convert_row_to_postgres_with_uuid_tracking(row, schema);
+        (converted, errors)
+    }
+
+    fn convert_row_to_postgres_with_uuid_tracking(
+        &self,
+        row: Vec<String>,
+        schema: &[ColumnSchema],
+    ) -> (Vec<PostgresValue>, Vec<ValidationError>, Vec<(usize, Uuid)>) {
         let mut converted = Vec::new();
         let mut errors = Vec::new();
+        let mut generated_uuids = Vec::new();
 
         for (index, column) in schema.iter().enumerate() {
             let value = row.get(index).map(|s| s.as_str()).unwrap_or("");
@@ -378,6 +402,12 @@ impl DataConverterServiceTrait for DataConverterService {
                     }
                 }
                 Ok(postgres_value) => {
+                    // UUID型で値が空だった場合、自動生成されたUUIDを記録
+                    if column.postgres_type == PostgresType::Uuid && Self::is_null_value(value) {
+                        if let PostgresValue::Uuid(uuid) = &postgres_value {
+                            generated_uuids.push((index, *uuid));
+                        }
+                    }
                     converted.push(postgres_value);
                 }
                 Err(e) => {
@@ -392,7 +422,7 @@ impl DataConverterServiceTrait for DataConverterService {
             }
         }
 
-        (converted, errors)
+        (converted, errors, generated_uuids)
     }
 
     fn convert_row_to_spreadsheet(
