@@ -484,7 +484,7 @@ mod tests {
 
         let raw_values = vec!["123".to_string(), "テスト".to_string()];
 
-        let (row_data, errors) = reader_service.convert_raw_row(raw_values, &schema, 2);
+        let (row_data, errors, generated_uuids) = reader_service.convert_raw_row(raw_values, &schema, 2);
 
         assert_eq!(row_data.row_number, 2);
         assert_eq!(row_data.values.len(), 2);
@@ -552,7 +552,7 @@ mod tests {
         // 不正なデータ（idが数値でない）
         let raw_values = vec!["invalid".to_string(), "テスト".to_string()];
 
-        let (row_data, errors) = reader_service.convert_raw_row(raw_values, &schema, 2);
+        let (row_data, errors, generated_uuids) = reader_service.convert_raw_row(raw_values, &schema, 2);
 
         assert_eq!(row_data.row_number, 2);
         assert_eq!(row_data.values.len(), 2);

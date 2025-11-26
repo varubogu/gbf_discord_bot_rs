@@ -29,8 +29,23 @@ impl From<FacadeError> for PresentationError {
                     "🔧 タイムアウトが発生しました。しばらく待ってから再試行してください。"
                         .to_string()
                 }
-                ExternalServiceError::GoogleSheetsApiError { .. } => {
-                    "🔧 Googleスプレッドシートへのアクセスに失敗しました。".to_string()
+                ExternalServiceError::GoogleSheetsApiError { message } => {
+                    // UUID書き込み失敗のメッセージを検出
+                    if message.contains("UUID書き戻しに失敗") {
+                        format!(
+                            "❌ スプレッドシートへのUUID書き込みに失敗しました\n\n\
+                            【原因】\n\
+                            サービスアカウントにスプレッドシートの編集権限がありません。\n\n\
+                            【対処方法】\n\
+                            1. Googleスプレッドシートを開く\n\
+                            2. 右上の「共有」をクリック\n\
+                            3. サービスアカウントのメールアドレスに「編集者」権限を付与\n\n\
+                            ※データベースへの登録はロールバックされました。\n\
+                            権限を付与した後、再度読み込みコマンドを実行してください。"
+                        )
+                    } else {
+                        format!("🔧 Googleスプレッドシートへのアクセスに失敗しました。\n詳細: {}", message)
+                    }
                 }
                 ExternalServiceError::GoogleAuthError { .. } => {
                     "🔧 Google認証に失敗しました。管理者に連絡してください。".to_string()

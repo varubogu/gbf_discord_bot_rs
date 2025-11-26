@@ -491,6 +491,110 @@ fn column_index_to_letter(index: usize) -> String {
     result
 }
 
+/// テーブルがUPSERT方式で保存すべきかを判定
+///
+/// 参照マスタテーブルで、他のテーブルから外部キー参照されている場合は
+/// DELETE + INSERTではなくUPSERTを使用する必要があります。
+fn should_use_upsert(table_name: &str) -> bool {
+    matches!(
+        table_name,
+        "channel_types" // guild_channelsから参照されているため
+    )
+}
+
+/// UPSERT用のSQLクエリを構築
+///
+/// INSERT文にON CONFLICT句を追加して、既存レコードがあれば更新、なければ挿入します。
+fn build_upsert_query(
+    table_name: &str,
+    insert_sql: &str,
+    filtered_schema: &[&ColumnSchema],
+) -> String {
+    // テーブルごとのプライマリキーを定義
+    let primary_key = match table_name {
+        "channel_types" => "id",
+        _ => "id", // デフォルトはid
+    };
+
+    // ON CONFLICT (primary_key) DO UPDATE SET column1 = EXCLUDED.column1, column2 = EXCLUDED.column2, ...
+    let update_columns: Vec<String> = filtered_schema
+        .iter()
+        .filter(|col| col.column_name != primary_key) // プライマリキーは更新しない
+        .map(|col| format!("{} = EXCLUDED.{}", col.column_name, col.column_name))
+        .collect();
+
+    format!(
+        "{} ON CONFLICT ({}) DO UPDATE SET {}",
+        insert_sql,
+        primary_key,
+        update_columns.join(", ")
+    )
+}
+
+/// スプレッドシートに存在しないレコードを削除
+///
+/// 他のテーブルから参照されていないレコードのみ削除します。
+/// 参照されているレコードは削除せず、警告として記録します。
+async fn delete_unreferenced_records(
+    txn: &DatabaseTransaction,
+    table_name: &str,
+    inserted_ids: &[&PostgresValue],
+) -> Result<(), FacadeError> {
+    match table_name {
+        "channel_types" => {
+            // スプレッドシートに存在するIDのリストを作成
+            let id_list: Vec<i32> = inserted_ids
+                .iter()
+                .filter_map(|v| match v {
+                    PostgresValue::Integer(id) => Some(*id),
+                    _ => None,
+                })
+                .collect();
+
+            if id_list.is_empty() {
+                // 全削除（参照されていないもののみ）
+                let delete_sql =
+                    "DELETE FROM channel_types WHERE id NOT IN (SELECT DISTINCT channel_type FROM guild_channels)";
+                txn.execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
+            } else {
+                // スプレッドシートに存在しないIDを削除（参照されていないもののみ）
+                let placeholders: Vec<String> = (1..=id_list.len())
+                    .map(|i| format!("${}", i))
+                    .collect();
+
+                let delete_sql = format!(
+                    "DELETE FROM channel_types WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM guild_channels)",
+                    placeholders.join(", ")
+                );
+
+                let values: Vec<SeaValue> = id_list
+                    .iter()
+                    .map(|id| SeaValue::Int(Some(*id)))
+                    .collect();
+
+                txn.execute(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                    values,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
+            }
+
+            tracing::debug!("channel_typesテーブルから未参照レコードを削除しました");
+        }
+        _ => {
+            // その他のテーブルは何もしない
+        }
+    }
+    Ok(())
+}
+
 async fn persist_table_data(
     txn: &DatabaseTransaction,
     table_name: &str,
@@ -499,18 +603,25 @@ async fn persist_table_data(
 ) -> Result<(usize, Vec<String>), FacadeError> {
     let mut warnings = Vec::new();
 
-    let mut delete = Query::delete();
-    delete.from_table(Alias::new(table_name));
-    let (delete_sql, delete_values) = delete.build(PostgresQueryBuilder);
-    txn.execute(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        delete_sql,
-        delete_values,
-    ))
-    .await
-    .map_err(FacadeError::from)?;
+    // UPSERT対象テーブル以外は全削除してから挿入
+    if !should_use_upsert(table_name) {
+        let mut delete = Query::delete();
+        delete.from_table(Alias::new(table_name));
+        let (delete_sql, delete_values) = delete.build(PostgresQueryBuilder);
+        txn.execute(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            delete_sql,
+            delete_values,
+        ))
+        .await
+        .map_err(FacadeError::from)?;
+    }
 
     if rows.is_empty() {
+        // UPSERT対象テーブルの場合、空でも全削除が必要
+        if should_use_upsert(table_name) {
+            delete_unreferenced_records(txn, table_name, &[]).await?;
+        }
         return Ok((0, warnings));
     }
 
@@ -562,14 +673,41 @@ async fn persist_table_data(
         return Ok((0, warnings));
     }
 
-    let (insert_sql, insert_values) = insert.build(PostgresQueryBuilder);
-    txn.execute(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        insert_sql,
-        insert_values,
-    ))
-    .await
-    .map_err(FacadeError::from)?;
+    // UPSERT対象テーブルの場合はON CONFLICT句を追加
+    if should_use_upsert(table_name) {
+        let (insert_sql, insert_values) = insert.build(PostgresQueryBuilder);
+
+        // ON CONFLICT句を手動で追加（SeaORMのQueryBuilderはUPSERTをサポートしていないため）
+        let upsert_sql = build_upsert_query(table_name, &insert_sql, &filtered_schema);
+
+        txn.execute(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            upsert_sql,
+            insert_values,
+        ))
+        .await
+        .map_err(FacadeError::from)?;
+
+        // スプレッドシートに存在しないレコードを削除（参照されていないもののみ）
+        let inserted_ids: Vec<&PostgresValue> = rows
+            .iter()
+            .filter_map(|row| {
+                // プライマリキー列（通常は最初の列）の値を取得
+                row.values.first()
+            })
+            .collect();
+
+        delete_unreferenced_records(txn, table_name, &inserted_ids).await?;
+    } else {
+        let (insert_sql, insert_values) = insert.build(PostgresQueryBuilder);
+        txn.execute(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            insert_sql,
+            insert_values,
+        ))
+        .await
+        .map_err(FacadeError::from)?;
+    }
 
     Ok((inserted_rows, warnings))
 }
