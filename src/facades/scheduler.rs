@@ -1,11 +1,12 @@
-use crate::models::entities::{guild_channels, guilds};
+use crate::models::entities::{guild_channels, last_process_times::LastProcessType};
+use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
 use crate::repository::database::schedule::{NotificationRelEventScheduleRepository, NotificationRepository, ScheduleRepository};
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::services::schedule::{NotificationService, ScheduleCalculator};
 use crate::types::{AppState, Result};
 use chrono::Utc;
 use poise::serenity_prelude::Http;
-use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, TransactionTrait};
+use sea_orm::{DatabaseTransaction, EntityTrait, TransactionTrait};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -105,14 +106,55 @@ impl SchedulerFacade {
     }
 
     /// 通知を実行
+    /// last_process_timesから前回実行時刻を取得し、その時刻から現在までの通知を実行
+    /// 各通知はis_sentフラグで管理されるため、last_process_timesの更新は不要
     pub async fn execute_notifications(&self, http: Arc<Http>) -> Result<()> {
         debug!("通知実行を開始します");
 
-        let notification_service = NotificationService::new(self.app_state.db().clone(), http);
+        let now = Utc::now();
 
-        notification_service
-            .execute_scheduled_notifications()
+        // 前回のスケジュール実行時刻を取得
+        let last_process_time_repo = LastProcessTimeRepository::new(self.app_state.db().clone());
+        let last_process_time = last_process_time_repo
+            .find_schedule_last_process_time()
             .await?;
+
+        let last_execute_time = last_process_time.and_then(|lpt| lpt.execute_time);
+
+        debug!(
+            last_execute_time = ?last_execute_time,
+            "前回のスケジュール実行時刻を取得しました"
+        );
+
+        // 通知を実行（各通知ごとにis_sentフラグを立てる）
+        let notification_service = NotificationService::new(self.app_state.db().clone(), http);
+        notification_service
+            .execute_scheduled_notifications(last_execute_time)
+            .await?;
+
+        // last_process_timesを更新（次回実行時の検索範囲を決定するため）
+        let txn = self.app_state.db().begin().await?;
+
+        let result = async {
+            last_process_time_repo
+                .upsert_with_txn(&txn, LastProcessType::Schedule, now)
+                .await?;
+
+            Ok::<(), crate::types::AppError>(())
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                txn.commit().await?;
+                debug!("last_process_timesを更新しました");
+            }
+            Err(e) => {
+                error!(error = %e, "last_process_timesの更新に失敗しました");
+                txn.rollback().await?;
+                return Err(e);
+            }
+        }
 
         debug!("通知実行が完了しました");
         Ok(())

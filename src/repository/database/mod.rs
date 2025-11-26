@@ -4,6 +4,7 @@ pub mod channel_type_repository;
 pub mod db_compat;
 pub mod guild_channel_repository;
 pub mod guild_repository;
+pub mod last_process_time_repository;
 pub mod models_database;
 pub mod quest_repository;
 pub mod schedule;

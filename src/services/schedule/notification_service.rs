@@ -1,9 +1,9 @@
 use crate::models::entities::{battle_recruitments, message_texts, notifications};
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::types::Result;
-use chrono::{Duration, Utc};
-use poise::serenity_prelude::{self as serenity, ChannelId, CreateMessage, Http, MessageId, ReactionType};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use chrono::Utc;
+use poise::serenity_prelude::{self as serenity, ChannelId, CreateMessage, Http, MessageId};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
@@ -28,21 +28,28 @@ impl NotificationService {
     }
 
     /// スケジュール通知を実行
-    /// 現在時刻から次の10秒後までの通知を取得して実行
-    pub async fn execute_scheduled_notifications(&self) -> Result<()> {
+    /// last_process_times.execute_timeから現在時刻までの通知を取得して実行
+    /// last_process_timesが存在しない場合は現在時刻のみを対象とする
+    pub async fn execute_scheduled_notifications(
+        &self,
+        last_process_time: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<()> {
         let now = Utc::now();
-        let next_tick = now + Duration::seconds(10);
+
+        // 前回実行時刻から現在時刻までの範囲を設定
+        // 前回実行時刻が存在しない場合は現在時刻のみを対象
+        let from = last_process_time.unwrap_or(now);
 
         debug!(
-            from = %now,
-            to = %next_tick,
+            from = %from,
+            to = %now,
             "スケジュール通知の実行を開始します"
         );
 
         // 実行対象の通知を取得
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(now, next_tick)
+            .find_by_datetime_range(from, now)
             .await?;
 
         if notifications.is_empty() {
@@ -56,25 +63,42 @@ impl NotificationService {
         let mut error_count = 0;
 
         for notification in notifications {
-            match self.send_notification(&notification).await {
-                Ok(_) => {
-                    success_count += 1;
-                    debug!(
-                        notification_id = notification.id,
-                        guild_id = notification.guild_id,
-                        "通知を送信しました"
-                    );
+            // 通知を送信
+            let send_result = self.send_notification(&notification).await;
+
+            // 送信結果に関わらず、トランザクションでis_sentフラグを更新
+            // 送信成功した場合のみフラグを立てる
+            if send_result.is_ok() {
+                let txn = self.db.begin().await?;
+                match self.notification_repo.mark_as_sent_with_txn(&txn, notification.id).await {
+                    Ok(_) => {
+                        txn.commit().await?;
+                        success_count += 1;
+                        debug!(
+                            notification_id = notification.id,
+                            guild_id = notification.guild_id,
+                            "通知を送信し、送信済みとしてマークしました"
+                        );
+                    }
+                    Err(e) => {
+                        txn.rollback().await?;
+                        error_count += 1;
+                        error!(
+                            error = %e,
+                            notification_id = notification.id,
+                            "is_sentフラグの更新に失敗しました（次回再送されます）"
+                        );
+                    }
                 }
-                Err(e) => {
-                    error_count += 1;
-                    error!(
-                        error = %e,
-                        notification_id = notification.id,
-                        guild_id = notification.guild_id,
-                        channel_id = notification.channel_id,
-                        "通知の送信に失敗しました"
-                    );
-                }
+            } else {
+                error_count += 1;
+                error!(
+                    error = %send_result.unwrap_err(),
+                    notification_id = notification.id,
+                    guild_id = notification.guild_id,
+                    channel_id = notification.channel_id,
+                    "通知の送信に失敗しました（次回リトライされます）"
+                );
             }
         }
 

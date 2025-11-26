@@ -10,6 +10,7 @@ pub struct Model {
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
+    pub is_sent: bool,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -29,6 +30,7 @@ impl ActiveModelBehavior for ActiveModel {
             guild_id: sea_orm::NotSet,
             channel_id: sea_orm::NotSet,
             message_text_id: sea_orm::NotSet,
+            is_sent: sea_orm::Set(false),
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),
         }

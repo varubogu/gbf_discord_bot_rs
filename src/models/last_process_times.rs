@@ -3,7 +3,7 @@ use crate::models::entities::{
     last_process_times::LastProcessType,
 };
 use crate::repository::database::db_compat::Database;
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,5 +84,41 @@ impl Database {
     ) -> Result<Option<LastProcessTime>, DbErr> {
         self.get_last_process_time_by_type(LastProcessType::SpreadsheetPush)
             .await
+    }
+
+    /// last_process_timeを更新（トランザクション付き）
+    /// レコードが存在しない場合は新規作成、存在する場合は更新
+    pub async fn upsert_last_process_time_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        process_type: LastProcessType,
+        execute_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<last_process_times::Model, DbErr> {
+        let now = chrono::Utc::now();
+
+        // 既存のレコードを検索
+        let existing = LastProcessTimeEntity::find_by_id(process_type.as_i32())
+            .one(txn)
+            .await?;
+
+        if let Some(existing_model) = existing {
+            // 更新
+            let mut active_model: last_process_times::ActiveModel = existing_model.into();
+            active_model.execute_time = Set(Some(execute_time));
+            active_model.updated_at = Set(now);
+
+            active_model.update(txn).await
+        } else {
+            // 新規作成
+            let active_model = last_process_times::ActiveModel {
+                process_type: Set(process_type.as_i32()),
+                execute_time: Set(Some(execute_time)),
+                memo: Set(process_type.memo().to_string()),
+                created_at: Set(now),
+                updated_at: Set(now),
+            };
+
+            active_model.insert(txn).await
+        }
     }
 }

@@ -17,7 +17,7 @@ impl NotificationRepository {
         Self { db }
     }
 
-    /// 指定した日時範囲内の通知を取得
+    /// 指定した日時範囲内の未送信通知を取得
     pub async fn find_by_datetime_range(
         &self,
         from: DateTime<Utc>,
@@ -26,12 +26,13 @@ impl NotificationRepository {
         debug!(
             from = %from,
             to = %to,
-            "指定範囲内の通知を取得します"
+            "指定範囲内の未送信通知を取得します"
         );
 
         let notifications = notifications::Entity::find()
             .filter(notifications::Column::ScheduleDatetime.gte(from))
             .filter(notifications::Column::ScheduleDatetime.lt(to))
+            .filter(notifications::Column::IsSent.eq(false))
             .all(&self.db)
             .await
             .map_err(|e| {
@@ -39,7 +40,7 @@ impl NotificationRepository {
                 e
             })?;
 
-        debug!(count = notifications.len(), "通知を取得しました");
+        debug!(count = notifications.len(), "未送信通知を取得しました");
         Ok(notifications)
     }
 
@@ -67,6 +68,7 @@ impl NotificationRepository {
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
             message_text_id: Set(message_text_id),
+            is_sent: Set(false),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -98,6 +100,7 @@ impl NotificationRepository {
                     guild_id: Set(guild_id),
                     channel_id: Set(channel_id),
                     message_text_id: Set(message_text_id),
+                    is_sent: Set(false),
                     created_at: Set(now),
                     updated_at: Set(now),
                 }
@@ -165,5 +168,36 @@ impl NotificationRepository {
 
         debug!(deleted_count = result.rows_affected, "通知を削除しました");
         Ok(result.rows_affected)
+    }
+
+    /// 通知を送信済みとしてマーク（トランザクション付き）
+    pub async fn mark_as_sent_with_txn(&self, txn: &DatabaseTransaction, notification_id: i32) -> Result<notifications::Model> {
+        debug!(notification_id = %notification_id, "通知を送信済みとしてマークします");
+
+        // 通知を取得
+        let notification = notifications::Entity::find_by_id(notification_id)
+            .one(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, notification_id = %notification_id, "通知の取得に失敗しました");
+                e
+            })?
+            .ok_or_else(|| {
+                error!(notification_id = %notification_id, "通知が見つかりません");
+                crate::types::AppError::NotFound(format!("通知が見つかりません: {}", notification_id))
+            })?;
+
+        // is_sentをtrueに更新
+        let mut active_model: notifications::ActiveModel = notification.into();
+        active_model.is_sent = Set(true);
+        active_model.updated_at = Set(Utc::now());
+
+        let updated = active_model.update(txn).await.map_err(|e| {
+            error!(error = %e, notification_id = %notification_id, "通知の更新に失敗しました");
+            e
+        })?;
+
+        debug!(notification_id = %notification_id, "通知を送信済みとしてマークしました");
+        Ok(updated)
     }
 }

@@ -16,6 +16,7 @@ mod m20251121_000000_rename_battle_style_columns;
 mod m20251121_000001_rename_battle_types_to_battle_styles;
 mod m20251122_000000_add_recruitment_notification_message;
 mod m20251124_create_guild_channels;
+mod m20251126_000000_add_is_sent_to_notifications;
 
 pub struct Migrator;
 
@@ -39,6 +40,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251121_000001_rename_battle_types_to_battle_styles::Migration),
             Box::new(m20251122_000000_add_recruitment_notification_message::Migration),
             Box::new(m20251124_create_guild_channels::Migration),
+            Box::new(m20251126_000000_add_is_sent_to_notifications::Migration),
         ]
     }
 }
