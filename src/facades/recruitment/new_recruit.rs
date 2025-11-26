@@ -70,7 +70,7 @@ pub async fn new_recruitment(
                 notify_time,
                 guild_id as i64,
                 channel_id as i64,
-                "RECRUIT_DEPARTURE_REMINDER".to_string(),
+                "MSG00033".to_string(),
             )
             .await?;
 
