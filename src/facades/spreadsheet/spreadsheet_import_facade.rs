@@ -733,8 +733,8 @@ fn postgres_value_to_sea_value(value: &PostgresValue, column: &ColumnSchema) -> 
         PostgresValue::Boolean(v) => SeaValue::Bool(Some(*v)),
         PostgresValue::Timestamp(v) => SeaValue::ChronoDateTime(Some(Box::new(*v))),
         PostgresValue::TimestampTz(v) => {
-            #[allow(deprecated)]
-            let utc = DateTime::<Utc>::from_naive_utc_and_offset(v.naive_utc(), Utc);
+            // ローカルタイムゾーン（JST）をUTCに正しく変換
+            let utc = v.with_timezone(&Utc);
             SeaValue::ChronoDateTimeUtc(Some(Box::new(utc)))
         }
         PostgresValue::Date(v) => SeaValue::ChronoDate(Some(Box::new(*v))),

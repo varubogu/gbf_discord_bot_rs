@@ -1,6 +1,6 @@
 use crate::models::entities::{event_schedule_details, event_schedules};
 use crate::types::Result;
-use chrono::{DateTime, Duration, NaiveTime, Utc};
+use chrono::{DateTime, Duration, FixedOffset, NaiveTime, TimeZone, Utc};
 use std::collections::HashMap;
 use tracing::{debug, error, warn};
 
@@ -112,24 +112,35 @@ impl ScheduleCalculator {
         // timeをパース（例: "05:00:00", "23:59:59"）
         let time = self.parse_time(&detail.time)?;
 
-        // イベント開始日時に日数オフセットを追加
-        let target_date = event_schedule.start_at + Duration::days(day_offset);
+        // イベント開始日時に日数オフセットを追加（JSTのまま計算）
+        let target_datetime_jst = event_schedule.start_at + Duration::days(day_offset);
 
-        // 日付と時刻を組み合わせる
-        let schedule_datetime = target_date
-            .date_naive()
-            .and_time(time)
-            .and_utc();
+        // 日付と時刻を組み合わせる（JSTとして）
+        let naive_datetime = target_datetime_jst
+            .date()
+            .and_time(time);
+
+        // JSTをUTCに変換（JST = UTC+9）
+        let jst = FixedOffset::east_opt(9 * 3600).unwrap();
+        let schedule_datetime_jst = jst
+            .from_local_datetime(&naive_datetime)
+            .single()
+            .ok_or_else(|| crate::types::AppError::Validation {
+                field: format!("日時計算: {}", naive_datetime),
+            })?;
+
+        let schedule_datetime_utc = schedule_datetime_jst.with_timezone(&Utc);
 
         debug!(
-            event_start = %event_schedule.start_at,
+            event_start_jst = %event_schedule.start_at,
             day_offset = day_offset,
             time = %detail.time,
-            result = %schedule_datetime,
-            "スケジュール日時を計算しました"
+            result_jst = %schedule_datetime_jst,
+            result_utc = %schedule_datetime_utc,
+            "スケジュール日時を計算しました（JST→UTC）"
         );
 
-        Ok(schedule_datetime)
+        Ok(schedule_datetime_utc)
     }
 
     /// 日付オフセット文字列をパース
@@ -216,13 +227,11 @@ mod tests {
             start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
                 .unwrap()
                 .and_hms_opt(0, 0, 0)
-                .unwrap()
-                .and_utc(),
+                .unwrap(),
             end_at: NaiveDate::from_ymd_opt(2025, 1, 20)
                 .unwrap()
                 .and_hms_opt(0, 0, 0)
-                .unwrap()
-                .and_utc(),
+                .unwrap(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -242,10 +251,11 @@ mod tests {
 
         let result = calculator.calculate_datetime(&event_schedule, &detail).unwrap();
 
+        // JST 2025-01-15 05:00 → UTC 2025-01-14 20:00（JSTはUTC+9時間）
         assert_eq!(result.format("%Y").to_string(), "2025");
         assert_eq!(result.format("%m").to_string(), "01");
-        assert_eq!(result.format("%d").to_string(), "15");
-        assert_eq!(result.format("%H").to_string(), "05");
+        assert_eq!(result.format("%d").to_string(), "14");
+        assert_eq!(result.format("%H").to_string(), "20");
         assert_eq!(result.format("%M").to_string(), "00");
     }
 }
