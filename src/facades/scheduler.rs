@@ -151,11 +151,26 @@ impl SchedulerFacade {
     ) -> Result<()> {
         let notification_repo = NotificationRepository::new(self.app_state.db().clone());
         let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.db().clone());
+        let now = Utc::now();
 
         debug!(count = schedules.len(), "通知とリレーションを作成します");
 
+        let mut created_count = 0;
+        let mut skipped_count = 0;
+
         // 各スケジュールに対して通知とリレーションを作成
         for schedule in schedules {
+            // 通知日時が既に過ぎている場合はスキップ
+            if schedule.schedule_datetime < now {
+                debug!(
+                    schedule_datetime = %schedule.schedule_datetime,
+                    now = %now,
+                    "通知日時が既に過ぎているためスキップします"
+                );
+                skipped_count += 1;
+                continue;
+            }
+
             // 通知を作成
             let notification = notification_repo
                 .create_with_txn(
@@ -176,9 +191,15 @@ impl SchedulerFacade {
                     notification.id,
                 )
                 .await?;
+
+            created_count += 1;
         }
 
-        debug!("通知とリレーションの作成が完了しました");
+        info!(
+            created = created_count,
+            skipped = skipped_count,
+            "通知とリレーションの作成が完了しました"
+        );
         Ok(())
     }
 }
