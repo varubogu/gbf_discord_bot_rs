@@ -1,5 +1,5 @@
 use crate::models::entities::{guild_channels, guilds};
-use crate::repository::database::schedule::{NotificationRepository, ScheduleRepository};
+use crate::repository::database::schedule::{NotificationRelEventScheduleRepository, NotificationRepository, ScheduleRepository};
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::services::schedule::{NotificationService, ScheduleCalculator};
 use crate::types::{AppState, Result};
@@ -33,8 +33,10 @@ impl SchedulerFacade {
             let notification_repo = NotificationRepository::new(self.app_state.db().clone());
             let calculator = ScheduleCalculator::new();
 
-            // 既存のスケジュールをクリア
+            // 既存のスケジュールとリレーションをクリア
             debug!("既存のスケジュールを削除します");
+            let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.db().clone());
+            rel_repo.delete_all_with_txn(&txn).await?;
             notification_repo.delete_all_with_txn(&txn).await?;
 
             // イベントスケジュールと詳細を取得
@@ -148,23 +150,35 @@ impl SchedulerFacade {
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
         let notification_repo = NotificationRepository::new(self.app_state.db().clone());
+        let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.db().clone());
 
-        let notifications_data: Vec<(chrono::DateTime<Utc>, i64, i64, String)> = schedules
-            .into_iter()
-            .map(|schedule| {
-                (
+        debug!(count = schedules.len(), "通知とリレーションを作成します");
+
+        // 各スケジュールに対して通知とリレーションを作成
+        for schedule in schedules {
+            // 通知を作成
+            let notification = notification_repo
+                .create_with_txn(
+                    txn,
                     schedule.schedule_datetime,
                     schedule.guild_id,
                     schedule.channel_id,
                     schedule.message_text_id,
                 )
-            })
-            .collect();
+                .await?;
 
-        notification_repo
-            .bulk_create_with_txn(txn, notifications_data)
-            .await?;
+            // イベントスケジュールとのリレーションを作成
+            rel_repo
+                .create_with_txn(
+                    txn,
+                    schedule.event_schedule_id,
+                    schedule.event_schedule_detail_id,
+                    notification.id,
+                )
+                .await?;
+        }
 
+        debug!("通知とリレーションの作成が完了しました");
         Ok(())
     }
 }

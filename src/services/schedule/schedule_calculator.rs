@@ -14,6 +14,8 @@ pub struct CalculatedSchedule {
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
+    pub event_schedule_id: uuid::Uuid,
+    pub event_schedule_detail_id: uuid::Uuid,
 }
 
 impl ScheduleCalculator {
@@ -74,6 +76,8 @@ impl ScheduleCalculator {
                                 guild_id: *guild_id,
                                 channel_id: *channel_id,
                                 message_text_id: detail.message_text_id.clone(),
+                                event_schedule_id: event_schedule.id,
+                                event_schedule_detail_id: detail.id,
                             });
                         }
                         Err(e) => {

@@ -1,7 +1,9 @@
 pub mod notification_rel_battle_recruitment_repository;
+pub mod notification_rel_event_schedule_repository;
 pub mod notification_repository;
 pub mod schedule_repository;
 
 pub use notification_rel_battle_recruitment_repository::NotificationRelBattleRecruitmentRepository;
+pub use notification_rel_event_schedule_repository::NotificationRelEventScheduleRepository;
 pub use notification_repository::NotificationRepository;
 pub use schedule_repository::ScheduleRepository;
