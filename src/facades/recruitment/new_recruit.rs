@@ -1,4 +1,5 @@
 use crate::infrastructure::database::container::RepositoryContainer;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
@@ -24,6 +25,9 @@ pub async fn new_recruitment(
 
     // Discord固有情報を取得
     let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
     let channel_id = ctx.channel_id().get();
 
     let result = async {

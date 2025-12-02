@@ -1,3 +1,4 @@
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_repository::GuildRepository;
@@ -76,6 +77,9 @@ pub async fn channel_register(
     let app_state = &ctx.data().app_state;
     let txn = app_state.db().begin().await?;
 
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id.get() as i64).await?;
+
     let result = async {
         let guild_repo = GuildRepository::new(app_state.db().clone());
         let channel_type_repo = ChannelTypeRepository::new(app_state.db().clone());
@@ -112,26 +116,33 @@ pub async fn channel_register(
             "チャンネル登録が完了しました"
         );
 
+        // コミット前に、全チャンネル種別の設定状況を取得（トランザクション内で実行）
+        let all_channel_types = channel_type_repo.get_all().await?;
+        let mut status_lines = Vec::new();
+
+        for ct in all_channel_types {
+            let guild_channel = guild_channel_repo
+                .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, ct.id)
+                .await?;
+
+            if let Some(gc) = guild_channel {
+                status_lines.push(format!("• **{}**: <#{}>\n", ct.name, gc.channel_id));
+            } else {
+                status_lines.push(format!("• **{}**: 未設定\n", ct.name));
+            }
+        }
+
         // トランザクションをコミット（ここで確定させる）
         txn.commit().await?;
 
-        // 登録後、全チャンネル種別の設定状況を取得して表示
-        let all_channel_types = channel_type_repo.get_all().await?;
+        // 登録後、設定状況を表示
         let mut status_message = format!(
             "✅ チャンネルを登録しました。\n\n**種別:** {}\n**チャンネル:** <#{}>\n\n**現在の設定状況:**\n",
             channel_type_model.name, channel_id
         );
 
-        for ct in all_channel_types {
-            let guild_channel = guild_channel_repo
-                .get_by_guild_and_type(guild_id.get() as i64, ct.id)
-                .await?;
-
-            if let Some(gc) = guild_channel {
-                status_message.push_str(&format!("• **{}**: <#{}>\n", ct.name, gc.channel_id));
-            } else {
-                status_message.push_str(&format!("• **{}**: 未設定\n", ct.name));
-            }
+        for line in status_lines {
+            status_message.push_str(&line);
         }
 
         ctx.send(

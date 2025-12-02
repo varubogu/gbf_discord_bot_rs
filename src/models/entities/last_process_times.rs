@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "last_process_times")]
+#[sea_orm(schema_name = "worker", table_name = "last_process_times")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub process_type: i32,

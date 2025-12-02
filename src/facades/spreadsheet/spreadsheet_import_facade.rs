@@ -6,7 +6,7 @@ use std::{collections::HashMap, env};
 
 use chrono::{DateTime, Utc};
 use sea_orm::DbErr;
-use sea_orm::sea_query::{Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue};
+use sea_orm::sea_query::{Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, Table, TableRef, Value as SeaValue};
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseConnection, DatabaseTransaction, Statement,
     TransactionTrait,
@@ -491,6 +491,46 @@ fn column_index_to_letter(index: usize) -> String {
     result
 }
 
+/// テーブル名からスキーマ名を取得
+///
+/// テーブル名から適切なスキーマ名を返します。
+fn get_schema_name(table_name: &str) -> &str {
+    match table_name {
+        // master スキーマ
+        "quests" | "quest_aliases" | "battle_styles" | "elements" | "channel_types"
+        | "event_schedules" | "event_schedule_details" | "message_texts" | "environments" => {
+            "master"
+        }
+        // guild_master スキーマ
+        "guilds" | "guild_channels" | "guild_spreadsheet_exports" | "guild_spreadsheet_imports" => {
+            "guild_master"
+        }
+        // worker スキーマ
+        "battle_recruitments" | "notifications" | "notification_rel_battle_recruitments"
+        | "notification_rel_event_schedules" | "last_process_times" => {
+            "worker"
+        }
+        // デフォルトはpublicスキーマ（後方互換性のため）
+        _ => "public",
+    }
+}
+
+/// テーブル名からスキーマ修飾されたTableRefを取得
+///
+/// スキーマ名とテーブル名を使用して、適切なTableRefを返します。
+fn get_entity_table_ref(table_name: &str) -> TableRef {
+    let schema = get_schema_name(table_name);
+    // スキーマがpublicでない場合は、スキーマ修飾したTableRefを返す
+    if schema != "public" {
+        TableRef::SchemaTable(
+            Alias::new(schema).into_iden(),
+            Alias::new(table_name).into_iden(),
+        )
+    } else {
+        TableRef::Table(Alias::new(table_name).into_iden())
+    }
+}
+
 /// テーブルがUPSERT方式で保存すべきかを判定
 ///
 /// 参照マスタテーブルで、他のテーブルから外部キー参照されている場合は
@@ -553,8 +593,13 @@ async fn delete_unreferenced_records(
 
             if id_list.is_empty() {
                 // 全削除（参照されていないもののみ）
-                let delete_sql =
-                    "DELETE FROM channel_types WHERE id NOT IN (SELECT DISTINCT channel_type FROM guild_channels)";
+                // この複雑なサブクエリは生SQLで実装
+                let schema_name = get_schema_name("channel_types");
+                let guild_schema = get_schema_name("guild_channels");
+                let delete_sql = format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
+                    schema_name, table_name, guild_schema
+                );
                 txn.execute(Statement::from_string(
                     DatabaseBackend::Postgres,
                     delete_sql,
@@ -567,9 +612,11 @@ async fn delete_unreferenced_records(
                     .map(|i| format!("${}", i))
                     .collect();
 
+                let schema_name = get_schema_name("channel_types");
+                let guild_schema = get_schema_name("guild_channels");
                 let delete_sql = format!(
-                    "DELETE FROM channel_types WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM guild_channels)",
-                    placeholders.join(", ")
+                    "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
+                    schema_name, table_name, placeholders.join(", "), guild_schema
                 );
 
                 let values: Vec<SeaValue> = id_list
@@ -602,12 +649,15 @@ async fn persist_table_data(
     rows: &[RowData],
 ) -> Result<(usize, Vec<String>), FacadeError> {
     let mut warnings = Vec::new();
+    let table_ref = get_entity_table_ref(table_name);
 
     // UPSERT対象テーブル以外は全削除してから挿入
     if !should_use_upsert(table_name) {
+        // スキーマ修飾されたDELETE文を生成
         let mut delete = Query::delete();
-        delete.from_table(Alias::new(table_name));
+        delete.from_table(table_ref.clone());
         let (delete_sql, delete_values) = delete.build(PostgresQueryBuilder);
+
         txn.execute(Statement::from_sql_and_values(
             DatabaseBackend::Postgres,
             delete_sql,
@@ -633,7 +683,7 @@ async fn persist_table_data(
 
     let mut insert = Query::insert();
     insert
-        .into_table(Alias::new(table_name))
+        .into_table(table_ref.clone())
         .columns(filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())));
 
     let mut inserted_rows = 0usize;

@@ -1,4 +1,5 @@
 use crate::infrastructure::database::container::RepositoryContainer;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
@@ -28,15 +29,18 @@ pub async fn change_recruitment_information(
     let app_state = &ctx.data().app_state;
     let txn = app_state.db().begin().await?;
 
+    // コンテキストからguild_idを取得（メッセージオブジェクトのguild_idはNoneの可能性がある）
+    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
     let result = async {
         // RepositoryContainerとRepositoryの取得
         let repos = RepositoryContainer::new(&app_state.db());
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new(app_state.db().clone());
         let battle_style_repository = SeaOrmBattleStyleRepository::new(app_state.db().clone());
-
-        // コンテキストからguild_idを取得（メッセージオブジェクトのguild_idはNoneの可能性がある）
-        let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
         let channel_id = message.channel_id.get();
         let message_id = message.id.get();
 
@@ -55,7 +59,7 @@ pub async fn change_recruitment_information(
 
         // 1. DBから既存の募集情報を取得
         let existing_recruitment = battle_recruitment_repo
-            .get_by_message(guild_id, channel_id, message_id)
+            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| {
                 error!(
@@ -198,7 +202,7 @@ pub async fn change_recruitment_information(
             let notification_repo = NotificationRepository::new(app_state.db().clone());
 
             // 既存の通知リレーションを取得
-            let old_relations = rel_repo.find_by_recruit_id(existing_recruitment.id).await?;
+            let old_relations = rel_repo.find_by_recruit_id_with_txn(&txn, existing_recruitment.id).await?;
 
             // 既存の通知を削除
             for relation in old_relations {

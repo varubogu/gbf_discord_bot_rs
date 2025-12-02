@@ -139,8 +139,6 @@ impl StartRecruitmentService {
         quest_name: &str,
         participants: &[String],
     ) -> Result<String> {
-        warn!("StartRecruitmentService::create_start_message - 仕様検討中です");
-        info!("開始メッセージ作成をエミュレート");
 
         let participant_mentions = if participants.is_empty() {
             "参加者がいません".to_string()

@@ -36,7 +36,8 @@ pub async fn execute_global_push(ctx: &PoiseContext<'_>) -> Result<()> {
     );
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.db().begin().await?;
+    // グローバルデータ書き出しにはGlobalロールを使用
+    let txn = app_state.global_db().begin().await?;
 
     let result = async {
         // Service層のインスタンス化（静的ディスパッチ）

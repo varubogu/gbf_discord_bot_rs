@@ -1,4 +1,5 @@
 use crate::infrastructure::database::container::RepositoryContainer;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::quests::Quest;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
@@ -21,11 +22,15 @@ pub async fn quest_list(
 
     // Discord固有情報を取得
     let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
     let channel_id = ctx.channel_id().get();
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new(&app_state.db_connection);
+        let repos = RepositoryContainer::new(&app_state.guild_db);
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new(app_state.db().clone());
         let battle_style_repository = SeaOrmBattleStyleRepository::new(app_state.db().clone());

@@ -27,16 +27,17 @@ impl SchedulerFacade {
     pub async fn generate_schedules(&self) -> Result<()> {
         info!("スケジュール生成を開始します");
 
-        let txn = self.app_state.db().begin().await?;
+        // スケジュール生成はSystemロールを使用（全ギルド対象）
+        let txn = self.app_state.system_db().begin().await?;
 
         let result = async {
-            let schedule_repo = ScheduleRepository::new(self.app_state.db().clone());
-            let notification_repo = NotificationRepository::new(self.app_state.db().clone());
+            let schedule_repo = ScheduleRepository::new(self.app_state.system_db().clone());
+            let notification_repo = NotificationRepository::new(self.app_state.system_db().clone());
             let calculator = ScheduleCalculator::new();
 
             // 既存のスケジュールとリレーションをクリア
             debug!("既存のスケジュールを削除します");
-            let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.db().clone());
+            let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.system_db().clone());
             rel_repo.delete_all_with_txn(&txn).await?;
             notification_repo.delete_all_with_txn(&txn).await?;
 
@@ -114,7 +115,7 @@ impl SchedulerFacade {
         let now = Utc::now();
 
         // 前回のスケジュール実行時刻を取得
-        let last_process_time_repo = LastProcessTimeRepository::new(self.app_state.db().clone());
+        let last_process_time_repo = LastProcessTimeRepository::new(self.app_state.system_db().clone());
         let last_process_time = last_process_time_repo
             .find_schedule_last_process_time()
             .await?;
@@ -127,13 +128,13 @@ impl SchedulerFacade {
         );
 
         // 通知を実行（各通知ごとにis_sentフラグを立てる）
-        let notification_service = NotificationService::new(self.app_state.db().clone(), http);
+        let notification_service = NotificationService::new(self.app_state.system_db().clone(), http);
         notification_service
             .execute_scheduled_notifications(last_execute_time)
             .await?;
 
         // last_process_timesを更新（次回実行時の検索範囲を決定するため）
-        let txn = self.app_state.db().begin().await?;
+        let txn = self.app_state.system_db().begin().await?;
 
         let result = async {
             last_process_time_repo
@@ -164,7 +165,7 @@ impl SchedulerFacade {
     /// 戻り値: HashMap<channel_type, Vec<(guild_id, channel_id)>>
     async fn get_notification_guild_channels_by_type(&self) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
         let guild_channels = guild_channels::Entity::find()
-            .all(self.app_state.db())
+            .all(self.app_state.system_db())
             .await?;
 
         let mut channels_by_type: HashMap<i32, Vec<(i64, i64)>> = HashMap::new();
@@ -191,8 +192,8 @@ impl SchedulerFacade {
         txn: &DatabaseTransaction,
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
-        let notification_repo = NotificationRepository::new(self.app_state.db().clone());
-        let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.db().clone());
+        let notification_repo = NotificationRepository::new(self.app_state.system_db().clone());
+        let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.system_db().clone());
         let now = Utc::now();
 
         debug!(count = schedules.len(), "通知とリレーションを作成します");

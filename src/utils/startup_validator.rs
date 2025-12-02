@@ -111,18 +111,88 @@ impl EnvValidator {
             }),
         ));
 
-        // DATABASE_URL
+        // DB_HOST
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "DB_HOST",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+
+        // DB_PORT
         results.push(Self::check_env_var(
-            "DATABASE_URL",
+            "DB_PORT",
             ValidationCategory::RequiredEnvVar,
             true,
             Some(|val: &str| {
-                if !val.starts_with("postgresql://") && !val.starts_with("postgres://") {
-                    Err("PostgreSQL接続文字列の形式が不正です".to_string())
-                } else {
-                    Ok(())
-                }
+                val.parse::<u16>()
+                    .map(|_| ())
+                    .map_err(|_| "有効なポート番号（1-65535）である必要があります".to_string())
             }),
+        ));
+
+        // DB_NAME
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "DB_NAME",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+
+        // システムロール用（必須）
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "SYSTEM_DB_USER",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "SYSTEM_DB_PASSWORD",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+
+        // ギルドロール用（必須）
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "GUILD_DB_USER",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "GUILD_DB_PASSWORD",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+
+        // グローバルロール用（必須）
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "GLOBAL_DB_USER",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "GLOBAL_DB_PASSWORD",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+
+        // 管理者ロール用（必須）
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "ADMIN_DB_USER",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
+        ));
+        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
+            "ADMIN_DB_PASSWORD",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            None,
         ));
 
         // BOT_ADMIN_SERVER_ID

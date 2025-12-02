@@ -1,3 +1,4 @@
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::QuestRepository;
@@ -19,6 +20,9 @@ pub async fn update_participants(
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::update_participants - 参加者を更新します");
     let txn = db.begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
         // Service層のインスタンスを作成

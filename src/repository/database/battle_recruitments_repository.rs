@@ -93,6 +93,24 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         Ok(result.map(BattleRecruitments::from))
     }
 
+    async fn get_by_message_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+    ) -> Result<Option<BattleRecruitments>> {
+        let result = BattleRecruitmentEntity::find()
+            .filter(Column::GuildId.eq(guild_id as i64)) // u64 → i64に変換
+            .filter(Column::ChannelId.eq(channel_id as i64)) // u64 → i64に変換
+            .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
+            .one(txn)
+            .await
+            .map_err(|e| AppError::Database(e))?;
+
+        Ok(result.map(BattleRecruitments::from))
+    }
+
     async fn set_end_message(
         &self,
         recruitment_id: i32,
@@ -134,6 +152,31 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model.is_canceled = Set(true);
         active_model
             .update(&self.connection)
+            .await
+            .map_err(|e| AppError::Database(e))?;
+
+        Ok(())
+    }
+
+    async fn set_canceled_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+        message_id: poise::serenity_prelude::MessageId,
+    ) -> Result<()> {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(txn)
+            .await
+            .map_err(|e| AppError::Database(e))?
+            .ok_or_else(|| AppError::Business {
+                message: "Recruitment not found".to_string(),
+            })?
+            .into();
+
+        active_model.recruit_end_message_id = Set(Some(message_id.get() as i64)); // u64 → i64に変換
+        active_model.is_canceled = Set(true);
+        active_model
+            .update(txn)
             .await
             .map_err(|e| AppError::Database(e))?;
 

@@ -21,7 +21,17 @@ This is a Rust implementation of the GBF Discord Bot, originally written in Pyth
    ```
    DISCORD_TOKEN=your_discord_bot_token
    GUILD_ID=your_discord_guild_id
-   DATABASE_URL=postgresql://user:password@localhost/gbf_bot
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=gbf_bot
+   GUILD_DB_USER=guild_user
+   GUILD_DB_PASSWORD=your_guild_password
+   SYSTEM_DB_USER=system_user
+   SYSTEM_DB_PASSWORD=your_system_password
+   GLOBAL_DB_USER=global_user
+   GLOBAL_DB_PASSWORD=your_global_password
+   ADMIN_DB_USER=admin_user
+   ADMIN_DB_PASSWORD=your_admin_password
    CONFIG_FOLDER=path_to_config_folder
    ```
 3. Run `cargo build --release`

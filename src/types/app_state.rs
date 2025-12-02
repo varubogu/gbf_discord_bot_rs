@@ -5,19 +5,42 @@ use std::sync::Arc;
 /// アプリケーションの共有状態（AppStateパターン）
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub db_connection: Arc<DatabaseConnection>,
+    /// Guild ロール用DB接続（通常のコマンド実行用、RLS適用）
+    pub guild_db: Arc<DatabaseConnection>,
+    /// System ロール用DB接続（スケジューラー用、RLS適用なし）
+    pub system_db: Arc<DatabaseConnection>,
+    /// Global ロール用DB接続（マスターデータ更新用、RLS適用なし）
+    pub global_db: Arc<DatabaseConnection>,
     pub config: AppConfig,
 }
 
 impl AppState {
-    pub fn new(db_connection: DatabaseConnection, config: AppConfig) -> Self {
+    pub fn new(
+        guild_db: DatabaseConnection,
+        system_db: DatabaseConnection,
+        global_db: DatabaseConnection,
+        config: AppConfig,
+    ) -> Self {
         Self {
-            db_connection: Arc::new(db_connection),
+            guild_db: Arc::new(guild_db),
+            system_db: Arc::new(system_db),
+            global_db: Arc::new(global_db),
             config,
         }
     }
 
+    /// Guild ロール用DB接続を取得（通常のコマンド実行用）
     pub fn db(&self) -> &DatabaseConnection {
-        &*self.db_connection
+        &*self.guild_db
+    }
+
+    /// System ロール用DB接続を取得（スケジューラー用）
+    pub fn system_db(&self) -> &DatabaseConnection {
+        &*self.system_db
+    }
+
+    /// Global ロール用DB接続を取得（マスターデータ更新用）
+    pub fn global_db(&self) -> &DatabaseConnection {
+        &*self.global_db
     }
 }

@@ -39,9 +39,9 @@ impl TransactionManager {
         }
     }
 
-    /// AppStateから作成するファクトリメソッド
+    /// AppStateから作成するファクトリメソッド（Guildロールを使用）
     pub fn from_app_state(app_state: &crate::types::AppState) -> Self {
-        Self::new(app_state.db_connection.clone())
+        Self::new(app_state.guild_db.clone())
     }
 
     /// Facade専用：トランザクション内で処理を実行

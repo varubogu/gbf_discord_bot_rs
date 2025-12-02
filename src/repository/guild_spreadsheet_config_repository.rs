@@ -4,6 +4,7 @@
 use crate::errors::RepositoryError;
 use crate::models::entities::{guild_spreadsheet_exports, guild_spreadsheet_imports};
 use async_trait::async_trait;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DatabaseTransaction,
     EntityTrait, QueryFilter,
@@ -94,20 +95,18 @@ impl GuildSpreadsheetConfigRepositoryTrait for GuildSpreadsheetConfigRepository 
             updated_at: ActiveValue::Set(now),
         };
 
-        // INSERT を試行
-        let insert_result = active_model.insert(txn).await;
-
-        // INSERT が失敗した場合（既存レコード）、UPDATE を実行
-        if insert_result.is_err() {
-            let update_model = guild_spreadsheet_imports::ActiveModel {
-                guild_id: ActiveValue::Unchanged(guild_id),
-                spreadsheet_id: ActiveValue::Set(spreadsheet_id.to_string()),
-                created_at: ActiveValue::NotSet,
-                updated_at: ActiveValue::Set(now),
-            };
-
-            update_model.update(txn).await?;
-        }
+        // UPSERTを実行（主キーが重複する場合は更新）
+        guild_spreadsheet_imports::Entity::insert(active_model)
+            .on_conflict(
+                OnConflict::column(guild_spreadsheet_imports::Column::GuildId)
+                    .update_columns([
+                        guild_spreadsheet_imports::Column::SpreadsheetId,
+                        guild_spreadsheet_imports::Column::UpdatedAt,
+                    ])
+                    .to_owned(),
+            )
+            .exec(txn)
+            .await?;
 
         Ok(())
     }
@@ -127,20 +126,18 @@ impl GuildSpreadsheetConfigRepositoryTrait for GuildSpreadsheetConfigRepository 
             updated_at: ActiveValue::Set(now),
         };
 
-        // INSERT を試行
-        let insert_result = active_model.insert(txn).await;
-
-        // INSERT が失敗した場合（既存レコード）、UPDATE を実行
-        if insert_result.is_err() {
-            let update_model = guild_spreadsheet_exports::ActiveModel {
-                guild_id: ActiveValue::Unchanged(guild_id),
-                spreadsheet_id: ActiveValue::Set(spreadsheet_id.to_string()),
-                created_at: ActiveValue::NotSet,
-                updated_at: ActiveValue::Set(now),
-            };
-
-            update_model.update(txn).await?;
-        }
+        // UPSERTを実行（主キーが重複する場合は更新）
+        guild_spreadsheet_exports::Entity::insert(active_model)
+            .on_conflict(
+                OnConflict::column(guild_spreadsheet_exports::Column::GuildId)
+                    .update_columns([
+                        guild_spreadsheet_exports::Column::SpreadsheetId,
+                        guild_spreadsheet_exports::Column::UpdatedAt,
+                    ])
+                    .to_owned(),
+            )
+            .exec(txn)
+            .await?;
 
         Ok(())
     }

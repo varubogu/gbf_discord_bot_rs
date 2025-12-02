@@ -39,6 +39,20 @@ impl NotificationRelBattleRecruitmentRepository {
         Ok(results)
     }
 
+    /// 募集IDから通知との関連を取得（トランザクション内）
+    pub async fn find_by_recruit_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        recruit_id: i32,
+    ) -> Result<Vec<notification_rel_battle_recruitments::Model>> {
+        let results = notification_rel_battle_recruitments::Entity::find()
+            .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
+            .all(txn)
+            .await?;
+
+        Ok(results)
+    }
+
     /// リレーションを作成（トランザクション内）
     pub async fn create_with_txn(
         &self,

@@ -13,6 +13,7 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
     ctx: PoiseContext<'_>,
     message: &Message,
     battle_recruitment_repo: &R,
+    txn: &DatabaseTransaction,
 ) -> Result<CanCancelResult> {
     let guild_id = if let Some(guild_id) = ctx.guild_id() {
         guild_id.get()
@@ -30,9 +31,10 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
         guild_id, channel_id, message_id
     );
 
-    // DBから募集情報を取得（エラーの場合はNone扱い）
+    // DBから募集情報を取得（エラーの場合はNone扱い）（トランザクション対応版を使用）
     let recruitment_opt = battle_recruitment_repo
-        .get_by_message(
+        .get_by_message_with_txn(
+            txn,
             guild_id.clone().into(),
             channel_id.into(),
             message_id.into(),
@@ -87,9 +89,9 @@ pub async fn cancel_recruitment_by_message<R: crate::repository::BattleRecruitme
 ) -> Result<BattleRecruitments> {
     info!("cancel_recruitment_by_message - キャンセル処理開始");
 
-    // 募集情報の存在確認
+    // 募集情報の存在確認（トランザクション対応版を使用）
     let recruitment =
-        get_recruitment_from_database(guild_id, channel_id, message_id, battle_recruitment_repo)
+        get_recruitment_from_database(guild_id, channel_id, message_id, battle_recruitment_repo, txn)
             .await?;
 
     // 募集をキャンセル済み状態に更新
@@ -111,6 +113,7 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
     channel_id: u64,
     message_id: u64,
     battle_recruitment_repo: &R,
+    txn: &DatabaseTransaction,
 ) -> Result<BattleRecruitments> {
     info!(
         "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
@@ -118,7 +121,7 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
     );
 
     match battle_recruitment_repo
-        .get_by_message(guild_id, channel_id, message_id)
+        .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
         .await?
     {
         Some(recruitment) => {
@@ -136,7 +139,7 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
 
 /// 募集をキャンセル済み状態に更新
 pub async fn mark_recruitment_as_cancelled<R: crate::repository::BattleRecruitmentsRepository>(
-    _txn: &DatabaseTransaction,
+    txn: &DatabaseTransaction,
     recruitment_id: i32,
     cancel_message_id: MessageId,
     battle_recruitment_repo: &R,
@@ -148,7 +151,7 @@ pub async fn mark_recruitment_as_cancelled<R: crate::repository::BattleRecruitme
 
     // 終了メッセージID = 0 でキャンセル状態を表現
     battle_recruitment_repo
-        .set_canceled(recruitment_id, cancel_message_id)
+        .set_canceled_with_txn(txn, recruitment_id, cancel_message_id)
         .await?;
 
     info!(
@@ -211,8 +214,7 @@ pub async fn get_participants_from_reactions(
 
 /// キャンセル済みメッセージ作成
 pub async fn create_cancelled_message_content(original_content: &str) -> Result<String> {
-    warn!("create_cancelled_message_content - 仕様検討中です");
-    // 暫定実装：元のメッセージに「キャンセル済み」を追加
+    // 元のメッセージに打ち消し線と「キャンセル済み」を追加
     Ok(format!(
         "~~{}~~\n\n**この募集はキャンセルされました**",
         original_content
@@ -221,7 +223,6 @@ pub async fn create_cancelled_message_content(original_content: &str) -> Result<
 
 /// キャンセル通知メッセージ作成
 pub async fn create_cancel_notification_text(participants: &[String]) -> Result<String> {
-    warn!("create_cancel_notification_text - 仕様検討中です");
 
     if participants.is_empty() {
         Ok("募集がキャンセルされました。".to_string())

@@ -44,6 +44,34 @@ impl NotificationRepository {
         Ok(notifications)
     }
 
+    /// 指定した日時範囲内の未送信通知を取得（トランザクション内）
+    pub async fn find_by_datetime_range_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>> {
+        debug!(
+            from = %from,
+            to = %to,
+            "指定範囲内の未送信通知を取得します（トランザクション内）"
+        );
+
+        let notifications = notifications::Entity::find()
+            .filter(notifications::Column::ScheduleDatetime.gte(from))
+            .filter(notifications::Column::ScheduleDatetime.lt(to))
+            .filter(notifications::Column::IsSent.eq(false))
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "通知の取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = notifications.len(), "未送信通知を取得しました");
+        Ok(notifications)
+    }
+
     /// 通知を作成（トランザクション付き）
     pub async fn create_with_txn(
         &self,
@@ -128,6 +156,27 @@ impl NotificationRepository {
         let notifications = notifications::Entity::find()
             .filter(notifications::Column::GuildId.eq(guild_id))
             .all(&self.db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "通知の取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = notifications.len(), "通知を取得しました");
+        Ok(notifications)
+    }
+
+    /// ギルドの通知を取得（トランザクション内）
+    pub async fn find_by_guild_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<notifications::Model>> {
+        debug!(guild_id = %guild_id, "ギルドの通知を取得します（トランザクション内）");
+
+        let notifications = notifications::Entity::find()
+            .filter(notifications::Column::GuildId.eq(guild_id))
+            .all(txn)
             .await
             .map_err(|e| {
                 error!(error = %e, "通知の取得に失敗しました");

@@ -1,7 +1,9 @@
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::NotificationRepository;
 use crate::types::{PoiseContext, Result};
 use chrono::Utc;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 /// 登録されているスケジュール一覧を表示
@@ -28,14 +30,21 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
 
     ctx.defer_ephemeral().await?;
 
-    let notification_repo = NotificationRepository::new(ctx.data().app_state.db().clone());
+    let app_state = &ctx.data().app_state;
+    let txn = app_state.db().begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id.get() as i64).await?;
+
+    let notification_repo = NotificationRepository::new(app_state.db().clone());
 
     // このギルドの通知を取得
     match notification_repo
-        .find_by_guild_id(guild_id.get() as i64)
+        .find_by_guild_id_with_txn(&txn, guild_id.get() as i64)
         .await
     {
         Ok(notifications) => {
+            txn.commit().await?;
             if notifications.is_empty() {
                 let embed = CreateEmbed::default()
                     .title("📅 スケジュール一覧")
@@ -91,6 +100,7 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
                 .await?;
         }
         Err(e) => {
+            txn.rollback().await?;
             error!(error = %e, "スケジュール一覧の取得に失敗しました");
 
             let embed = CreateEmbed::default()

@@ -1,3 +1,4 @@
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::services::permission::has_bot_control_permission;
 use crate::services::spreadsheet::guild_loader_service::{LoaderService, LoaderServiceImpl};
 use crate::types::{PoiseContext, Result};
@@ -41,6 +42,9 @@ pub async fn execute_load(ctx: &PoiseContext<'_>) -> Result<()> {
 
     let app_state = &ctx.data().app_state;
     let txn = app_state.db().begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
         // Service層のインスタンス化（静的ディスパッチ）

@@ -17,6 +17,11 @@ mod m20251121_000001_rename_battle_types_to_battle_styles;
 mod m20251122_000000_add_recruitment_notification_message;
 mod m20251124_create_guild_channels;
 mod m20251126_000000_add_is_sent_to_notifications;
+mod m20251127_000000_create_schemas;
+mod m20251127_000001_set_schema_permissions;
+mod m20251127_000002_move_tables_to_schemas;
+mod m20251127_000003_enable_row_level_security;
+mod m20251127_000004_set_default_privileges;
 
 pub struct Migrator;
 
@@ -41,6 +46,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20251122_000000_add_recruitment_notification_message::Migration),
             Box::new(m20251124_create_guild_channels::Migration),
             Box::new(m20251126_000000_add_is_sent_to_notifications::Migration),
+            Box::new(m20251127_000000_create_schemas::Migration),
+            Box::new(m20251127_000001_set_schema_permissions::Migration),
+            Box::new(m20251127_000002_move_tables_to_schemas::Migration),
+            Box::new(m20251127_000003_enable_row_level_security::Migration),
+            Box::new(m20251127_000004_set_default_privileges::Migration),
         ]
     }
 }

@@ -42,9 +42,9 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
         .await?;
 
-    // Facadeを作成
+    // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
     let app_state = Arc::new(ctx.data().app_state.clone());
-    let facade = match SpreadsheetImportFacade::new(app_state.db().clone(), app_state.clone()) {
+    let facade = match SpreadsheetImportFacade::new(app_state.global_db().clone(), app_state.clone()) {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();

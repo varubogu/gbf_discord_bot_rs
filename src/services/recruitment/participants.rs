@@ -38,10 +38,10 @@ impl ParticipantsService {
     ) -> Result<BattleRecruitments> {
         info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
 
-        // 募集情報の存在確認
+        // 募集情報の存在確認（トランザクション対応版を使用）
         let recruitment = self
             .battle_recruitment_repo
-            .get_by_message(guild_id, channel_id, message_id)
+            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
 

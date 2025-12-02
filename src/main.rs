@@ -10,7 +10,7 @@ mod types;
 mod utils;
 
 use crate::events::{command::commands, handler::event_handler};
-use crate::types::{AppConfig, AppError, AppState, PoiseData, Result};
+use crate::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use crate::utils::error_formatter::ErrorFormatter;
 use crate::utils::startup_validator::StartupValidator;
 use migration::{Migrator, MigratorTrait};
@@ -22,7 +22,7 @@ use std::path::Path;
 use std::time::Duration;
 use tracing::{error, info};
 
-async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConnection> {
+async fn initialize_database(database_url: &str, run_migration: bool) -> Result<sea_orm::DatabaseConnection> {
     info!("Initializing optimized database connection...");
 
     // SeaORMコネクションプールの最適化設定
@@ -39,13 +39,15 @@ async fn initialize_database(database_url: &str) -> Result<sea_orm::DatabaseConn
     let db = Database::connect(opt).await?;
     info!("Database connection pool initialised successfully");
 
-    // マイグレーションの実行
-    info!("Running database migrations...");
-    Migrator::up(&db, None).await.map_err(|e| {
-        error!("Migration failed: {:?}", e);
-        AppError::Database(e)
-    })?;
-    info!("Database migrations completed successfully");
+    // マイグレーションの実行（必要な場合のみ）
+    if run_migration {
+        info!("Running database migrations...");
+        Migrator::up(&db, None).await.map_err(|e| {
+            error!("Migration failed: {:?}", e);
+            AppError::Database(e)
+        })?;
+        info!("Database migrations completed successfully");
+    }
 
     Ok(db)
 }
@@ -94,18 +96,20 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let migrate_only = args.iter().any(|arg| arg == "migrate-only");
 
-    // Initialise a database with an optimised connection pool
-    let db_connection = initialize_database(&config.database_url)
-        .await
-        .map_err(|e| {
-            // データベース接続エラーの場合、詳細な情報を表示
-            if let AppError::Database(ref db_err) = e {
-                let masked_url = ErrorFormatter::mask_database_url(&config.database_url);
-                eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-            }
-            e
-        })?;
-    info!("Database connection pool initialised successfully");
+    // マイグレーション実行（Adminロールを使用）
+    info!("Running database migrations with Admin role...");
+    let admin_url = config.database_url(DbRole::Admin).map_err(|e| {
+        error!("Admin DB接続設定の取得に失敗: {}", e);
+        e
+    })?;
+    info!("Admin role: {}", DbRole::Admin.description());
+    let _admin_db = initialize_database(&admin_url, true).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&admin_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
 
     // If migrate_only flag is set, exit after migrations
     if migrate_only {
@@ -113,9 +117,56 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Create AppState
-    let app_state = AppState::new(db_connection, config);
-    info!("AppState initialized");
+    // Initialise database connections for different roles (without migration)
+    info!("Initializing database connections for all roles...");
+
+    // Guild ロール（通常のコマンド実行用、RLS適用）
+    let guild_url = config.database_url(DbRole::Guild).map_err(|e| {
+        error!("Guild DB接続設定の取得に失敗: {}", e);
+        e
+    })?;
+    info!("Guild role: {}", DbRole::Guild.description());
+    let guild_db = initialize_database(&guild_url, false).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&guild_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
+
+    // System ロール（スケジューラー用、RLS適用なし）
+    let system_url = config.database_url(DbRole::System).map_err(|e| {
+        error!("System DB接続設定の取得に失敗: {}", e);
+        e
+    })?;
+    info!("System role: {}", DbRole::System.description());
+    let system_db = initialize_database(&system_url, false).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&system_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
+
+    // Global ロール（マスターデータ更新用、RLS適用なし）
+    let global_url = config.database_url(DbRole::Global).map_err(|e| {
+        error!("Global DB接続設定の取得に失敗: {}", e);
+        e
+    })?;
+    info!("Global role: {}", DbRole::Global.description());
+    let global_db = initialize_database(&global_url, false).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&global_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
+
+    info!("All database connection pools initialised successfully");
+
+    // Create AppState with all DB connections
+    let app_state = AppState::new(guild_db, system_db, global_db, config);
+    info!("AppState initialized with all role connections");
 
     // Set up Discord intents
     let intents = GatewayIntents::GUILD_MESSAGES

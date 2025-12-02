@@ -1,6 +1,9 @@
+use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::schedule::NotificationRepository;
 use crate::services::schedule::NotificationHistoryService;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 /// 過去の通知履歴を表示
@@ -36,14 +39,31 @@ pub async fn schedule_history(
 
     ctx.defer_ephemeral().await?;
 
-    let history_service = NotificationHistoryService::new(ctx.data().app_state.db().clone());
+    let app_state = &ctx.data().app_state;
+    let txn = app_state.db().begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id.get() as i64).await?;
+
+    let notification_repo = NotificationRepository::new(app_state.db().clone());
 
     // 過去の通知を取得
-    match history_service
-        .get_past_notifications(guild_id.get() as i64, days)
+    let now = chrono::Utc::now();
+    let from = now - chrono::Duration::days(days);
+
+    match notification_repo
+        .find_by_datetime_range_with_txn(&txn, from, now)
         .await
     {
-        Ok(notifications) => {
+        Ok(all_notifications) => {
+            txn.commit().await?;
+
+            // ギルドでフィルタ
+            let notifications: Vec<_> = all_notifications
+                .into_iter()
+                .filter(|n| n.guild_id == guild_id.get() as i64)
+                .collect();
+
             if notifications.is_empty() {
                 let embed = CreateEmbed::default()
                     .title("📜 通知履歴")
@@ -97,6 +117,7 @@ pub async fn schedule_history(
                 .await?;
         }
         Err(e) => {
+            txn.rollback().await?;
             error!(error = %e, "通知履歴の取得に失敗しました");
 
             let embed = CreateEmbed::default()

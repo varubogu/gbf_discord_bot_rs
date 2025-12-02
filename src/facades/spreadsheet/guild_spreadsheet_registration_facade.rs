@@ -6,6 +6,7 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument};
 
 use crate::errors::FacadeError;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
     GoogleAuthService, GoogleAuthServiceTrait, GuildSpreadsheetConfigService,
@@ -108,6 +109,9 @@ impl GuildSpreadsheetRegistrationFacade {
 
         // トランザクション開始
         let txn = self.db.begin().await?;
+
+        // RLSポリシーのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
 
         // トランザクション内で登録処理を実行
         let result = async {

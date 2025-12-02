@@ -1,5 +1,6 @@
 use crate::models::entities::guild_channels;
 use crate::types::Result;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
@@ -39,22 +40,77 @@ impl GuildChannelRepository {
             updated_at: Set(now),
         };
 
-        let model = active_model.insert(txn).await.map_err(|e| {
-            error!(
-                error = %e,
-                guild_id = guild_id,
-                channel_type = channel_type,
-                "ギルドチャンネルの登録に失敗しました"
-            );
-            e
-        })?;
+        // UPSERTを実行（主キーが重複する場合は更新）
+        guild_channels::Entity::insert(active_model)
+            .on_conflict(
+                OnConflict::columns([
+                    guild_channels::Column::GuildId,
+                    guild_channels::Column::ChannelType,
+                ])
+                .update_columns([
+                    guild_channels::Column::ChannelId,
+                    guild_channels::Column::UpdatedAt,
+                ])
+                .to_owned(),
+            )
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    channel_type = channel_type,
+                    "ギルドチャンネルのUPSERTに失敗しました"
+                );
+                e
+            })?;
+
+        // UPSERT後のデータを取得
+        let model = guild_channels::Entity::find_by_id((guild_id, channel_type))
+            .one(txn)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "ギルドチャンネルの取得に失敗しました: guild_id={}, channel_type={}",
+                    guild_id, channel_type
+                ))
+            })?;
 
         info!(
             guild_id = guild_id,
             channel_type = channel_type,
             channel_id = channel_id,
-            "ギルドチャンネルを登録しました"
+            "ギルドチャンネルを登録または更新しました"
         );
+
+        Ok(model)
+    }
+
+    /// ギルドIDとチャンネル種別でギルドチャンネルを取得（トランザクション内）
+    pub async fn get_by_guild_and_type_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        channel_type: i32,
+    ) -> Result<Option<guild_channels::Model>> {
+        debug!(
+            guild_id = guild_id,
+            channel_type = channel_type,
+            "ギルドチャンネルを取得します（トランザクション内）"
+        );
+
+        let model = guild_channels::Entity::find_by_id((guild_id, channel_type))
+            .one(txn)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    channel_type = channel_type,
+                    "ギルドチャンネルの取得に失敗しました"
+                );
+                e
+            })?;
 
         Ok(model)
     }

@@ -1,4 +1,5 @@
 use crate::infrastructure::database::container::RepositoryContainer;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
@@ -100,6 +101,17 @@ async fn check_can_cancel_recruitment_internal(
     let conn = app_state.db();
     let txn = conn.begin().await?;
 
+    // RLSポリシーのためにセッション変数を設定
+    let guild_id = if let Some(guild_id) = ctx.guild_id() {
+        guild_id.get()
+    } else {
+        warn!("guild_idを取得できませんでした");
+        return Err(AppError::Business {
+            message: "ギルド情報を取得できませんでした".to_string(),
+        });
+    };
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
     let result = async {
         // RepositoryContainerとRepositoryの取得
         let repos = RepositoryContainer::new(conn);
@@ -107,7 +119,7 @@ async fn check_can_cancel_recruitment_internal(
 
         // DBの募集情報とDiscordメッセージの状況をチェック
         let can_cancel_result =
-            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo).await?;
+            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo, &txn).await?;
 
         Ok::<CanCancelResult, crate::types::AppError>(can_cancel_result)
     }
@@ -139,6 +151,9 @@ async fn cancel_recruitment_internal(
     let app_state = &ctx.data().app_state;
     let conn = app_state.db();
     let txn = conn.begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
@@ -186,7 +201,7 @@ async fn cancel_recruitment_internal(
         let notification_repo = NotificationRepository::new(conn.clone());
 
         // 募集に紐づく通知を検索
-        let relations = rel_repo.find_by_recruit_id(recruitment.id).await?;
+        let relations = rel_repo.find_by_recruit_id_with_txn(&txn, recruitment.id).await?;
 
         let relations_count = relations.len();
 
@@ -355,8 +370,18 @@ async fn handle_confirm_cancel(
             delete_cancelling_message(ctx, &interaction).await
         }
         Err(e) => {
-            send_error_response(&ctx.http(), &interaction, e).await?;
-            Ok(())
+            // エラーをユーザーに表示してから伝播
+            let error_msg = format!("キャンセル処理中にエラーが発生しました: {}", e);
+            interaction
+                .edit_response(
+                    &ctx.http(),
+                    EditInteractionResponse::new()
+                        .content(&error_msg)
+                        .components(vec![]),
+                )
+                .await?;
+            // エラーを伝播（処理失敗として扱う）
+            Err(e)
         }
     }
 }

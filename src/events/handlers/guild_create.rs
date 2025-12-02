@@ -13,10 +13,11 @@ pub async fn on_guild_create(ctx: &Context, guild: &Guild, data: &PoiseData) -> 
     );
 
     let app_state = &data.app_state;
-    let txn = app_state.db().begin().await?;
+    // ギルド登録はSystemロールを使用（新規ギルド作成時はRLS適用できないため）
+    let txn = app_state.system_db().begin().await?;
 
     let result = async {
-        let guild_repo = GuildRepository::new(app_state.db().clone());
+        let guild_repo = GuildRepository::new(app_state.system_db().clone());
 
         // ギルドを自動登録または更新
         guild_repo

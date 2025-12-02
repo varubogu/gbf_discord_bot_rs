@@ -28,15 +28,14 @@ impl ErrorFormatter {
 
         let troubleshooting = vec![
             "PostgreSQLサーバーの状態を確認: sudo systemctl status postgresql",
-            "DATABASE_URL の形式を確認: postgresql://user:password@host:port/database",
-            "接続をテスト: psql \"<DATABASE_URL>\"",
+            "データベース接続情報を確認: DB_HOST, DB_PORT, DB_NAME, *_DB_USER, *_DB_PASSWORD",
+            "接続をテスト: psql \"postgresql://<user>:<password>@<host>:<port>/<database>\"",
         ];
 
         format!(
             "\n❌ {}\n\
             \n\
-            Environment Variable: DATABASE_URL\n\
-            Current Value: {}\n\
+            Database Connection: {}\n\
             Error Details: {}\n\
             \n\
             Possible Causes:\n{}\n\
@@ -117,7 +116,7 @@ impl ErrorFormatter {
         )
     }
 
-    /// DATABASE_URLをマスク（パスワード部分を隠す）
+    /// データベースURLをマスク（パスワード部分を隠す）
     pub fn mask_database_url(db_url: &str) -> String {
         // postgresql://user:password@host:port/database の形式
         if let Some(at_pos) = db_url.rfind('@') {
@@ -183,7 +182,7 @@ mod tests {
         let formatted = ErrorFormatter::format_db_error(&db_err, masked_url);
 
         assert!(formatted.contains("Database Connection Error"));
-        assert!(formatted.contains("DATABASE_URL"));
+        assert!(formatted.contains("Database Connection"));
         assert!(formatted.contains(masked_url));
         assert!(formatted.contains("connection refused"));
         assert!(formatted.contains("PostgreSQLサーバーが起動していない"));
@@ -200,7 +199,7 @@ mod tests {
         let formatted = ErrorFormatter::format_db_error(&db_err, masked_url);
 
         assert!(formatted.contains("Database Query Error"));
-        assert!(formatted.contains("DATABASE_URL"));
+        assert!(formatted.contains("Database Connection"));
         assert!(formatted.contains("syntax error"));
     }
 
