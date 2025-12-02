@@ -626,8 +626,17 @@ pub mod setup {
             env_logger::init();
         });
 
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://test_user:test_password@localhost:5433/test_gbf_bot".to_string());
+        // 個別環境変数から接続URL構築
+        let db_host = std::env::var("TEST_DB_HOST").unwrap_or_else(|_| "localhost".to_string());
+        let db_port = std::env::var("TEST_DB_PORT").unwrap_or_else(|_| "5433".to_string());
+        let db_name = std::env::var("TEST_DB_NAME").unwrap_or_else(|_| "test_gbf_bot".to_string());
+        let db_user = std::env::var("TEST_DB_USER").unwrap_or_else(|_| "test_user".to_string());
+        let db_password = std::env::var("TEST_DB_PASSWORD").unwrap_or_else(|_| "test_password".to_string());
+
+        let database_url = format!(
+            "postgres://{}:{}@{}:{}/{}",
+            db_user, db_password, db_host, db_port, db_name
+        );
 
         let db = Database::connect(&database_url)
             .await
@@ -714,17 +723,29 @@ jobs:
       - name: Run unit tests
         run: cargo test --lib
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_gbf_bot
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_NAME: test_gbf_bot
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
 
       - name: Run integration tests
         run: cargo test --test integration
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_gbf_bot
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_NAME: test_gbf_bot
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
 
       - name: Run performance tests
         run: cargo test --test performance --release
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_gbf_bot
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5432
+          TEST_DB_NAME: test_gbf_bot
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
 
       - name: Check code formatting
         run: cargo fmt -- --check

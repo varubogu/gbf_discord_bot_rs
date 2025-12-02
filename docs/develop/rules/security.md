@@ -424,8 +424,22 @@ impl SecureConfig {
         let discord_token = std::env::var("DISCORD_TOKEN")
             .map_err(|_| ConfigError::MissingRequiredEnv("DISCORD_TOKEN".to_string()))?;
 
-        let database_url = std::env::var("DATABASE_URL")
-            .map_err(|_| ConfigError::MissingRequiredEnv("DATABASE_URL".to_string()))?;
+        // 個別環境変数から接続URL構築
+        let db_host = std::env::var("DB_HOST")
+            .map_err(|_| ConfigError::MissingRequiredEnv("DB_HOST".to_string()))?;
+        let db_port = std::env::var("DB_PORT")
+            .map_err(|_| ConfigError::MissingRequiredEnv("DB_PORT".to_string()))?;
+        let db_name = std::env::var("DB_NAME")
+            .map_err(|_| ConfigError::MissingRequiredEnv("DB_NAME".to_string()))?;
+        let guild_db_user = std::env::var("GUILD_DB_USER")
+            .map_err(|_| ConfigError::MissingRequiredEnv("GUILD_DB_USER".to_string()))?;
+        let guild_db_password = std::env::var("GUILD_DB_PASSWORD")
+            .map_err(|_| ConfigError::MissingRequiredEnv("GUILD_DB_PASSWORD".to_string()))?;
+
+        let database_url = format!(
+            "postgres://{}:{}@{}:{}/{}",
+            guild_db_user, guild_db_password, db_host, db_port, db_name
+        );
 
         let encryption_key = std::env::var("ENCRYPTION_KEY")
             .map_err(|_| ConfigError::MissingRequiredEnv("ENCRYPTION_KEY".to_string()))?;

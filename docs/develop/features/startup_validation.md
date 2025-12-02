@@ -21,8 +21,18 @@
 
 **必須環境変数**:
 - `DISCORD_TOKEN` - Discord Bot トークン
-- `DATABASE_URL` - PostgreSQL 接続文字列
 - `BOT_ADMIN_SERVER_ID` - Bot管理者専用サーバーID
+- `DB_HOST` - データベースホスト名
+- `DB_PORT` - データベースポート番号
+- `DB_NAME` - データベース名
+- `GUILD_DB_USER` - Guildロールユーザー名
+- `GUILD_DB_PASSWORD` - Guildロールパスワード
+- `SYSTEM_DB_USER` - Systemロールユーザー名
+- `SYSTEM_DB_PASSWORD` - Systemロールパスワード
+- `GLOBAL_DB_USER` - Globalロールユーザー名
+- `GLOBAL_DB_PASSWORD` - Globalロールパスワード
+- `ADMIN_DB_USER` - Adminロールユーザー名（マイグレーション用）
+- `ADMIN_DB_PASSWORD` - Adminロールパスワード（マイグレーション用）
 
 **任意環境変数**:
 - `GLOBAL_SPREADSHEET_ID` - グローバルスプレッドシートID（スプレッドシート機能使用時のみ必須）
@@ -39,8 +49,18 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Required Environment Variables:
   DISCORD_TOKEN........................✅ OK
-  DATABASE_URL.........................✅ OK
   BOT_ADMIN_SERVER_ID..................✅ OK
+  DB_HOST..............................✅ OK
+  DB_PORT..............................✅ OK
+  DB_NAME..............................✅ OK
+  GUILD_DB_USER........................✅ OK
+  GUILD_DB_PASSWORD....................✅ OK
+  SYSTEM_DB_USER.......................✅ OK
+  SYSTEM_DB_PASSWORD...................✅ OK
+  GLOBAL_DB_USER.......................✅ OK
+  GLOBAL_DB_PASSWORD...................✅ OK
+  ADMIN_DB_USER........................✅ OK
+  ADMIN_DB_PASSWORD....................✅ OK
 
 Optional Environment Variables:
   GLOBAL_SPREADSHEET_ID................❌ NOT SET (required for spreadsheet features)
@@ -68,8 +88,18 @@ Exiting...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Required Environment Variables:
   DISCORD_TOKEN........................✅ OK
-  DATABASE_URL.........................✅ OK
   BOT_ADMIN_SERVER_ID..................✅ OK
+  DB_HOST..............................✅ OK
+  DB_PORT..............................✅ OK
+  DB_NAME..............................✅ OK
+  GUILD_DB_USER........................✅ OK
+  GUILD_DB_PASSWORD....................✅ OK
+  SYSTEM_DB_USER.......................✅ OK
+  SYSTEM_DB_PASSWORD...................✅ OK
+  GLOBAL_DB_USER.......................✅ OK
+  GLOBAL_DB_PASSWORD...................✅ OK
+  ADMIN_DB_USER........................✅ OK
+  ADMIN_DB_PASSWORD....................✅ OK
 
 Optional Environment Variables:
   GLOBAL_SPREADSHEET_ID................✅ OK
@@ -91,8 +121,8 @@ Proceeding with application startup...
 ```
 ❌ Database Connection Error
 
-Environment Variable: DATABASE_URL
-Current Value: postgresql://user:***@localhost:5432/invalid_db
+Environment Variables: DB_HOST, DB_PORT, DB_NAME, GUILD_DB_USER, GUILD_DB_PASSWORD
+Constructed URL: postgresql://guild_user:***@localhost:5432/invalid_db
 Error Details: Connection refused (SQLSTATE: 08001)
 
 Possible Causes:
@@ -103,8 +133,9 @@ Possible Causes:
 
 💡 Troubleshooting:
   1. Check PostgreSQL server status: sudo systemctl status postgresql
-  2. Verify DATABASE_URL format: postgresql://user:password@host:port/database
-  3. Test connection: psql "postgresql://user:password@host:port/database"
+  2. Verify DB connection parameters: DB_HOST, DB_PORT, DB_NAME
+  3. Verify role credentials: GUILD_DB_USER, GUILD_DB_PASSWORD
+  4. Test connection: psql "postgresql://guild_user:password@localhost:5432/gbf_bot_db"
 ```
 
 ```
@@ -278,8 +309,18 @@ pub enum StartupError {
    ↓
 3. EnvValidator::check_required_vars()
    ├─ DISCORD_TOKEN
-   ├─ DATABASE_URL
-   └─ BOT_ADMIN_SERVER_ID
+   ├─ BOT_ADMIN_SERVER_ID
+   ├─ DB_HOST
+   ├─ DB_PORT
+   ├─ DB_NAME
+   ├─ GUILD_DB_USER
+   ├─ GUILD_DB_PASSWORD
+   ├─ SYSTEM_DB_USER
+   ├─ SYSTEM_DB_PASSWORD
+   ├─ GLOBAL_DB_USER
+   ├─ GLOBAL_DB_PASSWORD
+   ├─ ADMIN_DB_USER
+   └─ ADMIN_DB_PASSWORD
    ↓
 4. EnvValidator::check_optional_vars()
    ├─ GLOBAL_SPREADSHEET_ID
@@ -316,8 +357,18 @@ Exit with appropriate code
 | 変数名 | 説明 | 形式例 | チェック内容 |
 |-------|------|-------|------------|
 | `DISCORD_TOKEN` | Discord Botトークン | `MTIzNDU2Nzg5...` | 非空、30文字以上 |
-| `DATABASE_URL` | PostgreSQL接続URL | `postgresql://user:pass@host:5432/db` | URL形式、`postgresql://`で開始 |
 | `BOT_ADMIN_SERVER_ID` | 管理サーバーID | `123456789012345678` | 数値、18〜20桁 |
+| `DB_HOST` | データベースホスト名 | `localhost` | 非空文字列 |
+| `DB_PORT` | データベースポート番号 | `5432` | 数値、1〜65535 |
+| `DB_NAME` | データベース名 | `gbf_bot_db` | 非空文字列 |
+| `GUILD_DB_USER` | Guildロールユーザー名 | `guild_user` | 非空文字列 |
+| `GUILD_DB_PASSWORD` | Guildロールパスワード | `********` | 非空文字列 |
+| `SYSTEM_DB_USER` | Systemロールユーザー名 | `system_user` | 非空文字列 |
+| `SYSTEM_DB_PASSWORD` | Systemロールパスワード | `********` | 非空文字列 |
+| `GLOBAL_DB_USER` | Globalロールユーザー名 | `global_user` | 非空文字列 |
+| `GLOBAL_DB_PASSWORD` | Globalロールパスワード | `********` | 非空文字列 |
+| `ADMIN_DB_USER` | Adminロールユーザー名 | `admin_user` | 非空文字列 |
+| `ADMIN_DB_PASSWORD` | Adminロールパスワード | `********` | 非空文字列 |
 
 ### 任意環境変数
 

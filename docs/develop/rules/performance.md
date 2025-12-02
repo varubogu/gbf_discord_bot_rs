@@ -19,8 +19,9 @@ pub struct DatabaseConnectionManager {
 }
 
 impl DatabaseConnectionManager {
-    pub async fn new() -> Result<Self, sea_orm::DbErr> {
-        let pool = Database::connect(ConnectOptions::new(DATABASE_URL)
+    pub async fn new(config: &Config, role: DbRole) -> Result<Self, sea_orm::DbErr> {
+        let database_url = config.database_url(role)?;
+        let pool = Database::connect(ConnectOptions::new(database_url)
             .max_connections(20)  // 適切な接続数設定
             .min_connections(5)   // 最小接続数を設定
             .connect_timeout(Duration::from_secs(10))
@@ -38,8 +39,9 @@ impl DatabaseConnectionManager {
 
 // ❌ 避けるべき: 複数のコネクションプール作成
 impl SomeService {
-    pub async fn new() -> Self {
-        let pool = Database::connect(DATABASE_URL).await.unwrap(); // 避けるべき
+    pub async fn new(config: &Config) -> Self {
+        let db_url = config.database_url(DbRole::Guild).unwrap();
+        let pool = Database::connect(&db_url).await.unwrap(); // 避けるべき
         Self { pool }
     }
 }

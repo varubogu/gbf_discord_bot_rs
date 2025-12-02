@@ -39,56 +39,135 @@
   - 認証情報はインフラ管理者のみで共有し、`.env`等には配置しない（DevContainerでは`DB_USER/DB_PASSWORD`を一時利用）。
   - SSHトンネルやBastion経由での限定アクセスを推奨。
 
-### 3.2 マイグレーションユーザー
+### 3.2 管理ユーザー（Admin Role）
 
-- **想定識別子**: `migration_user`
-- **接続情報**: `MIGRATION_URL`環境変数（例: `postgres://migration_user:***@host:5432/gbf_bot_db`）
+- **想定識別子**: `admin_user`
+- **接続情報**:
+  - `ADMIN_DB_USER` - 管理ユーザー名
+  - `ADMIN_DB_PASSWORD` - 管理ユーザーパスワード
+  - 共通接続情報（`DB_HOST`, `DB_PORT`, `DB_NAME`）と組み合わせて動的にURL構築
 - **主な利用者**: `sea-orm-cli`、アプリ起動時の自動マイグレーション、DBスキーマ変更用CIジョブ。
 - **権限**:
   - 対象データベースへの`CONNECT`
-  - 対象スキーマ（通常`public`）での`USAGE`, `CREATE`
+  - 対象スキーマでの`USAGE`, `CREATE`
   - 既存・新規テーブルに対する`SELECT`, `INSERT`, `UPDATE`, `DELETE`
   - 既存・新規シーケンスに対する`USAGE`, `SELECT`, `UPDATE`
   - 必要に応じて`COMMENT`, `INDEX`, `ALTER TABLE`, `DROP TABLE`を付与（DDL操作用）
 - **運用方針**:
   - DDL実行は必ずレビュー済みのマイグレーションに限定し、手動での直接操作は緊急時のみ。
   - 新規テーブル作成時は`ALTER DEFAULT PRIVILEGES`によりアプリユーザーへのDML権限を継承させる。
-  - 接続文字列はCI/CD Secretsまたは`.env`で管理し、アプリケーション設定ファイルには含めない。
+  - 認証情報はCI/CD Secretsまたは`.env`で管理し、アプリケーション設定ファイルには含めない。
 
-### 3.3 アプリユーザー
+### 3.3 アプリユーザー（Guild/System/Global Role）
 
-- **想定識別子**: `gbf_bot_user`（テスト環境では`gbf_bot_test_user`）
-- **接続情報**: `DATABASE_URL` / `TEST_DATABASE_URL`
-- **主な利用者**: Discord Bot本体、統合テスト。
+本アプリケーションでは、スキーマ別にアクセス権限を分離した3つのロールを使用します。
+
+#### 3.3.1 Guild Role
+
+- **想定識別子**: `guild_user`
+- **接続情報**:
+  - `GUILD_DB_USER` - Guildロールユーザー名
+  - `GUILD_DB_PASSWORD` - Guildロールパスワード
+  - 共通接続情報（`DB_HOST`, `DB_PORT`, `DB_NAME`）と組み合わせて動的にURL構築
+- **主な利用者**: Discord Bot本体（サーバー固有データアクセス時）
 - **権限**:
-  - 対象データベースへの`CONNECT`
-  - 運用スキーマへの`USAGE`
-  - 全テーブルでの`SELECT`, `INSERT`, `UPDATE`, `DELETE`
-  - シーケンスでの`USAGE`, `SELECT`, `UPDATE`
-  - DDL権限（`CREATE`, `ALTER`, `DROP`）は付与しない。
+  - `guild`スキーマへの`USAGE`および全テーブルでの`SELECT`, `INSERT`, `UPDATE`, `DELETE`
+  - DDL権限（`CREATE`, `ALTER`, `DROP`）は付与しない
 - **運用方針**:
-  - マイグレーション完了後に必要なDMLのみ実行する。
-  - `AppState`経由で共有接続プールを利用し、個別にスーパーユーザー接続を確立しない。
-  - テスト環境では専用DBおよびユーザー（`TEST_DATABASE_URL`）を用意し、本番データとの混在を避ける。
+  - サーバー固有のバトル募集、参加者情報等へのアクセスに使用
+
+#### 3.3.2 System Role
+
+- **想定識別子**: `system_user`
+- **接続情報**:
+  - `SYSTEM_DB_USER` - Systemロールユーザー名
+  - `SYSTEM_DB_PASSWORD` - Systemロールパスワード
+- **主な利用者**: Discord Bot本体（システム設定、スケジュール情報アクセス時）
+- **権限**:
+  - `system`スキーマへの`USAGE`および全テーブルでの`SELECT`, `INSERT`, `UPDATE`, `DELETE`
+  - DDL権限は付与しない
+- **運用方針**:
+  - システム全体の設定、通知スケジュール等へのアクセスに使用
+
+#### 3.3.3 Global Role
+
+- **想定識別子**: `global_user`
+- **接続情報**:
+  - `GLOBAL_DB_USER` - Globalロールユーザー名
+  - `GLOBAL_DB_PASSWORD` - Globalロールパスワード
+- **主な利用者**: Discord Bot本体（グローバルマスタデータアクセス時）
+- **権限**:
+  - `global`スキーマへの`USAGE`および全テーブルでの`SELECT`, `INSERT`, `UPDATE`, `DELETE`
+  - DDL権限は付与しない
+- **運用方針**:
+  - クエスト情報、ボス情報等のマスタデータへのアクセスに使用
+  - マスタデータは原則読み取り専用だが、更新機能実装時に備えて書き込み権限も付与
+
+#### 3.3.4 テスト環境
+
+- **接続情報**:
+  - `TEST_DB_HOST`, `TEST_DB_PORT`, `TEST_DB_NAME` - テスト用データベース接続情報
+  - `TEST_DB_USER`, `TEST_DB_PASSWORD` - テスト用ユーザー認証情報
+- **運用方針**:
+  - テスト環境では専用DBおよびユーザーを用意し、本番データとの混在を避ける
+  - `AppState`経由で共有接続プールを利用し、個別にスーパーユーザー接続を確立しない
 
 ## 4. 接続情報と環境変数
 
-| 用途 | 変数名 | 例 | 管理場所 |
-| ---- | ------ | -- | -------- |
-| マイグレーション | `MIGRATION_URL` | `postgres://migration_user:********@host:5432/gbf_bot_db` | `.env`, CI Secrets |
-| アプリ本番 | `DATABASE_URL` | `postgres://gbf_bot_user:********@host:5432/gbf_bot_db` | `.env`, Secrets Manager |
-| アプリテスト | `TEST_DATABASE_URL` | `postgres://gbf_bot_test_user:********@host:5432/gbf_bot_test_db` | `.env`, CI Secrets |
-| DevContainer初期化 | `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT` | `postgres` 等 | `.env`, devcontainer設定 |
+### 4.1 共通接続情報
+
+| 変数名 | 説明 | 例 | 管理場所 |
+| ------ | ---- | -- | -------- |
+| `DB_HOST` | データベースホスト名 | `localhost` | `.env`, CI Secrets |
+| `DB_PORT` | データベースポート番号 | `5432` | `.env`, CI Secrets |
+| `DB_NAME` | データベース名 | `gbf_bot_db` | `.env`, CI Secrets |
+
+### 4.2 ロール別認証情報
+
+| 用途 | ユーザー名変数 | パスワード変数 | 管理場所 |
+| ---- | -------------- | -------------- | -------- |
+| Admin（マイグレーション） | `ADMIN_DB_USER` | `ADMIN_DB_PASSWORD` | `.env`, CI Secrets |
+| Guild（サーバー固有データ） | `GUILD_DB_USER` | `GUILD_DB_PASSWORD` | `.env`, Secrets Manager |
+| System（システム設定） | `SYSTEM_DB_USER` | `SYSTEM_DB_PASSWORD` | `.env`, Secrets Manager |
+| Global（マスタデータ） | `GLOBAL_DB_USER` | `GLOBAL_DB_PASSWORD` | `.env`, Secrets Manager |
+
+### 4.3 テスト環境
+
+| 変数名 | 説明 | 例 | 管理場所 |
+| ------ | ---- | -- | -------- |
+| `TEST_DB_HOST` | テスト用DBホスト名 | `localhost` | `.env`, CI Secrets |
+| `TEST_DB_PORT` | テスト用DBポート番号 | `5433` | `.env`, CI Secrets |
+| `TEST_DB_NAME` | テスト用データベース名 | `gbf_bot_test_db` | `.env`, CI Secrets |
+| `TEST_DB_USER` | テスト用ユーザー名 | `test_user` | `.env`, CI Secrets |
+| `TEST_DB_PASSWORD` | テスト用パスワード | `test_password` | `.env`, CI Secrets |
+
+### 4.4 DevContainer初期化
+
+| 変数名 | 説明 | 管理場所 |
+| ------ | ---- | -------- |
+| `DB_USER`, `DB_PASSWORD` | デフォルト管理者認証情報 | `.env`, devcontainer設定 |
+
+### 4.5 接続URL構築
+
+アプリケーション起動時、上記環境変数から以下の形式で動的にURL構築：
+
+```
+postgres://{ROLE_USER}:{ROLE_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}
+```
+
+例:
+- Guild Role: `postgres://guild_user:***@localhost:5432/gbf_bot_db`
+- Admin Role: `postgres://admin_user:***@localhost:5432/gbf_bot_db`
 
 - DevContainerでは`db/init.sql`が起動時に実行され、上記ユーザーと権限設定を自動作成する。
 - 本番環境ではTerraformやAnsible等のプロビジョニングコードに同等の初期化処理を記述し、平行運用する。
 
 ## 5. 運用フロー
 
-1. **初期構築**: デフォルト管理者ユーザーでサーバーをセットアップし、`init.sql`相当のDDLを実行して`migration_user`・`gbf_bot_user`を作成する。
-2. **マイグレーション適用**: `sea-orm-cli migrate`またはアプリ起動時の自動実行が`migration_user`で接続し、DDLを適用する。
-3. **アプリ稼働**: Bot本体は`DATABASE_URL`経由で`gbf_bot_user`として接続し、CRUDを実施する。
-4. **権限変更**: 新しいスキーマ/テーブルを追加した場合、マイグレーションに`ALTER DEFAULT PRIVILEGES`等を含め、アプリユーザーがDML可能であることを確認する。
+1. **初期構築**: デフォルト管理者ユーザーでサーバーをセットアップし、`init.sql`相当のDDLを実行して`admin_user`、`guild_user`、`system_user`、`global_user`を作成する。
+2. **マイグレーション適用**: `sea-orm-cli migrate`またはアプリ起動時の自動実行が、`ADMIN_DB_USER`/`ADMIN_DB_PASSWORD`と共通接続情報から構築されたURLで接続し、DDLを適用する。
+3. **アプリ稼働**: Bot本体は操作対象スキーマに応じて適切なロール（Guild/System/Global）の認証情報から構築されたURLで接続し、CRUDを実施する。
+4. **権限変更**: 新しいスキーマ/テーブルを追加した場合、マイグレーションに`ALTER DEFAULT PRIVILEGES`等を含め、各ロールがDML可能であることを確認する。
 5. **監査・ローテーション**: 四半期ごとにパスワード更新、接続テスト、不要ユーザーの削除を実施し、更新履歴を運用記録に残す。
 
 ## 6. セキュリティおよび監査留意点
