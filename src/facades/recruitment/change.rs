@@ -38,7 +38,7 @@ pub async fn change_recruitment_information(
     let result = async {
         // RepositoryContainerとRepositoryの取得
         let db = app_state.db();
-        let repos = RepositoryContainer::new(db);
+        let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new();
         let battle_style_repository = SeaOrmBattleStyleRepository::new();

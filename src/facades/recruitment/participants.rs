@@ -26,7 +26,7 @@ pub async fn update_participants(
 
     let result = async {
         // Service層のインスタンスを作成
-        let battle_recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new(db.clone()));
+        let battle_recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new());
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
         let quest_repo = SeaOrmQuestRepository::new();
 

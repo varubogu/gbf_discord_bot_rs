@@ -6,17 +6,18 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::repository::BattleRecruitmentsRepository;
+use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
 use crate::types::{AppError, Result};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
 pub struct StartRecruitmentService {
-    repo: Arc<dyn BattleRecruitmentsRepository>,
+    repo: Arc<BattleRecruitmentsRepositoryImpl>,
 }
 
 impl StartRecruitmentService {
     /// 新しいStartRecruitmentServiceを作成（依存性注入）
-    pub fn new(repo: Arc<dyn BattleRecruitmentsRepository>) -> Self {
+    pub fn new(repo: Arc<BattleRecruitmentsRepositoryImpl>) -> Self {
         Self { repo }
     }
 
@@ -26,17 +27,17 @@ impl StartRecruitmentService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-        _txn: &DatabaseTransaction,
+        txn: &DatabaseTransaction,
     ) -> Result<BattleRecruitments> {
         info!("StartRecruitmentService::start_by_message - 開始処理開始");
 
         // 募集情報の存在確認
         let recruitment = self
-            .get_recruitment_from_db(guild_id, channel_id, message_id)
+            .get_recruitment_from_db(txn, guild_id, channel_id, message_id)
             .await?;
 
         // 募集を開始済み状態に更新（message_idを使用）
-        self.mark_recruitment_as_started(recruitment.id as i64, message_id)
+        self.mark_recruitment_as_started(txn, recruitment.id as i64, message_id)
             .await?;
 
         info!(recruitment_id = recruitment.id, "開始処理完了");
@@ -44,12 +45,16 @@ impl StartRecruitmentService {
     }
 
     /// DBから募集情報を取得
-    pub async fn get_recruitment_from_db(
+    pub async fn get_recruitment_from_db<'c, C>(
         &self,
+        db: &'c C,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitments> {
+    ) -> Result<BattleRecruitments>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         info!(
             "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id
@@ -57,7 +62,7 @@ impl StartRecruitmentService {
 
         match self
             .repo
-            .get_by_message(guild_id, channel_id, message_id)
+            .get_by_message(db, guild_id, channel_id, message_id)
             .await?
         {
             Some(recruitment) => {
@@ -188,18 +193,22 @@ impl StartRecruitmentService {
     /// 募集を開始済み状態に更新
     /// 注意: 現在のBattleRecruitmentRepositoryトレイトには開始済み状態更新メソッドがないため、
     /// set_end_messageを使用して終了メッセージIDを設定することで開始状態を表現します。
-    pub async fn mark_recruitment_as_started(
+    pub async fn mark_recruitment_as_started<'c, C>(
         &self,
+        db: &'c C,
         recruitment_id: i64,
         end_message_id: u64,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         info!(
             "募集開始済み状態更新開始: recruitment_id={}, end_message_id={}",
             recruitment_id, end_message_id
         );
 
         self.repo
-            .set_end_message(recruitment_id as i32, MessageId::from(end_message_id))
+            .set_end_message(db, recruitment_id as i32, MessageId::from(end_message_id))
             .await?;
 
         info!(

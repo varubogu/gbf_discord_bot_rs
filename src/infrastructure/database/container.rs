@@ -1,10 +1,9 @@
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
-use sea_orm::DatabaseConnection;
 
 /// Repository層のコンテナ
 ///
-/// AppStateから共有のDB接続を受け取り、Repository群を管理します。
-/// 従来のDIコンテナパターンから、よりシンプルで効率的なアプローチに変更。
+/// ステートレスなRepositoryインスタンスを提供します。
+/// Repositoryはフィールドを持たず、DB接続は呼び出し時にパラメータとして渡されます。
 #[derive(Debug)]
 pub struct RepositoryContainer {
     battle_recruitment_repo: BattleRecruitmentsRepositoryImpl,
@@ -12,15 +11,12 @@ pub struct RepositoryContainer {
 }
 
 impl RepositoryContainer {
-    /// 共有DB接続を使用してRepositoryContainerを作成
-    ///
-    /// # 引数
-    /// * `db_connection` - 共有されるDB接続
+    /// RepositoryContainerを作成
     ///
     /// # 戻り値
     /// 新しいRepositoryContainerインスタンス
-    pub fn new(db_connection: &DatabaseConnection) -> Self {
-        let battle_recruitment_repo = BattleRecruitmentsRepositoryImpl::new(db_connection.clone());
+    pub fn new() -> Self {
+        let battle_recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
 
         Self {
             battle_recruitment_repo,

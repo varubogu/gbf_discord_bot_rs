@@ -21,12 +21,15 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     ) -> Result<BattleRecruitments>;
 
     /// メッセージIDで募集を取得
-    async fn get_by_message(
+    async fn get_by_message<'c, C>(
         &self,
+        db: &'c C,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Option<BattleRecruitments>>;
+    ) -> Result<Option<BattleRecruitments>>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// メッセージIDで募集を取得（トランザクション対応）
     async fn get_by_message_with_txn(
@@ -38,7 +41,14 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     ) -> Result<Option<BattleRecruitments>>;
 
     /// 募集終了メッセージを更新
-    async fn set_end_message(&self, recruitment_id: i32, message_id: MessageId) -> Result<()>;
+    async fn set_end_message<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+        message_id: MessageId,
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// 募集をキャンセル済み状態に更新（トランザクション対応）
     async fn set_canceled_with_txn(

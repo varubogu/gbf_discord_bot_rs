@@ -84,7 +84,7 @@ async fn check_can_cancel_recruitment_internal(
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new(conn);
+        let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
         // DBの募集情報とDiscordメッセージの状況をチェック
@@ -127,7 +127,7 @@ async fn cancel_recruitment_internal(
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new(conn);
+        let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
         info!(

@@ -7,19 +7,17 @@ use crate::types::{AppError, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseTransaction,
     EntityTrait, QueryFilter, Set,
 };
 
 /// SeaORM を使用したバトル募集リポジトリの実装
 #[derive(Debug)]
-pub struct BattleRecruitmentsRepositoryImpl {
-    connection: DatabaseConnection,
-}
+pub struct BattleRecruitmentsRepositoryImpl;
 
 impl BattleRecruitmentsRepositoryImpl {
-    pub fn new(connection: DatabaseConnection) -> Self {
-        Self { connection }
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -51,17 +49,21 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         Ok(BattleRecruitments::from(result))
     }
 
-    async fn get_by_message(
+    async fn get_by_message<'c, C>(
         &self,
+        db: &'c C,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Option<BattleRecruitments>> {
+    ) -> Result<Option<BattleRecruitments>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let result = BattleRecruitmentEntity::find()
             .filter(Column::GuildId.eq(guild_id as i64)) // u64 → i64に変換
             .filter(Column::ChannelId.eq(channel_id as i64)) // u64 → i64に変換
             .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
-            .one(&self.connection)
+            .one(db)
             .await
             .map_err(|e| AppError::Database(e))?;
 
@@ -86,13 +88,17 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         Ok(result.map(BattleRecruitments::from))
     }
 
-    async fn set_end_message(
+    async fn set_end_message<'c, C>(
         &self,
+        db: &'c C,
         recruitment_id: i32,
         message_id: poise::serenity_prelude::MessageId,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
-            .one(&self.connection)
+            .one(db)
             .await
             .map_err(|e| AppError::Database(e))?
             .ok_or_else(|| AppError::Business {
@@ -102,7 +108,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
 
         active_model.recruit_end_message_id = Set(Some(message_id.get() as i64)); // u64 → i64に変換
         active_model
-            .update(&self.connection)
+            .update(db)
             .await
             .map_err(|e| AppError::Database(e))?;
 

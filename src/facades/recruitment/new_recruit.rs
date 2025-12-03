@@ -32,7 +32,7 @@ pub async fn new_recruitment(
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new(conn);
+        let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new();
         let battle_style_repository = SeaOrmBattleStyleRepository::new();

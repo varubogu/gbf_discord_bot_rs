@@ -32,7 +32,7 @@ pub struct TransactionManager {
 impl TransactionManager {
     /// 依存性注入対応のコンストラクタ（推奨）
     pub fn new(db_connection: Arc<DatabaseConnection>) -> Self {
-        let repos = RepositoryContainer::new(&db_connection);
+        let repos = RepositoryContainer::new();
         Self {
             db_connection,
             repos,
