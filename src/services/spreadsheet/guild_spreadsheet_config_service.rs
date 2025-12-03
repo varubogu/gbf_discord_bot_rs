@@ -50,6 +50,7 @@ where
 {
     repository: R,
     google_auth_service: G,
+    #[allow(unused)]
     url_service: U,
 }
 
@@ -177,7 +178,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     // 実際のGoogle API接続が必要なため、統合テストで実施
     // ここでは型チェックとトレイト実装の確認のみ

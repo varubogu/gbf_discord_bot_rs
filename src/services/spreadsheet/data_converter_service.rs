@@ -7,7 +7,7 @@ use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, TimeZone};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::errors::{BusinessRuleError, ValidationError};
+use crate::errors::ValidationError;
 
 /// データ変換サービストレイト
 #[async_trait]
@@ -161,7 +161,7 @@ impl DataConverterService {
     }
 
     /// 日時型変換（Timestamp）
-    fn parse_timestamp(value: &str, field_name: &str) -> Result<NaiveDateTime, ValidationError> {
+    fn parse_timestamp(value: &str, _field_name: &str) -> Result<NaiveDateTime, ValidationError> {
         let trimmed = value.trim();
 
         for format in Self::TIMESTAMP_FORMATS {
@@ -213,7 +213,7 @@ impl DataConverterService {
     }
 
     /// 日付型変換
-    fn parse_date(value: &str, field_name: &str) -> Result<NaiveDate, ValidationError> {
+    fn parse_date(value: &str, _field_name: &str) -> Result<NaiveDate, ValidationError> {
         NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|_| {
             ValidationError::DateTimeFormatError {
                 value: value.to_string(),
@@ -223,7 +223,7 @@ impl DataConverterService {
     }
 
     /// UUID型変換
-    fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, ValidationError> {
+    fn parse_uuid(value: &str, _field_name: &str) -> Result<Uuid, ValidationError> {
         Uuid::parse_str(value).map_err(|_| ValidationError::UuidFormatError {
             value: value.to_string(),
         })
@@ -260,7 +260,7 @@ impl DataConverterService {
     }
 
     /// 文字列配列変換（カンマ区切り）
-    fn parse_text_array(value: &str, field_name: &str) -> Result<Vec<String>, ValidationError> {
+    fn parse_text_array(value: &str, _field_name: &str) -> Result<Vec<String>, ValidationError> {
         if value.is_empty() {
             return Ok(Vec::new());
         }

@@ -40,7 +40,7 @@ impl GetRecruitmentService {
     /// 募集IDから募集情報を取得する
     pub async fn get_by_id(
         &self,
-        recruitment_id: i32,
+        _recruitment_id: i32,
     ) -> Result<Option<BattleRecruitments>, String> {
         // match self.battle_recruitment_repo.get_by_id(recruitment_id).await {
         //     Ok(recruitment) => Ok(recruitment),

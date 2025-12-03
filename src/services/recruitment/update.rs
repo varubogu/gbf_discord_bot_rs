@@ -1,20 +1,6 @@
-use chrono::{DateTime, Local};
+// use chrono::{DateTime, Local};
 use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, EditMessage, Message};
-use std::sync::Arc;
-use tracing::{error, info, warn};
-
-use crate::models::battle_recruitments::BattleRecruitments;
-use crate::models::quests::Quest;
-
-pub(crate) struct UpdateParameter {
-    pub quest: Quest,
-    pub guild_id: i64,
-    pub channel_id: i64,
-    pub message_id: i64,
-    pub target_id: i32,
-    pub battle_type_id: i32,
-    pub expiry_date: chrono::DateTime<chrono::Utc>,
-}
+use tracing::{error, info};
 
 pub struct UpdateRecruitmentService {}
 
@@ -23,129 +9,129 @@ impl UpdateRecruitmentService {
         Self {}
     }
 
-    /// 募集メッセージの内容を更新する
-    pub async fn update_recruitment_message(
-        &self,
-        ctx: &Context,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        new_content: Option<String>,
-        new_embed: Option<CreateEmbed>,
-    ) -> Result<(), String> {
-        panic!("Not implemented");
-        // // 募集が存在するかチェック
-        // let _recruitment = match self.db.battle_recruitment.get_by_message(
-        //     guild_id as i64,
-        //     channel_id as i64,
-        //     message_id as i64,
-        // ).await {
-        //     Ok(Some(recruitment)) => recruitment,
-        //     Ok(None) => {
-        //         warn!("Recruitment not found for message: {}", message_id);
-        //         return Err("募集が見つかりませんでした。".to_string());
-        //     },
-        //     Err(e) => {
-        //         error!("Error fetching recruitment: {:?}", e);
-        //         return Err("データベースエラーが発生しました。".to_string());
-        //     }
-        // };
-        //
-        // // メッセージを更新
-        // let channel = ChannelId::from(channel_id);
-        // let mut edit_builder = EditMessage::new();
-        //
-        // if let Some(content) = new_content {
-        //     edit_builder = edit_builder.content(content);
-        // }
-        //
-        // if let Some(embed) = new_embed {
-        //     edit_builder = edit_builder.embed(embed);
-        // }
-        //
-        // match channel.edit_message(&ctx.http, message_id, edit_builder).await {
-        //     Ok(_) => {
-        //         info!("Successfully updated recruitment message: {}", message_id);
-        //         Ok(())
-        //     },
-        //     Err(e) => {
-        //         error!("Failed to update message: {:?}", e);
-        //         Err("メッセージの更新に失敗しました。".to_string())
-        //     }
-        // }
-    }
+    // /// 募集メッセージの内容を更新する
+    // pub async fn update_recruitment_message(
+    //     &self,
+    //     ctx: &Context,
+    //     guild_id: u64,
+    //     channel_id: u64,
+    //     message_id: u64,
+    //     new_content: Option<String>,
+    //     new_embed: Option<CreateEmbed>,
+    // ) -> Result<(), String> {
+    //     panic!("Not implemented");
+    //     // // 募集が存在するかチェック
+    //     // let _recruitment = match self.db.battle_recruitment.get_by_message(
+    //     //     guild_id as i64,
+    //     //     channel_id as i64,
+    //     //     message_id as i64,
+    //     // ).await {
+    //     //     Ok(Some(recruitment)) => recruitment,
+    //     //     Ok(None) => {
+    //     //         warn!("Recruitment not found for message: {}", message_id);
+    //     //         return Err("募集が見つかりませんでした。".to_string());
+    //     //     },
+    //     //     Err(e) => {
+    //     //         error!("Error fetching recruitment: {:?}", e);
+    //     //         return Err("データベースエラーが発生しました。".to_string());
+    //     //     }
+    //     // };
+    //     //
+    //     // // メッセージを更新
+    //     // let channel = ChannelId::from(channel_id);
+    //     // let mut edit_builder = EditMessage::new();
+    //     //
+    //     // if let Some(content) = new_content {
+    //     //     edit_builder = edit_builder.content(content);
+    //     // }
+    //     //
+    //     // if let Some(embed) = new_embed {
+    //     //     edit_builder = edit_builder.embed(embed);
+    //     // }
+    //     //
+    //     // match channel.edit_message(&ctx.http, message_id, edit_builder).await {
+    //     //     Ok(_) => {
+    //     //         info!("Successfully updated recruitment message: {}", message_id);
+    //     //         Ok(())
+    //     //     },
+    //     //     Err(e) => {
+    //     //         error!("Failed to update message: {:?}", e);
+    //     //         Err("メッセージの更新に失敗しました。".to_string())
+    //     //     }
+    //     // }
+    // }
 
-    /// 募集の参加者リスト埋め込みを更新する
-    pub async fn update_participants_embed(
-        &self,
-        ctx: &Context,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        participant_count: usize,
-        capacity: usize,
-    ) -> Result<(), String> {
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(format!("現在の参加者: {}/{}", participant_count, capacity))
-            .color(if participant_count >= capacity {
-                0x00ff00
-            } else {
-                0x0099ff
-            });
+    // /// 募集の参加者リスト埋め込みを更新する
+    // pub async fn update_participants_embed(
+    //     &self,
+    //     ctx: &Context,
+    //     guild_id: u64,
+    //     channel_id: u64,
+    //     message_id: u64,
+    //     participant_count: usize,
+    //     capacity: usize,
+    // ) -> Result<(), String> {
+    //     let embed = CreateEmbed::new()
+    //         .title("参加者一覧")
+    //         .description(format!("現在の参加者: {}/{}", participant_count, capacity))
+    //         .color(if participant_count >= capacity {
+    //             0x00ff00
+    //         } else {
+    //             0x0099ff
+    //         });
 
-        self.update_recruitment_message(ctx, guild_id, channel_id, message_id, None, Some(embed))
-            .await
-    }
+    //     self.update_recruitment_message(ctx, guild_id, channel_id, message_id, None, Some(embed))
+    //         .await
+    // }
 
-    /// 募集の開催日時を更新する
-    pub async fn update_recruitment_date(
-        &self,
-        ctx: &Context,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        new_date: DateTime<Local>,
-    ) -> Result<(), String> {
-        panic!("Not implemented");
-        // // 募集情報を取得
-        // let recruitment = match self.db.battle_recruitment.get_by_message(
-        //     guild_id as i64,
-        //     channel_id as i64,
-        //     message_id as i64,
-        // ).await {
-        //     Ok(Some(recruitment)) => recruitment,
-        //     Ok(None) => {
-        //         return Err("募集が見つかりませんでした。".to_string());
-        //     },
-        //     Err(e) => {
-        //         error!("Error fetching recruitment: {:?}", e);
-        //         return Err("データベースエラーが発生しました。".to_string());
-        //     }
-        // };
-        //
-        // // 注意: 実際の実装ではクエスト名を取得する必要がある
-        // let quest_name = "クエスト"; // 簡易版実装
-        //
-        // // 新しいメッセージ内容を作成
-        // let new_content = format!(
-        //     "{}の参加者を募集します。\n開催日時：{}",
-        //     quest_name,
-        //     new_date.format("%m/%d %H:%M")
-        // );
-        //
-        // self.update_recruitment_message(
-        //     ctx,
-        //     guild_id,
-        //     channel_id,
-        //     message_id,
-        //     Some(new_content),
-        //     None,
-        // ).await?;
-        //
-        // info!("Updated recruitment date for message: {}", message_id);
-        // Ok(())
-    }
+    // /// 募集の開催日時を更新する
+    // pub async fn update_recruitment_date(
+    //     &self,
+    //     ctx: &Context,
+    //     guild_id: u64,
+    //     channel_id: u64,
+    //     message_id: u64,
+    //     new_date: DateTime<Local>,
+    // ) -> Result<(), String> {
+    //     panic!("Not implemented");
+    //     // // 募集情報を取得
+    //     // let recruitment = match self.db.battle_recruitment.get_by_message(
+    //     //     guild_id as i64,
+    //     //     channel_id as i64,
+    //     //     message_id as i64,
+    //     // ).await {
+    //     //     Ok(Some(recruitment)) => recruitment,
+    //     //     Ok(None) => {
+    //     //         return Err("募集が見つかりませんでした。".to_string());
+    //     //     },
+    //     //     Err(e) => {
+    //     //         error!("Error fetching recruitment: {:?}", e);
+    //     //         return Err("データベースエラーが発生しました。".to_string());
+    //     //     }
+    //     // };
+    //     //
+    //     // // 注意: 実際の実装ではクエスト名を取得する必要がある
+    //     // let quest_name = "クエスト"; // 簡易版実装
+    //     //
+    //     // // 新しいメッセージ内容を作成
+    //     // let new_content = format!(
+    //     //     "{}の参加者を募集します。\n開催日時：{}",
+    //     //     quest_name,
+    //     //     new_date.format("%m/%d %H:%M")
+    //     // );
+    //     //
+    //     // self.update_recruitment_message(
+    //     //     ctx,
+    //     //     guild_id,
+    //     //     channel_id,
+    //     //     message_id,
+    //     //     Some(new_content),
+    //     //     None,
+    //     // ).await?;
+    //     //
+    //     // info!("Updated recruitment date for message: {}", message_id);
+    //     // Ok(())
+    // }
 
     /// 募集メッセージにステータス更新を追加
     pub async fn add_status_update(
@@ -178,51 +164,51 @@ impl UpdateRecruitmentService {
         }
     }
 
-    /// 募集完了時の最終更新
-    pub async fn mark_recruitment_complete(
-        &self,
-        ctx: &Context,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        participants: Vec<String>, // ユーザーメンション
-    ) -> Result<(), String> {
-        let embed = CreateEmbed::new()
-            .title("募集完了")
-            .description("メンバーが揃いました！")
-            .field("参加者", participants.join("\n"), false)
-            .color(0x00ff00)
-            .timestamp(chrono::Utc::now());
+    // /// 募集完了時の最終更新
+    // pub async fn mark_recruitment_complete(
+    //     &self,
+    //     ctx: &Context,
+    //     guild_id: u64,
+    //     channel_id: u64,
+    //     message_id: u64,
+    //     participants: Vec<String>, // ユーザーメンション
+    // ) -> Result<(), String> {
+    //     let embed = CreateEmbed::new()
+    //         .title("募集完了")
+    //         .description("メンバーが揃いました！")
+    //         .field("参加者", participants.join("\n"), false)
+    //         .color(0x00ff00)
+    //         .timestamp(chrono::Utc::now());
 
-        self.update_recruitment_message(
-            ctx,
-            guild_id,
-            channel_id,
-            message_id,
-            Some("✅ 募集完了".to_string()),
-            Some(embed),
-        )
-        .await?;
+    //     self.update_recruitment_message(
+    //         ctx,
+    //         guild_id,
+    //         channel_id,
+    //         message_id,
+    //         Some("✅ 募集完了".to_string()),
+    //         Some(embed),
+    //     )
+    //     .await?;
 
-        // 完了通知メッセージを送信
-        let completion_message = format!("{}\nメンバーが揃いました！", participants.join(" "));
+    //     // 完了通知メッセージを送信
+    //     let completion_message = format!("{}\nメンバーが揃いました！", participants.join(" "));
 
-        match ChannelId::from(channel_id)
-            .say(&ctx.http, completion_message)
-            .await
-        {
-            Ok(_) => {
-                info!("Marked recruitment as complete: {}", message_id);
-                Ok(())
-            }
-            Err(e) => {
-                error!("Failed to send completion message: {:?}", e);
-                // メッセージ更新は成功したので、エラーとせずログのみ
-                info!("Message update succeeded but completion notification failed");
-                Ok(())
-            }
-        }
-    }
+    //     match ChannelId::from(channel_id)
+    //         .say(&ctx.http, completion_message)
+    //         .await
+    //     {
+    //         Ok(_) => {
+    //             info!("Marked recruitment as complete: {}", message_id);
+    //             Ok(())
+    //         }
+    //         Err(e) => {
+    //             error!("Failed to send completion message: {:?}", e);
+    //             // メッセージ更新は成功したので、エラーとせずログのみ
+    //             info!("Message update succeeded but completion notification failed");
+    //             Ok(())
+    //         }
+    //     }
+    // }
 
     /// 募集の緊急更新（重要な変更時）
     pub async fn urgent_update(

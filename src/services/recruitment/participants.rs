@@ -10,11 +10,6 @@ use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
-pub(crate) struct PaticipantsParameter {
-    pub guild_id: i64,
-    pub channel_id: i64,
-}
-
 /// ParticipantsService - 募集参加者管理を行うサービス
 pub struct ParticipantsService {
     battle_recruitment_repo: Arc<dyn BattleRecruitmentsRepository>,

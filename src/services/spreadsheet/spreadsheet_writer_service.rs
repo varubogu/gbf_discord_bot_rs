@@ -5,12 +5,12 @@
 use async_trait::async_trait;
 use google_sheets4::{
     Sheets,
-    api::{ClearValuesRequest, UpdateValuesResponse, ValueRange},
+    api::{ClearValuesRequest, ValueRange},
     hyper::client::HttpConnector,
     hyper_rustls::HttpsConnector,
 };
 
-use crate::errors::{ExternalServiceError, ValidationError};
+use crate::errors::ExternalServiceError;
 use crate::services::spreadsheet::{DataConverterServiceTrait, PostgresValue, TableDefinition};
 
 /// スプレッドシート書き込み結果
@@ -193,7 +193,7 @@ where
             .await?;
 
         // Google Sheets APIでデータを書き込み
-        let result = sheets_client
+        let _result = sheets_client
             .spreadsheets()
             .values_update(
                 value_range,

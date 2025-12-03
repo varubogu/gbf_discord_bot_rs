@@ -113,7 +113,7 @@ pub trait TableConfig: Send + Sync {
 /// エンティティからスキーマを抽出するヘルパー関数
 ///
 /// SchemaExtractorServiceから移植した共通処理
-fn extract_entity_schema<E>(table_name: &str) -> Vec<ColumnSchema>
+fn extract_entity_schema<E>(_table_name: &str) -> Vec<ColumnSchema>
 where
     E: EntityTrait,
 {
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_table_config_read_columns() {
-        // BattleTypesTableで除外動作を確認
+        // BattleStylesTableで除外動作を確認
         let columns = BattleStylesTable::read_columns();
 
         // created_atとupdated_atが含まれていないこと

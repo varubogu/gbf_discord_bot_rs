@@ -1,5 +1,5 @@
 use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateMessage, Message, MessageId, ReactionType,
+    ChannelId, Context, CreateMessage, MessageId,
 };
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ impl StartRecruitmentService {
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-        txn: &DatabaseTransaction,
+        _txn: &DatabaseTransaction,
     ) -> Result<BattleRecruitments> {
         info!("StartRecruitmentService::start_by_message - 開始処理開始");
 

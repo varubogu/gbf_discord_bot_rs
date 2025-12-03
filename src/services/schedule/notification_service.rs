@@ -2,7 +2,7 @@ use crate::models::entities::{battle_recruitments, message_texts, notifications}
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::types::Result;
 use chrono::Utc;
-use poise::serenity_prelude::{self as serenity, ChannelId, CreateMessage, Http, MessageId};
+use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};

@@ -10,7 +10,7 @@ use crate::services::spreadsheet::schema_extractor_service::SchemaExtractorServi
 use crate::services::spreadsheet::spreadsheet_reader_service::SpreadsheetReaderServiceTrait;
 use crate::services::spreadsheet::{
     ColumnSchema, DataConverterService, GoogleAuthService, PostgresType, PostgresValue,
-    SchemaExtractorService, SpreadsheetReaderService, TableDefinitionService, TableIO,
+    SchemaExtractorService, SpreadsheetReaderService, TableDefinitionService,
 };
 use std::collections::HashMap;
 

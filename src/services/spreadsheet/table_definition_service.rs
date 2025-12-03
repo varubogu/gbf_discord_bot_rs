@@ -274,7 +274,7 @@ impl TableDefinitionServiceTrait for TableDefinitionService {
 
         // ヘッダー行の解析
         let header_row = &rows[0];
-        let mut mapping = Self::build_header_mapping(header_row)?;
+        let mapping = Self::build_header_mapping(header_row)?;
 
         // 2行目は説明行としてスキップ、3行目以降をパース
         let mut definitions = Vec::new();
