@@ -12,7 +12,7 @@ use crate::types::{AppError, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow,
-    CreateButton, EditInteractionResponse, Http, Message, MessageId,
+    CreateButton, EditInteractionResponse, Message, MessageId,
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -49,36 +49,6 @@ pub async fn can_cancel(
 )]
 pub async fn confirm_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
     cancel_with_confirmation_internal(ctx, message).await
-}
-
-/// 募集をキャンセル実行（公開関数）
-#[instrument(
-    level = "debug", 
-    skip(ctx, message),
-    fields(
-        guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
-        channel_id = %message.channel_id.get(),
-        message_id = %message.id.get()
-    )
-)]
-pub async fn execute_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::Result<()> {
-    // guild_idを取得（message.guild_idがNoneの場合、ctx.guild_id()から取得）
-    let guild_id = if let Some(guild_id) = ctx.guild_id() {
-        guild_id.get()
-    } else {
-        warn!("guild_idを取得できませんでした");
-        return Err(AppError::Business {
-            message: "ギルド情報を取得できませんでした".to_string(),
-        });
-    };
-
-    let channel_id = message.channel_id.get();
-    let message_id = message.id.get();
-
-    // キャンセル処理を実行
-    cancel_recruitment_internal(ctx, guild_id, channel_id, message_id).await?;
-
-    Ok(())
 }
 
 /// 募集をキャンセルできるか確認（内部関数）
@@ -444,24 +414,6 @@ async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle
         .await?;
 
     Ok(reply)
-}
-
-/// コマンドのエラーレスポンス送信（内部関数）
-async fn send_error_response(
-    http: &&Http,
-    interaction: &ComponentInteraction,
-    e: AppError,
-) -> Result<(), AppError> {
-    // defer()済みのインタラクションにはedit_responseを使用
-    interaction
-        .edit_response(
-            http,
-            EditInteractionResponse::new()
-                .content(format!("キャンセル処理中にエラーが発生しました: {}", e))
-                .components(vec![]),
-        )
-        .await?;
-    Ok(())
 }
 
 /// コマンドのレスポンスを返す送信（内部関数）

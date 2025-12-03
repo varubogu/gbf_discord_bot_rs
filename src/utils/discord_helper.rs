@@ -1,4 +1,4 @@
-use poise::serenity_prelude::all::{ChannelId, GuildId, Message, MessageId, User, UserId};
+use poise::serenity_prelude::all::{GuildId, Message, User, UserId};
 use std::collections::{HashMap, HashSet};
 
 pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
@@ -90,7 +90,7 @@ mod tests {
             (None, "@me"),
         ];
 
-        for (guild_id, expected_guild_part) in guild_cases {
+        for (_guild_id, expected_guild_part) in guild_cases {
             let channel_id = ChannelId::new(111);
             let message_id = MessageId::new(222);
 

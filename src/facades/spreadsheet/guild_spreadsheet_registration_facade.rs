@@ -7,9 +7,9 @@ use tracing::{error, info, instrument};
 
 use crate::errors::FacadeError;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
+use crate::repository::GuildSpreadsheetConfigRepository;
 use crate::services::spreadsheet::{
-    GoogleAuthService, GoogleAuthServiceTrait, GuildSpreadsheetConfigService,
+    GoogleAuthService, GuildSpreadsheetConfigService,
     GuildSpreadsheetConfigServiceTrait, SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
 };
 

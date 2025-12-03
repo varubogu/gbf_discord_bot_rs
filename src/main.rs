@@ -1,19 +1,8 @@
-pub mod constants;
-mod errors;
-mod events;
-mod facades;
-mod infrastructure;
-mod models;
-mod repository;
-mod services;
-mod types;
-mod utils;
-
-use crate::events::{command::commands, handler::event_handler};
-use crate::events::handlers::schedule_handler::ScheduleNotificationTimer;
-use crate::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
-use crate::utils::error_formatter::ErrorFormatter;
-use crate::utils::startup_validator::StartupValidator;
+use gbf_discord_bot_rs::events::{command::commands, handler::event_handler};
+use gbf_discord_bot_rs::events::handlers::schedule_handler::ScheduleNotificationTimer;
+use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
+use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
+use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
 use migration::{Migrator, MigratorTrait};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use sea_orm::{ConnectOptions, Database};

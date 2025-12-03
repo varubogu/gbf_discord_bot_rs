@@ -53,5 +53,3 @@ pub async fn recruit_cancel(
         }
     }
 }
-
-// 未使用の関数を削除（ファサードで処理されるため）

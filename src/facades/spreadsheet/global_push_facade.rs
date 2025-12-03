@@ -41,7 +41,7 @@ pub async fn execute_global_push(ctx: &PoiseContext<'_>) -> Result<()> {
 
     let result = async {
         // Service層のインスタンス化（静的ディスパッチ）
-        let mut push_service = GlobalPushServiceImpl::new();
+        let push_service = GlobalPushServiceImpl::new();
 
         // スプレッドシート接続
         GlobalPushService::open_spreadsheet(&push_service).await?;

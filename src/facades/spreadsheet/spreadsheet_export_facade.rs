@@ -2,15 +2,14 @@
 ///
 /// PostgreSQLデータをGoogle Sheetsに書き込みます。
 /// トランザクション管理を行い、複数のServiceを協調させます。
-use std::collections::HashMap;
 use std::env;
 
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument, warn};
 
-use crate::errors::{FacadeError, PresentationError};
+use crate::errors::FacadeError;
 use crate::services::spreadsheet::{
-    ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
+    DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
     SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetWriterService,
     SpreadsheetWriterServiceTrait, TableDefinition, TableDefinitionService, TableIO,
 };

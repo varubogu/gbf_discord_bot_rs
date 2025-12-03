@@ -48,7 +48,7 @@ pub async fn execute_push(ctx: &PoiseContext<'_>) -> Result<()> {
 
     let result = async {
         // Service層のインスタンス化（静的ディスパッチ）
-        let mut push_service = PushServiceImpl::new();
+        let push_service = PushServiceImpl::new();
 
         // スプレッドシート接続
         PushService::open_spreadsheet(&push_service, guild_id).await?;
