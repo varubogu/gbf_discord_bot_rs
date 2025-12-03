@@ -10,6 +10,7 @@ mod types;
 mod utils;
 
 use crate::events::{command::commands, handler::event_handler};
+use crate::events::handlers::schedule_handler::ScheduleNotificationTimer;
 use crate::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use crate::utils::error_formatter::ErrorFormatter;
 use crate::utils::startup_validator::StartupValidator;
@@ -212,7 +213,6 @@ async fn main() -> Result<()> {
     let app_state_for_scheduler = std::sync::Arc::new(app_state.clone());
     let http = client.http.clone();
     tokio::spawn(async move {
-        use crate::events::handlers::schedule_handler::ScheduleNotificationTimer;
         let timer = std::sync::Arc::new(ScheduleNotificationTimer::new(
             app_state_for_scheduler,
             http,
