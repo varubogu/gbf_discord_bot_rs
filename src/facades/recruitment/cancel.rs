@@ -167,8 +167,8 @@ async fn cancel_recruitment_internal(
         .await?;
 
         // 7. キャンセルした募集の関連通知を削除
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new(conn.clone());
-        let notification_repo = NotificationRepository::new(conn.clone());
+        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
+        let notification_repo = NotificationRepository::new();
 
         // 募集に紐づく通知を検索
         let relations = rel_repo.find_by_recruit_id_with_txn(&txn, recruitment.id).await?;

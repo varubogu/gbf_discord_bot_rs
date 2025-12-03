@@ -76,10 +76,11 @@ impl GuildSpreadsheetRegistrationFacade {
         );
 
         // Repositoryを作成
-        let repository = GuildSpreadsheetConfigRepository::new(self.db.clone());
+        let repository = GuildSpreadsheetConfigRepository::new();
 
         // Serviceを作成
         let config_service = GuildSpreadsheetConfigService::new(
+            self.db.clone(),
             repository.clone(),
             self.google_auth_service.clone(),
             self.url_service.clone(),

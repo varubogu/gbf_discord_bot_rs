@@ -34,12 +34,13 @@ pub async fn new_recruitment(
         // RepositoryContainerとRepositoryの取得
         let repos = RepositoryContainer::new(conn);
         let battle_recruitment_repo = repos.battle_recruitment();
-        let quest_repository = SeaOrmQuestRepository::new(conn.clone());
-        let battle_style_repository = SeaOrmBattleStyleRepository::new(conn.clone());
+        let quest_repository = SeaOrmQuestRepository::new();
+        let battle_style_repository = SeaOrmBattleStyleRepository::new();
 
         // 1. 募集データ作成（QuestRepository, BattleStyleRepositoryを使用）
         let recruitment_data =
             new::create_recruitment_data(
+                conn,
                 &quest_repository,
                 &battle_style_repository,
                 quest_alias,
@@ -59,7 +60,7 @@ pub async fn new_recruitment(
         let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
         // 5. 出発時刻の通知を登録（出発5分前）
-        let notification_repo = NotificationRepository::new(conn.clone());
+        let notification_repo = NotificationRepository::new();
         let notify_time = recruitment_data.expiry_date - Duration::minutes(5);
 
         debug!(
@@ -81,7 +82,7 @@ pub async fn new_recruitment(
         info!("募集の出発通知を登録しました");
 
         // 6. 通知と募集のリレーションを作成
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new(conn.clone());
+        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
         rel_repo
             .create_with_txn(&txn, recruitment.id, notification.id)
             .await?;

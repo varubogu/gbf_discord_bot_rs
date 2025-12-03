@@ -17,7 +17,7 @@ pub async fn on_guild_create(_ctx: &Context, guild: &Guild, data: &PoiseData) ->
     let txn = app_state.system_db().begin().await?;
 
     let result = async {
-        let guild_repo = GuildRepository::new(app_state.system_db().clone());
+        let guild_repo = GuildRepository::new();
 
         // ギルドを自動登録または更新
         guild_repo

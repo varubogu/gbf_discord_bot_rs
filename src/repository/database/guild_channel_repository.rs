@@ -1,17 +1,15 @@
 use crate::models::entities::guild_channels;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guild_channelsテーブルのRepository
-pub struct GuildChannelRepository {
-    db: DatabaseConnection,
-}
+pub struct GuildChannelRepository;
 
 impl GuildChannelRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     /// ギルドチャンネルを登録または更新（トランザクション内）

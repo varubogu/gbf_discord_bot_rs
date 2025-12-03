@@ -14,12 +14,12 @@ pub async fn search_quests_for_autocomplete<'a>(
 ) -> impl Stream<Item = String> + 'a {
     // AppStateからDB接続を取得してRepositoryを作成
     let db_conn = ctx.data().app_state.db().clone();
-    let quest_repository = SeaOrmQuestRepository::new(db_conn);
+    let quest_repository = SeaOrmQuestRepository::new();
 
     // Service層を使って検索
     let search_service = QuestSearchService::new(&quest_repository);
     let results = search_service
-        .search_for_autocomplete(partial)
+        .search_for_autocomplete(&db_conn, partial)
         .await
         .unwrap_or_else(|e| {
             error!(error = %e, "クエスト検索に失敗しました");

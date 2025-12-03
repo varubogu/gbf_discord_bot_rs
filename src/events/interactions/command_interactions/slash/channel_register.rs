@@ -12,11 +12,11 @@ async fn channel_type_autocomplete<'a>(
     ctx: PoiseContext<'_>,
     _partial: &'a str,
 ) -> impl Iterator<Item = AutocompleteChoice> + 'a {
-    let db = ctx.data().app_state.db().clone();
-    let channel_type_repo = ChannelTypeRepository::new(db);
+    let db = ctx.data().app_state.db();
+    let channel_type_repo = ChannelTypeRepository::new();
 
     let channel_types = channel_type_repo
-        .get_all()
+        .get_all(db)
         .await
         .unwrap_or_else(|e| {
             error!(error = %e, "チャンネル種別の取得に失敗しました");
@@ -81,9 +81,9 @@ pub async fn channel_register(
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
     let result = async {
-        let guild_repo = GuildRepository::new(app_state.db().clone());
-        let channel_type_repo = ChannelTypeRepository::new(app_state.db().clone());
-        let guild_channel_repo = GuildChannelRepository::new(app_state.db().clone());
+        let guild_repo = GuildRepository::new();
+        let channel_type_repo = ChannelTypeRepository::new();
+        let guild_channel_repo = GuildChannelRepository::new();
 
         // ギルドが存在しない場合は自動登録
         let guild_name = ctx
@@ -97,7 +97,7 @@ pub async fn channel_register(
 
         // チャンネル種別が存在するか確認
         let channel_type_model = channel_type_repo
-            .get_by_id(channel_type_id)
+            .get_by_id(&txn, channel_type_id)
             .await?
             .ok_or_else(|| crate::types::AppError::NotFound(format!(
                 "チャンネル種別ID {} が見つかりませんでした",
@@ -117,7 +117,7 @@ pub async fn channel_register(
         );
 
         // コミット前に、全チャンネル種別の設定状況を取得（トランザクション内で実行）
-        let all_channel_types = channel_type_repo.get_all().await?;
+        let all_channel_types = channel_type_repo.get_all(&txn).await?;
         let mut status_lines = Vec::new();
 
         for ct in all_channel_types {

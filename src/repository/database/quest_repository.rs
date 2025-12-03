@@ -7,24 +7,25 @@ use crate::repository::quests_repository::QuestSearchResult;
 use crate::repository::QuestRepository;
 use crate::types::Result;
 use async_trait::async_trait;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use std::collections::HashMap;
 
-pub struct SeaOrmQuestRepository {
-    conn: DatabaseConnection,
-}
+pub struct SeaOrmQuestRepository;
 
 impl SeaOrmQuestRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new() -> Self {
+        Self
     }
 }
 
 #[async_trait]
 impl QuestRepository for SeaOrmQuestRepository {
-    async fn get_all(&self) -> Result<Vec<Quest>> {
+    async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<Quest>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let quests = QuestEntity::find()
-            .all(&self.conn)
+            .all(db)
             .await?;
 
         Ok(quests
@@ -41,10 +42,13 @@ impl QuestRepository for SeaOrmQuestRepository {
             .collect())
     }
 
-    async fn get_by_target_id(&self, target_id: i32) -> Result<Option<Quest>> {
+    async fn get_by_target_id<'c, C>(&self, db: &'c C, target_id: i32) -> Result<Option<Quest>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let quest = QuestEntity::find()
             .filter(quests::Column::Id.eq(target_id))
-            .one(&self.conn)
+            .one(db)
             .await?;
 
         Ok(quest.map(|q| Quest {
@@ -58,17 +62,20 @@ impl QuestRepository for SeaOrmQuestRepository {
         }))
     }
 
-    async fn search_by_name_or_alias(&self, partial: &str) -> Result<Vec<QuestSearchResult>> {
+    async fn search_by_name_or_alias<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestSearchResult>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         // クエスト名で部分一致検索
         let quests_by_name = QuestEntity::find()
             .filter(quests::Column::Name.contains(partial))
-            .all(&self.conn)
+            .all(db)
             .await?;
 
         // エイリアスで部分一致検索
         let aliases = QuestAliasEntity::find()
             .filter(quest_aliases::Column::Alias.contains(partial))
-            .all(&self.conn)
+            .all(db)
             .await?;
 
         // エイリアスに対応するクエストIDを取得
@@ -77,7 +84,7 @@ impl QuestRepository for SeaOrmQuestRepository {
         let quests_by_alias = if !quest_ids_from_aliases.is_empty() {
             QuestEntity::find()
                 .filter(quests::Column::Id.is_in(quest_ids_from_aliases.clone()))
-                .all(&self.conn)
+                .all(db)
                 .await?
         } else {
             vec![]
@@ -127,26 +134,26 @@ impl QuestRepository for SeaOrmQuestRepository {
 mod tests {
     use super::*;
 
-    async fn setup_test_db() -> std::result::Result<SeaOrmQuestRepository, String> {
+    async fn setup_test_db() -> std::result::Result<(SeaOrmQuestRepository, sea_orm::DatabaseConnection), String> {
         let conn = match crate::repository::database::db_compat::Database::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
         };
 
-        Ok(SeaOrmQuestRepository::new(conn))
+        Ok((SeaOrmQuestRepository::new(), conn))
     }
 
     #[tokio::test]
     async fn test_get_quests() {
-        let repo = match setup_test_db().await {
-            Ok(repo) => repo,
+        let (repo, conn) = match setup_test_db().await {
+            Ok(result) => result,
             Err(e) => {
                 println!("Skipping database test: {}", e);
                 return;
             }
         };
 
-        let result = repo.get_all().await;
+        let result = repo.get_all(&conn).await;
 
         match result {
             Ok(quests) => {
@@ -167,15 +174,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_search_by_name_or_alias() {
-        let repo = match setup_test_db().await {
-            Ok(repo) => repo,
+        let (repo, conn) = match setup_test_db().await {
+            Ok(result) => result,
             Err(e) => {
                 println!("Skipping database test: {}", e);
                 return;
             }
         };
 
-        let result = repo.search_by_name_or_alias("test").await;
+        let result = repo.search_by_name_or_alias(&conn, "test").await;
         match result {
             Ok(results) => {
                 println!("Found {} matching quests", results.len());
@@ -192,15 +199,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_quest_by_id() {
-        let repo = match setup_test_db().await {
-            Ok(repo) => repo,
+        let (repo, conn) = match setup_test_db().await {
+            Ok(result) => result,
             Err(e) => {
                 println!("Skipping database test: {}", e);
                 return;
             }
         };
 
-        let result = repo.get_by_target_id(999999).await;
+        let result = repo.get_by_target_id(&conn, 999999).await;
         match result {
             Ok(None) => {
                 assert!(true);

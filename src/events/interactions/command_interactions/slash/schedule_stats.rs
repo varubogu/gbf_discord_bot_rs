@@ -45,7 +45,7 @@ pub async fn schedule_stats(
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
-    let notification_repo = NotificationRepository::new(app_state.db().clone());
+    let notification_repo = NotificationRepository::new();
 
     let now = Utc::now();
     let from = now - Duration::days(days);

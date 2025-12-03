@@ -8,13 +8,14 @@ use tracing::{debug, info};
 /// 通知履歴サービス
 /// 送信済み通知の管理を担当
 pub struct NotificationHistoryService {
+    db: DatabaseConnection,
     notification_repo: NotificationRepository,
 }
 
 impl NotificationHistoryService {
     pub fn new(db: DatabaseConnection) -> Self {
-        let notification_repo = NotificationRepository::new(db);
-        Self { notification_repo }
+        let notification_repo = NotificationRepository::new();
+        Self { db, notification_repo }
     }
 
     /// 過去の通知履歴を取得
@@ -36,7 +37,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(from, now)
+            .find_by_datetime_range(&self.db, from, now)
             .await?;
 
         // ギルドでフィルタ
@@ -71,7 +72,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(now, to)
+            .find_by_datetime_range(&self.db, now, to)
             .await?;
 
         // ギルドでフィルタ
@@ -104,7 +105,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(from, to)
+            .find_by_datetime_range(&self.db, from, to)
             .await?;
 
         let guild_notifications: Vec<_> = notifications

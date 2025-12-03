@@ -36,7 +36,7 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
-    let notification_repo = NotificationRepository::new(app_state.db().clone());
+    let notification_repo = NotificationRepository::new();
 
     // このギルドの通知を取得
     match notification_repo

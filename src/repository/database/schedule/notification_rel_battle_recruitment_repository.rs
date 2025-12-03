@@ -1,26 +1,28 @@
 use crate::models::entities::notification_rel_battle_recruitments;
 use crate::types::Result;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 
 /// notification_rel_battle_recruitmentsテーブルのRepository
-pub struct NotificationRelBattleRecruitmentRepository {
-    db: DatabaseConnection,
-}
+pub struct NotificationRelBattleRecruitmentRepository;
 
 impl NotificationRelBattleRecruitmentRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     /// 通知IDからマルチ募集との関連を取得
-    pub async fn find_by_notification_id(
+    pub async fn find_by_notification_id<'c, C>(
         &self,
+        db: &'c C,
         notification_id: i32,
-    ) -> Result<Option<notification_rel_battle_recruitments::Model>> {
+    ) -> Result<Option<notification_rel_battle_recruitments::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let result = notification_rel_battle_recruitments::Entity::find()
             .filter(notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id))
-            .one(&self.db)
+            .one(db)
             .await?;
 
         Ok(result)

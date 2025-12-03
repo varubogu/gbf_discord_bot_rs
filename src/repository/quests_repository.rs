@@ -15,12 +15,29 @@ pub struct QuestSearchResult {
 #[async_trait]
 pub trait QuestRepository: Send + Sync {
     /// 全クエストを取得
-    async fn get_all(&self) -> Result<Vec<Quest>>;
+    ///
+    /// # Arguments
+    /// * `db` - DatabaseConnection または DatabaseTransaction
+    async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<Quest>>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// ターゲットIDでクエストを検索
-    async fn get_by_target_id(&self, target_id: i32) -> Result<Option<Quest>>;
+    ///
+    /// # Arguments
+    /// * `db` - DatabaseConnection または DatabaseTransaction
+    /// * `target_id` - クエストID
+    async fn get_by_target_id<'c, C>(&self, db: &'c C, target_id: i32) -> Result<Option<Quest>>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// クエスト名またはエイリアスで部分一致検索
     /// クエスト名とエイリアスの両方から検索し、一致したものを返す
-    async fn search_by_name_or_alias(&self, partial: &str) -> Result<Vec<QuestSearchResult>>;
+    ///
+    /// # Arguments
+    /// * `db` - DatabaseConnection または DatabaseTransaction
+    /// * `partial` - 検索文字列
+    async fn search_by_name_or_alias<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestSearchResult>>
+    where
+        C: sea_orm::ConnectionTrait;
 }

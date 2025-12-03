@@ -1,16 +1,14 @@
 use crate::models::entities::guilds;
 use crate::types::Result;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guildsテーブルのRepository
-pub struct GuildRepository {
-    db: DatabaseConnection,
-}
+pub struct GuildRepository;
 
 impl GuildRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     /// ギルドを登録または更新（トランザクション内）

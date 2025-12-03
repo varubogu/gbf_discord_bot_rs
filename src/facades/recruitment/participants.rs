@@ -28,7 +28,7 @@ pub async fn update_participants(
         // Service層のインスタンスを作成
         let battle_recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new(db.clone()));
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
-        let quest_repo = SeaOrmQuestRepository::new(db.clone());
+        let quest_repo = SeaOrmQuestRepository::new();
 
         // 募集情報の存在確認（キャンセル済み・期限切れチェック含む）
         let recruitment = match participants_service
@@ -67,7 +67,7 @@ pub async fn update_participants(
         info!("現在の参加者数: {}", unique_participant_count);
 
         // questの規定人数を取得
-        if let Ok(Some(quest)) = quest_repo.get_by_target_id(recruitment.quest_id).await {
+        if let Ok(Some(quest)) = quest_repo.get_by_target_id(db, recruitment.quest_id).await {
             let recruit_count = quest.recruit_count as usize;
             info!("規定人数: {}", recruit_count);
 

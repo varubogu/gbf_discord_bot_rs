@@ -25,7 +25,8 @@ pub struct RecruitmentData {
 }
 
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
-pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepository>(
+pub async fn create_recruitment_data<'c, C, Q, B>(
+    db: &'c C,
     quest_repository: &Q,
     battle_style_repository: &B,
     quest_name_or_alias: &str,
@@ -33,10 +34,15 @@ pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepositor
     channel_id: u64,
     guild_id: u64,
     event_date: Option<DateTime<Utc>>,
-) -> types::Result<RecruitmentData> {
+) -> types::Result<RecruitmentData>
+where
+    C: sea_orm::ConnectionTrait,
+    Q: QuestRepository,
+    B: BattleStyleRepository,
+{
     // クエスト名またはエイリアスで検索
     let search_results = quest_repository
-        .search_by_name_or_alias(quest_name_or_alias)
+        .search_by_name_or_alias(db, quest_name_or_alias)
         .await?;
 
     // 最初にマッチしたクエストを使用
@@ -49,7 +55,7 @@ pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepositor
 
     // クエストの詳細情報を取得
     let quest = quest_repository
-        .get_by_target_id(quest_search_result.quest_id)
+        .get_by_target_id(db, quest_search_result.quest_id)
         .await?
         .ok_or_else(|| types::AppError::NotFound(format!(
             "クエストID {} の詳細情報が見つかりませんでした",
@@ -64,7 +70,7 @@ pub async fn create_recruitment_data<Q: QuestRepository, B: BattleStyleRepositor
 
     // battle_stylesテーブルから攻略方法の詳細を取得
     let battle_style = battle_style_repository
-        .get_by_id(actual_battle_style_id)
+        .get_by_id(db, actual_battle_style_id)
         .await?
         .ok_or_else(|| types::AppError::NotFound(format!(
             "攻略方法ID {} が見つかりませんでした",

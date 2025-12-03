@@ -1,79 +1,67 @@
-use crate::models::entities::{environment, environment::Entity as EnvironmentEntity};
-use crate::models::environment::Environment;
+use crate::models::entities::environments::{self, Entity as EnvironmentEntity};
+use crate::models::environments::Environments;
 use crate::repository::EnvironmentRepository;
-use crate::types::PoiseError;
 use async_trait::async_trait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set};
 
-pub struct SeaOrmEnvironmentRepository {
-    conn: DatabaseConnection,
-}
+pub struct SeaOrmEnvironmentRepository;
 
 impl SeaOrmEnvironmentRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new() -> Self {
+        Self
     }
 }
 
 #[async_trait]
 impl EnvironmentRepository for SeaOrmEnvironmentRepository {
-    async fn get_all(&self) -> Result<Vec<Environment>, PoiseError> {
-        let environments = EnvironmentEntity::find()
-            .all(&self.conn)
-            .await
-            .map_err(|e| PoiseError::from(format!("Failed to get environments: {}", e)))?;
+    async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<Environments>, DbErr>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let models = EnvironmentEntity::find()
+            .all(db)
+            .await?;
 
-        Ok(environments
+        Ok(models
             .into_iter()
-            .map(|env| Environment {
-                id: env.id,
-                key: env.key,
-                value: env.value,
-                created_at: env.created_at,
-                updated_at: env.updated_at,
-            })
+            .map(|env| env.into())
             .collect())
     }
 
-    async fn get_by_key(&self, key: &str) -> Result<Option<Environment>, PoiseError> {
-        let environment = EnvironmentEntity::find()
-            .filter(environment::Column::Key.eq(key))
-            .one(&self.conn)
-            .await
-            .map_err(|e| PoiseError::from(format!("Failed to get environment by key: {}", e)))?;
+    async fn get_by_key<'c, C>(&self, db: &'c C, key: &str) -> Result<Option<Environments>, DbErr>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let model = EnvironmentEntity::find()
+            .filter(environments::Column::Key.eq(key))
+            .one(db)
+            .await?;
 
-        Ok(environment.map(|env| Environment {
-            id: env.id,
-            key: env.key,
-            value: env.value,
-            created_at: env.created_at,
-            updated_at: env.updated_at,
-        }))
+        Ok(model.map(|env| env.into()))
     }
 
-    async fn set(&self, key: &str, value: &str) -> Result<Environment, PoiseError> {
+    async fn set<'c, C>(&self, db: &'c C, key: &str, value: &str) -> Result<Environments, DbErr>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         // First try to find existing environment variable
         let existing = EnvironmentEntity::find()
-            .filter(environment::Column::Key.eq(key))
-            .one(&self.conn)
-            .await
-            .map_err(|e| {
-                PoiseError::from(format!("Failed to check the existing environment: {}", e))
-            })?;
+            .filter(environments::Column::Key.eq(key))
+            .one(db)
+            .await?;
 
         let result = if let Some(existing_env) = existing {
             // Update existing environment variable
-            let mut active_model: environment::ActiveModel = existing_env.into();
+            let mut active_model: environments::ActiveModel = existing_env.into();
             active_model.value = Set(value.to_string());
             active_model.updated_at = Set(chrono::Utc::now());
 
             active_model
-                .update(&self.conn)
-                .await
-                .map_err(|e| PoiseError::from(format!("Failed to update environment: {}", e)))?
+                .update(db)
+                .await?
         } else {
             // Create new environment variable
-            let new_env = environment::ActiveModel {
+            let new_env = environments::ActiveModel {
                 key: Set(key.to_string()),
                 value: Set(value.to_string()),
                 created_at: Set(chrono::Utc::now()),
@@ -82,18 +70,11 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
             };
 
             new_env
-                .insert(&self.conn)
-                .await
-                .map_err(|e| PoiseError::from(format!("Failed to create environment: {}", e)))?
+                .insert(db)
+                .await?
         };
 
-        Ok(Environment {
-            id: result.id,
-            key: result.key,
-            value: result.value,
-            created_at: result.created_at,
-            updated_at: result.updated_at,
-        })
+        Ok(result.into())
     }
 }
 
@@ -102,7 +83,7 @@ mod tests {
     use super::*;
     use crate::services::database::connection::is_database_available;
 
-    async fn setup_test_repo() -> Result<SeaOrmEnvironmentRepository, String> {
+    async fn setup_test_repo() -> Result<(SeaOrmEnvironmentRepository, sea_orm::DatabaseConnection), String> {
         let (available, missing) = is_database_available();
         if !available {
             return Err(format!(
@@ -116,13 +97,13 @@ mod tests {
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
         };
 
-        Ok(SeaOrmEnvironmentRepository::new(conn))
+        Ok((SeaOrmEnvironmentRepository::new(), conn))
     }
 
     #[tokio::test]
     async fn test_environment_operations() {
-        let repo = match setup_test_repo().await {
-            Ok(repo) => repo,
+        let (repo, conn) = match setup_test_repo().await {
+            Ok(result) => result,
             Err(e) => {
                 println!("Skipping database test: {}", e);
                 return;
@@ -130,7 +111,7 @@ mod tests {
         };
 
         // Test getting all environments
-        let get_all_result = repo.get_all().await;
+        let get_all_result = repo.get_all(&conn).await;
         match get_all_result {
             Ok(environments) => {
                 println!("Retrieved {} environments", environments.len());
@@ -145,18 +126,18 @@ mod tests {
 
         // Test getting a specific environment
         let test_key = "TEST_KEY";
-        let get_result = repo.get_by_key(test_key).await;
+        let get_result = repo.get_by_key(&conn, test_key).await;
         match get_result {
             Ok(None) => {
                 // Try to set the environment variable
-                let set_result = repo.set(test_key, "test_value").await;
+                let set_result = repo.set(&conn, test_key, "test_value").await;
                 match set_result {
                     Ok(env) => {
                         assert_eq!(env.key, test_key);
                         assert_eq!(env.value, "test_value");
 
                         // Try to retrieve it again
-                        let get_again_result = repo.get_by_key(test_key).await;
+                        let get_again_result = repo.get_by_key(&conn, test_key).await;
                         match get_again_result {
                             Ok(Some(retrieved_env)) => {
                                 assert_eq!(retrieved_env.key, test_key);

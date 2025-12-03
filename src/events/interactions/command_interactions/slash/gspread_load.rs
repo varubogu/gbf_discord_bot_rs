@@ -39,9 +39,9 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
 
     // データベースからギルドの読み込み用スプレッドシートIDを取得
     let app_state = &ctx.data().app_state;
-    let repository = GuildSpreadsheetConfigRepository::new(app_state.db().clone());
+    let repository = GuildSpreadsheetConfigRepository::new();
 
-    let spreadsheet_id = match repository.find_import_spreadsheet_id(guild_id).await {
+    let spreadsheet_id = match repository.find_import_spreadsheet_id(app_state.db(), guild_id).await {
         Ok(Some(id)) => id,
         Ok(None) => {
             ctx.say(

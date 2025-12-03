@@ -1,17 +1,15 @@
 use crate::models::entities::notification_rel_event_schedules;
 use crate::types::Result;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use uuid::Uuid;
 
 /// notification_rel_event_schedulesテーブルのRepository
-pub struct NotificationRelEventScheduleRepository {
-    db: DatabaseConnection,
-}
+pub struct NotificationRelEventScheduleRepository;
 
 impl NotificationRelEventScheduleRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     // /// 通知IDからイベントスケジュールとの関連を取得

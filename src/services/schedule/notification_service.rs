@@ -17,8 +17,8 @@ pub struct NotificationService {
 
 impl NotificationService {
     pub fn new(db: DatabaseConnection, http: Arc<Http>) -> Self {
-        let notification_repo = NotificationRepository::new(db.clone());
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new(db.clone());
+        let notification_repo = NotificationRepository::new();
+        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
         Self {
             db,
             notification_repo,
@@ -49,7 +49,7 @@ impl NotificationService {
         // 実行対象の通知を取得
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(from, now)
+            .find_by_datetime_range(&self.db, from, now)
             .await?;
 
         if notifications.is_empty() {
@@ -120,7 +120,7 @@ impl NotificationService {
         );
 
         // リレーションを確認してマルチ募集通知かどうかを判定
-        if let Some(rel) = self.rel_repo.find_by_notification_id(notification.id).await? {
+        if let Some(rel) = self.rel_repo.find_by_notification_id(&self.db, notification.id).await? {
             // マルチ募集通知の場合
             info!(
                 notification_id = notification.id,

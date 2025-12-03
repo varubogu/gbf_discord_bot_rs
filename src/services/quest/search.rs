@@ -4,21 +4,24 @@ use crate::types::Result;
 
 /// クエスト検索サービス
 /// クエスト名やエイリアスから部分一致検索を行う
-pub struct QuestSearchService<'a> {
-    quest_repository: &'a dyn QuestRepository,
+pub struct QuestSearchService<'a, R: QuestRepository> {
+    quest_repository: &'a R,
 }
 
-impl<'a> QuestSearchService<'a> {
-    pub fn new(quest_repository: &'a dyn QuestRepository) -> Self {
+impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
+    pub fn new(quest_repository: &'a R) -> Self {
         Self { quest_repository }
     }
 
     /// クエスト名またはエイリアスで部分一致検索を行い、結果を返す
     /// Discord autocompleteの制限に合わせて最大25件まで返す
-    pub async fn search_for_autocomplete(&self, partial: &str) -> Result<Vec<String>> {
+    pub async fn search_for_autocomplete<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<String>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let results = if partial.trim().is_empty() {
             // 空文字列の場合は全クエストを取得
-            let all_quests = self.quest_repository.get_all().await?;
+            let all_quests = self.quest_repository.get_all(db).await?;
             all_quests
                 .into_iter()
                 .map(|q| QuestSearchResult {
@@ -29,7 +32,7 @@ impl<'a> QuestSearchService<'a> {
                 .collect()
         } else {
             // 部分一致検索
-            self.quest_repository.search_by_name_or_alias(partial).await?
+            self.quest_repository.search_by_name_or_alias(db, partial).await?
         };
 
         // Discord autocompleteは最大25件まで
@@ -67,9 +70,15 @@ mod tests {
 
         #[async_trait]
         impl QuestRepository for QuestRepo {
-            async fn get_all(&self) -> Result<Vec<crate::models::quests::Quest>>;
-            async fn get_by_target_id(&self, target_id: i32) -> Result<Option<crate::models::quests::Quest>>;
-            async fn search_by_name_or_alias(&self, partial: &str) -> Result<Vec<QuestSearchResult>>;
+            async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<crate::models::quests::Quest>>
+            where
+                C: sea_orm::ConnectionTrait;
+            async fn get_by_target_id<'c, C>(&self, db: &'c C, target_id: i32) -> Result<Option<crate::models::quests::Quest>>
+            where
+                C: sea_orm::ConnectionTrait;
+            async fn search_by_name_or_alias<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestSearchResult>>
+            where
+                C: sea_orm::ConnectionTrait;
         }
     }
 

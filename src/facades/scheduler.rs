@@ -31,19 +31,19 @@ impl SchedulerFacade {
         let txn = self.app_state.system_db().begin().await?;
 
         let result = async {
-            let schedule_repo = ScheduleRepository::new(self.app_state.system_db().clone());
-            let notification_repo = NotificationRepository::new(self.app_state.system_db().clone());
+            let schedule_repo = ScheduleRepository::new();
+            let notification_repo = NotificationRepository::new();
             let calculator = ScheduleCalculator::new();
 
             // 既存のスケジュールとリレーションをクリア
             debug!("既存のスケジュールを削除します");
-            let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.system_db().clone());
+            let rel_repo = NotificationRelEventScheduleRepository::new();
             rel_repo.delete_all_with_txn(&txn).await?;
             notification_repo.delete_all_with_txn(&txn).await?;
 
             // イベントスケジュールと詳細を取得
-            let event_schedules = schedule_repo.find_all_event_schedules().await?;
-            let event_schedule_details = schedule_repo.find_all_event_schedule_details().await?;
+            let event_schedules = schedule_repo.find_all_event_schedules(self.app_state.system_db()).await?;
+            let event_schedule_details = schedule_repo.find_all_event_schedule_details(self.app_state.system_db()).await?;
 
             debug!(
                 event_schedules = event_schedules.len(),
@@ -115,9 +115,9 @@ impl SchedulerFacade {
         let now = Utc::now();
 
         // 前回のスケジュール実行時刻を取得
-        let last_process_time_repo = LastProcessTimeRepository::new(self.app_state.system_db().clone());
+        let last_process_time_repo = LastProcessTimeRepository::new();
         let last_process_time = last_process_time_repo
-            .find_schedule_last_process_time()
+            .find_schedule_last_process_time(self.app_state.system_db())
             .await?;
 
         let last_execute_time = last_process_time.and_then(|lpt| lpt.execute_time);
@@ -192,8 +192,8 @@ impl SchedulerFacade {
         txn: &DatabaseTransaction,
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
-        let notification_repo = NotificationRepository::new(self.app_state.system_db().clone());
-        let rel_repo = NotificationRelEventScheduleRepository::new(self.app_state.system_db().clone());
+        let notification_repo = NotificationRepository::new();
+        let rel_repo = NotificationRelEventScheduleRepository::new();
         let now = Utc::now();
 
         debug!(count = schedules.len(), "通知とリレーションを作成します");

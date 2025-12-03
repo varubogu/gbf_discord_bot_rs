@@ -37,10 +37,11 @@ pub async fn change_recruitment_information(
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new(&app_state.db());
+        let db = app_state.db();
+        let repos = RepositoryContainer::new(db);
         let battle_recruitment_repo = repos.battle_recruitment();
-        let quest_repository = SeaOrmQuestRepository::new(app_state.db().clone());
-        let battle_style_repository = SeaOrmBattleStyleRepository::new(app_state.db().clone());
+        let quest_repository = SeaOrmQuestRepository::new();
+        let battle_style_repository = SeaOrmBattleStyleRepository::new();
         let channel_id = message.channel_id.get();
         let message_id = message.id.get();
 
@@ -75,7 +76,7 @@ pub async fn change_recruitment_information(
         let new_quest_id = if let Some(quest_name) = quest {
             // クエスト名が指定されている場合、新しいクエストを検索
             let search_results = quest_repository
-                .search_by_name_or_alias(quest_name)
+                .search_by_name_or_alias(db, quest_name)
                 .await?;
 
             let quest_search_result = search_results
@@ -86,7 +87,7 @@ pub async fn change_recruitment_information(
                 )))?;
 
             let quest = quest_repository
-                .get_by_target_id(quest_search_result.quest_id)
+                .get_by_target_id(db, quest_search_result.quest_id)
                 .await?
                 .ok_or_else(|| types::AppError::NotFound(format!(
                     "クエストID {} の詳細情報が見つかりませんでした",
@@ -105,7 +106,7 @@ pub async fn change_recruitment_information(
         } else if quest.is_some() {
             // クエストが変更されている場合、新しいクエストのデフォルト攻略方法を使用
             let quest = quest_repository
-                .get_by_target_id(new_quest_id)
+                .get_by_target_id(db, new_quest_id)
                 .await?
                 .ok_or_else(|| types::AppError::NotFound(format!(
                     "クエストID {} が見つかりませんでした",
@@ -121,10 +122,11 @@ pub async fn change_recruitment_information(
 
         // 3. メッセージ表示用の募集データを作成
         let recruitment_data = new::create_recruitment_data(
+            db,
             &quest_repository,
             &battle_style_repository,
             &quest_repository
-                .get_by_target_id(new_quest_id)
+                .get_by_target_id(db, new_quest_id)
                 .await?
                 .ok_or_else(|| types::AppError::NotFound(format!(
                     "クエストID {} が見つかりませんでした",
@@ -198,8 +200,8 @@ pub async fn change_recruitment_information(
 
         // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
         if event_date.is_some() {
-            let rel_repo = NotificationRelBattleRecruitmentRepository::new(app_state.db().clone());
-            let notification_repo = NotificationRepository::new(app_state.db().clone());
+            let rel_repo = NotificationRelBattleRecruitmentRepository::new();
+            let notification_repo = NotificationRepository::new();
 
             // 既存の通知リレーションを取得
             let old_relations = rel_repo.find_by_recruit_id_with_txn(&txn, existing_recruitment.id).await?;

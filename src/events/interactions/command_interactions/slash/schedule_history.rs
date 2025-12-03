@@ -44,7 +44,7 @@ pub async fn schedule_history(
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
-    let notification_repo = NotificationRepository::new(app_state.db().clone());
+    let notification_repo = NotificationRepository::new();
 
     // 過去の通知を取得
     let now = chrono::Utc::now();

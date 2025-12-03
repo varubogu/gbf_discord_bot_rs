@@ -6,19 +6,17 @@ use crate::models::last_process_times::LastProcessTime;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait,
     QueryFilter, Set,
 };
 use tracing::{debug, error};
 
 /// last_process_timesリポジトリ
-pub struct LastProcessTimeRepository {
-    db: DatabaseConnection,
-}
+pub struct LastProcessTimeRepository;
 
 impl LastProcessTimeRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     // /// すべてのlast_process_timesを取得
@@ -28,13 +26,17 @@ impl LastProcessTimeRepository {
     // }
 
     /// process_typeでlast_process_timeを取得
-    pub async fn find_by_type(
+    pub async fn find_by_type<'c, C>(
         &self,
+        db: &'c C,
         process_type: LastProcessType,
-    ) -> Result<Option<LastProcessTime>> {
+    ) -> Result<Option<LastProcessTime>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let last_process_time = LastProcessTimeEntity::find()
             .filter(last_process_times::Column::ProcessType.eq(process_type.as_i32()))
-            .one(&self.db)
+            .one(db)
             .await?;
 
         Ok(last_process_time.map(|lpt| lpt.into()))
@@ -50,8 +52,11 @@ impl LastProcessTimeRepository {
     // }
 
     /// スケジュール処理のlast_process_timeを取得
-    pub async fn find_schedule_last_process_time(&self) -> Result<Option<LastProcessTime>> {
-        self.find_by_type(LastProcessType::Schedule).await
+    pub async fn find_schedule_last_process_time<'c, C>(&self, db: &'c C) -> Result<Option<LastProcessTime>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        self.find_by_type(db, LastProcessType::Schedule).await
     }
 
     // /// スプレッドシート読み込みのlast_process_timeを取得

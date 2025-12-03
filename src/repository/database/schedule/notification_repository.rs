@@ -2,27 +2,29 @@ use crate::models::entities::notifications;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait,
     QueryFilter, Set,
 };
 use tracing::{debug, error};
 
 /// 通知リポジトリ
-pub struct NotificationRepository {
-    db: DatabaseConnection,
-}
+pub struct NotificationRepository;
 
 impl NotificationRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     /// 指定した日時範囲内の未送信通知を取得
-    pub async fn find_by_datetime_range(
+    pub async fn find_by_datetime_range<'c, C>(
         &self,
+        db: &'c C,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<notifications::Model>> {
+    ) -> Result<Vec<notifications::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         debug!(
             from = %from,
             to = %to,
@@ -33,7 +35,7 @@ impl NotificationRepository {
             .filter(notifications::Column::ScheduleDatetime.gte(from))
             .filter(notifications::Column::ScheduleDatetime.lt(to))
             .filter(notifications::Column::IsSent.eq(false))
-            .all(&self.db)
+            .all(db)
             .await
             .map_err(|e| {
                 error!(error = %e, "通知の取得に失敗しました");

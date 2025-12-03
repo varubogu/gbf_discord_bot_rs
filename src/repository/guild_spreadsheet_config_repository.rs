@@ -6,7 +6,7 @@ use crate::models::entities::{guild_spreadsheet_exports, guild_spreadsheet_impor
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
-    ActiveValue, ColumnTrait, DatabaseConnection, DatabaseTransaction,
+    ActiveValue, ColumnTrait, DatabaseTransaction,
     EntityTrait, QueryFilter,
 };
 
@@ -14,16 +14,22 @@ use sea_orm::{
 #[async_trait]
 pub trait GuildSpreadsheetConfigRepositoryTrait: Send + Sync {
     /// 読み込み用スプレッドシートIDを取得
-    async fn find_import_spreadsheet_id(
+    async fn find_import_spreadsheet_id<'c, C>(
         &self,
+        db: &'c C,
         guild_id: i64,
-    ) -> Result<Option<String>, RepositoryError>;
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// 書き込み用スプレッドシートIDを取得
-    async fn find_export_spreadsheet_id(
+    async fn find_export_spreadsheet_id<'c, C>(
         &self,
+        db: &'c C,
         guild_id: i64,
-    ) -> Result<Option<String>, RepositoryError>;
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait;
 
     /// 読み込み用スプレッドシートIDを登録/更新（トランザクション版）
     async fn upsert_import_spreadsheet_id(
@@ -44,37 +50,43 @@ pub trait GuildSpreadsheetConfigRepositoryTrait: Send + Sync {
 
 /// ギルドスプレッドシート設定リポジトリの実装
 #[derive(Clone)]
-pub struct GuildSpreadsheetConfigRepository {
-    db: DatabaseConnection,
-}
+pub struct GuildSpreadsheetConfigRepository;
 
 impl GuildSpreadsheetConfigRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 }
 
 #[async_trait]
 impl GuildSpreadsheetConfigRepositoryTrait for GuildSpreadsheetConfigRepository {
-    async fn find_import_spreadsheet_id(
+    async fn find_import_spreadsheet_id<'c, C>(
         &self,
+        db: &'c C,
         guild_id: i64,
-    ) -> Result<Option<String>, RepositoryError> {
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let result = guild_spreadsheet_imports::Entity::find()
             .filter(guild_spreadsheet_imports::Column::GuildId.eq(guild_id))
-            .one(&self.db)
+            .one(db)
             .await?;
 
         Ok(result.map(|model| model.spreadsheet_id))
     }
 
-    async fn find_export_spreadsheet_id(
+    async fn find_export_spreadsheet_id<'c, C>(
         &self,
+        db: &'c C,
         guild_id: i64,
-    ) -> Result<Option<String>, RepositoryError> {
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let result = guild_spreadsheet_exports::Entity::find()
             .filter(guild_spreadsheet_exports::Column::GuildId.eq(guild_id))
-            .one(&self.db)
+            .one(db)
             .await?;
 
         Ok(result.map(|model| model.spreadsheet_id))

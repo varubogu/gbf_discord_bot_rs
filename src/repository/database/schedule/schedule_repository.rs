@@ -1,16 +1,14 @@
 use crate::models::entities::{event_schedule_details, event_schedules};
 use crate::types::Result;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
 /// スケジュールリポジトリ
-pub struct ScheduleRepository {
-    db: DatabaseConnection,
-}
+pub struct ScheduleRepository;
 
 impl ScheduleRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new() -> Self {
+        Self
     }
 
     // /// 現在有効なイベントスケジュールを取得
@@ -55,13 +53,17 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュール詳細を取得
-    pub async fn find_all_event_schedule_details(
+    pub async fn find_all_event_schedule_details<'c, C>(
         &self,
-    ) -> Result<Vec<event_schedule_details::Model>> {
+        db: &'c C,
+    ) -> Result<Vec<event_schedule_details::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         debug!("すべてのイベントスケジュール詳細を取得します");
 
         let details = event_schedule_details::Entity::find()
-            .all(&self.db)
+            .all(db)
             .await
             .map_err(|e| {
                 error!(error = %e, "イベントスケジュール詳細の取得に失敗しました");
@@ -93,11 +95,14 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュールを取得
-    pub async fn find_all_event_schedules(&self) -> Result<Vec<event_schedules::Model>> {
+    pub async fn find_all_event_schedules<'c, C>(&self, db: &'c C) -> Result<Vec<event_schedules::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         debug!("すべてのイベントスケジュールを取得します");
 
         let schedules = event_schedules::Entity::find()
-            .all(&self.db)
+            .all(db)
             .await
             .map_err(|e| {
                 error!(error = %e, "イベントスケジュールの取得に失敗しました");

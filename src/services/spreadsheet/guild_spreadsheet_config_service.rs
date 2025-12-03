@@ -48,6 +48,7 @@ where
     G: GoogleAuthServiceTrait,
     U: SpreadsheetUrlServiceTrait,
 {
+    db: sea_orm::DatabaseConnection,
     repository: R,
     google_auth_service: G,
     #[allow(unused)]
@@ -60,8 +61,9 @@ where
     G: GoogleAuthServiceTrait,
     U: SpreadsheetUrlServiceTrait,
 {
-    pub fn new(repository: R, google_auth_service: G, url_service: U) -> Self {
+    pub fn new(db: sea_orm::DatabaseConnection, repository: R, google_auth_service: G, url_service: U) -> Self {
         Self {
+            db,
             repository,
             google_auth_service,
             url_service,
@@ -154,7 +156,7 @@ where
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
         self.repository
-            .find_import_spreadsheet_id(guild_id)
+            .find_import_spreadsheet_id(&self.db, guild_id)
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_imports".to_string(),
@@ -167,7 +169,7 @@ where
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
         self.repository
-            .find_export_spreadsheet_id(guild_id)
+            .find_export_spreadsheet_id(&self.db, guild_id)
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_exports".to_string(),
