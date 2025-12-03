@@ -5,7 +5,7 @@ use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 /// Botがギルドに参加した、またはBotが起動してギルド情報を受信した時に呼ばれる
-pub async fn on_guild_create(ctx: &Context, guild: &Guild, data: &PoiseData) -> Result<()> {
+pub async fn on_guild_create(_ctx: &Context, guild: &Guild, data: &PoiseData) -> Result<()> {
     info!(
         guild_id = %guild.id,
         guild_name = %guild.name,

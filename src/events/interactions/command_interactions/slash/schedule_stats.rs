@@ -1,6 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::NotificationRepository;
-use crate::services::schedule::NotificationHistoryService;
 use crate::types::{PoiseContext, Result};
 use chrono::{Duration, Utc};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
