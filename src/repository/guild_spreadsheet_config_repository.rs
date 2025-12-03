@@ -6,7 +6,7 @@ use crate::models::entities::{guild_spreadsheet_exports, guild_spreadsheet_impor
 use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, DatabaseConnection, DatabaseTransaction,
+    ActiveValue, ColumnTrait, DatabaseConnection, DatabaseTransaction,
     EntityTrait, QueryFilter,
 };
 

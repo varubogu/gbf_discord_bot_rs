@@ -21,11 +21,11 @@ impl LastProcessTimeRepository {
         Self { db }
     }
 
-    /// すべてのlast_process_timesを取得
-    pub async fn find_all(&self) -> Result<Vec<LastProcessTime>> {
-        let models = LastProcessTimeEntity::find().all(&self.db).await?;
-        Ok(models.into_iter().map(|model| model.into()).collect())
-    }
+    // /// すべてのlast_process_timesを取得
+    // pub async fn find_all(&self) -> Result<Vec<LastProcessTime>> {
+    //     let models = LastProcessTimeEntity::find().all(&self.db).await?;
+    //     Ok(models.into_iter().map(|model| model.into()).collect())
+    // }
 
     /// process_typeでlast_process_timeを取得
     pub async fn find_by_type(
@@ -40,33 +40,33 @@ impl LastProcessTimeRepository {
         Ok(last_process_time.map(|lpt| lpt.into()))
     }
 
-    /// IDでlast_process_timeを取得
-    pub async fn find_by_id(&self, process_type: i32) -> Result<Option<LastProcessTime>> {
-        let last_process_time = LastProcessTimeEntity::find_by_id(process_type)
-            .one(&self.db)
-            .await?;
+    // /// IDでlast_process_timeを取得
+    // pub async fn find_by_id(&self, process_type: i32) -> Result<Option<LastProcessTime>> {
+    //     let last_process_time = LastProcessTimeEntity::find_by_id(process_type)
+    //         .one(&self.db)
+    //         .await?;
 
-        Ok(last_process_time.map(|lpt| lpt.into()))
-    }
+    //     Ok(last_process_time.map(|lpt| lpt.into()))
+    // }
 
     /// スケジュール処理のlast_process_timeを取得
     pub async fn find_schedule_last_process_time(&self) -> Result<Option<LastProcessTime>> {
         self.find_by_type(LastProcessType::Schedule).await
     }
 
-    /// スプレッドシート読み込みのlast_process_timeを取得
-    pub async fn find_spreadsheet_load_last_process_time(
-        &self,
-    ) -> Result<Option<LastProcessTime>> {
-        self.find_by_type(LastProcessType::SpreadsheetLoad).await
-    }
+    // /// スプレッドシート読み込みのlast_process_timeを取得
+    // pub async fn find_spreadsheet_load_last_process_time(
+    //     &self,
+    // ) -> Result<Option<LastProcessTime>> {
+    //     self.find_by_type(LastProcessType::SpreadsheetLoad).await
+    // }
 
-    /// スプレッドシート書き込みのlast_process_timeを取得
-    pub async fn find_spreadsheet_push_last_process_time(
-        &self,
-    ) -> Result<Option<LastProcessTime>> {
-        self.find_by_type(LastProcessType::SpreadsheetPush).await
-    }
+    // /// スプレッドシート書き込みのlast_process_timeを取得
+    // pub async fn find_spreadsheet_push_last_process_time(
+    //     &self,
+    // ) -> Result<Option<LastProcessTime>> {
+    //     self.find_by_type(LastProcessType::SpreadsheetPush).await
+    // }
 
     /// last_process_timeを更新（トランザクション付き）
     /// レコードが存在しない場合は新規作成、存在する場合は更新

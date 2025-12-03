@@ -1,7 +1,7 @@
 use crate::models::entities::guild_channels;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guild_channelsテーブルのRepository
@@ -115,31 +115,31 @@ impl GuildChannelRepository {
         Ok(model)
     }
 
-    /// ギルドIDとチャンネル種別でギルドチャンネルを取得
-    pub async fn get_by_guild_and_type(
-        &self,
-        guild_id: i64,
-        channel_type: i32,
-    ) -> Result<Option<guild_channels::Model>> {
-        debug!(
-            guild_id = guild_id,
-            channel_type = channel_type,
-            "ギルドチャンネルを取得します"
-        );
+    // /// ギルドIDとチャンネル種別でギルドチャンネルを取得
+    // pub async fn get_by_guild_and_type(
+    //     &self,
+    //     guild_id: i64,
+    //     channel_type: i32,
+    // ) -> Result<Option<guild_channels::Model>> {
+    //     debug!(
+    //         guild_id = guild_id,
+    //         channel_type = channel_type,
+    //         "ギルドチャンネルを取得します"
+    //     );
 
-        let model = guild_channels::Entity::find_by_id((guild_id, channel_type))
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    guild_id = guild_id,
-                    channel_type = channel_type,
-                    "ギルドチャンネルの取得に失敗しました"
-                );
-                e
-            })?;
+    //     let model = guild_channels::Entity::find_by_id((guild_id, channel_type))
+    //         .one(&self.db)
+    //         .await
+    //         .map_err(|e| {
+    //             error!(
+    //                 error = %e,
+    //                 guild_id = guild_id,
+    //                 channel_type = channel_type,
+    //                 "ギルドチャンネルの取得に失敗しました"
+    //             );
+    //             e
+    //         })?;
 
-        Ok(model)
-    }
+    //     Ok(model)
+    // }
 }

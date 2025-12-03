@@ -69,24 +69,24 @@ impl GuildRepository {
         Ok(model)
     }
 
-    /// ギルドIDでギルドを取得
-    pub async fn get_by_id(&self, guild_id: i64) -> Result<Option<guilds::Model>> {
-        debug!(guild_id = guild_id, "ギルドを取得します");
+    // /// ギルドIDでギルドを取得
+    // pub async fn get_by_id(&self, guild_id: i64) -> Result<Option<guilds::Model>> {
+    //     debug!(guild_id = guild_id, "ギルドを取得します");
 
-        let model = guilds::Entity::find_by_id(guild_id)
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, guild_id = guild_id, "ギルドの取得に失敗しました");
-                e
-            })?;
+    //     let model = guilds::Entity::find_by_id(guild_id)
+    //         .one(&self.db)
+    //         .await
+    //         .map_err(|e| {
+    //             error!(error = %e, guild_id = guild_id, "ギルドの取得に失敗しました");
+    //             e
+    //         })?;
 
-        Ok(model)
-    }
+    //     Ok(model)
+    // }
 
-    /// ギルドが存在するか確認
-    pub async fn exists(&self, guild_id: i64) -> Result<bool> {
-        let guild = self.get_by_id(guild_id).await?;
-        Ok(guild.is_some())
-    }
+    // /// ギルドが存在するか確認
+    // pub async fn exists(&self, guild_id: i64) -> Result<bool> {
+    //     let guild = self.get_by_id(guild_id).await?;
+    //     Ok(guild.is_some())
+    // }
 }

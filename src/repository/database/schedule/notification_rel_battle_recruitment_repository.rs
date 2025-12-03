@@ -1,6 +1,6 @@
 use crate::models::entities::notification_rel_battle_recruitments;
 use crate::types::Result;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 
 /// notification_rel_battle_recruitmentsテーブルのRepository
@@ -26,18 +26,18 @@ impl NotificationRelBattleRecruitmentRepository {
         Ok(result)
     }
 
-    /// 募集IDから通知との関連を取得
-    pub async fn find_by_recruit_id(
-        &self,
-        recruit_id: i32,
-    ) -> Result<Vec<notification_rel_battle_recruitments::Model>> {
-        let results = notification_rel_battle_recruitments::Entity::find()
-            .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
-            .all(&self.db)
-            .await?;
+    // /// 募集IDから通知との関連を取得
+    // pub async fn find_by_recruit_id(
+    //     &self,
+    //     recruit_id: i32,
+    // ) -> Result<Vec<notification_rel_battle_recruitments::Model>> {
+    //     let results = notification_rel_battle_recruitments::Entity::find()
+    //         .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
+    //         .all(&self.db)
+    //         .await?;
 
-        Ok(results)
-    }
+    //     Ok(results)
+    // }
 
     /// 募集IDから通知との関連を取得（トランザクション内）
     pub async fn find_by_recruit_id_with_txn(
@@ -84,17 +84,17 @@ impl NotificationRelBattleRecruitmentRepository {
         Ok(result.rows_affected)
     }
 
-    /// 募集IDに紐づくリレーションを削除（トランザクション内）
-    pub async fn delete_by_recruit_id_with_txn(
-        &self,
-        txn: &DatabaseTransaction,
-        recruit_id: i32,
-    ) -> Result<u64> {
-        let result = notification_rel_battle_recruitments::Entity::delete_many()
-            .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
-            .exec(txn)
-            .await?;
+    // /// 募集IDに紐づくリレーションを削除（トランザクション内）
+    // pub async fn delete_by_recruit_id_with_txn(
+    //     &self,
+    //     txn: &DatabaseTransaction,
+    //     recruit_id: i32,
+    // ) -> Result<u64> {
+    //     let result = notification_rel_battle_recruitments::Entity::delete_many()
+    //         .filter(notification_rel_battle_recruitments::Column::RecruitId.eq(recruit_id))
+    //         .exec(txn)
+    //         .await?;
 
-        Ok(result.rows_affected)
-    }
+    //     Ok(result.rows_affected)
+    // }
 }

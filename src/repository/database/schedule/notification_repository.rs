@@ -110,61 +110,61 @@ impl NotificationRepository {
         Ok(model)
     }
 
-    /// 通知を一括作成（トランザクション付き）
-    pub async fn bulk_create_with_txn(
-        &self,
-        txn: &DatabaseTransaction,
-        notifications_data: Vec<(DateTime<Utc>, i64, i64, String)>,
-    ) -> Result<()> {
-        debug!(count = notifications_data.len(), "通知を一括作成します");
+    // /// 通知を一括作成（トランザクション付き）
+    // pub async fn bulk_create_with_txn(
+    //     &self,
+    //     txn: &DatabaseTransaction,
+    //     notifications_data: Vec<(DateTime<Utc>, i64, i64, String)>,
+    // ) -> Result<()> {
+    //     debug!(count = notifications_data.len(), "通知を一括作成します");
 
-        let now = Utc::now();
-        let active_models: Vec<notifications::ActiveModel> = notifications_data
-            .into_iter()
-            .map(|(schedule_datetime, guild_id, channel_id, message_text_id)| {
-                notifications::ActiveModel {
-                    id: sea_orm::NotSet,
-                    schedule_datetime: Set(schedule_datetime),
-                    guild_id: Set(guild_id),
-                    channel_id: Set(channel_id),
-                    message_text_id: Set(message_text_id),
-                    is_sent: Set(false),
-                    created_at: Set(now),
-                    updated_at: Set(now),
-                }
-            })
-            .collect();
+    //     let now = Utc::now();
+    //     let active_models: Vec<notifications::ActiveModel> = notifications_data
+    //         .into_iter()
+    //         .map(|(schedule_datetime, guild_id, channel_id, message_text_id)| {
+    //             notifications::ActiveModel {
+    //                 id: sea_orm::NotSet,
+    //                 schedule_datetime: Set(schedule_datetime),
+    //                 guild_id: Set(guild_id),
+    //                 channel_id: Set(channel_id),
+    //                 message_text_id: Set(message_text_id),
+    //                 is_sent: Set(false),
+    //                 created_at: Set(now),
+    //                 updated_at: Set(now),
+    //             }
+    //         })
+    //         .collect();
 
-        if !active_models.is_empty() {
-            notifications::Entity::insert_many(active_models)
-                .exec(txn)
-                .await
-                .map_err(|e| {
-                    error!(error = %e, "通知の一括作成に失敗しました");
-                    e
-                })?;
-        }
+    //     if !active_models.is_empty() {
+    //         notifications::Entity::insert_many(active_models)
+    //             .exec(txn)
+    //             .await
+    //             .map_err(|e| {
+    //                 error!(error = %e, "通知の一括作成に失敗しました");
+    //                 e
+    //             })?;
+    //     }
 
-        debug!("通知の一括作成が完了しました");
-        Ok(())
-    }
+    //     debug!("通知の一括作成が完了しました");
+    //     Ok(())
+    // }
 
-    /// ギルドIDで通知を取得
-    pub async fn find_by_guild_id(&self, guild_id: i64) -> Result<Vec<notifications::Model>> {
-        debug!(guild_id = %guild_id, "ギルドの通知を取得します");
+    // /// ギルドIDで通知を取得
+    // pub async fn find_by_guild_id(&self, guild_id: i64) -> Result<Vec<notifications::Model>> {
+    //     debug!(guild_id = %guild_id, "ギルドの通知を取得します");
 
-        let notifications = notifications::Entity::find()
-            .filter(notifications::Column::GuildId.eq(guild_id))
-            .all(&self.db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "通知の取得に失敗しました");
-                e
-            })?;
+    //     let notifications = notifications::Entity::find()
+    //         .filter(notifications::Column::GuildId.eq(guild_id))
+    //         .all(&self.db)
+    //         .await
+    //         .map_err(|e| {
+    //             error!(error = %e, "通知の取得に失敗しました");
+    //             e
+    //         })?;
 
-        debug!(count = notifications.len(), "通知を取得しました");
-        Ok(notifications)
-    }
+    //     debug!(count = notifications.len(), "通知を取得しました");
+    //     Ok(notifications)
+    // }
 
     /// ギルドの通知を取得（トランザクション内）
     pub async fn find_by_guild_id_with_txn(

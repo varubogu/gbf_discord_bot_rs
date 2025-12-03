@@ -5,7 +5,7 @@ use crate::models::entities::{
 use crate::models::quests::Quest;
 use crate::repository::quests_repository::QuestSearchResult;
 use crate::repository::QuestRepository;
-use crate::types::{AppError, Result};
+use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use std::collections::HashMap;
