@@ -301,14 +301,56 @@ impl<'a> BattleRecruitmentFacade<'a> {
 }
 ```
 
-### 5.2 Repository層での対応
+### 5.2 Repository層でのステートレス設計
+
+**設計日時**: 2025年12月3日（リファクタリング実施）
+
+#### 設計原則
+
+Repository層は以下の原則に従ってステートレス化されています：
+
+1. **ステートレス構造体**: Repository構造体はフィールドを持たず、メソッドのみを提供
+2. **外部依存性注入**: DB接続/トランザクションをメソッドパラメータとして受け取る
+3. **静的ディスパッチ**: ジェネリック型パラメータによる型安全性とパフォーマンス
+4. **柔軟な接続受け入れ**: `DatabaseConnection`と`DatabaseTransaction`の両方に対応
+
+#### ステートレスリポジトリの実装例
 
 ```rust
+/// ステートレスなリポジトリ構造体（フィールドなし）
+pub struct BattleRecruitmentRepositoryImpl;
+
 impl BattleRecruitmentRepositoryImpl {
+    /// ステートレスなコンストラクタ（パラメータなし）
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// ジェネリック型パラメータでDB接続を受け取るメソッド
+    pub async fn get_by_message<'c, C>(
+        &self,
+        db: &'c C,  // DB接続またはトランザクション
+        guild_id: u64,
+        channel_id: u64,
+        message_id: u64,
+    ) -> Result<Option<BattleRecruitment>>
+    where
+        C: sea_orm::ConnectionTrait,  // 静的ディスパッチ
+    {
+        let result = battle_recruitments::Entity::find()
+            .filter(battle_recruitments::Column::GuildId.eq(guild_id as i64))
+            .filter(battle_recruitments::Column::ChannelId.eq(channel_id as i64))
+            .filter(battle_recruitments::Column::MessageId.eq(message_id as i64))
+            .one(db)  // ジェネリック型のDB接続を使用
+            .await?;
+
+        Ok(result.map(|model| model.into()))
+    }
+
     /// トランザクション対応のcreateメソッド
     pub async fn create_with_txn(
         &self,
-        txn: &DatabaseTransaction,
+        txn: &DatabaseTransaction,  // トランザクション専用メソッド
         guild_id: i64,
         channel_id: i64,
         message_id: i64,
@@ -336,20 +378,209 @@ impl BattleRecruitmentRepositoryImpl {
 }
 ```
 
-### 5.3 設計パターンのガイドライン
+#### トレイトを使用したリポジトリの例
+
+```rust
+/// ステートレストレイト定義
+#[async_trait]
+pub trait GuildSpreadsheetConfigRepositoryTrait: Send + Sync {
+    /// ジェネリック型パラメータでDB接続を受け取る
+    async fn find_import_spreadsheet_id<'c, C>(
+        &self,
+        db: &'c C,
+        guild_id: i64,
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait;
+
+    /// トランザクション専用メソッド
+    async fn upsert_import_spreadsheet_id(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        spreadsheet_id: &str,
+    ) -> Result<(), RepositoryError>;
+}
+
+/// ステートレス実装
+pub struct GuildSpreadsheetConfigRepository;
+
+impl GuildSpreadsheetConfigRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[async_trait]
+impl GuildSpreadsheetConfigRepositoryTrait for GuildSpreadsheetConfigRepository {
+    async fn find_import_spreadsheet_id<'c, C>(
+        &self,
+        db: &'c C,
+        guild_id: i64,
+    ) -> Result<Option<String>, RepositoryError>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let result = guild_spreadsheet_imports::Entity::find()
+            .filter(guild_spreadsheet_imports::Column::GuildId.eq(guild_id))
+            .one(db)  // ジェネリック型のDB接続を使用
+            .await?;
+
+        Ok(result.map(|model| model.spreadsheet_id))
+    }
+
+    async fn upsert_import_spreadsheet_id(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        spreadsheet_id: &str,
+    ) -> Result<(), RepositoryError> {
+        let now = chrono::Utc::now();
+        let active_model = guild_spreadsheet_imports::ActiveModel {
+            guild_id: ActiveValue::Set(guild_id),
+            spreadsheet_id: ActiveValue::Set(spreadsheet_id.to_string()),
+            created_at: ActiveValue::Set(now),
+            updated_at: ActiveValue::Set(now),
+        };
+
+        guild_spreadsheet_imports::Entity::insert(active_model)
+            .on_conflict(/* ... */)
+            .exec(txn)  // トランザクションを使用
+            .await?;
+
+        Ok(())
+    }
+}
+```
+
+#### ステートレス設計の利点
+
+1. **テスタビリティの向上**: モック実装の注入が容易
+2. **明示的な依存関係**: メソッドシグネチャから依存関係が明確
+3. **柔軟性**: 任意のDB接続またはトランザクションを使用可能
+4. **パフォーマンス**: 静的ディスパッチによるゼロコストの抽象化
+5. **一貫性**: すべてのRepository層が同じパターンを使用
+
+### 5.3 呼び出し側での使用パターン
+
+#### Facade層での使用例
+
+```rust
+pub async fn register_guild_spreadsheets(
+    &self,
+    guild_id: i64,
+    load_spreadsheet_id: &str,
+    push_spreadsheet_id: &str,
+) -> Result<RegistrationResult, FacadeError> {
+    // トランザクション開始
+    let txn = self.db.begin().await?;
+
+    let result = async {
+        // ステートレスなRepositoryを作成（パラメータなし）
+        let repository = GuildSpreadsheetConfigRepository::new();
+
+        // トランザクションをパラメータとして渡す
+        repository
+            .upsert_import_spreadsheet_id(&txn, guild_id, load_spreadsheet_id)
+            .await?;
+
+        repository
+            .upsert_export_spreadsheet_id(&txn, guild_id, push_spreadsheet_id)
+            .await?;
+
+        Ok(())
+    }
+    .await;
+
+    // エラーハンドリングとコミット/ロールバック
+    match result {
+        Ok(_) => {
+            txn.commit().await?;
+            Ok(/* ... */)
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            Err(e)
+        }
+    }
+}
+```
+
+#### Service層での使用例
+
+```rust
+pub struct NotificationHistoryService {
+    db: DatabaseConnection,
+    notification_repo: NotificationRepository,
+}
+
+impl NotificationHistoryService {
+    pub fn new(db: DatabaseConnection) -> Self {
+        // ステートレスなRepositoryを作成
+        let notification_repo = NotificationRepository::new();
+        Self { db, notification_repo }
+    }
+
+    pub async fn get_past_notifications(
+        &self,
+        guild_id: i64,
+        days: i64,
+    ) -> Result<Vec<notifications::Model>> {
+        let now = Utc::now();
+        let from = now - Duration::days(days);
+
+        // DB接続を明示的に渡す
+        let notifications = self
+            .notification_repo
+            .find_by_datetime_range(&self.db, from, now)
+            .await?;
+
+        Ok(notifications
+            .into_iter()
+            .filter(|n| n.guild_id == guild_id)
+            .collect())
+    }
+}
+```
+
+#### Event層での使用例
+
+```rust
+pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
+    let guild_id = ctx.guild_id().unwrap().get() as i64;
+    let app_state = &ctx.data().app_state;
+
+    // ステートレスなRepositoryを作成
+    let repository = GuildSpreadsheetConfigRepository::new();
+
+    // DB接続を明示的に渡す
+    let spreadsheet_id = repository
+        .find_import_spreadsheet_id(app_state.db(), guild_id)
+        .await?;
+
+    // 処理続行...
+}
+```
+
+### 5.4 設計パターンのガイドライン
 
 #### ✅ 推奨パターン
 
-1. **TransactionManager使用**: Facade層では必ずTransactionManager経由でRepository層にアクセス
-2. **トランザクション対応メソッド**: Repository層では`*_with_txn`メソッドを提供
-3. **依存性注入**: DB接続を外部から注入
-4. **エラーハンドリング**: 自動ロールバックに依存
+1. **ステートレスRepository**: Repositoryはフィールドを持たず、`new()`はパラメータなし
+2. **外部依存性注入**: DB接続/トランザクションを常にメソッドパラメータとして渡す
+3. **ジェネリック型パラメータ**: `<'c, C: ConnectionTrait>`を使用した静的ディスパッチ
+4. **メソッド命名規則**:
+   - トランザクション専用: `*_with_txn(txn: &DatabaseTransaction, ...)`
+   - DB接続汎用: `*(db: &'c C, ...) where C: ConnectionTrait`
+5. **明示的な依存関係**: メソッドシグネチャからDB接続の必要性が明確
 
 #### ❌ 避けるべきパターン
 
-1. **Repository直接作成**: Facade層でのRepositoryContainer直接作成
-2. **手動トランザクション管理**: 手動でのbegin/commit/rollback呼び出し
-3. **SeaORM直接依存**: Facade層でのSeaORM型直接使用
+1. **Repository内部でのDB接続保持**: `struct Repository { db: DatabaseConnection }` は禁止
+2. **new()でのDB接続受け取り**: `Repository::new(db)` ではなく `Repository::new()`
+3. **動的ディスパッチ**: `dyn ConnectionTrait` の使用は避ける（静的ディスパッチを優先）
+4. **グローバル変数**: DB接続のグローバル変数化は厳禁
+5. **Repository直接作成**: Facade層でのRepositoryContainer直接作成（TransactionManager推奨）
 
 ## 6. 拡張性と将来対応
 
@@ -469,7 +700,45 @@ where
 
 本設計では、TransactionManager を中心とした依存関係の構成を明示しており、将来的な ORM 追加や抽象化の強化に対しても同じ責務分離を保つことを前提としています。互換性維持の判断はリリース計画側で行い、ここで定義した契約を満たす形で実装を更新してください。
 
-## 10. 結論
+## 10. リファクタリング履歴
+
+### 10.1 Repository層のステートレス化（2025年12月3日）
+
+**背景**: 従来のRepository層は内部にDB接続を保持するステートフルな設計でしたが、以下の問題がありました：
+- テスト時のモック注入が困難
+- 依存関係が暗黙的で不明確
+- トランザクション管理との整合性が取りづらい
+
+**実施内容**:
+1. 全Repository構造体からDBフィールドを削除
+2. `new()`メソッドをパラメータなしに変更
+3. すべてのメソッドをジェネリック化（`<'c, C: ConnectionTrait>`）
+4. 呼び出し箇所を更新してDB接続を明示的に渡すように修正
+
+**対象Repository**（9件）:
+- ChannelTypeRepository
+- SeaOrmEnvironmentRepository
+- SeaOrmBattleStyleRepository
+- SeaOrmMessageTextRepository
+- NotificationRepository
+- ScheduleRepository
+- LastProcessTimeRepository
+- NotificationRelBattleRecruitmentRepository
+- GuildSpreadsheetConfigRepository
+
+**影響範囲**:
+- Repository層: 9ファイル
+- Facade層: 5ファイル（scheduler, cancel, change, new_recruit, guild_spreadsheet_registration_facade）
+- Service層: 2ファイル（notification_service, guild_spreadsheet_config_service）
+- Event層: 2ファイル（gspread_load, gspread_push）
+
+**効果**:
+- テスタビリティの向上（モック注入が容易）
+- 明示的な依存関係（メソッドシグネチャから明確）
+- 静的ディスパッチによるパフォーマンス向上
+- コードベース全体での一貫性確保
+
+## 11. 結論
 
 現在の実装により以下の目標を達成：
 
@@ -477,5 +746,6 @@ where
 2. **アーキテクチャ改善**: クリーンアーキテクチャの原則遵守
 3. **実用性**: 複雑すぎる抽象化を避けた実装
 4. **保守性**: 明確な責務分離とエラーハンドリング
+5. **ステートレス設計**: Repository層の外部依存性注入による柔軟性とテスタビリティの向上
 
 この設計により、保守しやすく拡張可能なデータベース接続・トランザクション管理システムが実現されています。
