@@ -20,7 +20,7 @@ pub async fn new_recruitment(
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
-    let conn = app_state.db();
+    let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
     // Discord固有情報を取得

@@ -50,7 +50,7 @@ pub async fn gspread_regist(
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
-    let facade = match GuildSpreadsheetRegistrationFacade::new(app_state.db().clone()) {
+    let facade = match GuildSpreadsheetRegistrationFacade::new(app_state.guild_db().clone()) {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();

@@ -27,7 +27,7 @@ pub async fn change_recruitment_information(
     info!("BattleRecruitmentFacade::update_recruitment_information - 募集内容を更新します");
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.db().begin().await?;
+    let txn = app_state.guild_db().begin().await?;
 
     // コンテキストからguild_idを取得（メッセージオブジェクトのguild_idはNoneの可能性がある）
     let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
@@ -37,7 +37,7 @@ pub async fn change_recruitment_information(
 
     let result = async {
         // RepositoryContainerとRepositoryの取得
-        let db = app_state.db();
+        let db = app_state.guild_db();
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new();

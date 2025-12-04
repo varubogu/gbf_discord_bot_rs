@@ -4,9 +4,11 @@
 /// PostgreSQLからギルドデータをスプレッドシートに書き込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
+use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 #[poise::command(
@@ -38,11 +40,18 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
 
     // データベースからギルドの書き込み用スプレッドシートIDを取得
     let app_state = &ctx.data().app_state;
+    let db = app_state.guild_db();
+
+    // RLSポリシーのためにトランザクションを開始してセッション変数を設定
+    let txn = db.begin().await?;
+    set_current_guild_id(&txn, guild_id).await?;
+
     let repository = GuildSpreadsheetConfigRepository::new();
 
-    let spreadsheet_id = match repository.find_export_spreadsheet_id(app_state.db(), guild_id).await {
+    let spreadsheet_id = match GuildSpreadsheetConfigRepositoryTrait::find_export_spreadsheet_id(&repository, &txn, guild_id).await {
         Ok(Some(id)) => id,
         Ok(None) => {
+            txn.rollback().await?;
             ctx.say(
                 "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
                  `/gspread_regist` コマンドでスプレッドシートを登録してください",
@@ -55,6 +64,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             return Ok(());
         }
         Err(e) => {
+            txn.rollback().await?;
             ctx.say(format!(
                 "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
                 e
@@ -69,11 +79,14 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
+    // トランザクションをコミット（スプレッドシートID取得が成功）
+    txn.commit().await?;
+
     ctx.say("🔄 ギルドデータをスプレッドシートに書き込んでいます...")
         .await?;
 
     // Facadeを作成
-    let facade = match SpreadsheetExportFacade::new(app_state.db().clone()) {
+    let facade = match SpreadsheetExportFacade::new(app_state.guild_db().clone()) {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();

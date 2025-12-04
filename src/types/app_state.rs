@@ -30,7 +30,7 @@ impl AppState {
     }
 
     /// Guild ロール用DB接続を取得（通常のコマンド実行用）
-    pub fn db(&self) -> &DatabaseConnection {
+    pub fn guild_db(&self) -> &DatabaseConnection {
         &*self.guild_db
     }
 

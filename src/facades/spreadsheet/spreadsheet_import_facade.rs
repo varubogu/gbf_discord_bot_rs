@@ -213,6 +213,7 @@ impl SpreadsheetImportFacade {
                             &table_def.table_name,
                             &table.schema,
                             &read_result.rows,
+                            None, // グローバル版ではguild_idなし
                         )
                         .await
                         {
@@ -359,9 +360,256 @@ impl SpreadsheetImportFacade {
             "ギルド用スプレッドシートのインポートを開始します"
         );
 
-        // グローバルと同様の処理（guild_idを考慮）
-        // TODO: 実装を完成させる（現時点ではグローバルと同様）
-        self.import_global_spreadsheet(spreadsheet_id).await
+        // Google Sheets APIクライアントを取得
+        let sheets_client = self
+            .google_auth_service
+            .get_sheets_client()
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    error_debug = ?e,
+                    "Google Sheets APIクライアントの取得に失敗しました"
+                );
+                FacadeError::from(e)
+            })?;
+
+        // TableDefinitionServiceとDataConverterServiceを作成
+        let table_def_service = TableDefinitionService::new();
+        let data_converter_service = DataConverterService::new();
+
+        // SpreadsheetReaderServiceを作成
+        let reader_service =
+            SpreadsheetReaderService::new(table_def_service, data_converter_service);
+
+        // テーブル定義を読み込み
+        let table_definitions = reader_service
+            .read_table_definitions(&sheets_client, spreadsheet_id)
+            .await?;
+
+        info!(
+            table_count = table_definitions.len(),
+            "テーブル定義を読み込みました"
+        );
+
+        // SeaORMエンティティからスキーマ定義を取得
+        let schema_extractor = SchemaExtractorService::new();
+        let registered_tables = schema_extractor.extract_registered_tables();
+
+        // ギルド版のテーブルのみをフィルタ（guild_で始まるテーブル）
+        let guild_tables: Vec<RegisteredTableSchema> = registered_tables
+            .into_iter()
+            .filter(|table| table.table_name.starts_with("guild_"))
+            .collect();
+
+        // インポート対象のテーブルのみをフィルタ（table_io = In or Both）
+        let import_tables: Vec<TableDefinition> = table_definitions
+            .into_iter()
+            .filter(|def| def.table_io == TableIO::In || def.table_io == TableIO::Both)
+            .collect();
+
+        if import_tables.is_empty() {
+            warn!("インポート対象のテーブルが見つかりません");
+            return Ok(ImportResult {
+                success_count: 0,
+                failure_count: 0,
+                total_rows: 0,
+                errors: vec!["インポート対象のテーブルが見つかりません".to_string()],
+                warnings: Vec::new(),
+                generated_uuids: Vec::new(),
+            });
+        }
+
+        info!(
+            import_table_count = import_tables.len(),
+            "インポート対象テーブルをフィルタしました"
+        );
+
+        // トランザクション開始
+        let txn = self.db.begin().await?;
+
+        // RLSポリシーのためにセッション変数を設定
+        use crate::infrastructure::database::db_helper::set_current_guild_id;
+        set_current_guild_id(&txn, guild_id as i64).await?;
+
+        let result = async {
+            let mut success_count = 0;
+            let mut failure_count = 0;
+            let mut total_rows = 0;
+            let mut errors = Vec::new();
+            let mut warnings = Vec::new();
+            let mut all_generated_uuids = Vec::new();
+
+            let mut import_table_map: HashMap<String, TableDefinition> = import_tables
+                .into_iter()
+                .map(|def| (def.table_name.clone(), def))
+                .collect();
+
+            for table in &guild_tables {
+                let table_def = match take_table_definition(&mut import_table_map, table) {
+                    Some(def) => def,
+                    None => continue,
+                };
+
+                match reader_service
+                    .read_table_data(&sheets_client, spreadsheet_id, &table_def, &table.schema)
+                    .await
+                {
+                    Ok(read_result) => {
+                        if !read_result.errors.is_empty() {
+                            for err in &read_result.errors {
+                                errors.push(format!(
+                                    "テーブル「{}」行{}: {}",
+                                    err.table_name, err.row_number, err.message
+                                ));
+                            }
+                        }
+
+                        // 生成されたUUIDを記録
+                        for generated_uuid in &read_result.generated_uuids {
+                            all_generated_uuids.push(GeneratedUuidInfo {
+                                table_name: table_def.table_name.clone(),
+                                sheet_name: table_def.sheet_name.clone(),
+                                row_number: generated_uuid.row_number,
+                                column_index: generated_uuid.column_index,
+                                uuid: generated_uuid.uuid,
+                            });
+                        }
+
+                        info!(
+                            table_name = %table_def.table_name,
+                            row_count = read_result.rows.len(),
+                            error_count = read_result.errors.len(),
+                            generated_uuid_count = read_result.generated_uuids.len(),
+                            "テーブルデータを読み込みました"
+                        );
+
+                        match persist_table_data(
+                            &txn,
+                            &table_def.table_name,
+                            &table.schema,
+                            &read_result.rows,
+                            Some(guild_id as i64), // ギルド版ではguild_idを渡す
+                        )
+                        .await
+                        {
+                            Ok((inserted_rows, persist_warnings)) => {
+                                total_rows += inserted_rows;
+                                if !persist_warnings.is_empty() {
+                                    warnings.extend(persist_warnings);
+                                }
+                                success_count += 1;
+                            }
+                            Err(FacadeError::Database { source }) => {
+                                let message = format!(
+                                    "テーブル『{}』: DB書き込みに失敗しました: {}",
+                                    table_def.table_name, source
+                                );
+                                error!(
+                                    table_name = %table_def.table_name,
+                                    db_error = %source,
+                                    "テーブルデータの保存に失敗しました"
+                                );
+                                failure_count += 1;
+                                errors.push(message);
+                            }
+                            Err(other) => {
+                                error!(
+                                    table_name = %table_def.table_name,
+                                    error = %other,
+                                    "テーブルデータの保存に失敗しました"
+                                );
+                                failure_count += 1;
+                                errors.push(format!(
+                                    "テーブル『{}』: {}",
+                                    table_def.table_name, other
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!(
+                            table_name = %table_def.table_name,
+                            error = %e,
+                            "テーブルの読み込みに失敗しました"
+                        );
+                        failure_count += 1;
+                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
+                    }
+                }
+            }
+
+            for leftover in import_table_map.into_values() {
+                warn!(
+                    table_name = %leftover.table_name,
+                    sheet_name = %leftover.sheet_name,
+                    "このBotでは未対応のテーブルのためスキップしました"
+                );
+                warnings.push(format!(
+                    "⚠️ テーブル「{}」（シート: {}）はBotで扱わないため無視しました",
+                    leftover.table_name, leftover.sheet_name
+                ));
+            }
+
+            Ok(ImportResult {
+                success_count,
+                failure_count,
+                total_rows,
+                errors,
+                warnings,
+                generated_uuids: all_generated_uuids,
+            })
+        }
+        .await;
+
+        match result {
+            Ok(import_result) => {
+                // 生成されたUUIDをスプレッドシートに書き戻し（コミット前に実施）
+                if !import_result.generated_uuids.is_empty() {
+                    info!(
+                        uuid_count = import_result.generated_uuids.len(),
+                        "生成されたUUIDをスプレッドシートに書き戻します"
+                    );
+
+                    if let Err(e) = self
+                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &import_result.generated_uuids)
+                        .await
+                    {
+                        error!(
+                            error = %e,
+                            "UUID書き戻しに失敗したため、トランザクションをロールバックします"
+                        );
+                        txn.rollback().await?;
+                        return Err(FacadeError::ExternalService {
+                            source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
+                                message: format!(
+                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {}",
+                                    e
+                                ),
+                            },
+                        });
+                    } else {
+                        info!("UUID書き戻しが完了しました");
+                    }
+                }
+
+                // UUID書き戻しが成功した場合のみコミット
+                txn.commit().await?;
+                info!(
+                    success = import_result.success_count,
+                    failure = import_result.failure_count,
+                    total_rows = import_result.total_rows,
+                    "ギルド用スプレッドシートのインポートが完了しました"
+                );
+
+                Ok(import_result)
+            }
+            Err(e) => {
+                txn.rollback().await?;
+                error!(error = %e, "トランザクションをロールバックしました");
+                Err(e)
+            }
+        }
     }
 
     /// 生成されたUUIDをスプレッドシートに書き戻す
@@ -501,7 +749,9 @@ fn get_schema_name(table_name: &str) -> &str {
             "master"
         }
         // guild_master スキーマ
-        "guilds" | "guild_channels" | "guild_spreadsheet_exports" | "guild_spreadsheet_imports" => {
+        "guilds" | "guild_channels" | "guild_spreadsheet_exports" | "guild_spreadsheet_imports"
+        | "guild_environments" | "guild_event_schedules" | "guild_event_schedule_details"
+        | "guild_message_texts" | "guild_last_process_times" => {
             "guild_master"
         }
         // worker スキーマ
@@ -646,6 +896,7 @@ async fn persist_table_data(
     table_name: &str,
     schema: &[ColumnSchema],
     rows: &[RowData],
+    guild_id: Option<i64>,
 ) -> Result<(usize, Vec<String>), FacadeError> {
     let mut warnings = Vec::new();
     let table_ref = get_entity_table_ref(table_name);
@@ -680,14 +931,25 @@ async fn persist_table_data(
         .filter(|col| col.column_name != "created_at" && col.column_name != "updated_at")
         .collect();
 
+    // guild_idが指定されている場合、INSERT時にguild_idカラムを追加
+    let insert_columns: Vec<Alias> = if guild_id.is_some() {
+        // guild_idカラムを先頭に追加
+        let mut columns = vec![Alias::new("guild_id")];
+        columns.extend(filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())));
+        columns
+    } else {
+        filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())).collect()
+    };
+
     let mut insert = Query::insert();
     insert
         .into_table(table_ref.clone())
-        .columns(filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())));
+        .columns(insert_columns.into_iter());
 
     let mut inserted_rows = 0usize;
 
     for row in rows {
+        // スキーマには既にguild_id、created_at、updated_atが除外されているため、そのまま比較
         if row.values.len() != schema.len() {
             warnings.push(format!(
                 "テーブル「{}」行{}: 列数が一致しないためスキップしました (期待{}列/実際{}列)",
@@ -699,14 +961,20 @@ async fn persist_table_data(
             continue;
         }
 
-        // created_atとupdated_atに対応する値を除外
-        let filtered_values: Vec<_> = row
-            .values
-            .iter()
-            .zip(schema.iter())
-            .filter(|(_, column)| column.column_name != "created_at" && column.column_name != "updated_at")
-            .map(|(value, column)| Expr::value(postgres_value_to_sea_value(value, column)))
-            .collect();
+        // created_atとupdated_atに対応する値を除外してINSERT値を作成
+        let mut filtered_values: Vec<_> = Vec::new();
+
+        // guild_idが指定されている場合、先頭にguild_idを追加
+        if let Some(gid) = guild_id {
+            filtered_values.push(Expr::value(SeaValue::BigInt(Some(gid))));
+        }
+
+        // スキーマの各列に対応する値を追加（created_atとupdated_atは既に除外されている）
+        for (value, column) in row.values.iter().zip(schema.iter()) {
+            if column.column_name != "created_at" && column.column_name != "updated_at" {
+                filtered_values.push(Expr::value(postgres_value_to_sea_value(value, column)));
+            }
+        }
 
         insert.values(filtered_values).map_err(|err| FacadeError::Database {
             source: DbErr::Custom(format!(

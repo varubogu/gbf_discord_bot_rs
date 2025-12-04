@@ -13,7 +13,7 @@ pub async fn search_quests_for_autocomplete<'a>(
     partial: &'a str,
 ) -> impl Stream<Item = String> + 'a {
     // AppStateからDB接続を取得してRepositoryを作成
-    let db_conn = ctx.data().app_state.db().clone();
+    let db_conn = ctx.data().app_state.guild_db().clone();
     let quest_repository = SeaOrmQuestRepository::new();
 
     // Service層を使って検索

@@ -41,7 +41,7 @@ pub async fn execute_load(ctx: &PoiseContext<'_>) -> Result<()> {
     );
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.db().begin().await?;
+    let txn = app_state.guild_db().begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;

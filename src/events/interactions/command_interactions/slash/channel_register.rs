@@ -12,7 +12,7 @@ async fn channel_type_autocomplete<'a>(
     ctx: PoiseContext<'_>,
     _partial: &'a str,
 ) -> impl Iterator<Item = AutocompleteChoice> + 'a {
-    let db = ctx.data().app_state.db();
+    let db = ctx.data().app_state.guild_db();
     let channel_type_repo = ChannelTypeRepository::new();
 
     let channel_types = channel_type_repo
@@ -75,7 +75,7 @@ pub async fn channel_register(
     );
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.db().begin().await?;
+    let txn = app_state.guild_db().begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;

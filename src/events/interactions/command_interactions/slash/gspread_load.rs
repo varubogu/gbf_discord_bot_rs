@@ -4,9 +4,11 @@
 /// スプレッドシートからギルドデータをPostgreSQLに読み込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
+use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -39,11 +41,18 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
 
     // データベースからギルドの読み込み用スプレッドシートIDを取得
     let app_state = &ctx.data().app_state;
+    let db = app_state.guild_db();
+
+    // RLSポリシーのためにトランザクションを開始してセッション変数を設定
+    let txn = db.begin().await?;
+    set_current_guild_id(&txn, guild_id).await?;
+
     let repository = GuildSpreadsheetConfigRepository::new();
 
-    let spreadsheet_id = match repository.find_import_spreadsheet_id(app_state.db(), guild_id).await {
+    let spreadsheet_id = match GuildSpreadsheetConfigRepositoryTrait::find_import_spreadsheet_id(&repository, &txn, guild_id).await {
         Ok(Some(id)) => id,
         Ok(None) => {
+            txn.rollback().await?;
             ctx.say(
                 "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
                  `/gspread_regist` コマンドでスプレッドシートを登録してください",
@@ -56,6 +65,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             return Ok(());
         }
         Err(e) => {
+            txn.rollback().await?;
             ctx.say(format!(
                 "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
                 e
@@ -70,12 +80,15 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
+    // トランザクションをコミット（スプレッドシートID取得が成功）
+    txn.commit().await?;
+
     ctx.say("🔄 ギルドスプレッドシートからデータを読み込んでいます...")
         .await?;
 
     // Facadeを作成
     let app_state_arc = Arc::new(app_state.clone());
-    let facade = match SpreadsheetImportFacade::new(app_state.db().clone(), app_state_arc.clone())
+    let facade = match SpreadsheetImportFacade::new(app_state.guild_db().clone(), app_state_arc.clone())
     {
         Ok(f) => f,
         Err(e) => {
@@ -85,8 +98,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    // インポート実行（guild_idも渡す必要がある場合は修正）
-    match facade.import_global_spreadsheet(&spreadsheet_id).await {
+    // インポート実行（ギルド版のメソッドを呼び出す）
+    match facade.import_guild_spreadsheet(&spreadsheet_id, guild_id as u64).await {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
                 format!(

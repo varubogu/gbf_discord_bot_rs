@@ -13,7 +13,7 @@ pub async fn get_battle_styles_for_autocomplete(
     ctx: PoiseContext<'_>,
 ) -> Vec<AutocompleteChoice> {
     // AppStateからDB接続を取得してRepositoryを作成
-    let db_conn = ctx.data().app_state.db();
+    let db_conn = ctx.data().app_state.guild_db();
     let battle_style_repository = SeaOrmBattleStyleRepository::new();
 
     // すべての攻略方法を取得

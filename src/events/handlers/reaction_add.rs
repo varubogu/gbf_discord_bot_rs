@@ -29,7 +29,7 @@ pub async fn on_reaction_add(
     );
 
     // Facade層を呼び出して参加者を更新
-    match update_participants(ctx, guild_id, channel_id, message_id, data.app_state.db()).await {
+    match update_participants(ctx, guild_id, channel_id, message_id, data.app_state.guild_db()).await {
         Ok(_) => {
             info!("参加者更新が完了しました");
             Ok(())

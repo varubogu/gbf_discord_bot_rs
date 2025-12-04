@@ -68,7 +68,7 @@ async fn check_can_cancel_recruitment_internal(
     info!("BattleRecruitmentFacade::cancel_recruitment - 募集をキャンセルします");
 
     let app_state = &ctx.data().app_state;
-    let conn = app_state.db();
+    let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
@@ -119,7 +119,7 @@ async fn cancel_recruitment_internal(
     info!("BattleRecruitmentFacade::cancel_recruitment - 募集をキャンセルします");
 
     let app_state = &ctx.data().app_state;
-    let conn = app_state.db();
+    let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定

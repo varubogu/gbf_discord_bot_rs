@@ -13,6 +13,10 @@ mod elements;
 mod environments;
 mod event_schedule_details;
 mod event_schedules;
+mod guild_environments;
+mod guild_event_schedule_details;
+mod guild_event_schedules;
+mod guild_message_texts;
 mod message_texts;
 mod quest_aliases;
 mod quests;
@@ -23,6 +27,10 @@ pub use elements::ElementsTable;
 pub use environments::EnvironmentsTable;
 pub use event_schedule_details::EventScheduleDetailsTable;
 pub use event_schedules::EventSchedulesTable;
+pub use guild_environments::GuildEnvironmentsTable;
+pub use guild_event_schedule_details::GuildEventScheduleDetailsTable;
+pub use guild_event_schedules::GuildEventSchedulesTable;
+pub use guild_message_texts::GuildMessageTextsTable;
 pub use message_texts::MessageTextsTable;
 pub use quest_aliases::QuestAliasesTable;
 pub use quests::QuestsTable;
@@ -57,6 +65,10 @@ pub fn table_registrations() -> Vec<TableRegistration> {
         TableRegistration::new::<MessageTextsTable>(),
         TableRegistration::new::<QuestsTable>(),
         TableRegistration::new::<QuestAliasesTable>(),
+        TableRegistration::new::<GuildEnvironmentsTable>(),
+        TableRegistration::new::<GuildEventSchedulesTable>(),
+        TableRegistration::new::<GuildEventScheduleDetailsTable>(),
+        TableRegistration::new::<GuildMessageTextsTable>(),
     ]
 }
 
