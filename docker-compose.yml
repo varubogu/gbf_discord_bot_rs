@@ -7,16 +7,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.app
-      target: production-image
+      # Rustマルチステージビルド: 最終ステージが自動的に使用される
     restart: always
     env_file:
-      - ./config/.env
-      - ./config/.env.timezone
-      - ./config/.env.db.production
+      - .env
+    environment:
+      DB_HOST: db
+      TZ: UTC  # タイムゾーンを明示的にUTCに設定
+    volumes:
+      # Google Service Account Keyファイルを読み取り専用でマウント
+      - ./.local:/app/.local:ro
     networks:
       - app_network
     depends_on:
-      - db
+      db:
+        condition: service_healthy  # DBのヘルスチェック完了を待つ
     logging:
       options:
         max-size: "10m"
@@ -32,17 +37,24 @@ services:
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql
+    env_file:
+      - .env  # .envから環境変数を読み込み
     environment:
+      # PostgreSQL管理者設定
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: postgres
-    env_file:
-      - ./config/.env.timezone
-      - ./config/.env.db.production
+      TZ: UTC  # タイムゾーンを明示的にUTCに設定
+      # 以下の変数は.envから読み込まれ、init.shで使用されます:
+      # - DB_NAME
+      # - SYSTEM_DB_PASSWORD
+      # - GUILD_DB_PASSWORD
+      # - GLOBAL_DB_PASSWORD
+      # - ADMIN_DB_PASSWORD
     networks:
       - app_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DBUSER} -d ${DBDATABASE}" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5

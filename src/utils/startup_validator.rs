@@ -85,7 +85,7 @@ pub enum StartupError {
     #[error("無効なJSON形式: {file_path}\n{details}")]
     InvalidJson { file_path: String, details: String },
 
-    #[error("複数のバリデーションエラーが発生しました")]
+    #[error("複数のバリデーションエラーが発生しました:\n{}", errors.join("\n"))]
     MultipleErrors { errors: Vec<String> },
 }
 

@@ -1,39 +1,51 @@
-# base image
-FROM python:3.11-slim AS base-image
+# ================================
+# ビルドステージ
+# ================================
+FROM rust:1.85 AS builder
 
+WORKDIR /build
 
-ENV WORK_FOLDER=/app/gbf_bot
-ENV CONFIG_FOLDER=${WORK_FOLDER}/config
-ENV SOURCE_FOLDER=${WORK_FOLDER}/src
-ENV SOURCE_GBF_FOLDER=${SOURCE_FOLDER}/gbf
-ENV SOURCE_BOT_FOLDER=${SOURCE_FOLDER}/gbf_discord_bot
+# 依存関係キャッシング用にCargo関連ファイルとmigrationをコピー
+COPY Cargo.toml Cargo.lock ./
+COPY migration ./migration
 
-WORKDIR $WORK_FOLDER
+# ダミーソースで依存関係をビルド（キャッシュ層として機能）
+# 次回以降、ソースコード変更時は依存関係のビルドをスキップできる
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src target/release/gbf_discord_bot_rs*
 
-COPY requirements.txt ./
-COPY src/ ./src
-COPY config/ ./config
+# 実際のソースコードをコピーしてリビルド
+# 依存関係は既にキャッシュされているため、アプリケーションコードのみビルドされる
+COPY src ./src
+RUN cargo build --release
 
-ENV PYTHONPATH=${SOURCE_FOLDER}:${SOURCE_GBF_FOLDER}:${SOURCE_BOT_FOLDER}
+# ================================
+# ランタイムステージ
+# ================================
+FROM debian:bookworm-slim
 
-RUN pip install --no-cache-dir -r requirements.txt
+# PostgreSQLクライアントライブラリとCA証明書をインストール
+# - ca-certificates: HTTPS通信（Google Sheets API等）に必要
+# - libpq5: PostgreSQL接続に必要
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libpq5 && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN echo $PYTHONPATH
+# セキュリティのため非rootユーザーで実行
+RUN useradd -m -u 1001 botuser
 
+WORKDIR /app
 
+# ビルド済みバイナリをコピー
+COPY --from=builder /build/target/release/gbf_discord_bot_rs .
 
-# debug image
-FROM base-image AS debug-image
+# 権限設定
+RUN chown -R botuser:botuser /app
+USER botuser
 
-# デバッグ用ポート解放
-# EXPOSE 5678
-
-# デバッグ待機状態にする
-# 未完成
-# CMD [ "python", "-m", "debugpy", "--wait-for-client", "--listen", "5678", "-m" "bot" ]
-
-
-
-# production image
-FROM base-image AS production-image
-CMD [ "python", "-u", "-m", "src.gbf_discord_bot.bot"]
+# Bot起動
+CMD ["./gbf_discord_bot_rs"]

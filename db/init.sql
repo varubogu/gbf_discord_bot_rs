@@ -1,26 +1,94 @@
-CREATE USER gbf_bot_user WITH PASSWORD 'gbf_bot_password';
-CREATE USER migration_user WITH PASSWORD 'migration_password';
+-- ================================
+-- GBF Discord Bot データベース初期化スクリプト
+-- ================================
+-- このスクリプトはDockerコンテナ起動時に実行され、
+-- データベースロールとデータベースを作成します。
+-- マイグレーションはアプリケーション側で実行されます。
+-- ================================
 
-ALTER USER gbf_bot_user WITH PASSWORD 'gbf_bot_password';
-ALTER USER migration_user WITH PASSWORD 'migration_password';
+-- ロール作成（既存の場合はスキップ）
+-- パスワードは本番環境では必ず変更してください
 
-CREATE DATABASE gbf_bot_db WITH OWNER gbf_bot_user;
+-- 1. System ロール（スケジューラー、バックグラウンドタスク用）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_system') THEN
+        CREATE ROLE gbf_bot_system WITH LOGIN PASSWORD 'change_this_system_password';
+    END IF;
+END
+$$;
 
-GRANT CONNECT ON DATABASE gbf_bot_db TO gbf_bot_user;
-GRANT CONNECT ON DATABASE gbf_bot_db TO migration_user;
+-- System ロールはRLSをバイパス（全ギルドのデータにアクセス可能）
+ALTER ROLE gbf_bot_system WITH BYPASSRLS;
 
+-- 2. Guild ロール（通常のDiscordコマンド実行用）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_guild') THEN
+        CREATE ROLE gbf_bot_guild WITH LOGIN PASSWORD 'change_this_guild_password';
+    END IF;
+END
+$$;
+
+-- Guild ロールはRLSポリシーに従う（BYPASSRLSなし）
+-- app.current_guild_id でギルドごとにデータを分離
+
+-- 3. Global ロール（マスターデータ更新、スプレッドシート同期用）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_global') THEN
+        CREATE ROLE gbf_bot_global WITH LOGIN PASSWORD 'change_this_global_password';
+    END IF;
+END
+$$;
+
+-- Global ロールはRLSをバイパス（マスターデータ更新のため）
+ALTER ROLE gbf_bot_global WITH BYPASSRLS;
+
+-- 4. Admin ロール（マイグレーション実行、管理操作用）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_admin') THEN
+        CREATE ROLE gbf_bot_admin WITH LOGIN PASSWORD 'change_this_admin_password';
+    END IF;
+END
+$$;
+
+-- Admin ロールはRLSをバイパス＋スキーマ作成権限
+ALTER ROLE gbf_bot_admin WITH BYPASSRLS CREATEDB;
+
+-- データベース作成（既存の場合はスキップ）
+SELECT 'CREATE DATABASE gbf_bot_db WITH OWNER gbf_bot_admin ENCODING ''UTF8'''
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'gbf_bot_db')\gexec
+
+-- データベースへの接続権限付与
 \connect gbf_bot_db
 
-GRANT USAGE ON SCHEMA public TO gbf_bot_user;
-GRANT USAGE, CREATE ON SCHEMA public TO migration_user;
+GRANT CONNECT ON DATABASE gbf_bot_db TO gbf_bot_system;
+GRANT CONNECT ON DATABASE gbf_bot_db TO gbf_bot_guild;
+GRANT CONNECT ON DATABASE gbf_bot_db TO gbf_bot_global;
+GRANT CONNECT ON DATABASE gbf_bot_db TO gbf_bot_admin;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gbf_bot_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO migration_user;
+-- スキーマ作成権限（adminロールのみ）
+-- マイグレーション実行時に必要
+GRANT CREATE ON DATABASE gbf_bot_db TO gbf_bot_admin;
 
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO gbf_bot_user;
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO migration_user;
-
-ALTER DEFAULT PRIVILEGES FOR USER migration_user IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO gbf_bot_user;
-ALTER DEFAULT PRIVILEGES FOR USER migration_user IN SCHEMA public
-    GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO gbf_bot_user;
+-- 完了メッセージ
+DO $$
+BEGIN
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'GBF Discord Bot データベース初期化完了';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'データベース: gbf_bot_db';
+    RAISE NOTICE 'ロール:';
+    RAISE NOTICE '  - gbf_bot_system (BYPASSRLS)';
+    RAISE NOTICE '  - gbf_bot_guild (RLS適用)';
+    RAISE NOTICE '  - gbf_bot_global (BYPASSRLS)';
+    RAISE NOTICE '  - gbf_bot_admin (BYPASSRLS, CREATEDB)';
+    RAISE NOTICE '';
+    RAISE NOTICE '次のステップ:';
+    RAISE NOTICE '  1. .envファイルでパスワードを設定';
+    RAISE NOTICE '  2. マイグレーション実行: cargo run -- migrate';
+    RAISE NOTICE '========================================';
+END
+$$;

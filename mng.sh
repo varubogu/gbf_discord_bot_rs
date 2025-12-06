@@ -147,13 +147,19 @@ dev_up() {
         echo -e "${GREEN}🚀 Starting development database...${NC}"
         # Dockerイメージのビルド
         docker build -t dev-db-image -f Dockerfile.db .
-        # コンテナの起動
+        # コンテナの起動（新しい4ロール構成に対応）
         docker run -d \
             --name dev-db \
             -v pgdata:/var/lib/postgresql \
-            -e POSTGRES_USER=${DB_USER} \
-            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-            -e POSTGRES_DB=${DB_NAME} \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=postgres \
+            -e DB_NAME=${DB_NAME} \
+            -e SYSTEM_DB_PASSWORD=${SYSTEM_DB_PASSWORD} \
+            -e GUILD_DB_PASSWORD=${GUILD_DB_PASSWORD} \
+            -e GLOBAL_DB_PASSWORD=${GLOBAL_DB_PASSWORD} \
+            -e ADMIN_DB_PASSWORD=${ADMIN_DB_PASSWORD} \
+            -e TZ=UTC \
             -p ${DB_PORT}:5432 \
             dev-db-image
     else
@@ -162,7 +168,7 @@ dev_up() {
 
     # データベースの接続確認
     echo -e "${CYAN}🔍 Checking database connection...${NC}"
-    until docker exec dev-db pg_isready -U ${DB_USER}
+    until docker exec dev-db pg_isready -U postgres -d ${DB_NAME}
     do
         echo -e "${YELLOW}🕐 Waiting for database to be ready...${NC}"
         sleep 2
@@ -172,8 +178,12 @@ dev_up() {
     echo -e "${WHITE}Connection info:${NC}"
     echo -e "${WHITE}Host: ${DB_HOST}${NC}"
     echo -e "${WHITE}Port: ${DB_PORT}${NC}"
-    echo -e "${WHITE}User: ${DB_USER}${NC}"
     echo -e "${WHITE}Database: ${DB_NAME}${NC}"
+    echo -e "${WHITE}Roles:${NC}"
+    echo -e "${WHITE}  - gbf_bot_system (BYPASSRLS)${NC}"
+    echo -e "${WHITE}  - gbf_bot_guild (RLS適用)${NC}"
+    echo -e "${WHITE}  - gbf_bot_global (BYPASSRLS)${NC}"
+    echo -e "${WHITE}  - gbf_bot_admin (BYPASSRLS, CREATEDB)${NC}"
 }
 
 # dev down の処理
@@ -186,7 +196,7 @@ dev_down() {
 # prod up の処理
 prod_up() {
     echo -e "${GREEN}🚀 サービスを起動しています...${NC}"
-    docker compose --env-file config/.env up -d
+    docker compose up -d
 }
 
 # prod down の処理
@@ -198,10 +208,10 @@ prod_down() {
 # prod nocache の処理
 prod_nocache() {
     echo -e "${CYAN}🔄 キャッシュなしでビルドしています...${NC}"
-    docker compose --env-file config/.env build --no-cache
+    docker compose build --no-cache
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}🚀 サービスを起動しています...${NC}"
-        docker compose --env-file config/.env up -d
+        docker compose up -d
     else
         echo -e "${RED}❌ ビルド中にエラーが発生しました${NC}"
         exit 1
