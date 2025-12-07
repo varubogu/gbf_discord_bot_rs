@@ -24,6 +24,15 @@ Discordサーバー内でマルチバトルの参加者を募集する機能で�
 - 参加者一覧の表示
 - 募集終了時の自動処理
 
+### ロールメンション機能
+- スラッシュコマンド `/recruit_role_add` による通知ロール登録
+- スラッシュコマンド `/recruit_role_remove` による通知ロール削除
+- 募集メッセージ（作成・変更・キャンセル）での自動ロールメンション
+- 全ての募集を通知するロール設定（クエスト非依存）
+- クエストごとに通知するロール設定（クエスト依存）
+- 最大6ロールまで一度に登録可能
+- `gbf_bot_control` ロール保持者のみ設定変更可能
+
 ## アーキテクチャ設計
 
 ### 層別責務
@@ -33,29 +42,35 @@ Discordサーバー内でマルチバトルの参加者を募集する機能で�
 src/events/interactions/command_interactions/slash/recruit_new.rs
 src/events/interactions/command_interactions/slash/recruit_change.rs
 src/events/interactions/command_interactions/slash/recruit_cancel.rs
+src/events/interactions/command_interactions/slash/recruit_role_add.rs
+src/events/interactions/command_interactions/slash/recruit_role_remove.rs
 ```
 - Discord API操作の実装
 - スラッシュコマンドの定義
 - オートコンプリート機能
 - エラーハンドリング
 - 変更・キャンセル時の確認UI制御
+- ロール設定コマンドの権限チェック
 
 #### Facade層（facades/）
 ```
 src/facades/recruitment/new_recruit.rs
 src/facades/recruitment/change.rs
 src/facades/recruitment/cancel.rs
+src/facades/recruitment/role_management.rs
 ```
 - 複数サービス層の協調
 - トランザクション境界管理
 - Discord API操作の抽象化
 - 変更・キャンセル結果の集約
+- ロール設定の追加・削除処理の統合
 
 #### Service層（services/）
 ```
 src/services/recruitment/new.rs
 src/services/recruitment/change.rs
 src/services/recruitment/cancel.rs
+src/services/recruitment/role_notification.rs
 ```
 - 募集データ作成のビジネスロジック
 - メッセージ送信処理
@@ -63,14 +78,19 @@ src/services/recruitment/cancel.rs
 - データ保存処理
 - 募集内容変更時のDB更新・メッセージ更新（実装中）
 - 募集キャンセル時のリアクション集計・通知
+- 通知ロール取得・メンション文字列生成
+- ロール設定の重複チェックと登録・削除
 
 #### Repository層（repository/）
 ```
 src/repository/database/
+src/repository/database/all_recruitment_notification_roles.rs
+src/repository/database/quest_recruitment_notification_roles.rs
 ```
 - 募集データの永続化
 - クエスト情報の取得
 - バトル種類の管理
+- 通知ロール設定の永続化（全募集通知・クエスト別通知）
 
 ## データモデル
 
@@ -191,6 +211,37 @@ impl BattleType {
   6. Repositoryで `is_canceled = true` とキャンセル通知メッセージIDを記録
   7. 成功時はコミット、エラー時はキャンセル中メッセージを削除してロールバック
 - 異常系: 募集が既にキャンセル済み・メッセージ削除済みの場合はBusinessエラーを返し、ユーザーへwarnログを通知
+
+### `/recruit_role_add` 通知ロール追加
+- 入力:
+  - クエスト（必須、オートコンプリート、先頭に「すべて」項目を追加）
+  - ロール1（必須）
+  - ロール2～6（任意）
+- 実行者: `gbf_bot_control` ロールを保持する管理者のみ
+- 処理概要:
+  1. Facadeで実行者が `gbf_bot_control` ロールを持つことを確認
+  2. クエスト入力が「すべて」の場合（内部的にquest_id=0）、全募集通知ロールテーブルへ登録
+  3. クエスト入力がクエスト名の場合、クエストIDを解決し、クエスト別通知ロールテーブルへ登録
+  4. 入力されたロールがDiscord上に存在するか検証（存在しない場合はエラー）
+  5. 既に登録済みのロールは登録をスキップし、正常完了扱い
+  6. トランザクション内で複数ロールを一括登録
+  7. 成功時はコミット、エラー時はロールバック
+- 異常系: ロールが存在しない場合はValidationエラーを返し、コマンドを終了
+
+### `/recruit_role_remove` 通知ロール削除
+- 入力:
+  - クエスト（必須、オートコンプリート、先頭に「すべて」項目を追加）
+  - ロール1（必須）
+  - ロール2～6（任意）
+- 実行者: `gbf_bot_control` ロールを保持する管理者のみ
+- 処理概要:
+  1. Facadeで実行者が `gbf_bot_control` ロールを持つことを確認
+  2. クエスト入力が「すべて」の場合（内部的にquest_id=0）、全募集通知ロールテーブルから削除
+  3. クエスト入力がクエスト名の場合、クエストIDを解決し、クエスト別通知ロールテーブルから削除
+  4. 存在しないロールの削除は削除をスキップし、正常完了扱い
+  5. トランザクション内で複数ロールを一括削除
+  6. 成功時はコミット、エラー時はロールバック
+- 異常系: 特になし（存在しないロールの削除も正常完了）
 
 ## 処理フロー
 
@@ -347,6 +398,13 @@ pub async fn create_recruitment_data(
 ```
 
 - Facadeで取得した募集主IDを`BattleRecruitments.host_discord_user_id`として永続化し、引き継ぎ時は同フィールドを更新する。
+
+### ロールメンション処理
+
+- 募集作成・変更・キャンセル時にロールメンションを取得
+- 全募集通知ロールとクエスト別通知ロールを結合
+- seq（連番）の昇順でソート済み
+- Discord形式 `<@&role_id>` でメンション文字列を生成
 
 ### リアクション処理
 
