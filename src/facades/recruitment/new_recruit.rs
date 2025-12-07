@@ -8,7 +8,6 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude::CreateMessage;
 use sea_orm::TransactionTrait;
 use tracing::{debug, info, instrument};
 
