@@ -1,3 +1,4 @@
+pub mod all_recruitment_notification_roles_repository;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
@@ -6,5 +7,6 @@ pub mod guild_channel_repository;
 pub mod guild_repository;
 pub mod last_process_time_repository;
 pub mod models_database;
+pub mod quest_recruitment_notification_roles_repository;
 pub mod quest_repository;
 pub mod schedule;

@@ -1,3 +1,4 @@
+pub mod all_recruitment_notification_roles;
 pub mod battle_recruitments;
 pub mod battle_styles;
 pub mod channel_types;
@@ -20,6 +21,7 @@ pub mod notification_rel_battle_recruitments;
 pub mod notification_rel_event_schedules;
 pub mod notifications;
 pub mod quest_aliases;
+pub mod quest_recruitment_notification_roles;
 pub mod quests;
 
 // pub use channel_types::Entity as ChannelType;

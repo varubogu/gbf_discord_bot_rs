@@ -11,6 +11,8 @@ pub(crate) mod help;
 pub(crate) mod recruit_cancel;
 pub(crate) mod recruit_change;
 pub(crate) mod recruit_new;
+pub(crate) mod recruit_role_add;
+pub(crate) mod recruit_role_remove;
 pub(crate) mod schedule_generate;
 pub(crate) mod schedule_history;
 pub(crate) mod schedule_list;

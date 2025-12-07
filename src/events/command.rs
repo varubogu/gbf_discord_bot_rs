@@ -8,6 +8,8 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::recruit_new::recruit_new(),
         slash::recruit_cancel::recruit_cancel(),
         slash::recruit_change::recruit_change(),
+        slash::recruit_role_add::recruit_role_add(),
+        slash::recruit_role_remove::recruit_role_remove(),
         slash::help::help(),
         slash::environ_load::environ_load(),
         slash::gspread_load::gspread_load(),

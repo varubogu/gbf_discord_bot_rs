@@ -4,9 +4,11 @@ use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepos
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::new;
+use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Duration, Utc};
+use poise::serenity_prelude::CreateMessage;
 use sea_orm::TransactionTrait;
 use tracing::{debug, info, instrument};
 
@@ -38,7 +40,7 @@ pub async fn new_recruitment(
         let battle_style_repository = SeaOrmBattleStyleRepository::new();
 
         // 1. 募集データ作成（QuestRepository, BattleStyleRepositoryを使用）
-        let recruitment_data =
+        let mut recruitment_data =
             new::create_recruitment_data(
                 conn,
                 &quest_repository,
@@ -49,6 +51,18 @@ pub async fn new_recruitment(
                 guild_id,
                 event_date
             ).await?;
+
+        // 1.5. ロールメンションを取得してメッセージの先頭に追加
+        let role_service = RoleNotificationService::new();
+        let role_mentions = role_service
+            .get_role_mentions(&txn, guild_id as i64, recruitment_data.quest.id)
+            .await?;
+
+        if !role_mentions.is_empty() {
+            debug!(role_mentions = %role_mentions, "ロールメンションを募集メッセージの先頭に追加します");
+            recruitment_data.message_content = format!("{}\n{}", role_mentions, recruitment_data.message_content);
+            info!("ロールメンションを募集メッセージに追加しました");
+        }
 
         // 2. メッセージ送信
         let message_id = new::send_recruitment_message(ctx, &recruitment_data).await?;

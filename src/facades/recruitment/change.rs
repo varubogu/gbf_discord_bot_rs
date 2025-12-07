@@ -8,12 +8,13 @@ use crate::repository::database::schedule::{
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::QuestRepository;
 use crate::services::recruitment::new;
+use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
-use tracing::{error, info, instrument};
+use tracing::{debug, error, info, instrument};
 
 /// 募集内容を更新する（クロージャパターン）
 #[instrument(level = "debug", skip(ctx, message))]
@@ -182,11 +183,31 @@ pub async fn change_recruitment_information(
             .edit_message(&ctx.http(), message_id_obj, edit_message)
             .await?;
 
-        // 7. 変更通知メッセージを送信（参加者にメンション）
-        let update_notification = if mentions.is_empty() {
+        // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
+        // ロールメンションを取得
+        let role_service = RoleNotificationService::new();
+        let role_mentions = role_service
+            .get_role_mentions(&txn, guild_id as i64, new_quest_id)
+            .await?;
+
+        debug!(
+            role_mentions = %role_mentions,
+            participant_mentions = %mentions,
+            "変更通知メッセージを作成します"
+        );
+
+        // 変更通知メッセージを作成（ロールメンション + 参加者メンション）
+        let update_notification = if role_mentions.is_empty() && mentions.is_empty() {
             "募集内容が更新されました。".to_string()
         } else {
-            format!("{}\n募集内容が更新されました。", mentions)
+            let mut parts = Vec::new();
+            if !role_mentions.is_empty() {
+                parts.push(role_mentions);
+            }
+            if !mentions.is_empty() {
+                parts.push(mentions);
+            }
+            format!("{}\n募集内容が更新されました。", parts.join(" "))
         };
 
         use poise::serenity_prelude::CreateMessage;
