@@ -47,7 +47,11 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
                 )
                 .footer(CreateEmbedFooter::new("10秒間隔で自動的に通知が送信されます"));
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
         Err(e) => {
@@ -59,7 +63,11 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
                 .color(0xff0000)
                 .footer(CreateEmbedFooter::new("詳細はログを確認してください"));
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
     }

@@ -51,7 +51,11 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
                     .description("登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。")
                     .color(0xffaa00);
 
-                ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+                ctx.send(
+                    poise::CreateReply::default()
+                        .embed(embed)
+                        .ephemeral(true),
+                )
                     .await?;
                 return Ok(());
             }
@@ -96,7 +100,11 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
                 .color(0x00aaff)
                 .footer(CreateEmbedFooter::new(format!("合計 {} 件の予定されたスケジュール", total_count)));
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
         Err(e) => {
@@ -111,7 +119,11 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
                 ))
                 .color(0xff0000);
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
     }

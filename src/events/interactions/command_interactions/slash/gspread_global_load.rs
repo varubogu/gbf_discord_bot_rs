@@ -32,14 +32,22 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            ctx.say("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
+                    .ephemeral(true),
+            )
                 .await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
     };
 
-    ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
+    ctx.send(
+        poise::CreateReply::default()
+            .content("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
+            .ephemeral(true),
+    )
         .await?;
 
     // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
@@ -48,7 +56,12 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {}", error_msg)).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ {}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -107,10 +120,12 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             );
 
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ グローバルスプレッドシート読み込み失敗\n\n{}",
-                error_msg
-            ))
+            ctx.send(poise::CreateReply::default().content(format!(
+                    "❌ グローバルスプレッドシート読み込み失敗\n\n{}",
+                    error_msg
+                ))
+                .ephemeral(true),
+            )
             .await?;
 
             Ok(())

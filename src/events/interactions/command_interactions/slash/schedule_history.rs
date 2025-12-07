@@ -72,7 +72,11 @@ pub async fn schedule_history(
                     ))
                     .color(0xffaa00);
 
-                ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+                ctx.send(
+                    poise::CreateReply::default()
+                        .embed(embed)
+                        .ephemeral(true),
+                )
                     .await?;
                 return Ok(());
             }
@@ -127,7 +131,11 @@ pub async fn schedule_history(
                 ))
                 .color(0xff0000);
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
     }

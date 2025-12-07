@@ -27,27 +27,50 @@ pub async fn recruit_cancel(
             CancelFacade::confirm_cancel(ctx, &message).await
         }
         Ok(CanCancelResult::AlreadyCancelled) => {
-            let _ = ctx.say("この募集は既にキャンセルされています。").await;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("募集は既にキャンセルされています。")
+                    .ephemeral(true),
+            )
+            .await?;
             Ok(())
         }
         Ok(CanCancelResult::MessageDeleted) => {
-            let _ = ctx.say("募集メッセージが削除されています。").await;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("募集メッセージが削除されています。")
+                    .ephemeral(true),
+            )
+            .await?;
             Ok(())
         }
         Ok(CanCancelResult::NotRecruitMessage) => {
-            let _ = ctx
-                .say("指定されたメッセージは募集メッセージではありません。")
-                .await;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("指定されたメッセージは募集メッセージではありません。")
+                    .ephemeral(true),
+            )
+            .await?;
             Ok(())
         }
         Ok(CanCancelResult::NotFound) => {
-            let _ = ctx.say("指定された募集が見つかりません。").await;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("指定された募集が見つかりません。")
+                    .ephemeral(true),
+            )
+            .await?;
             Ok(())
         }
         Err(e) => {
             // システムエラーを想定
             error!("{:?}", e);
-            let _ = ctx.say("エラーが発生しました。").await;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。")
+                    .ephemeral(true),
+            )
+            .await?;
             // エラーの種類に関わらずBotは続行
             Ok(())
         }

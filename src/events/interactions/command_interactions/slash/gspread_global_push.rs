@@ -31,14 +31,22 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            ctx.say("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
+                    .ephemeral(true),
+            )
                 .await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
     };
 
-    ctx.say("🔄 グローバルデータをスプレッドシートに書き込んでいます...")
+    ctx.send(
+        poise::CreateReply::default()
+            .content("🔄 グローバルデータをスプレッドシートに書き込んでいます...")
+            .ephemeral(true),
+    )
         .await?;
 
     // Facadeを作成
@@ -47,7 +55,12 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {}", error_msg)).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ {}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -99,7 +112,11 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ グローバルデータ書き込み失敗\n\n{}", error_msg))
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ グローバルデータ書き込み失敗\n\n{}", error_msg))
+                    .ephemeral(true),
+            )
                 .await?;
 
             error!("グローバルデータ書き込み失敗");

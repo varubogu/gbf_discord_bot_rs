@@ -236,13 +236,17 @@ async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
 
             // Discord上にはユーザーフレンドリーなメッセージのみ表示
             let user_message = error.user_message();
-            if let Err(e) = ctx.say(user_message).await {
+            if let Err(e) = ctx.send(
+                poise::CreateReply::default()
+                    .content(user_message)
+                    .ephemeral(true),
+            )
+            .await
+            {
                 error!(error = %e, "エラーメッセージの送信に失敗しました");
             }
-        }
+        },
         // その他のエラー
-        other => {
-            error!("Poise framework error: {:?}", other);
-        }
+        other => error!("Poise framework error: {:?}", other),
     }
 }

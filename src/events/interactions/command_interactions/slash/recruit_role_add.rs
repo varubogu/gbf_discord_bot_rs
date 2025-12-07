@@ -70,10 +70,11 @@ pub async fn recruit_role_add(
     ).await?;
 
     // 結果をユーザーに通知
-    ctx.say(format!(
-        "{}個のロールを募集通知ロールとして登録しました。",
-        added_count
-    ))
+    ctx.send(
+        poise::CreateReply::default()
+            .content(format!("{}個のロールを募集通知ロールとして登録しました。", added_count))
+            .ephemeral(true),
+    )
     .await?;
 
     Ok(())

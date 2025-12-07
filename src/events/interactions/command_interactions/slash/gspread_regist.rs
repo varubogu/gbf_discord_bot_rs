@@ -33,7 +33,11 @@ pub async fn gspread_regist(
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です")
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ このコマンドはギルド内でのみ実行可能です")
+                    .ephemeral(true),
+            )
                 .await?;
             return Ok(());
         }
@@ -45,7 +49,11 @@ pub async fn gspread_regist(
         "ギルドスプレッドシート登録を開始"
     );
 
-    ctx.say("🔄 ギルドスプレッドシートを登録しています...")
+    ctx.send(
+        poise::CreateReply::default()
+            .content("🔄 ギルドスプレッドシートを登録しています...")
+            .ephemeral(true),
+    )
         .await?;
 
     // Facadeを作成
@@ -54,7 +62,12 @@ pub async fn gspread_regist(
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {}", error_msg)).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ {}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -74,7 +87,12 @@ pub async fn gspread_regist(
                 result.load_spreadsheet_url, result.push_spreadsheet_url
             );
 
-            ctx.say(message).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(message)
+                    .ephemeral(true),
+            )
+            .await?;
 
             info!(
                 guild_id = %guild_id,
@@ -87,17 +105,16 @@ pub async fn gspread_regist(
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ ギルドスプレッドシート登録失敗\n\n{}",
-                error_msg
-            ))
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ ギルドスプレッドシート登録失敗\n\n{}", error_msg))
+                    .ephemeral(true),
+            )
             .await?;
-
             error!(
                 guild_id = %guild_id,
                 "ギルドスプレッドシート登録失敗"
             );
-
             Ok(())
         }
     }

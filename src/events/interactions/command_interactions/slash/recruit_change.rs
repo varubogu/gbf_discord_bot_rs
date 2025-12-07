@@ -59,6 +59,11 @@ pub async fn recruit_change(
     .await?;
 
     // 処理完了をユーザーに通知
-    ctx.say("募集内容を更新しました。").await?;
+    ctx.send(
+        poise::CreateReply::default()
+            .content("募集内容を更新しました。")
+            .ephemeral(true),
+    )
+    .await?;
     Ok(())
 }

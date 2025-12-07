@@ -27,7 +27,11 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です")
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ このコマンドはギルド内でのみ実行可能です")
+                    .ephemeral(true),
+            )
                 .await?;
             return Ok(());
         }
@@ -53,9 +57,11 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(Some(id)) => id,
         Ok(None) => {
             txn.rollback().await?;
-            ctx.say(
-                "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
-                 `/gspread_regist` コマンドでスプレッドシートを登録してください",
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ エラー: このギルドにスプレッドシートが登録されていません\n\
+                        `/gspread_regist` コマンドでスプレッドシートを登録してください")
+                    .ephemeral(true),
             )
             .await?;
             error!(
@@ -66,10 +72,11 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             txn.rollback().await?;
-            ctx.say(format!(
-                "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
-                e
-            ))
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{}", e))
+                    .ephemeral(true),
+            )
             .await?;
             error!(
                 guild_id = %guild_id,
@@ -93,7 +100,12 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {}", error_msg)).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ {}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -132,7 +144,12 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
                 )
             };
 
-            ctx.say(message).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(message)
+                    .ephemeral(true),
+            )
+            .await?;
 
             info!(
                 guild_id = %guild_id,
@@ -146,10 +163,11 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ ギルドスプレッドシート読み込み失敗\n\n{}",
-                error_msg
-            ))
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{}", error_msg))
+                    .ephemeral(true),
+            )
             .await?;
 
             error!(

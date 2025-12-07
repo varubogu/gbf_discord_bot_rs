@@ -108,7 +108,11 @@ pub async fn schedule_stats(
                 .color(0x00aaff)
                 .footer(CreateEmbedFooter::new("詳細な統計情報"));
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
         Err(e) => {
@@ -123,7 +127,11 @@ pub async fn schedule_stats(
                 ))
                 .color(0xff0000);
 
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .ephemeral(true),
+            )
                 .await?;
         }
     }

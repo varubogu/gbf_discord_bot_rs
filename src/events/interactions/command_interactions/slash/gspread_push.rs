@@ -26,7 +26,11 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です")
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ このコマンドはギルド内でのみ実行可能です")
+                    .ephemeral(true),
+            )
                 .await?;
             return Ok(());
         }
@@ -65,16 +69,14 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             txn.rollback().await?;
-            ctx.say(format!(
-                "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
-                e
-            ))
+            ctx.send(
+                poise::CreateReply::default().content(format!(
+                    "❌ エラー: スプレッドシート設定の取得に失敗しました\n{}",
+                    e
+                ))
+                .ephemeral(true),
+            )
             .await?;
-            error!(
-                guild_id = %guild_id,
-                error = %e,
-                "スプレッドシート設定の取得に失敗"
-            );
             return Ok(());
         }
     };
@@ -82,7 +84,11 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     // トランザクションをコミット（スプレッドシートID取得が成功）
     txn.commit().await?;
 
-    ctx.say("🔄 ギルドデータをスプレッドシートに書き込んでいます...")
+    ctx.send(
+        poise::CreateReply::default()
+            .content("🔄 ギルドデータをスプレッドシートに書き込んでいます...")
+            .ephemeral(true),
+    )
         .await?;
 
     // Facadeを作成
@@ -90,7 +96,12 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {}", error_msg)).await?;
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ {}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -143,7 +154,11 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドデータ書き込み失敗\n\n{}", error_msg))
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ ギルドデータ書き込み失敗\n\n{}", error_msg))
+                    .ephemeral(true),
+            )
                 .await?;
 
             error!(
