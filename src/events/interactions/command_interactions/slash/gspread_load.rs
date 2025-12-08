@@ -16,7 +16,7 @@ use tracing::{error, info};
     slash_command,
     guild_only,
     check = "check_bot_control_role",
-    name_localized("ja", "読み込み"),
+    name_localized("ja", "スプレッドシート読み込み"),
     description_localized("ja", "ギルドスプレッドシートからデータ読み込み")
 )]
 pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {

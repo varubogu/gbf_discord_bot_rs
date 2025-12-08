@@ -35,9 +35,11 @@ async fn channel_type_autocomplete<'a>(
 /// ギルドの通知チャンネルを登録します。
 #[poise::command(
     slash_command,
-    rename = "channel_register",
     guild_only,
-    required_permissions = "ADMINISTRATOR"
+    rename = "channel_register",
+    name_localized("ja", "チャンネル登録"),
+    description_localized("ja", "ギルドの通知チャンネルを登録します。（gbf_bot_controlロール必須）"),
+    required_permissions = "ADMINISTRATOR",
 )]
 pub async fn channel_register(
     ctx: PoiseContext<'_>,

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 #[poise::command(
     slash_command,
+    guild_only,
     name_localized("ja", "タイムゾーン確認"),
     description_localized("ja", "サーバーの現在のタイムゾーン設定を確認します")
 )]

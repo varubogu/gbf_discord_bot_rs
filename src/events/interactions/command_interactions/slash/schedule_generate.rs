@@ -11,7 +11,12 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_generate",
     guild_only,
-    required_permissions = "ADMINISTRATOR"
+    required_permissions = "ADMINISTRATOR",
+    name_localized("ja", "スケジュール生成"),
+    description_localized(
+        "ja",
+        "イベントスケジュールと詳細から通知スケジュールを再計算してDBに保存します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
     info!(

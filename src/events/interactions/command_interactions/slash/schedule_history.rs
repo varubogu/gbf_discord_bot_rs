@@ -12,7 +12,12 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_history",
     guild_only,
-    required_permissions = "ADMINISTRATOR"
+    required_permissions = "ADMINISTRATOR",
+    name_localized("ja", "スケジュール履歴"),
+    description_localized(
+        "ja",
+        "過去の通知履歴を表示します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_history(
     ctx: PoiseContext<'_>,

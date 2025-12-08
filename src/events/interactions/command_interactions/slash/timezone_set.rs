@@ -9,6 +9,7 @@ use super::autocomplete::timezone_auto_complete;
 
 #[poise::command(
     slash_command,
+    guild_only,
     name_localized("ja", "タイムゾーン設定"),
     description_localized("ja", "サーバーのタイムゾーンを設定します")
 )]

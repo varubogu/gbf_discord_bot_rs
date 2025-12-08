@@ -13,7 +13,12 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_list",
     guild_only,
-    required_permissions = "ADMINISTRATOR"
+    required_permissions = "ADMINISTRATOR",
+    name_localized("ja", "スケジュール一覧"),
+    description_localized(
+        "ja",
+        "今後予定されている通知スケジュールを最大10件表示します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = ctx.guild_id().ok_or_else(|| {

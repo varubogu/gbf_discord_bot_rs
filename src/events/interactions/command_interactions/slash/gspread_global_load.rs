@@ -13,7 +13,7 @@ use tracing::{error, info};
 #[poise::command(
     slash_command,
     check = "check_bot_admin_server",
-    name_localized("ja", "グローバル読み込み"),
+    name_localized("ja", "グローバルスプレッドシート読み込み"),
     description_localized(
         "ja",
         "グローバルスプレッドシートからデータ読み込み（管理者専用サーバー）"

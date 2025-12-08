@@ -13,7 +13,12 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_stats",
     guild_only,
-    required_permissions = "ADMINISTRATOR"
+    required_permissions = "ADMINISTRATOR",
+    name_localized("ja", "スケジュール統計"),
+    description_localized(
+        "ja",
+        "指定した期間の通知統計を表示します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_stats(
     ctx: PoiseContext<'_>,
