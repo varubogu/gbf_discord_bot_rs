@@ -14,6 +14,7 @@ pub mod guild_last_process_times;
 pub mod guild_message_texts;
 pub mod guild_spreadsheet_exports;
 pub mod guild_spreadsheet_imports;
+pub mod guild_timezones;
 pub mod guilds;
 pub mod last_process_times;
 pub mod message_texts;

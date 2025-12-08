@@ -1,7 +1,10 @@
 use crate::facades::recruitment::change::change_recruitment_information;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::services::datetime_parser;
+use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
+use std::sync::Arc;
 
 use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
@@ -41,9 +44,23 @@ pub async fn recruit_change(
         });
     }
 
-    // 日時文字列をDateTime<Utc>に変換（指定されている場合のみ）
+    // タイムゾーンを取得（日時が指定されている場合のみ）
     let parsed_date = if let Some(date_str) = event_date {
-        Some(datetime_parser::parse_event_date(&date_str)?)
+        // ギルドIDを取得
+        let guild_id = ctx
+            .guild_id()
+            .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
+
+        // タイムゾーンを取得
+        let app_state = ctx.data();
+        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_service = TimezoneService::new(timezone_repo);
+        let timezone = timezone_service
+            .get_guild_timezone(app_state.app_state.guild_db(), guild_id.get() as i64)
+            .await?;
+
+        // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
+        Some(datetime_parser::parse_event_date(&date_str, timezone)?)
     } else {
         None
     };

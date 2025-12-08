@@ -1,6 +1,7 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
@@ -9,11 +10,13 @@ use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::QuestRepository;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
+use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
+use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
 /// 募集内容を更新する（クロージャパターン）
@@ -121,6 +124,11 @@ pub async fn change_recruitment_information(
 
         let new_expiry_date = event_date.unwrap_or(existing_recruitment.quest_start_at);
 
+        // タイムゾーンを取得
+        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_service = TimezoneService::new(timezone_repo);
+        let timezone = timezone_service.get_guild_timezone(db, guild_id as i64).await?;
+
         // 3. メッセージ表示用の募集データを作成
         let recruitment_data = new::create_recruitment_data(
             db,
@@ -138,6 +146,7 @@ pub async fn change_recruitment_information(
             channel_id,
             guild_id,
             Some(new_expiry_date),
+            timezone,
         )
         .await?;
 

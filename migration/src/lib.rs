@@ -24,6 +24,7 @@ mod m20251127_000003_enable_row_level_security;
 mod m20251127_000004_set_default_privileges;
 mod m20251203_000000_create_guild_override_tables;
 mod m20251207_000000_create_recruitment_notification_roles;
+mod m20251208_000000_create_guild_timezones;
 
 pub struct Migrator;
 
@@ -55,6 +56,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251127_000004_set_default_privileges::Migration),
             Box::new(m20251203_000000_create_guild_override_tables::Migration),
             Box::new(m20251207_000000_create_recruitment_notification_roles::Migration),
+            Box::new(m20251208_000000_create_guild_timezones::Migration),
         ]
     }
 }

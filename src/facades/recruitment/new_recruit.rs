@@ -1,14 +1,17 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
+use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Duration, Utc};
 use sea_orm::TransactionTrait;
+use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
 /// 新しい募集を開始する
@@ -38,6 +41,11 @@ pub async fn new_recruitment(
         let quest_repository = SeaOrmQuestRepository::new();
         let battle_style_repository = SeaOrmBattleStyleRepository::new();
 
+        // タイムゾーンを取得
+        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_service = TimezoneService::new(timezone_repo);
+        let timezone = timezone_service.get_guild_timezone(conn, guild_id as i64).await?;
+
         // 1. 募集データ作成（QuestRepository, BattleStyleRepositoryを使用）
         let mut recruitment_data =
             new::create_recruitment_data(
@@ -48,7 +56,8 @@ pub async fn new_recruitment(
                 battle_style_id,
                 channel_id,
                 guild_id,
-                event_date
+                event_date,
+                timezone,
             ).await?;
 
         // 1.5. ロールメンションを取得してメッセージの先頭に追加

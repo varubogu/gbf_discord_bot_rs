@@ -34,6 +34,7 @@ pub async fn create_recruitment_data<'c, C, Q, B>(
     channel_id: u64,
     guild_id: u64,
     event_date: Option<DateTime<Utc>>,
+    timezone: chrono_tz::Tz,
 ) -> types::Result<RecruitmentData>
 where
     C: sea_orm::ConnectionTrait,
@@ -81,7 +82,7 @@ where
     let reactions = parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"));
 
     // メッセージ内容を作成
-    let message_content = create_message_content(&quest.name, &battle_style.display_name, &expiry_date);
+    let message_content = create_message_content(&quest.name, &battle_style.display_name, &expiry_date, timezone);
 
     // 初期参加者一覧を作成
     let initial_participants_text = create_initial_participants_text(&reactions);
@@ -162,6 +163,7 @@ pub fn create_message_content(
     quest_name: &str,
     battle_style_name: &str,
     expiry_date: &DateTime<chrono::Utc>,
+    timezone: chrono_tz::Tz,
 ) -> String {
     let mut message_text = format!("{}の参加者を募集します。", quest_name);
 
@@ -170,9 +172,9 @@ pub fn create_message_content(
         message_text.push_str("\n参加属性を選んでください");
     }
 
-    // 表示用にJST変換（UTC+9）
-    let jst_date = *expiry_date + chrono::Duration::hours(9);
-    message_text.push_str(&format!("\n開催日時：{} (JST)", jst_date.format("%m/%d %H:%M")));
+    // 表示用にサーバー設定のタイムゾーンに変換
+    let local_date = expiry_date.with_timezone(&timezone);
+    message_text.push_str(&format!("\n開催日時：{}", local_date.format("%m/%d %H:%M %Z")));
 
     message_text
 }

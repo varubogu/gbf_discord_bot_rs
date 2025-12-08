@@ -21,5 +21,7 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::schedule_list::schedule_list(),
         slash::schedule_history::schedule_history(),
         slash::schedule_stats::schedule_stats(),
+        slash::timezone_set::timezone_set(),
+        slash::timezone_show::timezone_show(),
     ]
 }
