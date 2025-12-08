@@ -97,17 +97,28 @@ pub struct Model {
 #### パラメータ
 | パラメータ名 | 型 | 必須 | 説明 | 例 |
 |-------------|-----|------|------|-----|
-| timezone | String | ✅ | IANAタイムゾーン名 | `Asia/Tokyo`, `America/New_York`, `Europe/London` |
+| timezone | String | ✅ | IANAタイムゾーン名（オートコンプリート対応） | `Asia/Tokyo`, `America/New_York`, `Europe/London` |
+
+#### オートコンプリート機能
+- 入力時に主要なタイムゾーンの候補が表示される
+- 表示形式: `タイムゾーン名 - 説明 [UTCオフセット]`
+  - 例: `Asia/Tokyo - 日本標準時 (JST) [UTC+9]`
+  - 例: `America/New_York - 米国東部標準時 (EST) [UTC-5]`
+- 部分文字列による絞り込み検索対応
+  - タイムゾーン名（例: "tokyo", "new_york"）
+  - 説明文（例: "日本", "米国"）
+- 最大25件まで表示（Discordの制限）
+- データソース: プログラム内配列定義（約50の主要タイムゾーン）
 
 #### 動作フロー
 1. コマンド実行者の権限チェック（`gbf_bot_control` ロール保持確認）
 2. タイムゾーン名のバリデーション（chrono-tzでパース可能か）
 3. DB保存（UPSERT）
-4. 完了メッセージ表示
+4. 完了メッセージ表示（ephemeral）
 
 #### 成功時の表示例
 ```
-タイムゾーンを Asia/Tokyo (JST) に設定しました。
+タイムゾーンを Asia/Tokyo に設定しました。
 ```
 
 #### エラー例
@@ -174,8 +185,56 @@ impl TimezoneService {
         timezone_str.parse::<Tz>()
             .map_err(|_| Error::InvalidTimezone)
     }
+
+    /// オートコンプリート用のタイムゾーンリストを取得
+    /// 部分文字列でフィルタリングし、UTC+9:00形式のオフセット付きで表示
+    /// キャッシュを使用してパフォーマンスを最適化
+    pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteChoice> {
+        // lazy_staticでキャッシュされた全候補から部分一致検索
+        // 表示形式: "Asia/Tokyo - 日本標準時 (JST) [UTC+9]"
+        // 最大25件まで返す
+    }
+
+    /// タイムゾーンキャッシュを初期化する
+    /// プログラム起動時に呼び出すことで、事前に計算を完了させる
+    pub fn initialize_timezone_cache() {
+        // lazy_staticの初期化を強制
+    }
 }
 ```
+
+### 主要タイムゾーンリスト定義
+
+```rust
+/// 主要なタイムゾーンのリスト（名前、説明）
+/// プログラム内で配列として定義（約50のタイムゾーン）
+const COMMON_TIMEZONES: &[(&str, &str)] = &[
+    // アジア
+    ("Asia/Tokyo", "日本標準時 (JST)"),
+    ("Asia/Seoul", "韓国標準時 (KST)"),
+    ("Asia/Shanghai", "中国標準時 (CST)"),
+    // ... 他のタイムゾーン
+];
+
+/// オートコンプリート用のタイムゾーン候補リスト（キャッシュ）
+/// プログラム起動時に計算され、以後は静的に保持される
+lazy_static! {
+    static ref TIMEZONE_CHOICES: Vec<AutocompleteChoice> = {
+        // 全タイムゾーンのUTCオフセットを計算
+    };
+}
+```
+
+### パフォーマンス最適化
+
+タイムゾーン候補リストは`lazy_static`を使用してキャッシュされます：
+- **プログラム起動時**: `main.rs`で`initialize_timezone_cache()`を呼び出し、全タイムゾーンのUTCオフセットを計算
+- **以降**: 静的に保持されたキャッシュから取得して部分一致検索のみ実行
+- **メリット**:
+  - UTCオフセット計算コスト（約50回のタイムゾーンパース）を起動時のみに限定
+  - 複数ユーザーの同時アクセスでも競合なし
+  - メモリ効率的（全ユーザーで同一データを共有）
+- **注意**: サマータイム切り替え時のオフセット変更は、Bot再起動時に反映される
 
 ## リポジトリ層API設計
 
@@ -289,14 +348,72 @@ CREATE TABLE guild_timezones (
 
 ## 主要なタイムゾーン名一覧（参考）
 
-| タイムゾーン名 | 説明 | 略称例 |
-|--------------|------|--------|
-| Asia/Tokyo | 日本標準時 | JST |
-| America/New_York | 米国東部時間 | EST/EDT |
-| America/Los_Angeles | 米国太平洋時間 | PST/PDT |
-| Europe/London | グリニッジ標準時 | GMT/BST |
-| Europe/Paris | 中央ヨーロッパ時間 | CET/CEST |
-| Australia/Sydney | オーストラリア東部時間 | AEDT/AEST |
+### アジア
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| Asia/Tokyo | 日本標準時 | JST | UTC+9 |
+| Asia/Seoul | 韓国標準時 | KST | UTC+9 |
+| Asia/Shanghai | 中国標準時 | CST | UTC+8 |
+| Asia/Hong_Kong | 香港時間 | HKT | UTC+8 |
+| Asia/Taipei | 台湾標準時 | CST | UTC+8 |
+| Asia/Singapore | シンガポール標準時 | SGT | UTC+8 |
+| Asia/Bangkok | インドシナ時間 | ICT | UTC+7 |
+| Asia/Jakarta | 西部インドネシア時間 | WIB | UTC+7 |
+| Asia/Manila | フィリピン標準時 | PST | UTC+8 |
+| Asia/Kolkata | インド標準時 | IST | UTC+5:30 |
+| Asia/Dubai | 湾岸標準時 | GST | UTC+4 |
+
+### オセアニア
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| Australia/Sydney | オーストラリア東部標準時 | AEST | UTC+10 |
+| Australia/Melbourne | オーストラリア東部標準時 | AEST | UTC+10 |
+| Australia/Perth | オーストラリア西部標準時 | AWST | UTC+8 |
+| Pacific/Auckland | ニュージーランド標準時 | NZST | UTC+12 |
+
+### 北米
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| America/New_York | 米国東部標準時 | EST | UTC-5 |
+| America/Chicago | 米国中部標準時 | CST | UTC-6 |
+| America/Denver | 米国山岳部標準時 | MST | UTC-7 |
+| America/Los_Angeles | 米国太平洋標準時 | PST | UTC-8 |
+| America/Anchorage | アラスカ標準時 | AKST | UTC-9 |
+| America/Toronto | カナダ東部標準時 | EST | UTC-5 |
+| America/Vancouver | カナダ太平洋標準時 | PST | UTC-8 |
+
+### 中南米
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| America/Mexico_City | メキシコ中部標準時 | CST | UTC-6 |
+| America/Sao_Paulo | ブラジリア時間 | BRT | UTC-3 |
+| America/Buenos_Aires | アルゼンチン時間 | ART | UTC-3 |
+
+### ヨーロッパ
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| Europe/London | グリニッジ標準時 | GMT | UTC+0 |
+| Europe/Paris | 中央ヨーロッパ標準時 | CET | UTC+1 |
+| Europe/Berlin | 中央ヨーロッパ標準時 | CET | UTC+1 |
+| Europe/Rome | 中央ヨーロッパ標準時 | CET | UTC+1 |
+| Europe/Madrid | 中央ヨーロッパ標準時 | CET | UTC+1 |
+| Europe/Moscow | モスクワ標準時 | MSK | UTC+3 |
+
+### アフリカ
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| Africa/Cairo | 東ヨーロッパ標準時 | EET | UTC+2 |
+| Africa/Johannesburg | 南アフリカ標準時 | SAST | UTC+2 |
+
+### その他
+| タイムゾーン名 | 説明 | 略称 | 標準UTCオフセット |
+|--------------|------|------|------------------|
+| UTC | 協定世界時 | UTC | UTC+0 |
+
+**注意事項:**
+- サマータイム（夏時間）実施地域では、標準時とは異なるオフセットになる場合があります
+- 表示されるUTCオフセットは、現在時刻に基づいて自動計算されます
+- 全タイムゾーンは約50件がプログラム内に定義されています
 
 ## 実装チェックリスト
 
