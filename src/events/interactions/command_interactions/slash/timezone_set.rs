@@ -5,6 +5,8 @@ use crate::types::{PoiseContext, Result};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 
+use super::autocomplete::timezone_auto_complete;
+
 #[poise::command(
     slash_command,
     name_localized("ja", "タイムゾーン設定"),
@@ -13,8 +15,9 @@ use std::sync::Arc;
 pub async fn timezone_set(
     ctx: PoiseContext<'_>,
 
-    #[description = "IANA timezone name (e.g., Asia/Tokyo, America/New_York)"]
-    #[description_localized("ja", "IANAタイムゾーン名（例: Asia/Tokyo, America/New_York）")]
+    #[description = "timezone"]
+    #[description_localized("ja", "タイムゾーン")]
+    #[autocomplete = "timezone_auto_complete"]
     timezone: String,
 ) -> Result<()> {
     ctx.defer_ephemeral().await?;

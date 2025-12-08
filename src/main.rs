@@ -154,6 +154,10 @@ async fn main() -> Result<()> {
 
     info!("All database connection pools initialised successfully");
 
+    // タイムゾーンキャッシュを初期化（プログラム起動時に計算）
+    info!("Initializing timezone cache...");
+    gbf_discord_bot_rs::services::timezone_service::TimezoneService::initialize_timezone_cache();
+
     // Create AppState with all DB connections
     let app_state = AppState::new(guild_db, system_db, global_db, config);
     info!("AppState initialized with all role connections");
