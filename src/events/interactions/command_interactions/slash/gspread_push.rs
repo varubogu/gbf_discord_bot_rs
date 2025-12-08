@@ -15,6 +15,7 @@ use tracing::{error, info};
     slash_command,
     guild_only,
     check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スプレッドシート書き込み"),
     description_localized("ja", "ギルドデータをスプレッドシートに書き込み")
 )]

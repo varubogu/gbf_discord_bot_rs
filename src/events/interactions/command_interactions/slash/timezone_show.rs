@@ -1,4 +1,5 @@
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::services::permission::check_bot_control_role;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
@@ -6,6 +7,8 @@ use std::sync::Arc;
 #[poise::command(
     slash_command,
     guild_only,
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "タイムゾーン確認"),
     description_localized("ja", "サーバーの現在のタイムゾーン設定を確認します")
 )]

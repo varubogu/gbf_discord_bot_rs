@@ -1,5 +1,5 @@
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::services::permission;
+use crate::services::permission::check_bot_control_role;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use sea_orm::TransactionTrait;
@@ -10,15 +10,18 @@ use super::autocomplete::timezone_auto_complete;
 #[poise::command(
     slash_command,
     guild_only,
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "タイムゾーン設定"),
     description_localized("ja", "サーバーのタイムゾーンを設定します")
 )]
 pub async fn timezone_set(
     ctx: PoiseContext<'_>,
 
-    #[description = "timezone"]
-    #[description_localized("ja", "タイムゾーン")]
     #[autocomplete = "timezone_auto_complete"]
+    #[name_localized("ja", "タイムゾーン")]
+    #[description = "timezone"]
+    #[description_localized("ja", "タイムゾーン（選択式）")]
     timezone: String,
 ) -> Result<()> {
     ctx.defer_ephemeral().await?;
@@ -27,13 +30,6 @@ pub async fn timezone_set(
     let guild_id = ctx
         .guild_id()
         .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
-
-    // 権限チェック（gbf_bot_controlロール）
-    if !permission::check_bot_control_role(ctx).await? {
-        return Err(crate::types::AppError::Business {
-            message: "このコマンドは管理者（gbf_bot_controlロール）のみ実行できます。".to_string(),
-        });
-    }
 
     // タイムゾーン名のバリデーション
     let tz = TimezoneService::validate_timezone(&timezone)?;

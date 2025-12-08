@@ -1,11 +1,14 @@
+use poise::serenity_prelude::{AutocompleteChoice, Channel};
+use sea_orm::TransactionTrait;
+use tracing::{error, info};
+
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_repository::GuildRepository;
 use crate::types::{PoiseContext, Result};
-use poise::serenity_prelude::{AutocompleteChoice, Channel};
-use sea_orm::TransactionTrait;
-use tracing::{error, info};
+use crate::services::permission::check_bot_control_role;
+
 
 /// チャンネル種別の選択肢を取得
 async fn channel_type_autocomplete<'a>(
@@ -36,17 +39,21 @@ async fn channel_type_autocomplete<'a>(
 #[poise::command(
     slash_command,
     guild_only,
+    check = "check_bot_control_role",
+    ephemeral = true,
     rename = "channel_register",
     name_localized("ja", "チャンネル登録"),
     description_localized("ja", "ギルドの通知チャンネルを登録します。（gbf_bot_controlロール必須）"),
-    required_permissions = "ADMINISTRATOR",
 )]
 pub async fn channel_register(
     ctx: PoiseContext<'_>,
+    #[autocomplete = "channel_type_autocomplete"]
+    #[name_localized("ja", "チャンネル種別")]
     #[description = "Channel type"]
     #[description_localized("ja", "チャンネル種別")]
-    #[autocomplete = "channel_type_autocomplete"]
     channel_type: String,
+
+    #[name_localized("ja", "チャンネル")]
     #[description = "Channel"]
     #[description_localized("ja", "登録するチャンネル")]
     channel: Channel,

@@ -1,5 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::NotificationRepository;
+use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use chrono::Utc;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
@@ -13,12 +14,10 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_list",
     guild_only,
-    required_permissions = "ADMINISTRATOR",
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スケジュール一覧"),
-    description_localized(
-        "ja",
-        "今後予定されている通知スケジュールを最大10件表示します。（管理者専用サーバーのみ実施可能）"
-    )
+    description_localized("ja", "今後予定されている通知スケジュールを最大10件表示します。（管理者専用サーバーのみ実施可能）"),
 )]
 pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = ctx.guild_id().ok_or_else(|| {

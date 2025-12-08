@@ -12,11 +12,9 @@ use tracing::{error, info};
 #[poise::command(
     slash_command,
     check = "check_bot_admin_server",
+    ephemeral = true,
     name_localized("ja", "グローバルスプレッドシート書き込み"),
-    description_localized(
-        "ja",
-        "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）"
-    )
+    description_localized("ja", "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）"),
 )]
 pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保

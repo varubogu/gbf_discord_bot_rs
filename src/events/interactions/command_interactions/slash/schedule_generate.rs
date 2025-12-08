@@ -1,4 +1,5 @@
 use crate::facades::scheduler::SchedulerFacade;
+use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::sync::Arc;
@@ -11,12 +12,10 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_generate",
     guild_only,
-    required_permissions = "ADMINISTRATOR",
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スケジュール生成"),
-    description_localized(
-        "ja",
-        "イベントスケジュールと詳細から通知スケジュールを再計算してDBに保存します。（管理者専用サーバーのみ実施可能）"
-    )
+    description_localized("ja", "イベントスケジュールと詳細から通知スケジュールを再計算してDBに保存します。（管理者専用サーバーのみ実施可能）"),
 )]
 pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
     info!(

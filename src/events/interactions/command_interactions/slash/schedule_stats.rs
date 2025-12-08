@@ -1,6 +1,7 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::NotificationRepository;
 use crate::types::{PoiseContext, Result};
+use crate::services::permission::check_bot_control_role;
 use chrono::{Duration, Utc};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use sea_orm::TransactionTrait;
@@ -13,12 +14,10 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_stats",
     guild_only,
-    required_permissions = "ADMINISTRATOR",
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スケジュール統計"),
-    description_localized(
-        "ja",
-        "指定した期間の通知統計を表示します。（管理者専用サーバーのみ実施可能）"
-    )
+    description_localized("ja", "指定した期間の通知統計を表示します。（管理者専用サーバーのみ実施可能）"),
 )]
 pub async fn schedule_stats(
     ctx: PoiseContext<'_>,

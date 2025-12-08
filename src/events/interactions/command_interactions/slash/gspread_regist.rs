@@ -12,18 +12,23 @@ use tracing::{error, info};
     slash_command,
     guild_only,
     check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スプレッドシート登録"),
-    description_localized("ja", "ギルド用のGoogleスプレッドシートを登録")
+    description_localized("ja", "ギルド用のGoogleスプレッドシートを登録"),
 )]
 pub async fn gspread_regist(
     ctx: PoiseContext<'_>,
-    #[description = "読み込み用スプレッドシートURL（またはID）"]
+ 
+    #[max_length = 512]
     #[name_localized("ja", "読み込み用スプレッドシート")]
-    #[max_length = 512]
+    #[description = "Read-only spreadsheet URL (or ID)"]
+    #[description_localized("ja", "読み込み用スプレッドシートURL（またはID）")]
     load_spreadsheet_url: String,
-    #[description = "書き込み用スプレッドシートURL（またはID）"]
-    #[name_localized("ja", "書き込み用スプレッドシート")]
+
     #[max_length = 512]
+    #[name_localized("ja", "書き込み用スプレッドシート")]
+    #[description = "Write-only spreadsheet URL (or ID)"]
+    #[description_localized("ja", "書き込み用スプレッドシートURL（またはID）")]
     push_spreadsheet_url: String,
 ) -> Result<()> {
     // 即座にdeferして処理時間を確保

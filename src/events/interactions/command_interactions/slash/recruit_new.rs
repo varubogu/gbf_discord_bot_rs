@@ -15,18 +15,21 @@ use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 pub async fn recruit_new(
     ctx: PoiseContext<'_>,
 
+    #[autocomplete = "quest_auto_complete"]
+    #[name_localized("ja", "クエスト名")]
     #[description = "quest name or alias"]
     #[description_localized("ja", "クエスト名またはクエスト別名")]
-    #[autocomplete = "quest_auto_complete"]
     quest: String,
 
+    #[name_localized("ja", "クエスト出発日時")]
     #[description = "Quest departure date and time"]
     #[description_localized("ja", "クエスト出発日時")]
     event_date: String,
 
+    #[autocomplete = "battle_style_auto_complete"]
+    #[name_localized("ja", "マルチ攻略方法")]
     #[description = "battle style"]
     #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
-    #[autocomplete = "battle_style_auto_complete"]
     battle_style: Option<i32>,
 ) -> Result<()> {
     ctx.defer().await?;

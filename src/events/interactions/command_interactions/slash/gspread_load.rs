@@ -16,6 +16,7 @@ use tracing::{error, info};
     slash_command,
     guild_only,
     check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スプレッドシート読み込み"),
     description_localized("ja", "ギルドスプレッドシートからデータ読み込み")
 )]

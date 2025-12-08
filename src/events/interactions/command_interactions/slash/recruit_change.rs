@@ -17,19 +17,23 @@ use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 pub async fn recruit_change(
     ctx: PoiseContext<'_>,
 
+    #[name_localized("ja", "募集メッセージ")]
     #[description = "recruit message"]
     #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
     message: Message,
 
+    #[name_localized("ja", "クエスト名")]
     #[description = "quest name or alias"]
     #[description_localized("ja", "クエスト名またはクエスト別名（変更する場合のみ指定）")]
     #[autocomplete = "quest_auto_complete"]
     quest: Option<String>,
 
+    #[name_localized("ja", "クエスト出発日時")]
     #[description = "Quest departure date and time"]
     #[description_localized("ja", "クエスト出発日時（変更する場合のみ指定）")]
-    event_date: Option<String>,
+    event_date: Option<String>,  
 
+    #[name_localized("ja", "マルチ攻略方法")]
     #[description = "battle style"]
     #[description_localized("ja", "マルチ攻略方法（変更する場合のみ指定）")]
     #[autocomplete = "battle_style_auto_complete"]

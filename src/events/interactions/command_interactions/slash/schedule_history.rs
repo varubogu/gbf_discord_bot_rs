@@ -1,5 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::NotificationRepository;
+use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use sea_orm::TransactionTrait;
@@ -12,18 +13,18 @@ use tracing::{error, info};
     slash_command,
     rename = "schedule_history",
     guild_only,
-    required_permissions = "ADMINISTRATOR",
+    check = "check_bot_control_role",
+    ephemeral = true,
     name_localized("ja", "スケジュール履歴"),
-    description_localized(
-        "ja",
-        "過去の通知履歴を表示します。（管理者専用サーバーのみ実施可能）"
-    )
+    description_localized("ja", "過去の通知履歴を表示します。（管理者専用サーバーのみ実施可能）"),
 )]
 pub async fn schedule_history(
     ctx: PoiseContext<'_>,
-    #[description = "表示する日数（デフォルト: 7日）"]
     #[min = 1]
     #[max = 30]
+    #[name_localized("ja", "表示する日数")]
+    #[description = "Number of days to display (default: 7)"]
+    #[description_localized("ja", "表示する日数（デフォルト: 7日）")]
     days: Option<i64>,
 ) -> Result<()> {
     let guild_id = ctx.guild_id().ok_or_else(|| {

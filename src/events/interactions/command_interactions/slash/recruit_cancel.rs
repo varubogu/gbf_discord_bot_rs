@@ -14,6 +14,7 @@ use tracing::error;
 pub async fn recruit_cancel(
     ctx: PoiseContext<'_>,
 
+    #[name_localized("ja", "募集メッセージ")]
     #[description = "recruit message"]
     #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
     message: Message,
