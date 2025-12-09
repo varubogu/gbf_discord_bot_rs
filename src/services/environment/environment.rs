@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -7,6 +8,12 @@ use tokio::sync::RwLock;
 use tracing::{error, info};
 
 use crate::repository::database::models_database::Database;
+
+lazy_static! {
+    /// 環境変数置換パターン（${VARIABLE_NAME}）
+    static ref RE_VARIABLE: Regex = Regex::new(r"\$\{([A-Za-z0-9_\-\.]+)\}")
+        .expect("環境変数置換パターンのRegexが無効です");
+}
 
 #[derive(Debug)]
 pub struct EnvironmentError {
@@ -117,20 +124,21 @@ impl Environment {
         &self,
         text: &str,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let re = Regex::new(r"\$\{([A-Za-z0-9_\-\.]+)\}").unwrap();
         let vars = self.variables.read().await;
 
         let mut result = text.to_string();
         let mut missing_keys = Vec::new();
 
-        for cap in re.captures_iter(text) {
-            let full_match = cap.get(0).unwrap().as_str();
-            let key = cap.get(1).unwrap().as_str();
+        for cap in RE_VARIABLE.captures_iter(text) {
+            if let (Some(full_match), Some(key)) = (cap.get(0), cap.get(1)) {
+                let full_match = full_match.as_str();
+                let key = key.as_str();
 
-            if let Some(value) = vars.get(key) {
-                result = result.replace(full_match, value);
-            } else {
-                missing_keys.push(key.to_string());
+                if let Some(value) = vars.get(key) {
+                    result = result.replace(full_match, value);
+                } else {
+                    missing_keys.push(key.to_string());
+                }
             }
         }
 

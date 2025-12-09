@@ -4,7 +4,11 @@ use crate::types::{PoiseContext, Result};
 
 pub(crate) async fn load(ctx: &PoiseContext<'_>) -> Result<()> {
     // コマンド実行者の情報取得
-    let member = ctx.author_member().await.unwrap();
+    let member = ctx.author_member().await.ok_or_else(|| {
+        crate::types::AppError::Config {
+            message: "メンバー情報を取得できませんでした。このコマンドはサーバー内でのみ実行可能です".to_string(),
+        }
+    })?;
 
     // 権限チェック
     let has_permission_result = has_bot_control_permission(ctx, &member).await;

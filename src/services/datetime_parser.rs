@@ -3,10 +3,25 @@
 /// ユーザー入力はサーバー設定のタイムゾーンとして解釈し、UTCに変換する
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
+use lazy_static::lazy_static;
 use regex::Regex;
 use crate::types::Result;
 
 const DEFAULT_HOUR: u32 = 21; // デフォルト時刻（21時）
+
+lazy_static! {
+    /// 日本語形式の日時パターン（1月2日3時4分）
+    static ref RE_JAPANESE_FULL: Regex = Regex::new(r"^(\d+)月(\d+)日(\d+)時(\d+)分$")
+        .expect("日本語形式（完全）のRegexパターンが無効です");
+
+    /// 日本語形式の時刻パターン（午後9時半）
+    static ref RE_JAPANESE_TIME: Regex = Regex::new(r"^(午前|午後)?(\d+)時(半|(\d+)分)?$")
+        .expect("日本語形式（時刻）のRegexパターンが無効です");
+
+    /// 日本語形式の日付パターン（1月2日）
+    static ref RE_JAPANESE_DATE: Regex = Regex::new(r"^(\d+)月(\d+)日$")
+        .expect("日本語形式（日付）のRegexパターンが無効です");
+}
 
 /// 日時文字列をDateTime<Utc>に変換
 ///
@@ -76,7 +91,8 @@ fn parse_date_only(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     let patterns_with_year = vec!["%Y/%m/%d", "%Y-%m-%d"];
     for pattern in patterns_with_year {
         if let Ok(naive_date) = NaiveDate::parse_from_str(s, pattern) {
-            let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0).unwrap();
+            let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0)
+                .expect("DEFAULT_HOURは常に有効な時刻です");
             let naive_dt = NaiveDateTime::new(naive_date, naive_time);
             let tz_dt = timezone
                 .from_local_datetime(&naive_dt)
@@ -91,7 +107,8 @@ fn parse_date_only(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     for pattern in patterns_without_year {
         let with_year = format!("{}/{}", current_year, s);
         if let Ok(naive_date) = NaiveDate::parse_from_str(&with_year, &format!("%Y/{}", pattern)) {
-            let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0).unwrap();
+            let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0)
+                .expect("DEFAULT_HOURは常に有効な時刻です");
             let naive_dt = NaiveDateTime::new(naive_date, naive_time);
             let tz_dt = timezone
                 .from_local_datetime(&naive_dt)
@@ -152,8 +169,7 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     let now_tz = Utc::now().with_timezone(&timezone);
 
     // "1月2日3時4分" 形式
-    let re_full = Regex::new(r"^(\d+)月(\d+)日(\d+)時(\d+)分$").unwrap();
-    if let Some(caps) = re_full.captures(s) {
+    if let Some(caps) = RE_JAPANESE_FULL.captures(s) {
         let month: u32 = caps[1].parse().map_err(|_| "月のパースエラー".to_string())?;
         let day: u32 = caps[2].parse().map_err(|_| "日のパースエラー".to_string())?;
         let hour: u32 = caps[3].parse().map_err(|_| "時のパースエラー".to_string())?;
@@ -174,8 +190,7 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     }
 
     // "午後9時半" 形式
-    let re_time = Regex::new(r"^(午前|午後)?(\d+)時(半|(\d+)分)?$").unwrap();
-    if let Some(caps) = re_time.captures(s) {
+    if let Some(caps) = RE_JAPANESE_TIME.captures(s) {
         let is_pm = caps.get(1).map_or(false, |m| m.as_str() == "午後");
         let mut hour: u32 = caps[2].parse().map_err(|_| "時のパースエラー".to_string())?;
 
@@ -200,15 +215,15 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     }
 
     // "1月2日" 形式（時刻は21時固定）
-    let re_date = Regex::new(r"^(\d+)月(\d+)日$").unwrap();
-    if let Some(caps) = re_date.captures(s) {
+    if let Some(caps) = RE_JAPANESE_DATE.captures(s) {
         let month: u32 = caps[1].parse().map_err(|_| "月のパースエラー".to_string())?;
         let day: u32 = caps[2].parse().map_err(|_| "日のパースエラー".to_string())?;
 
         let year = now_tz.year();
         let naive_date = NaiveDate::from_ymd_opt(year, month, day)
             .ok_or_else(|| "無効な日付".to_string())?;
-        let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0).unwrap();
+        let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0)
+            .expect("DEFAULT_HOURは常に有効な時刻です");
         let naive_dt = NaiveDateTime::new(naive_date, naive_time);
 
         let tz_dt = timezone
