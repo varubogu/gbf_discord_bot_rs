@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::CreateEmbed;
+use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed};
+use poise::serenity_prelude::ButtonStyle;
 use tracing::info;
 
 use crate::models::quests::Quest;
@@ -208,4 +209,107 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
     } else {
         text
     }
+}
+
+/// ボタン版用の初期参加者一覧テキストを作成
+/// 修正済みの絵文字を使用
+fn create_initial_participants_text_for_buttons(battle_style_name: &str) -> String {
+    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
+
+    if battle_style_name == "6属性" {
+        let mut text = String::new();
+        for (emoji, name) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()) {
+            text.push_str(&format!("{} {}: なし\n", emoji, name));
+        }
+        text.push_str(&format!("{} 全属性可能: なし\n", ALL_ELEMENTS_EMOJI));
+        text
+    } else {
+        format!("{} 参加: なし\n", SIMPLE_JOIN_EMOJI)
+    }
+}
+
+/// 募集用ボタンを作成する（ボタン版募集用）
+///
+/// # 引数
+/// * `battle_style_name` - 攻略方法の名前（「6属性」かどうかで分岐）
+///
+/// # 戻り値
+/// CreateActionRowのVec（Discord Message Componentsとして使用）
+pub fn create_recruitment_buttons(battle_style_name: &str) -> Vec<CreateActionRow> {
+    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES};
+
+    if battle_style_name == "6属性" {
+        // 6属性の場合：属性1-6ボタン + 全属性可能ボタン
+        let mut element_buttons = Vec::new();
+        for (i, (emoji, name)) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
+            let button = CreateButton::new(format!("recruit_join_{}", i + 1))
+                .label(format!("{} {}", emoji, name))
+                .style(ButtonStyle::Success);
+            element_buttons.push(button);
+        }
+
+        // 全属性可能ボタン
+        let all_elements_button = CreateButton::new("recruit_join_0")
+            .label(format!("{} 全属性可能", ALL_ELEMENTS_EMOJI))
+            .style(ButtonStyle::Success);
+
+        // 全て取り消しボタン
+        let leave_all_button = CreateButton::new("recruit_leave_all")
+            .label("❌ 全て取り消し")
+            .style(ButtonStyle::Danger);
+
+        // 行1: 属性1-3
+        let row1 = CreateActionRow::Buttons(element_buttons[0..3].to_vec());
+        // 行2: 属性4-6
+        let row2 = CreateActionRow::Buttons(element_buttons[3..6].to_vec());
+        // 行3: 全属性可能 + 全て取り消し
+        let row3 = CreateActionRow::Buttons(vec![all_elements_button, leave_all_button]);
+
+        vec![row1, row2, row3]
+    } else {
+        // シンプル参加の場合：参加ボタン + 全て取り消しボタン
+        use crate::types::SIMPLE_JOIN_EMOJI;
+
+        let join_button = CreateButton::new("recruit_join")
+            .label(format!("{} 参加", SIMPLE_JOIN_EMOJI))
+            .style(ButtonStyle::Success);
+
+        let leave_all_button = CreateButton::new("recruit_leave_all")
+            .label("❌ 全て取り消し")
+            .style(ButtonStyle::Danger);
+
+        let row = CreateActionRow::Buttons(vec![join_button, leave_all_button]);
+        vec![row]
+    }
+}
+
+/// Discord操作関数（ボタン付きメッセージ送信）
+pub async fn send_recruitment_message_with_buttons(
+    ctx: &PoiseContext<'_>,
+    recruitment_data: &RecruitmentData,
+) -> types::Result<u64> {
+    use poise::CreateReply;
+    use poise::serenity_prelude::CreateEmbed;
+
+    // ボタンを生成
+    let buttons = create_recruitment_buttons(&recruitment_data.battle_style_name);
+
+    // ボタン版用の初期参加者一覧を作成
+    let initial_text = create_initial_participants_text_for_buttons(&recruitment_data.battle_style_name);
+
+    // ボタン版用のembedを作成（絵文字を修正済みのものを使用）
+    let embed = CreateEmbed::new()
+        .title("参加者一覧")
+        .description(&initial_text)
+        .footer(poise::serenity_prelude::CreateEmbedFooter::new("参加者数: 0人"))
+        .color(0x0099ff);
+
+    // deferした応答を完了させる形でボタン付きメッセージを送信
+    let reply = CreateReply::default()
+        .content(recruitment_data.message_content.clone())
+        .embed(embed)
+        .components(buttons);
+
+    let message = ctx.send(reply).await?;
+    Ok(message.message().await?.id.get())
 }

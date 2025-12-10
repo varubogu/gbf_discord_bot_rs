@@ -5,6 +5,7 @@ pub mod new;
 pub mod participants;
 mod quest_list;
 mod recruit_list;
+pub mod recruitment_participants_service;
 pub mod role_notification;
 pub mod start;
 pub mod update;

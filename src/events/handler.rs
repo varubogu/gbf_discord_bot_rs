@@ -30,6 +30,17 @@ pub async fn event_handler(
             );
             handlers::reaction_remove::on_reaction_remove(ctx, removed_reaction, data).await?;
         }
+        poise::serenity_prelude::FullEvent::InteractionCreate { interaction } => {
+            // ComponentInteraction（ボタンクリック等）を処理
+            if let Some(component_interaction) = interaction.as_message_component() {
+                handlers::component_interaction::on_component_interaction(
+                    ctx,
+                    component_interaction,
+                    data,
+                )
+                .await?;
+            }
+        }
         _ => {}
     }
     Ok(())

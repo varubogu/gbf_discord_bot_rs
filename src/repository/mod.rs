@@ -5,9 +5,11 @@ pub mod guild_spreadsheet_config_repository;
 pub mod message_texts_repository;
 pub mod quest_aliases_repository;
 pub mod quests_repository;
+pub mod recruitment_participants_repository;
 
 // 抽象インターフェースをre-export
 pub use battle_recruitments_repository::BattleRecruitmentsRepository;
+pub use recruitment_participants_repository::RecruitmentParticipantsRepository;
 // pub use environments_repository::EnvironmentRepository;
 pub use guild_spreadsheet_config_repository::{
     GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait,

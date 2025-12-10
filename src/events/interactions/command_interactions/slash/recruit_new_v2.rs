@@ -9,10 +9,10 @@ use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
     slash_command,
-    name_localized("ja", "マルチバトル募集"),
-    description_localized("ja", "マルチバトル募集を作成します")
+    name_localized("ja", "マルチバトル募集2"),
+    description_localized("ja", "マルチバトル募集を作成します（ボタン版）")
 )]
-pub async fn recruit_new(
+pub async fn recruit_new_v2(
     ctx: PoiseContext<'_>,
 
     #[autocomplete = "quest_auto_complete"]
@@ -50,11 +50,10 @@ pub async fn recruit_new(
     // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
     let parsed_date = datetime_parser::parse_event_date(&event_date, timezone)?;
 
-    // Facade呼び出し（メッセージ送信とDB保存）リアクション版
-    let (message_id, reactions) = recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style, Some(parsed_date), false).await?;
+    // Facade呼び出し（メッセージ送信とDB保存）ボタン版
+    let (_message_id, _reactions) = recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style, Some(parsed_date), true).await?;
 
-    // リアクション追加（コマンド層の責務）
-    crate::services::recruitment::new::add_recruitment_reactions(&ctx, message_id, &reactions).await?;
+    // ボタンは既にメッセージに含まれているため、追加の処理は不要
 
     Ok(())
 }

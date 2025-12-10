@@ -1,8 +1,11 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::QuestRepository;
 use crate::services::recruitment::participants::ParticipantsService;
+use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::types;
 use poise::serenity_prelude::Context;
 use sea_orm::TransactionTrait;
@@ -10,12 +13,18 @@ use std::sync::Arc;
 use tracing::{error, info, instrument, warn};
 
 /// 参加者を更新する
+///
+/// # 引数
+/// * `user_id` - リアクション追加/削除を行ったユーザーID（DB登録用、Noneの場合はDB登録なし）
+/// * `reaction_emoji` - 追加/削除されたリアクション絵文字（DB登録用）
 #[instrument(level = "debug", skip(ctx))]
 pub async fn update_participants(
     ctx: &Context,
     guild_id: u64,
     channel_id: u64,
     message_id: u64,
+    user_id: Option<u64>,
+    reaction_emoji: Option<String>,
     db: &sea_orm::DatabaseConnection,
 ) -> types::Result<()> {
     info!("BattleRecruitmentFacade::update_participants - 参加者を更新します");
@@ -43,6 +52,49 @@ pub async fn update_participants(
             }
             Err(e) => return Err(e),
         };
+
+        // リアクション情報が提供されている場合、DBに登録/削除
+        if let (Some(uid), Some(emoji)) = (user_id, reaction_emoji) {
+            // battle_styleからリアクション絵文字リストを取得してelement_idを特定
+            let battle_style_repo = SeaOrmBattleStyleRepository::new();
+            let battle_style = battle_style_repo
+                .get_by_id(&txn, recruitment.battle_style_id)
+                .await?
+                .ok_or_else(|| types::AppError::Business {
+                    message: "攻略方法が見つかりませんでした".to_string(),
+                })?;
+
+            let element_id = if let Some(reactions_str) = &battle_style.reactions {
+                let emojis: Vec<&str> = reactions_str.split(',').map(|s| s.trim()).collect();
+                emojis
+                    .iter()
+                    .position(|&e| e == emoji)
+                    .map(|pos| (pos + 1) as i32)
+            } else {
+                None
+            };
+
+            // DBに参加者を登録/削除（toggle）
+            let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+            let participants_svc =
+                RecruitmentParticipantsService::<RecruitmentParticipantsRepositoryImpl>::new(
+                    Arc::new(participants_repo),
+                );
+
+            match participants_svc
+                .toggle_participation(&txn, recruitment.id, uid, element_id)
+                .await
+            {
+                Ok(_) => info!(
+                    "リアクション参加をDBに登録しました: recruitment_id={}, user_id={}, element_id={:?}",
+                    recruitment.id, uid, element_id
+                ),
+                Err(e) => {
+                    warn!("DB登録エラー（続行）: {}", e);
+                    // エラーでも続行（embed更新は実行）
+                }
+            }
+        }
 
         // メッセージのリアクションとユーザーを取得
         let participants_by_reaction = participants_service

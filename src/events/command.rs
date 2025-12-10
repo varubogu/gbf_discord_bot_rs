@@ -6,6 +6,7 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
     vec![
         slash::channel_register::channel_register(),
         slash::recruit_new::recruit_new(),
+        slash::recruit_new_v2::recruit_new_v2(),
         slash::recruit_cancel::recruit_cancel(),
         slash::recruit_change::recruit_change(),
         slash::recruit_role_add::recruit_role_add(),

@@ -15,13 +15,20 @@ use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
 /// 新しい募集を開始する
+///
+/// # 引数
+/// * `use_buttons` - ボタンを使用する場合は true、リアクションを使用する場合は false
+///
+/// # 戻り値
+/// (message_id, reactions) - メッセージIDとリアクションのリスト
 #[instrument(level = "debug", skip(ctx))]
 pub async fn new_recruitment(
     ctx: &PoiseContext<'_>,
     quest_alias: &str,
     battle_style_id: Option<i32>,
     event_date: Option<DateTime<Utc>>,
-) -> types::Result<()> {
+    use_buttons: bool,
+) -> types::Result<(u64, Vec<poise::serenity_prelude::ReactionType>)> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
@@ -72,16 +79,17 @@ pub async fn new_recruitment(
             info!("ロールメンションを募集メッセージに追加しました");
         }
 
-        // 2. メッセージ送信
-        let message_id = new::send_recruitment_message(ctx, &recruitment_data).await?;
+        // 2. メッセージ送信（ボタンまたはリアクション用）
+        let message_id = if use_buttons {
+            new::send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
+        } else {
+            new::send_recruitment_message(ctx, &recruitment_data).await?
+        };
 
-        // 3. リアクション追加
-        new::add_recruitment_reactions(ctx, message_id, &recruitment_data.reactions).await?;
-
-        // 4. データ保存
+        // 3. データ保存
         let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
-        // 5. 出発時刻の通知を登録（出発5分前）
+        // 4. 出発時刻の通知を登録（出発5分前）
         let notification_repo = NotificationRepository::new();
         let notify_time = recruitment_data.expiry_date - Duration::minutes(5);
 
@@ -111,14 +119,15 @@ pub async fn new_recruitment(
 
         info!("募集と通知のリレーションを登録しました");
 
-        Ok(())
+        // message_idとreactionsを返す
+        Ok((message_id, recruitment_data.reactions.clone()))
     }
     .await;
 
     match result {
-        Ok(_) => {
+        Ok((msg_id, reactions)) => {
             txn.commit().await?;
-            Ok(())
+            Ok((msg_id, reactions))
         }
         Err(e) => {
             txn.rollback().await?;

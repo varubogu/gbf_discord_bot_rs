@@ -10,4 +10,5 @@ pub mod last_process_time_repository;
 pub mod models_database;
 pub mod quest_recruitment_notification_roles_repository;
 pub mod quest_repository;
+pub mod recruitment_participants_repository;
 pub mod schedule;

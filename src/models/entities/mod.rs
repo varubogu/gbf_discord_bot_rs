@@ -24,6 +24,7 @@ pub mod notifications;
 pub mod quest_aliases;
 pub mod quest_recruitment_notification_roles;
 pub mod quests;
+pub mod recruitment_participants;
 
 // pub use channel_types::Entity as ChannelType;
 // pub use elements::Entity as Element;

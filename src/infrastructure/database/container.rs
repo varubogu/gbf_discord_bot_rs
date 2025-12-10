@@ -1,4 +1,5 @@
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 
 /// Repository層のコンテナ
 ///
@@ -7,6 +8,7 @@ use crate::repository::database::battle_recruitments_repository::BattleRecruitme
 #[derive(Debug)]
 pub struct RepositoryContainer {
     battle_recruitment_repo: BattleRecruitmentsRepositoryImpl,
+    recruitment_participants_repo: RecruitmentParticipantsRepositoryImpl,
     // 他のrepositoryも追加可能
 }
 
@@ -17,14 +19,21 @@ impl RepositoryContainer {
     /// 新しいRepositoryContainerインスタンス
     pub fn new() -> Self {
         let battle_recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
+        let recruitment_participants_repo = RecruitmentParticipantsRepositoryImpl::new();
 
         Self {
             battle_recruitment_repo,
+            recruitment_participants_repo,
         }
     }
 
     /// BattleRecruitmentRepositoryへの参照を取得
     pub fn battle_recruitment(&self) -> &BattleRecruitmentsRepositoryImpl {
         &self.battle_recruitment_repo
+    }
+
+    /// RecruitmentParticipantsRepositoryへの参照を取得
+    pub fn recruitment_participants(&self) -> &RecruitmentParticipantsRepositoryImpl {
+        &self.recruitment_participants_repo
     }
 }

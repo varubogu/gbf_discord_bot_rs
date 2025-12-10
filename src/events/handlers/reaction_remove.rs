@@ -11,25 +11,52 @@ pub async fn on_reaction_remove(
     debug!("Reaction removed:");
 
     // Extract required IDs from reaction
-    let guild_id = reaction.guild_id.map(|id| id.get()).unwrap_or(0);
+    let guild_id = match reaction.guild_id {
+        Some(id) => id.get(),
+        None => {
+            warn!("ギルドIDが取得できませんでした");
+            return Err("ギルドIDが取得できませんでした".to_string());
+        }
+    };
     let channel_id = reaction.channel_id.get();
     let message_id = reaction.message_id.get();
 
-    // ボットのリアクションは無視
-    if let Ok(user) = reaction.user(&ctx.http).await {
-        if user.bot {
-            debug!("ボットのリアクションを無視します");
-            return Ok(());
+    // リアクションしたユーザーを取得（ボットのリアクションは無視）
+    let user = match reaction.user(&ctx.http).await {
+        Ok(user) => {
+            if user.bot {
+                debug!("ボットのリアクションを無視します");
+                return Ok(());
+            }
+            user
         }
-    }
+        Err(e) => {
+            warn!("ユーザー取得エラー: {:?}", e);
+            return Err(format!("ユーザー取得エラー: {:?}", e));
+        }
+    };
+    let user_id = user.id;
+
+    // リアクションの絵文字を取得（文字列に変換）
+    let reaction_emoji = Some(reaction.emoji.to_string());
 
     info!(
-        "参加者更新を開始します: guild: {}, channel: {}, message: {}",
-        guild_id, channel_id, message_id
+        "参加者更新を開始します: guild: {}, channel: {}, message: {}, user: {}",
+        guild_id, channel_id, message_id, user_id
     );
 
-    // Facade層を呼び出して参加者を更新
-    match update_participants(ctx, guild_id, channel_id, message_id, data.app_state.guild_db()).await {
+    // Facade層を呼び出して参加者を更新（DB登録含む）
+    match update_participants(
+        ctx,
+        guild_id,
+        channel_id,
+        message_id,
+        Some(user_id.get()),
+        reaction_emoji,
+        data.app_state.guild_db(),
+    )
+    .await
+    {
         Ok(_) => {
             info!("参加者更新が完了しました");
             Ok(())

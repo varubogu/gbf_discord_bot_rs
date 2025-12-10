@@ -10,4 +10,7 @@ mod event_handlers_tests;
 // Utilities integration tests
 mod utils_test;
 
+// Recruitment v2 integration tests (button-based recruitment)
+mod recruitment_v2_tests;
+
 // Add more integration test modules as needed
