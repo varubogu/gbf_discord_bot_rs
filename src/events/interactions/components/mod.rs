@@ -1,1 +1,1 @@
-// Component handlers will be added here
+pub(crate) mod recruit_change_handler;

@@ -2,7 +2,7 @@ use crate::types::{AppError, PoiseData};
 
 #[allow(dead_code)]
 pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
-    use crate::events::interactions::command_interactions::slash;
+    use crate::events::interactions::command_interactions::{message, slash};
     vec![
         slash::channel_register::channel_register(),
         slash::recruit_new::recruit_new(),
@@ -24,5 +24,7 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::schedule_stats::schedule_stats(),
         slash::timezone_set::timezone_set(),
         slash::timezone_show::timezone_show(),
+        // メッセージコンテキストメニューコマンド
+        message::recruit_change::recruit_change_context_menu(),
     ]
 }
