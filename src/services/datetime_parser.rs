@@ -28,7 +28,7 @@ lazy_static! {
 /// ユーザー入力はサーバー設定のタイムゾーンとして解釈し、内部的にUTCに変換する
 ///
 /// # 対応フォーマット
-/// - 日時: "2025/11/15 21:00", "2025-11-15 21:00"
+/// - 日時: "2025/11/15 21:00", "2025-11-15 21:00", "12/11 14:00", "12-11 14:00"（過ぎていたら翌年）
 /// - 日付のみ: "11/15", "11-15" (時刻は21時固定)
 /// - 時刻のみ: "21:00", "21時" (当日、過ぎていたら翌日)
 /// - 日本語: "1月2日3時4分", "午後9時半"
@@ -45,12 +45,17 @@ pub fn parse_event_date(date_str: &str, timezone: Tz) -> Result<DateTime<Utc>> {
         return Ok(dt);
     }
 
-    // 3. 日付のみ (MM/dd, MM-dd, yyyy/MM/dd, yyyy-MM-dd)
+    // 3. 年なし日時形式 (MM/dd HH:mm, MM-dd HH:mm)
+    if let Ok(dt) = parse_datetime_without_year(trimmed, timezone) {
+        return Ok(dt);
+    }
+
+    // 4. 日付のみ (MM/dd, MM-dd, yyyy/MM/dd, yyyy-MM-dd)
     if let Ok(dt) = parse_date_only(trimmed, timezone) {
         return Ok(dt);
     }
 
-    // 4. 時刻のみ (HH:mm, H:mm)
+    // 5. 時刻のみ (HH:mm, H:mm)
     if let Ok(dt) = parse_time_only(trimmed, timezone) {
         return Ok(dt);
     }
@@ -80,6 +85,37 @@ fn parse_full_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     }
 
     Err("完全日時形式のパースに失敗".to_string().into())
+}
+
+/// 年なし日時形式をパース (MM/dd HH:mm, MM-dd HH:mm)
+/// 年は現在年を使用し、サーバー設定のタイムゾーンとして解釈し、UTCに変換
+fn parse_datetime_without_year(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
+    let now_tz = Utc::now().with_timezone(&timezone);
+    let current_year = now_tz.year();
+
+    let patterns = vec![
+        "%m/%d %H:%M",
+        "%m-%d %H:%M",
+        "%m/%d %H時%M分",
+        "%m-%d %H時%M分",
+    ];
+
+    for pattern in patterns {
+        // 年を追加してパース
+        let with_year = format!("{}/{}", current_year, s);
+        let year_pattern = format!("%Y/{}", pattern);
+
+        if let Ok(naive_dt) = NaiveDateTime::parse_from_str(&with_year, &year_pattern) {
+            // サーバー設定のタイムゾーンとして解釈し、UTCに変換
+            let tz_dt = timezone
+                .from_local_datetime(&naive_dt)
+                .single()
+                .ok_or_else(|| "曖昧な時刻またはサマータイム切り替え時刻です".to_string())?;
+            return Ok(tz_dt.with_timezone(&Utc));
+        }
+    }
+
+    Err("年なし日時形式のパースに失敗".to_string().into())
 }
 
 /// 日付のみをパース (時刻は21時固定)
@@ -286,5 +322,44 @@ mod tests {
         assert_eq!(result.day(), 16); // UTC（日をまたぐ）
         assert_eq!(result.hour(), 2); // UTC（EST + 5時間）
         assert_eq!(result.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_datetime_without_year_slash_jst() {
+        // 12/11 14:00 JST = 12/11 05:00 UTC (現在年を使用)
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("12/11 14:00", timezone).unwrap();
+        let now = Utc::now();
+        assert_eq!(result.year(), now.year());
+        assert_eq!(result.month(), 12);
+        assert_eq!(result.day(), 11);
+        assert_eq!(result.hour(), 5); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_without_year_hyphen_jst() {
+        // 12-11 14:00 JST = 12-11 05:00 UTC (現在年を使用)
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("12-11 14:00", timezone).unwrap();
+        let now = Utc::now();
+        assert_eq!(result.year(), now.year());
+        assert_eq!(result.month(), 12);
+        assert_eq!(result.day(), 11);
+        assert_eq!(result.hour(), 5); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_without_year_japanese_style_jst() {
+        // 1/2 3時4分 JST = 1/1 18時4分 UTC (現在年を使用)
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("1/2 3時4分", timezone).unwrap();
+        let now = Utc::now();
+        assert_eq!(result.year(), now.year());
+        assert_eq!(result.month(), 1);
+        assert_eq!(result.day(), 1); // UTC（日をまたぐ）
+        assert_eq!(result.hour(), 18); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 4);
     }
 }
