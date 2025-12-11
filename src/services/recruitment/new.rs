@@ -244,7 +244,7 @@ pub fn create_recruitment_buttons(battle_style_name: &str) -> Vec<CreateActionRo
         for (i, (emoji, name)) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
             let button = CreateButton::new(format!("recruit_join_{}", i + 1))
                 .label(format!("{} {}", emoji, name))
-                .style(ButtonStyle::Success);
+                .style(ButtonStyle::Primary);
             element_buttons.push(button);
         }
 
