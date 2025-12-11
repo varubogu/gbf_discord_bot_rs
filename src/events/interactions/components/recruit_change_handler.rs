@@ -1,7 +1,9 @@
-use crate::facades::recruitment::change::change_recruitment_information;
+use crate::repository::database::battle_style_repository::{
+    BattleStyleRepository, SeaOrmBattleStyleRepository,
+};
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::quests_repository::QuestRepository;
-use crate::types::{AppError, PoiseContext, PoiseData, Result};
+use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow,
     CreateInputText, CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal,
@@ -62,7 +64,7 @@ async fn handle_field_selection(
         show_quest_selection_menu(ctx, interaction, data, message_id).await
     } else if selected_fields.contains(&"battle_style".to_string()) {
         // 攻略方法選択メニューを表示
-        show_battle_style_selection_menu(ctx, interaction, message_id).await
+        show_battle_style_selection_menu(ctx, interaction, data, message_id).await
     } else if selected_fields.contains(&"date".to_string()) {
         // 日時入力モーダルを表示
         show_date_input_modal(ctx, interaction, message_id).await
@@ -113,15 +115,18 @@ async fn show_quest_selection_menu(
 async fn show_battle_style_selection_menu(
     ctx: &Context,
     interaction: &ComponentInteraction,
+    data: &PoiseData,
     message_id: u64,
 ) -> Result<()> {
-    let options = vec![
-        CreateSelectMenuOption::new("連戦部屋", "1"),
-        CreateSelectMenuOption::new("ワンパン放置", "2"),
-        CreateSelectMenuOption::new("トレハン優先", "3"),
-        CreateSelectMenuOption::new("救援のみ", "4"),
-        CreateSelectMenuOption::new("その他", "5"),
-    ];
+    // 攻略方法リストを取得
+    let battle_style_repo = SeaOrmBattleStyleRepository::new();
+    let battle_styles = battle_style_repo.get_all(data.app_state.guild_db()).await?;
+
+    // セレクトメニューのオプションを作成
+    let options: Vec<CreateSelectMenuOption> = battle_styles
+        .iter()
+        .map(|style| CreateSelectMenuOption::new(&style.display_name, style.id.to_string()))
+        .collect();
 
     let custom_id = format!("recruit_change_style:{}", message_id);
     let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
@@ -208,6 +213,11 @@ async fn handle_quest_selection(
 
     // 対象メッセージを取得
     let channel_id = interaction.channel_id;
+    let guild_id = interaction
+        .guild_id
+        .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
+        .get();
+
     let target_message = channel_id
         .message(&ctx.http, message_id)
         .await
@@ -216,22 +226,41 @@ async fn handle_quest_selection(
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
 
-    // PoiseContextを構築（facadeを呼び出すため）
-    // 注: これは簡易的な実装で、完全なPoiseContextではありません
-    // 実際にはfacadeをリファクタリングしてPoiseContextに依存しないようにすべき
+    // リファクタリングされたfacadeを呼び出す
+    let result = crate::facades::recruitment::change::change_recruitment_information_internal(
+        &data.app_state,
+        &ctx.http,
+        guild_id,
+        &target_message,
+        Some(&quest.name),
+        None,
+        None,
+    )
+    .await;
 
-    // 暫定的に、既存のfacadeではなく直接スラッシュコマンド経由での変更を案内
-    interaction
-        .edit_response(
-            &ctx.http,
-            poise::serenity_prelude::EditInteractionResponse::new()
-                .content(format!(
-                    "クエスト「{}」への変更が選択されました。\n\n申し訳ございませんが、現在セレクトメニュー方式での変更は完全には実装されていません。\n\nスラッシュコマンド `/マルチバトル募集内容変更` で以下のように指定してください：\n• 募集メッセージ: このメッセージのURL\n• クエスト名: {}",
-                    quest.name, quest.name
-                ))
-                .components(vec![]),
-        )
-        .await?;
+    match result {
+        Ok(_) => {
+            interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(format!("クエストを「{}」に変更しました。", quest.name))
+                        .components(vec![]),
+                )
+                .await?;
+        }
+        Err(e) => {
+            error!(error = %e, "クエスト変更に失敗しました");
+            interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(format!("エラー: {}", e.user_message()))
+                        .components(vec![]),
+                )
+                .await?;
+        }
+    }
 
     Ok(())
 }
@@ -240,7 +269,7 @@ async fn handle_quest_selection(
 async fn handle_battle_style_selection(
     ctx: &Context,
     interaction: &ComponentInteraction,
-    _data: &PoiseData,
+    data: &PoiseData,
 ) -> Result<()> {
     let message_id = extract_message_id(&interaction.data.custom_id)?;
 
@@ -260,36 +289,73 @@ async fn handle_battle_style_selection(
         .parse()
         .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
 
-    let style_name = match battle_style_id {
-        1 => "連戦部屋",
-        2 => "ワンパン放置",
-        3 => "トレハン優先",
-        4 => "救援のみ",
-        5 => "その他",
-        _ => "不明",
-    };
+    // 攻略方法名をDBから取得
+    let battle_style_repo = SeaOrmBattleStyleRepository::new();
+    let battle_style = battle_style_repo
+        .get_by_id(data.app_state.guild_db(), battle_style_id)
+        .await?
+        .ok_or_else(|| AppError::Generic("攻略方法が見つかりません".to_string()))?;
 
     info!(
         message_id = %message_id,
         battle_style_id = %battle_style_id,
+        battle_style_name = %battle_style.display_name,
         "攻略方法が選択されました"
     );
 
     // Deferして処理時間を確保
     interaction.defer(&ctx.http).await?;
 
-    // 暫定的にスラッシュコマンド経由での変更を案内
-    interaction
-        .edit_response(
-            &ctx.http,
-            poise::serenity_prelude::EditInteractionResponse::new()
-                .content(format!(
-                    "攻略方法「{}」への変更が選択されました。\n\n申し訳ございませんが、現在セレクトメニュー方式での変更は完全には実装されていません。\n\nスラッシュコマンド `/マルチバトル募集内容変更` で以下のように指定してください：\n• 募集メッセージ: このメッセージのURL\n• マルチ攻略方法: {}",
-                    style_name, battle_style_id
-                ))
-                .components(vec![]),
-        )
-        .await?;
+    // 対象メッセージを取得
+    let channel_id = interaction.channel_id;
+    let guild_id = interaction
+        .guild_id
+        .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
+        .get();
+
+    let target_message = channel_id
+        .message(&ctx.http, message_id)
+        .await
+        .map_err(|e| {
+            error!(error = %e, "メッセージの取得に失敗しました");
+            AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
+        })?;
+
+    // リファクタリングされたfacadeを呼び出す
+    let result = crate::facades::recruitment::change::change_recruitment_information_internal(
+        &data.app_state,
+        &ctx.http,
+        guild_id,
+        &target_message,
+        None,
+        None,
+        Some(battle_style_id),
+    )
+    .await;
+
+    match result {
+        Ok(_) => {
+            interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(format!("攻略方法を「{}」に変更しました。", battle_style.display_name))
+                        .components(vec![]),
+                )
+                .await?;
+        }
+        Err(e) => {
+            error!(error = %e, "攻略方法変更に失敗しました");
+            interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(format!("エラー: {}", e.user_message()))
+                        .components(vec![]),
+                )
+                .await?;
+        }
+    }
 
     Ok(())
 }

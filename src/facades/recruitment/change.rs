@@ -19,7 +19,7 @@ use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
-/// 募集内容を更新する（クロージャパターン）
+/// 募集内容を更新する（PoiseContext版）
 #[instrument(level = "debug", skip(ctx, message))]
 pub async fn change_recruitment_information(
     ctx: &PoiseContext<'_>,
@@ -28,13 +28,36 @@ pub async fn change_recruitment_information(
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
 ) -> types::Result<()> {
+    let app_state = &ctx.data().app_state;
+    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+    let http = ctx.http();
+
+    change_recruitment_information_internal(
+        app_state,
+        http,
+        guild_id,
+        message,
+        quest,
+        event_date,
+        battle_style_id,
+    )
+    .await
+}
+
+/// 募集内容を更新する（内部実装 - PoiseContextに依存しない）
+#[instrument(level = "debug", skip(app_state, http, message))]
+pub async fn change_recruitment_information_internal(
+    app_state: &crate::types::AppState,
+    http: &poise::serenity_prelude::Http,
+    guild_id: u64,
+    message: &Message,
+    quest: Option<&str>,
+    event_date: Option<DateTime<Utc>>,
+    battle_style_id: Option<i32>,
+) -> types::Result<()> {
     info!("BattleRecruitmentFacade::update_recruitment_information - 募集内容を更新します");
 
-    let app_state = &ctx.data().app_state;
     let txn = app_state.guild_db().begin().await?;
-
-    // コンテキストからguild_idを取得（メッセージオブジェクトのguild_idはNoneの可能性がある）
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
@@ -154,7 +177,7 @@ pub async fn change_recruitment_information(
         let mut participant_ids = std::collections::HashSet::new();
         for reaction in &message.reactions {
             let users = channel_id_obj
-                .reaction_users(&ctx.http(), message_id_obj, reaction.reaction_type.clone(), Some(100), None)
+                .reaction_users(http, message_id_obj, reaction.reaction_type.clone(), Some(100), None)
                 .await?;
 
             for user in users {
@@ -189,7 +212,7 @@ pub async fn change_recruitment_information(
             .embed(recruitment_data.embed.clone());
 
         channel_id_obj
-            .edit_message(&ctx.http(), message_id_obj, edit_message)
+            .edit_message(http, message_id_obj, edit_message)
             .await?;
 
         // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
@@ -225,7 +248,7 @@ pub async fn change_recruitment_information(
             .reference_message((channel_id_obj, message_id_obj));
 
         channel_id_obj
-            .send_message(&ctx.http(), notification_message)
+            .send_message(http, notification_message)
             .await?;
 
         // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
