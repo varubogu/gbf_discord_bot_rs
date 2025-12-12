@@ -213,7 +213,7 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
 
 /// ボタン版用の初期参加者一覧テキストを作成
 /// 修正済みの絵文字を使用
-fn create_initial_participants_text_for_buttons(battle_style_name: &str) -> String {
+pub fn create_initial_participants_text_for_buttons(battle_style_name: &str) -> String {
     use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
 
     if battle_style_name == "6属性" {

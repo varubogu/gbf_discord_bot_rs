@@ -1,4 +1,6 @@
 pub mod all_recruitment_notification_roles;
+pub mod battle_recruitment_schedule_days;
+pub mod battle_recruitment_schedules;
 pub mod battle_recruitments;
 pub mod battle_styles;
 pub mod channel_types;

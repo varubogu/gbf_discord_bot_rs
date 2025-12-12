@@ -34,6 +34,7 @@ pub enum LastProcessType {
     Schedule = 1,
     SpreadsheetLoad = 2,
     SpreadsheetPush = 3,
+    BattleRecruitmentSchedule = 4,
 }
 
 impl LastProcessType {
@@ -46,6 +47,7 @@ impl LastProcessType {
             1 => Some(Self::Schedule),
             2 => Some(Self::SpreadsheetLoad),
             3 => Some(Self::SpreadsheetPush),
+            4 => Some(Self::BattleRecruitmentSchedule),
             _ => None,
         }
     }
@@ -55,6 +57,7 @@ impl LastProcessType {
             Self::Schedule => "最終スケジュール実行日時",
             Self::SpreadsheetLoad => "最終Googleスプレッドシート読み込み日時",
             Self::SpreadsheetPush => "最終Googleスプレッドシート書き込み日時",
+            Self::BattleRecruitmentSchedule => "最終マルチ募集スケジュール実行日時",
         }
     }
 }
