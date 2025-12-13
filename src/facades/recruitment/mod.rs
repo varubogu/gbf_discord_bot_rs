@@ -5,4 +5,5 @@ pub(crate) mod change;
 pub(crate) mod new_recruit;
 pub(crate) mod participants;
 pub(crate) mod quest_list;
+pub(crate) mod recruitment_schedule_facade;
 pub(crate) mod role_management;

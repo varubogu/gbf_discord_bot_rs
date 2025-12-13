@@ -1,8 +1,6 @@
-use sea_orm::TransactionTrait;
+use std::sync::Arc;
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::facades::channel::ChannelManagementFacade;
 use crate::types::{PoiseContext, Result};
 
 /// チャンネル設定を表示
@@ -26,63 +24,39 @@ pub async fn channel_show(ctx: PoiseContext<'_>) -> Result<()> {
     })?;
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.guild_db().begin().await?;
 
-    // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id.get() as i64).await?;
+    // Facadeを呼び出し
+    let facade = ChannelManagementFacade::new(Arc::new(app_state.clone()));
+    let settings_display = facade.show_channel_settings(guild_id.get() as i64).await?;
 
-    let result = async {
-        let channel_type_repo = ChannelTypeRepository::new();
-        let guild_channel_repo = GuildChannelRepository::new();
-
-        // 全チャンネル種別を取得
-        let all_channel_types = channel_type_repo.get_all(&txn).await?;
-
-        if all_channel_types.is_empty() {
-            ctx.send(
-                poise::CreateReply::default()
-                    .content("⚠️ チャンネル種別が登録されていません。")
-                    .ephemeral(true),
-            )
-            .await?;
-            return Ok::<(), crate::types::AppError>(());
-        }
-
-        // ギルドのチャンネル設定を取得
-        let guild_channels = guild_channel_repo
-            .get_all_by_guild_with_txn(&txn, guild_id.get() as i64)
-            .await?;
-
-        // チャンネルIDでマップを作成
-        let channel_map: std::collections::HashMap<i32, i64> = guild_channels
-            .iter()
-            .map(|gc| (gc.channel_type, gc.channel_id))
-            .collect();
-
-        // トランザクションをコミット
-        txn.commit().await?;
-
-        // 設定状況を作成
-        let mut status_message = "**現在のチャンネル設定:**\n\n".to_string();
-
-        for ct in all_channel_types {
-            if let Some(channel_id) = channel_map.get(&ct.id) {
-                status_message.push_str(&format!("• **{}**: <#{}>\n", ct.name, channel_id));
-            } else {
-                status_message.push_str(&format!("• **{}**: 未設定\n", ct.name));
-            }
-        }
-
+    // チャンネル種別が登録されていない場合
+    if settings_display.settings.is_empty() {
         ctx.send(
             poise::CreateReply::default()
-                .content(status_message)
+                .content("⚠️ チャンネル種別が登録されていません。")
                 .ephemeral(true),
         )
         .await?;
-
-        Ok::<(), crate::types::AppError>(())
+        return Ok(());
     }
-    .await;
 
-    result
+    // 設定状況を作成
+    let mut message = "**現在のチャンネル設定:**\n\n".to_string();
+
+    for setting in &settings_display.settings {
+        if let Some(channel_id) = setting.channel_id {
+            message.push_str(&format!("• **{}**: <#{}>\n", setting.channel_type_name, channel_id));
+        } else {
+            message.push_str(&format!("• **{}**: 未設定\n", setting.channel_type_name));
+        }
+    }
+
+    ctx.send(
+        poise::CreateReply::default()
+            .content(message)
+            .ephemeral(true),
+    )
+    .await?;
+
+    Ok(())
 }

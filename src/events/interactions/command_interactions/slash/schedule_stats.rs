@@ -1,11 +1,10 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::schedule::NotificationRepository;
-use crate::types::{PoiseContext, Result};
+use crate::facades::schedule::ScheduleQueryFacade;
 use crate::services::permission::check_bot_control_role;
-use chrono::{Duration, Utc};
+use crate::types::{PoiseContext, Result};
+use chrono::Duration;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
-use sea_orm::TransactionTrait;
-use tracing::{error, info};
+use std::sync::Arc;
+use tracing::info;
 
 /// 通知統計を表示
 ///
@@ -44,101 +43,47 @@ pub async fn schedule_stats(
     ctx.defer_ephemeral().await?;
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.guild_db().begin().await?;
 
-    // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id.get() as i64).await?;
+    // Facadeを呼び出し
+    let facade = ScheduleQueryFacade::new(Arc::new(app_state.clone()));
+    let stats = facade.get_stats(guild_id.get() as i64, days).await?;
 
-    let notification_repo = NotificationRepository::new();
+    // 表示用にJST変換（UTC+9）
+    let mut description = format!(
+        "**期間**: {} 〜 {} (JST)\n\n**総通知数**: {} 件\n\n",
+        (stats.from + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
+        (stats.to + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
+        stats.total_count
+    );
 
-    let now = Utc::now();
-    let from = now - Duration::days(days);
+    if !stats.message_type_counts.is_empty() {
+        description.push_str("**メッセージタイプ別内訳**:\n");
 
-    // 統計を取得
-    match notification_repo
-        .find_by_datetime_range_with_txn(&txn, from, now)
-        .await
-    {
-        Ok(all_notifications) => {
-            txn.commit().await?;
+        // 件数の多い順にソート
+        let mut counts: Vec<_> = stats.message_type_counts.iter().collect();
+        counts.sort_by(|a, b| b.1.cmp(a.1));
 
-            // ギルドでフィルタ
-            let notifications: Vec<_> = all_notifications
-                .into_iter()
-                .filter(|n| n.guild_id == guild_id.get() as i64)
-                .collect();
-
-            let total_count = notifications.len();
-
-            // メッセージタイプ別の集計
-            let mut message_type_counts = std::collections::HashMap::new();
-            for notification in &notifications {
-                *message_type_counts
-                    .entry(notification.message_text_id.clone())
-                    .or_insert(0) += 1;
-            }
-
-            let stats = crate::services::schedule::NotificationStats {
-                total_count,
-                message_type_counts,
-            };
-            // 表示用にJST変換（UTC+9）
-            let mut description = format!(
-                "**期間**: {} 〜 {} (JST)\n\n**総通知数**: {} 件\n\n",
-                (from + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
-                (now + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
-                stats.total_count
-            );
-
-            if !stats.message_type_counts.is_empty() {
-                description.push_str("**メッセージタイプ別内訳**:\n");
-
-                // 件数の多い順にソート
-                let mut counts: Vec<_> = stats.message_type_counts.iter().collect();
-                counts.sort_by(|a, b| b.1.cmp(a.1));
-
-                for (message_id, count) in counts.iter().take(10) {
-                    description.push_str(&format!("- `{}`: {} 件\n", message_id, count));
-                }
-
-                if counts.len() > 10 {
-                    description.push_str(&format!("\n*...他 {} 種類*\n", counts.len() - 10));
-                }
-            }
-
-            let embed = CreateEmbed::default()
-                .title(format!("📊 通知統計（過去{}日間）", days))
-                .description(description)
-                .color(0x00aaff)
-                .footer(CreateEmbedFooter::new("詳細な統計情報"));
-
-            ctx.send(
-                poise::CreateReply::default()
-                    .embed(embed)
-                    .ephemeral(true),
-            )
-                .await?;
+        for (message_id, count) in counts.iter().take(10) {
+            description.push_str(&format!("- `{}`: {} 件\n", message_id, count));
         }
-        Err(e) => {
-            txn.rollback().await?;
-            error!(error = %e, "通知統計の取得に失敗しました");
 
-            let embed = CreateEmbed::default()
-                .title("❌ エラー")
-                .description(format!(
-                    "通知統計の取得中にエラーが発生しました。\n```\n{}\n```",
-                    e
-                ))
-                .color(0xff0000);
-
-            ctx.send(
-                poise::CreateReply::default()
-                    .embed(embed)
-                    .ephemeral(true),
-            )
-                .await?;
+        if counts.len() > 10 {
+            description.push_str(&format!("\n*...他 {} 種類*\n", counts.len() - 10));
         }
     }
+
+    let embed = CreateEmbed::default()
+        .title(format!("📊 通知統計（過去{}日間）", days))
+        .description(description)
+        .color(0x00aaff)
+        .footer(CreateEmbedFooter::new("詳細な統計情報"));
+
+    ctx.send(
+        poise::CreateReply::default()
+            .embed(embed)
+            .ephemeral(true),
+    )
+    .await?;
 
     Ok(())
 }

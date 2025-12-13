@@ -1,11 +1,9 @@
 use poise::serenity_prelude::{AutocompleteChoice, Channel};
-use sea_orm::TransactionTrait;
-use tracing::{error, info};
+use tracing::error;
+use std::sync::Arc;
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::facades::channel::ChannelManagementFacade;
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
-use crate::repository::database::guild_repository::GuildRepository;
 use crate::types::{PoiseContext, Result};
 use crate::services::permission::check_bot_control_role;
 
@@ -76,94 +74,46 @@ pub async fn channel_register(
     // チャンネルIDを取得
     let channel_id = channel.id().get();
 
-    info!(
-        guild_id = %guild_id,
-        channel_type = channel_type_id,
-        channel_id = channel_id,
-        "チャンネル登録を開始します"
-    );
+    // ギルド名を取得
+    let guild_name = ctx
+        .guild()
+        .map(|g| g.name.clone())
+        .unwrap_or_else(|| "Unknown Guild".to_string());
 
     let app_state = &ctx.data().app_state;
-    let txn = app_state.guild_db().begin().await?;
 
-    // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id.get() as i64).await?;
-
-    let result = async {
-        let guild_repo = GuildRepository::new();
-        let channel_type_repo = ChannelTypeRepository::new();
-        let guild_channel_repo = GuildChannelRepository::new();
-
-        // ギルドが存在しない場合は自動登録
-        let guild_name = ctx
-            .guild()
-            .map(|g| g.name.clone())
-            .unwrap_or_else(|| "Unknown Guild".to_string());
-
-        guild_repo
-            .upsert_with_txn(&txn, guild_id.get() as i64, guild_name)
-            .await?;
-
-        // チャンネル種別が存在するか確認
-        let channel_type_model = channel_type_repo
-            .get_by_id(&txn, channel_type_id)
-            .await?
-            .ok_or_else(|| crate::types::AppError::NotFound(format!(
-                "チャンネル種別ID {} が見つかりませんでした",
-                channel_type_id
-            )))?;
-
-        // ギルドチャンネルを登録または更新
-        guild_channel_repo
-            .upsert_with_txn(&txn, guild_id.get() as i64, channel_type_id, channel_id as i64)
-            .await?;
-
-        info!(
-            guild_id = %guild_id,
-            channel_type = channel_type_id,
-            channel_id = channel_id,
-            "チャンネル登録が完了しました"
-        );
-
-        // コミット前に、全チャンネル種別の設定状況を取得（トランザクション内で実行）
-        let all_channel_types = channel_type_repo.get_all(&txn).await?;
-        let mut status_lines = Vec::new();
-
-        for ct in all_channel_types {
-            let guild_channel = guild_channel_repo
-                .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, ct.id)
-                .await?;
-
-            if let Some(gc) = guild_channel {
-                status_lines.push(format!("• **{}**: <#{}>\n", ct.name, gc.channel_id));
-            } else {
-                status_lines.push(format!("• **{}**: 未設定\n", ct.name));
-            }
-        }
-
-        // トランザクションをコミット（ここで確定させる）
-        txn.commit().await?;
-
-        // 登録後、設定状況を表示
-        let mut status_message = format!(
-            "✅ チャンネルを登録しました。\n\n**種別:** {}\n**チャンネル:** <#{}>\n\n**現在の設定状況:**\n",
-            channel_type_model.name, channel_id
-        );
-
-        for line in status_lines {
-            status_message.push_str(&line);
-        }
-
-        ctx.send(
-            poise::CreateReply::default()
-                .content(status_message)
-                .ephemeral(true),
+    // Facadeを呼び出し
+    let facade = ChannelManagementFacade::new(Arc::new(app_state.clone()));
+    let result = facade
+        .register_channel(
+            guild_id.get() as i64,
+            guild_name,
+            channel_type_id,
+            channel_id as i64,
         )
         .await?;
 
-        Ok::<(), crate::types::AppError>(())
-    }
-    .await;
+    // 結果メッセージを作成
+    let mut message = format!(
+        "✅ チャンネルを登録しました。\n\n**種別:** {}\n**チャンネル:** <#{}>\n\n**現在の設定状況:**\n",
+        result.channel_type_name, result.channel_id
+    );
 
-    result
+    // ChannelDisplayServiceから取得した設定状況を整形
+    for setting in &result.settings_display.settings {
+        if let Some(channel_id) = setting.channel_id {
+            message.push_str(&format!("• **{}**: <#{}>\n", setting.channel_type_name, channel_id));
+        } else {
+            message.push_str(&format!("• **{}**: 未設定\n", setting.channel_type_name));
+        }
+    }
+
+    ctx.send(
+        poise::CreateReply::default()
+            .content(message)
+            .ephemeral(true),
+    )
+    .await?;
+
+    Ok(())
 }

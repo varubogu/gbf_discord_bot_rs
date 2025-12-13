@@ -1,10 +1,9 @@
 use poise::serenity_prelude::AutocompleteChoice;
-use sea_orm::TransactionTrait;
-use tracing::{error, info};
+use tracing::error;
+use std::sync::Arc;
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::facades::channel::ChannelManagementFacade;
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 
@@ -66,96 +65,35 @@ pub async fn channel_unregister(
         }
     })?;
 
-    info!(
-        guild_id = %guild_id,
-        channel_type = channel_type_id,
-        "チャンネル登録解除を開始します"
-    );
-
     let app_state = &ctx.data().app_state;
-    let txn = app_state.guild_db().begin().await?;
 
-    // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id.get() as i64).await?;
-
-    let result = async {
-        let channel_type_repo = ChannelTypeRepository::new();
-        let guild_channel_repo = GuildChannelRepository::new();
-
-        // チャンネル種別が存在するか確認
-        let channel_type_model = channel_type_repo
-            .get_by_id(&txn, channel_type_id)
-            .await?
-            .ok_or_else(|| crate::types::AppError::NotFound(format!(
-                "チャンネル種別ID {} が見つかりませんでした",
-                channel_type_id
-            )))?;
-
-        // 削除前に現在の設定を取得
-        let existing_channel = guild_channel_repo
-            .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, channel_type_id)
-            .await?;
-
-        let old_channel_id = existing_channel
-            .as_ref()
-            .map(|c| c.channel_id)
-            .ok_or_else(|| {
-                crate::types::AppError::NotFound(format!(
-                    "チャンネル種別「{}」の設定が見つかりませんでした",
-                    channel_type_model.name
-                ))
-            })?;
-
-        // ギルドチャンネルを削除
-        guild_channel_repo
-            .delete_with_txn(&txn, guild_id.get() as i64, channel_type_id)
-            .await?;
-
-        info!(
-            guild_id = %guild_id,
-            channel_type = channel_type_id,
-            "チャンネル登録解除が完了しました"
-        );
-
-        // コミット前に、全チャンネル種別の設定状況を取得（トランザクション内で実行）
-        let all_channel_types = channel_type_repo.get_all(&txn).await?;
-        let mut status_lines = Vec::new();
-
-        for ct in all_channel_types {
-            let guild_channel = guild_channel_repo
-                .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, ct.id)
-                .await?;
-
-            if let Some(gc) = guild_channel {
-                status_lines.push(format!("• **{}**: <#{}>\n", ct.name, gc.channel_id));
-            } else {
-                status_lines.push(format!("• **{}**: 未設定\n", ct.name));
-            }
-        }
-
-        // トランザクションをコミット（ここで確定させる）
-        txn.commit().await?;
-
-        // 削除後、設定状況を表示
-        let mut status_message = format!(
-            "✅ チャンネル設定を削除しました。\n\n**種別:** {}\n**削除されたチャンネル:** <#{}>\n\n**現在の設定状況:**\n",
-            channel_type_model.name, old_channel_id
-        );
-
-        for line in status_lines {
-            status_message.push_str(&line);
-        }
-
-        ctx.send(
-            poise::CreateReply::default()
-                .content(status_message)
-                .ephemeral(true),
-        )
+    // Facadeを呼び出し
+    let facade = ChannelManagementFacade::new(Arc::new(app_state.clone()));
+    let result = facade
+        .unregister_channel(guild_id.get() as i64, channel_type_id)
         .await?;
 
-        Ok::<(), crate::types::AppError>(())
-    }
-    .await;
+    // 結果メッセージを作成
+    let mut message = format!(
+        "✅ チャンネル設定を削除しました。\n\n**種別:** {}\n**削除されたチャンネル:** <#{}>\n\n**現在の設定状況:**\n",
+        result.channel_type_name, result.old_channel_id
+    );
 
-    result
+    // ChannelDisplayServiceから取得した設定状況を整形
+    for setting in &result.settings_display.settings {
+        if let Some(channel_id) = setting.channel_id {
+            message.push_str(&format!("• **{}**: <#{}>\n", setting.channel_type_name, channel_id));
+        } else {
+            message.push_str(&format!("• **{}**: 未設定\n", setting.channel_type_name));
+        }
+    }
+
+    ctx.send(
+        poise::CreateReply::default()
+            .content(message)
+            .ephemeral(true),
+    )
+    .await?;
+
+    Ok(())
 }
