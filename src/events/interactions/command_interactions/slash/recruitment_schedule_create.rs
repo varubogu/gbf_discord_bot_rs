@@ -8,9 +8,8 @@ use crate::repository::quests_repository::QuestRepository;
 use crate::services::schedule::{convert_local_days_and_time_to_utc, RecruitmentScheduleService};
 use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
-use chrono::{NaiveTime, Timelike};
+use chrono::NaiveTime;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
-use sea_orm::prelude::TimeTime;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -175,31 +174,29 @@ pub async fn recruitment_schedule_create(
     // ここではクエスト開始の曜日を使用
     let day_of_weeks = utc_quest_days;
 
-    // チャンネルIDを取得（現在のチャンネル）
-    let channel_id = ctx.channel_id().get() as i64;
-
     // スケジュールを作成
     let txn = app_state.guild_db().begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
-    // マルチ募集チャンネルが登録されているか確認（channel_type = 1）
+    // マルチ募集チャンネルを取得（channel_type = 2）
     let guild_channel_repo = GuildChannelRepository::new();
     let guild_channel = guild_channel_repo
-        .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, 1)
-        .await?;
+        .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, 2)
+        .await?
+        .ok_or_else(|| {
+            crate::types::AppError::Business {
+                message: format!(
+                    "マルチ募集チャンネルが登録されていません。\n\n\
+                    定期募集を作成するには、先に管理者に `/チャンネル登録` コマンドで\
+                    マルチ募集チャンネルを登録してもらってください。"
+                ),
+            }
+        })?;
 
-    if guild_channel.is_none() {
-        txn.rollback().await?;
-        return Err(crate::types::AppError::Business {
-            message: format!(
-                "マルチ募集チャンネルが登録されていません。\n\n\
-                定期募集を作成するには、先に管理者に `/チャンネル登録` コマンドで\
-                マルチ募集チャンネルを登録してもらってください。"
-            ),
-        });
-    }
+    // マルチ募集チャンネルのIDを使用
+    let channel_id = guild_channel.channel_id;
 
     let schedule_repo = BattleRecruitmentScheduleRepository::new();
 
@@ -305,12 +302,6 @@ fn parse_time(time_str: &str) -> Result<NaiveTime> {
             message: format!("無効な時刻です: {}", time_str),
         }
     })
-}
-
-/// NaiveTimeをTimeTimeに変換
-fn naive_time_to_time_time(time: NaiveTime) -> TimeTime {
-    TimeTime::from_hms(time.hour() as u8, time.minute() as u8, time.second() as u8)
-        .unwrap_or_else(|_| TimeTime::from_hms(0, 0, 0).unwrap())
 }
 
 /// 曜日文字列をパース
