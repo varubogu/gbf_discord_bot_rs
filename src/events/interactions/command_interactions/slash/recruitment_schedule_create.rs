@@ -43,8 +43,8 @@ pub async fn recruitment_schedule_create(
     #[description_localized("ja", "クエスト開始時刻（例: 22:00）")]
     quest_start_time: String,
     #[name_localized("ja", "対象曜日")]
-    #[description = "Target days (comma or space separated. e.g., 月,水,金 / 火 木 / 毎日)"]
-    #[description_localized("ja", "対象曜日（月火水木金土日から選択。カンマまたはスペース区切り。例: 月,水,金 / 火 木 / 土 日 / 毎日）")]
+    #[description = "Target days (comma/space separated or continuous. e.g., 月,水,金 / 火 木 / 月火水 / 毎日)"]
+    #[description_localized("ja", "対象曜日（月火水木金土日から選択。区切り文字または連続入力。例: 月,水,金 / 火 木 / 月火水 / 金土日 / 毎日）")]
     days: String,
     #[name_localized("ja", "募集開始時刻")]
     #[description = "Recruitment start time (e.g., 20:00)"]
@@ -305,8 +305,37 @@ fn parse_time(time_str: &str) -> Result<NaiveTime> {
 }
 
 /// 曜日文字列をパース
-/// カンマ、半角スペース、全角スペースで区切った曜日を解析
+/// カンマ、半角スペース、全角スペースで区切った曜日、または連続パターン（例: 月火水）を解析
 fn parse_days(days_str: &str) -> Result<Vec<i32>> {
+    // 無効なパターンを先にチェック
+    if days_str == "曜日" {
+        return Err(crate::types::AppError::Business {
+            message: "「曜日」は有効な曜日指定ではありません。「月」「火」などの曜日を指定してください。".to_string(),
+        });
+    }
+
+    // 特殊パターンを先にチェック（「毎日」など）
+    match days_str {
+        "毎日" | "全て" | "すべて" | "everyday" | "all" => return Ok(vec![0]),
+        _ => {}
+    }
+
+    // 区切り文字があるかチェック
+    let has_delimiter = days_str.contains(',') || days_str.contains(' ') || days_str.contains('　');
+
+    let result = if has_delimiter {
+        // 区切り文字で分割して解析
+        parse_days_with_delimiter(days_str)?
+    } else {
+        // 連続パターンとして解析（例: "月火水"）
+        parse_continuous_days(days_str)?
+    };
+
+    Ok(result)
+}
+
+/// 区切り文字で分割された曜日をパース
+fn parse_days_with_delimiter(days_str: &str) -> Result<Vec<i32>> {
     let mut result = Vec::new();
 
     // カンマ、半角スペース、全角スペースで分割
@@ -336,6 +365,42 @@ fn parse_days(days_str: &str) -> Result<Vec<i32>> {
         result.push(day_num);
     }
 
+    Ok(result)
+}
+
+/// 連続パターンの曜日をパース（例: "月火水" → [1, 2, 3]）
+fn parse_continuous_days(days_str: &str) -> Result<Vec<i32>> {
+    use std::collections::HashSet;
+
+    let mut result_set = HashSet::new();
+
+    for ch in days_str.chars() {
+        match ch {
+            '月' => { result_set.insert(1); },
+            '火' => { result_set.insert(2); },
+            '水' => { result_set.insert(3); },
+            '木' => { result_set.insert(4); },
+            '金' => { result_set.insert(5); },
+            '土' => { result_set.insert(6); },
+            '日' => { result_set.insert(7); },
+            '曜' => continue, // 「曜」はスキップ（"月曜火曜" のような入力に対応）
+            _ => {
+                return Err(crate::types::AppError::Business {
+                    message: format!("無効な文字が含まれています: '{}'（使用可能: 月火水木金土日）", ch),
+                })
+            }
+        };
+    }
+
+    if result_set.is_empty() {
+        return Err(crate::types::AppError::Business {
+            message: "有効な曜日が指定されていません".to_string(),
+        });
+    }
+
+    // ソートして返す
+    let mut result: Vec<i32> = result_set.into_iter().collect();
+    result.sort();
     Ok(result)
 }
 
@@ -402,6 +467,54 @@ mod tests {
     #[test]
     fn test_parse_days_invalid() {
         let result = parse_days("月,無効,金");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_days_continuous_pattern() {
+        let result = parse_days("月火水").unwrap();
+        assert_eq!(result, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_parse_days_continuous_pattern_weekend() {
+        let result = parse_days("金土日").unwrap();
+        assert_eq!(result, vec![5, 6, 7]);
+    }
+
+    #[test]
+    fn test_parse_days_continuous_with_youbi() {
+        // "月曜火曜" のような入力（「曜」はスキップされる）
+        let result = parse_days("月曜火曜").unwrap();
+        assert_eq!(result, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_parse_days_continuous_duplicates() {
+        // 重複は自動的に除去される
+        let result = parse_days("月月火水").unwrap();
+        assert_eq!(result, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_parse_days_youbi_only() {
+        // "曜日" は有効な曜日指定ではないためエラー
+        // "日" のみなら日曜日だが、"曜日" という単語は曜日の指定ではない
+        let result = parse_days("曜日");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_days_sunday_only() {
+        // "日" のみは日曜日として扱う
+        let result = parse_days("日").unwrap();
+        assert_eq!(result, vec![7]);
+    }
+
+    #[test]
+    fn test_parse_days_continuous_invalid_char() {
+        // 無効な文字が含まれている場合はエラー
+        let result = parse_days("月火ABC");
         assert!(result.is_err());
     }
 }
