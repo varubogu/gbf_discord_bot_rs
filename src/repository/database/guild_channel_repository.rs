@@ -1,7 +1,7 @@
 use crate::models::entities::guild_channels;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error, info};
 
 /// guild_channelsテーブルのRepository
@@ -113,31 +113,72 @@ impl GuildChannelRepository {
         Ok(model)
     }
 
-    // /// ギルドIDとチャンネル種別でギルドチャンネルを取得
-    // pub async fn get_by_guild_and_type(
-    //     &self,
-    //     guild_id: i64,
-    //     channel_type: i32,
-    // ) -> Result<Option<guild_channels::Model>> {
-    //     debug!(
-    //         guild_id = guild_id,
-    //         channel_type = channel_type,
-    //         "ギルドチャンネルを取得します"
-    //     );
+    /// ギルドIDでギルドチャンネル一覧を取得（トランザクション内）
+    pub async fn get_all_by_guild_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<guild_channels::Model>> {
+        debug!(
+            guild_id = guild_id,
+            "ギルドチャンネル一覧を取得します（トランザクション内）"
+        );
 
-    //     let model = guild_channels::Entity::find_by_id((guild_id, channel_type))
-    //         .one(&self.db)
-    //         .await
-    //         .map_err(|e| {
-    //             error!(
-    //                 error = %e,
-    //                 guild_id = guild_id,
-    //                 channel_type = channel_type,
-    //                 "ギルドチャンネルの取得に失敗しました"
-    //             );
-    //             e
-    //         })?;
+        let models = guild_channels::Entity::find()
+            .filter(guild_channels::Column::GuildId.eq(guild_id))
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    "ギルドチャンネル一覧の取得に失敗しました"
+                );
+                e
+            })?;
 
-    //     Ok(model)
-    // }
+        Ok(models)
+    }
+
+    /// ギルドチャンネルを削除（トランザクション内）
+    pub async fn delete_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        channel_type: i32,
+    ) -> Result<()> {
+        debug!(
+            guild_id = guild_id,
+            channel_type = channel_type,
+            "ギルドチャンネルを削除します（トランザクション内）"
+        );
+
+        let result = guild_channels::Entity::delete_by_id((guild_id, channel_type))
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    channel_type = channel_type,
+                    "ギルドチャンネルの削除に失敗しました"
+                );
+                e
+            })?;
+
+        if result.rows_affected == 0 {
+            return Err(crate::types::AppError::NotFound(format!(
+                "削除対象のギルドチャンネルが見つかりませんでした: guild_id={}, channel_type={}",
+                guild_id, channel_type
+            )));
+        }
+
+        info!(
+            guild_id = guild_id,
+            channel_type = channel_type,
+            "ギルドチャンネルを削除しました"
+        );
+
+        Ok(())
+    }
 }
