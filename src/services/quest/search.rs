@@ -2,6 +2,15 @@ use crate::repository::quests_repository::QuestSearchResult;
 use crate::repository::QuestRepository;
 use crate::types::Result;
 
+/// オートコンプリート用のクエスト情報
+#[derive(Debug, Clone)]
+pub struct QuestAutocompleteItem {
+    /// 表示名（エイリアスマッチの場合は "クエスト名 (エイリアス)" 形式）
+    pub display_name: String,
+    /// クエスト名（選択時に送信される値）
+    pub quest_name: String,
+}
+
 /// クエスト検索サービス
 /// クエスト名やエイリアスから部分一致検索を行う
 pub struct QuestSearchService<'a, R: QuestRepository> {
@@ -15,7 +24,7 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
 
     /// クエスト名またはエイリアスで部分一致検索を行い、結果を返す
     /// Discord autocompleteの制限に合わせて最大25件まで返す
-    pub async fn search_for_autocomplete<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<String>>
+    pub async fn search_for_autocomplete<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestAutocompleteItem>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -36,25 +45,30 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
         };
 
         // Discord autocompleteは最大25件まで
-        let limited_results: Vec<String> = results
+        let limited_results: Vec<QuestAutocompleteItem> = results
             .into_iter()
             .take(25)
-            .map(|r| format_search_result(&r))
+            .map(|r| create_autocomplete_item(&r))
             .collect();
 
         Ok(limited_results)
     }
 }
 
-/// 検索結果をDiscord autocompleteの表示用にフォーマット
+/// 検索結果をオートコンプリートアイテムに変換
 /// クエスト名とマッチしたテキストが異なる場合（エイリアスマッチの場合）は両方表示
-fn format_search_result(result: &QuestSearchResult) -> String {
-    if result.name == result.matched_text {
+fn create_autocomplete_item(result: &QuestSearchResult) -> QuestAutocompleteItem {
+    let display_name = if result.name == result.matched_text {
         // クエスト名そのものがマッチした場合
         result.name.clone()
     } else {
         // エイリアスがマッチした場合はエイリアスも表示
         format!("{} ({})", result.name, result.matched_text)
+    };
+
+    QuestAutocompleteItem {
+        display_name,
+        quest_name: result.name.clone(),
     }
 }
 
@@ -182,8 +196,10 @@ mod tests {
         assert!(result.is_ok());
         let results = result.unwrap();
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0], "クエスト1");
-        assert_eq!(results[1], "クエスト2");
+        assert_eq!(results[0].display_name, "クエスト1");
+        assert_eq!(results[0].quest_name, "クエスト1");
+        assert_eq!(results[1].display_name, "クエスト2");
+        assert_eq!(results[1].quest_name, "クエスト2");
     }
 
     #[tokio::test]
@@ -211,31 +227,35 @@ mod tests {
         assert!(result.is_ok());
         let results = result.unwrap();
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0], "テストクエスト");
-        assert_eq!(results[1], "サンプルクエスト (sample)");
+        assert_eq!(results[0].display_name, "テストクエスト");
+        assert_eq!(results[0].quest_name, "テストクエスト");
+        assert_eq!(results[1].display_name, "サンプルクエスト (sample)");
+        assert_eq!(results[1].quest_name, "サンプルクエスト");
     }
 
     #[tokio::test]
-    async fn test_format_search_result_name_match() {
+    async fn test_create_autocomplete_item_name_match() {
         let result = QuestSearchResult {
             quest_id: 1,
             name: "テストクエスト".to_string(),
             matched_text: "テストクエスト".to_string(),
         };
 
-        let formatted = format_search_result(&result);
-        assert_eq!(formatted, "テストクエスト");
+        let item = create_autocomplete_item(&result);
+        assert_eq!(item.display_name, "テストクエスト");
+        assert_eq!(item.quest_name, "テストクエスト");
     }
 
     #[tokio::test]
-    async fn test_format_search_result_alias_match() {
+    async fn test_create_autocomplete_item_alias_match() {
         let result = QuestSearchResult {
             quest_id: 1,
             name: "テストクエスト".to_string(),
             matched_text: "test".to_string(),
         };
 
-        let formatted = format_search_result(&result);
-        assert_eq!(formatted, "テストクエスト (test)");
+        let item = create_autocomplete_item(&result);
+        assert_eq!(item.display_name, "テストクエスト (test)");
+        assert_eq!(item.quest_name, "テストクエスト");
     }
 }

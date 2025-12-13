@@ -1,17 +1,17 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::quest::search::QuestSearchService;
 use crate::types::PoiseContext;
-use futures::Stream;
+use poise::serenity_prelude::AutocompleteChoice;
 use tracing::error;
 
 /// クエスト名の入力候補を取得するファサード
 ///
 /// オートコンプリートでクエスト名を検索する際に使用する。
 /// Service層を使ってクエストを検索し、候補を返す。
-pub async fn search_quests_for_autocomplete<'a>(
+pub async fn search_quests_for_autocomplete(
     ctx: PoiseContext<'_>,
-    partial: &'a str,
-) -> impl Stream<Item = String> + 'a {
+    partial: &str,
+) -> Vec<AutocompleteChoice> {
     // AppStateからDB接続を取得してRepositoryを作成
     let db_conn = ctx.data().app_state.guild_db().clone();
     let quest_repository = SeaOrmQuestRepository::new();
@@ -26,5 +26,9 @@ pub async fn search_quests_for_autocomplete<'a>(
             vec![]
         });
 
-    futures::stream::iter(results)
+    // AutocompleteChoiceに変換（display_nameを表示、quest_nameを値として使用）
+    results
+        .into_iter()
+        .map(|item| AutocompleteChoice::new(item.display_name, item.quest_name))
+        .collect()
 }

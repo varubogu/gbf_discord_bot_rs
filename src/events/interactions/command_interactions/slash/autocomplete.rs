@@ -4,16 +4,15 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::PoiseContext;
-use futures::Stream;
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use tracing::{debug, warn};
 
 /// クエスト名の入力候補を取得
-pub async fn quest_auto_complete<'a>(
+pub async fn quest_auto_complete(
     ctx: PoiseContext<'_>,
-    partial: &'a str,
-) -> impl Stream<Item = String> + 'a {
+    partial: &str,
+) -> Vec<AutocompleteChoice> {
     quest_list::search_quests_for_autocomplete(ctx, partial).await
 }
 
