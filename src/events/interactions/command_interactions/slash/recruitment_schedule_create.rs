@@ -1,14 +1,18 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
+use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::repository::quests_repository::QuestRepository;
-use crate::services::schedule::RecruitmentScheduleService;
+use crate::services::schedule::{convert_local_days_and_time_to_utc, RecruitmentScheduleService};
+use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use chrono::{NaiveTime, Timelike};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use sea_orm::prelude::TimeTime;
 use sea_orm::TransactionTrait;
+use std::sync::Arc;
 use tracing::{error, info};
 
 use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
@@ -118,27 +122,58 @@ pub async fn recruitment_schedule_create(
             battle_style_id
         )))?;
 
-    // クエスト開始時刻をパース
-    let quest_start_time_naive = parse_time(&quest_start_time)?;
-    let quest_start_time_tt = naive_time_to_time_time(quest_start_time_naive);
+    // ギルドのタイムゾーンを取得
+    let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+    let timezone_service = TimezoneService::new(timezone_repo);
+    let timezone = timezone_service
+        .get_guild_timezone(app_state.guild_db(), guild_id.get() as i64)
+        .await?;
 
-    // 募集開始時刻をパース（必須）
-    let recruit_time_naive = parse_time(&recruit_start_time)?;
-    let recruit_start_time_tt = Some(naive_time_to_time_time(recruit_time_naive));
+    info!(
+        guild_id = guild_id.get(),
+        timezone = %timezone,
+        "ギルドのタイムゾーンを取得しました"
+    );
+
+    // クエスト開始時刻をパース（ローカル時刻）
+    let quest_start_time_local = parse_time(&quest_start_time)?;
+
+    // 募集開始時刻をパース（ローカル時刻、必須）
+    let recruit_start_time_local = parse_time(&recruit_start_time)?;
 
     let recruit_day_offset = recruit_start_day_offset.unwrap_or(1) as i32;
 
-    // 曜日をパース
-    let day_of_weeks = parse_days(&days)?;
+    // 曜日をパース（ローカル曜日）
+    let local_day_of_weeks = parse_days(&days)?;
 
-    // バリデーション
+    // バリデーション（ローカル時刻で実施）
     let service = RecruitmentScheduleService::new();
     service.validate_schedule_input(
-        &day_of_weeks,
-        quest_start_time_naive,
+        &local_day_of_weeks,
+        quest_start_time_local,
         recruit_day_offset,
-        Some(recruit_time_naive),
+        Some(recruit_start_time_local),
     )?;
+
+    // ローカル時刻・曜日をUTCに変換
+    let (utc_quest_days, quest_start_time_tt) =
+        convert_local_days_and_time_to_utc(&local_day_of_weeks, quest_start_time_local, timezone)?;
+
+    let (_utc_recruit_days, recruit_start_time_tt_val) =
+        convert_local_days_and_time_to_utc(&local_day_of_weeks, recruit_start_time_local, timezone)?;
+    let recruit_start_time_tt = Some(recruit_start_time_tt_val);
+
+    info!(
+        quest_local_time = %quest_start_time,
+        quest_utc_time = format!("{:02}:{:02}", quest_start_time_tt.hour(), quest_start_time_tt.minute()),
+        local_days = ?local_day_of_weeks,
+        utc_days = ?utc_quest_days,
+        "ローカル時刻・曜日をUTCに変換しました"
+    );
+
+    // UTC曜日を使用（クエスト開始と募集開始で異なる場合があるが、通常は同じ曜日）
+    // ここではクエスト開始の曜日を使用
+    let day_of_weeks = utc_quest_days;
 
     // チャンネルIDを取得（現在のチャンネル）
     let channel_id = ctx.channel_id().get() as i64;
@@ -148,6 +183,23 @@ pub async fn recruitment_schedule_create(
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
+
+    // マルチ募集チャンネルが登録されているか確認（channel_type = 1）
+    let guild_channel_repo = GuildChannelRepository::new();
+    let guild_channel = guild_channel_repo
+        .get_by_guild_and_type_with_txn(&txn, guild_id.get() as i64, 1)
+        .await?;
+
+    if guild_channel.is_none() {
+        txn.rollback().await?;
+        return Err(crate::types::AppError::Business {
+            message: format!(
+                "マルチ募集チャンネルが登録されていません。\n\n\
+                定期募集を作成するには、先に管理者に `/チャンネル登録` コマンドで\
+                マルチ募集チャンネルを登録してもらってください。"
+            ),
+        });
+    }
 
     let schedule_repo = BattleRecruitmentScheduleRepository::new();
 
@@ -178,8 +230,8 @@ pub async fn recruitment_schedule_create(
                 "定期募集スケジュールを作成しました"
             );
 
-            // 曜日を文字列に変換
-            let days_str = format_days(&day_of_weeks);
+            // 曜日を文字列に変換（ローカル曜日を表示）
+            let days_str = format_days(&local_day_of_weeks);
 
             let embed = CreateEmbed::default()
                 .title("✅ 定期募集スケジュールを作成しました")
@@ -188,7 +240,7 @@ pub async fn recruitment_schedule_create(
                      **スケジュールID**: {}\n\
                      **クエスト**: {} (ID: {})\n\
                      **マルチ攻略方法**: {}\n\
-                     **対象曜日**: {}\n\
+                     **対象曜日**: {} ({}タイムゾーン)\n\
                      **クエスト開始時刻**: {}\n\
                      **募集開始**: {}日前の{}\n\
                      **備考**: {}\n\
@@ -201,6 +253,7 @@ pub async fn recruitment_schedule_create(
                     quest_id,
                     battle_style_detail.display_name,
                     days_str,
+                    timezone,
                     quest_start_time,
                     recruit_day_offset,
                     recruit_start_time,

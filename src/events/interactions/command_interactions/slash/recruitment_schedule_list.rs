@@ -1,10 +1,15 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::repository::quests_repository::QuestRepository;
+use crate::services::schedule::convert_utc_days_and_time_to_local;
+use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
+use chrono::Timelike;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use sea_orm::TransactionTrait;
+use std::sync::Arc;
 use tracing::info;
 
 /// マルチ募集スケジュール一覧を表示
@@ -64,6 +69,13 @@ pub async fn recruitment_schedule_list(
 
     txn.commit().await?;
 
+    // ギルドのタイムゾーンを取得（UTC→ローカル変換用）
+    let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+    let timezone_service = TimezoneService::new(timezone_repo);
+    let timezone = timezone_service
+        .get_guild_timezone(app_state.guild_db(), guild_id.get() as i64)
+        .await?;
+
     if schedules.is_empty() {
         let embed = CreateEmbed::default()
             .title("📅 定期募集スケジュール一覧")
@@ -94,17 +106,30 @@ pub async fn recruitment_schedule_list(
             _ => format!("クエストID {}", schedule.quest_id),
         };
 
-        // 曜日を文字列に変換
-        let days_str = format_days(&days.iter().map(|d| d.day_of_week).collect::<Vec<_>>());
+        // UTC曜日・時刻をローカル曜日・時刻に変換
+        let utc_days: Vec<i32> = days.iter().map(|d| d.day_of_week).collect();
+        let (local_days, local_quest_time) = convert_utc_days_and_time_to_local(
+            &utc_days,
+            schedule.quest_start_time,
+            timezone,
+        )?;
 
-        // 募集開始時刻を表示
-        let recruit_time_str = if let Some(recruit_time) = schedule.recruit_start_time {
-            format!("{:02}:{:02}", recruit_time.hour(), recruit_time.minute())
+        // 曜日を文字列に変換（ローカル曜日）
+        let days_str = format_days(&local_days);
+
+        // 募集開始時刻を表示（ローカル時刻）
+        let recruit_time_str = if let Some(recruit_time_utc) = schedule.recruit_start_time {
+            let (_, local_recruit_time) = convert_utc_days_and_time_to_local(
+                &utc_days,
+                recruit_time_utc,
+                timezone,
+            )?;
+            format!("{:02}:{:02}", local_recruit_time.hour(), local_recruit_time.minute())
         } else {
             format!(
                 "{:02}:{:02}（クエスト開始時刻と同じ）",
-                schedule.quest_start_time.hour(),
-                schedule.quest_start_time.minute()
+                local_quest_time.hour(),
+                local_quest_time.minute()
             )
         };
 
@@ -117,7 +142,7 @@ pub async fn recruitment_schedule_list(
         description.push_str(&format!(
             "{}. **{}** (ID: {}) {}\n\
              　 クエスト: {}\n\
-             　 曜日: {}\n\
+             　 曜日: {} ({})\n\
              　 開始: {:02}:{:02}\n\
              　 募集: {}日前の{}\n\
              　 作成者: <@{}>\n\n",
@@ -127,8 +152,9 @@ pub async fn recruitment_schedule_list(
             status,
             quest_name,
             days_str,
-            schedule.quest_start_time.hour(),
-            schedule.quest_start_time.minute(),
+            timezone,
+            local_quest_time.hour(),
+            local_quest_time.minute(),
             schedule.recruit_start_day_offset,
             recruit_time_str,
             schedule.created_by

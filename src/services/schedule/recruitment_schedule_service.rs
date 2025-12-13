@@ -1,9 +1,8 @@
-use crate::models::entities::{battle_recruitment_schedule_days, battle_recruitment_schedules, battle_recruitments};
+use crate::models::entities::{battle_recruitment_schedule_days, battle_recruitment_schedules};
 use crate::types::Result;
-use chrono::{DateTime, Datelike, Duration, NaiveTime, Timelike, Utc, Weekday};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use chrono::{DateTime, Datelike, Duration, NaiveTime, Utc, Weekday};
 use std::collections::HashSet;
-use tracing::{debug, error};
+use tracing::debug;
 
 /// マルチ募集スケジュールサービス
 pub struct RecruitmentScheduleService;
@@ -29,6 +28,9 @@ impl RecruitmentScheduleService {
 
     /// 次回募集日時を計算
     /// from から to までの範囲内で、指定された曜日と時刻に該当する募集日時を計算
+    ///
+    /// # 注意
+    /// DBに保存されている時刻と曜日は既にUTCに変換済みです
     pub fn calculate_next_recruitment_times(
         &self,
         schedule: &battle_recruitment_schedules::Model,
@@ -61,6 +63,7 @@ impl RecruitmentScheduleService {
         let recruit_start_time = schedule.recruit_start_time.unwrap_or(quest_start_time);
 
         // fromからtoまでの各日について、対象曜日かどうかチェック
+        // DBの値は既にUTC、そのまま使用
         let mut current_date = from.date_naive();
         let to_date = to.date_naive();
 
@@ -69,28 +72,16 @@ impl RecruitmentScheduleService {
 
             // 対象曜日かチェック（0=毎日 or 対応する曜日）
             if target_weekdays.contains(&0) || target_weekdays.contains(&Self::weekday_to_number(weekday)) {
-                // クエスト開始日時を計算
+                // クエスト開始日時を計算（UTC時刻として直接使用）
                 let quest_start_datetime = current_date
                     .and_time(Self::time_time_to_naive_time(quest_start_time))
-                    .and_local_timezone(Utc)
-                    .single()
-                    .ok_or_else(|| {
-                        crate::types::AppError::Business {
-                            message: "クエスト開始日時の変換に失敗しました".to_string(),
-                        }
-                    })?;
+                    .and_utc();
 
-                // 募集開始日時を計算（recruit_start_day_offsetを考慮）
+                // 募集開始日時を計算（recruit_start_day_offsetを考慮、UTC時刻として直接使用）
                 let recruit_date = current_date - Duration::days(schedule.recruit_start_day_offset as i64);
                 let recruit_start_datetime = recruit_date
                     .and_time(Self::time_time_to_naive_time(recruit_start_time))
-                    .and_local_timezone(Utc)
-                    .single()
-                    .ok_or_else(|| {
-                        crate::types::AppError::Business {
-                            message: "募集開始日時の変換に失敗しました".to_string(),
-                        }
-                    })?;
+                    .and_utc();
 
                 // 募集開始日時がfromとtoの範囲内かチェック
                 if recruit_start_datetime >= from && recruit_start_datetime < to {
@@ -126,42 +117,6 @@ impl RecruitmentScheduleService {
         );
 
         Ok(result)
-    }
-
-    /// 重複チェック
-    /// 同一guild_id、channel_id、quest_id、quest_start_atの組み合わせで既存レコードが存在するかチェック
-    pub async fn check_duplicate_recruitment(
-        &self,
-        db: &DatabaseConnection,
-        guild_id: i64,
-        channel_id: i64,
-        quest_id: i32,
-        quest_start_at: DateTime<Utc>,
-    ) -> Result<bool> {
-        debug!(
-            guild_id = %guild_id,
-            channel_id = %channel_id,
-            quest_id = %quest_id,
-            quest_start_at = %quest_start_at,
-            "重複チェックを実行します"
-        );
-
-        let existing = battle_recruitments::Entity::find()
-            .filter(battle_recruitments::Column::GuildId.eq(guild_id))
-            .filter(battle_recruitments::Column::ChannelId.eq(channel_id))
-            .filter(battle_recruitments::Column::QuestId.eq(quest_id))
-            .filter(battle_recruitments::Column::QuestStartAt.eq(quest_start_at))
-            .one(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "重複チェックに失敗しました");
-                e
-            })?;
-
-        let is_duplicate = existing.is_some();
-        debug!(is_duplicate = %is_duplicate, "重複チェックが完了しました");
-
-        Ok(is_duplicate)
     }
 
     /// 入力値のバリデーション

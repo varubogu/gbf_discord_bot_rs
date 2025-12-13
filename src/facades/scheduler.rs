@@ -3,6 +3,7 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::{guild_channels, last_process_times::LastProcessType};
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
+use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
@@ -326,6 +327,7 @@ impl SchedulerFacade {
         }
 
         // 各スケジュールについて募集日時を計算
+        // DBの値は既にUTCなので、タイムゾーン取得・変換は不要
         let recruitment_service = RecruitmentScheduleService::new();
         let mut all_calculated_times = Vec::new();
 
@@ -336,7 +338,7 @@ impl SchedulerFacade {
             debug!(
                 schedule_id = schedule.id,
                 calculated_count = calculated_times.len(),
-                "募集日時を計算しました"
+                "募集日時を計算しました（UTC基準）"
             );
 
             all_calculated_times.extend(calculated_times);
@@ -347,32 +349,11 @@ impl SchedulerFacade {
             "全スケジュールの募集日時計算が完了しました"
         );
 
-        // 重複チェックと募集作成
+        // 募集作成
         let mut created_count = 0;
         let mut skipped_count = 0;
 
         for calculated_time in all_calculated_times {
-            // 重複チェック
-            let is_duplicate = recruitment_service
-                .check_duplicate_recruitment(
-                    self.app_state.system_db(),
-                    calculated_time.guild_id,
-                    calculated_time.channel_id,
-                    calculated_time.quest_id,
-                    calculated_time.quest_start_at,
-                )
-                .await?;
-
-            if is_duplicate {
-                debug!(
-                    schedule_id = calculated_time.schedule_id,
-                    quest_start_at = %calculated_time.quest_start_at,
-                    "重複する募集が既に存在するためスキップします"
-                );
-                skipped_count += 1;
-                continue;
-            }
-
             // 募集作成処理を実行
             let create_result = self
                 .create_recruitment_from_schedule(&_http, &calculated_time)
@@ -454,6 +435,23 @@ impl SchedulerFacade {
         set_current_guild_id(&txn, calculated_time.guild_id).await?;
 
         let result = async {
+            // 0. マルチ募集チャンネルを取得（channel_type = 1）
+            let guild_channel_repo = GuildChannelRepository::new();
+            let guild_channel = guild_channel_repo
+                // channel_type = 2 (マルチ募集チャンネル)
+                .get_by_guild_and_type_with_txn(&txn, calculated_time.guild_id, 2)
+                .await?
+                .ok_or_else(|| crate::types::AppError::NotFound(format!(
+                    "ギルドID {} にマルチ募集チャンネルが登録されていません",
+                    calculated_time.guild_id
+                )))?;
+
+            let recruitment_channel_id = guild_channel.channel_id;
+            debug!(
+                recruitment_channel_id = recruitment_channel_id,
+                "マルチ募集チャンネルを取得しました"
+            );
+
             // 1. Quest, BattleStyle, タイムゾーンを取得
             let quest_repo = SeaOrmQuestRepository::new();
             let battle_style_repo = SeaOrmBattleStyleRepository::new();
@@ -516,8 +514,8 @@ impl SchedulerFacade {
             // 5. ボタンを作成
             let buttons = create_recruitment_buttons(&battle_style.display_name);
 
-            // 6. Discordメッセージを投稿
-            let channel_id = poise::serenity_prelude::ChannelId::new(calculated_time.channel_id as u64);
+            // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
+            let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
             let message = channel_id
                 .send_message(
                     http,
@@ -540,7 +538,7 @@ impl SchedulerFacade {
                 .create_with_txn(
                     &txn,
                     calculated_time.guild_id as u64,
-                    calculated_time.channel_id as u64,
+                    recruitment_channel_id as u64,
                     message_id,
                     quest.id,
                     calculated_time.battle_style_id,
@@ -568,7 +566,7 @@ impl SchedulerFacade {
                     &txn,
                     notify_time,
                     calculated_time.guild_id,
-                    calculated_time.channel_id,
+                    recruitment_channel_id,
                     "MSG00033".to_string(),
                 )
                 .await?;
