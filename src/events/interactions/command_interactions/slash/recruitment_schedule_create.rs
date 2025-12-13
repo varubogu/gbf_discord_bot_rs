@@ -311,7 +311,7 @@ fn parse_days(days_str: &str) -> Result<Vec<i32>> {
     for day in days_str.split(',') {
         let day = day.trim();
         let day_num = match day {
-            "毎日" | "everyday" => 0,
+            "毎日" | "全て" | "すべて" | "everyday" | "all" => 0,
             "月" | "月曜" | "月曜日" | "mon" | "monday" => 1,
             "火" | "火曜" | "火曜日" | "tue" | "tuesday" => 2,
             "水" | "水曜" | "水曜日" | "wed" | "wednesday" => 3,
