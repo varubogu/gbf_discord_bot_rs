@@ -43,8 +43,8 @@ pub async fn recruitment_schedule_create(
     #[description_localized("ja", "クエスト開始時刻（例: 22:00）")]
     quest_start_time: String,
     #[name_localized("ja", "対象曜日")]
-    #[description = "Target days (comma-separated. e.g., 月,水,金 / 火,木 / 毎日)"]
-    #[description_localized("ja", "対象曜日（月火水木金土日から選択。カンマ区切り。例: 月,水,金 / 火,木 / 土,日 / 毎日）")]
+    #[description = "Target days (comma or space separated. e.g., 月,水,金 / 火 木 / 毎日)"]
+    #[description_localized("ja", "対象曜日（月火水木金土日から選択。カンマまたはスペース区切り。例: 月,水,金 / 火 木 / 土 日 / 毎日）")]
     days: String,
     #[name_localized("ja", "募集開始時刻")]
     #[description = "Recruitment start time (e.g., 20:00)"]
@@ -305,11 +305,19 @@ fn parse_time(time_str: &str) -> Result<NaiveTime> {
 }
 
 /// 曜日文字列をパース
+/// カンマ、半角スペース、全角スペースで区切った曜日を解析
 fn parse_days(days_str: &str) -> Result<Vec<i32>> {
     let mut result = Vec::new();
 
-    for day in days_str.split(',') {
+    // カンマ、半角スペース、全角スペースで分割
+    for day in days_str.split(|c| c == ',' || c == ' ' || c == '　') {
         let day = day.trim();
+
+        // 空文字列はスキップ
+        if day.is_empty() {
+            continue;
+        }
+
         let day_num = match day {
             "毎日" | "全て" | "すべて" | "everyday" | "all" => 0,
             "月" | "月曜" | "月曜日" | "mon" | "monday" => 1,
@@ -349,4 +357,51 @@ fn format_days(days: &[i32]) -> String {
         .collect();
 
     day_names.join(", ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_days_comma_separated() {
+        let result = parse_days("月,水,金").unwrap();
+        assert_eq!(result, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_parse_days_space_separated() {
+        let result = parse_days("月 水 金").unwrap();
+        assert_eq!(result, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_parse_days_fullwidth_space_separated() {
+        let result = parse_days("月　水　金").unwrap();
+        assert_eq!(result, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_parse_days_mixed_delimiters() {
+        let result = parse_days("月,水　金").unwrap();
+        assert_eq!(result, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_parse_days_with_extra_spaces() {
+        let result = parse_days("月,  水,  金").unwrap();
+        assert_eq!(result, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_parse_days_everyday() {
+        let result = parse_days("毎日").unwrap();
+        assert_eq!(result, vec![0]);
+    }
+
+    #[test]
+    fn test_parse_days_invalid() {
+        let result = parse_days("月,無効,金");
+        assert!(result.is_err());
+    }
 }
