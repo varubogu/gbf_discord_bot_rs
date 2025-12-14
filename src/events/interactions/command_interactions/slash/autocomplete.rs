@@ -1,10 +1,17 @@
 use crate::facades::recruitment::battle_style_list;
 use crate::facades::recruitment::quest_list;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
+use crate::services::schedule::convert_utc_days_and_time_to_local;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::PoiseContext;
+use chrono::Timelike;
 use poise::serenity_prelude::AutocompleteChoice;
-use tracing::debug;
+use sea_orm::TransactionTrait;
+use tracing::{debug, warn};
 use crate::facades::recruitment::recruitment_schedule_list;
+
 /// クエスト名の入力候補を取得
 pub async fn quest_auto_complete(
     ctx: PoiseContext<'_>,
@@ -37,5 +44,3 @@ pub async fn recruitment_schedule_auto_complete(
     // Facade経由で取得（Tx/RLSと整形はファサード／サービスへ移譲）
     recruitment_schedule_list::get_schedules_for_autocomplete(ctx).await
 }
-
-// 表示ロジックはservices/recruitment/schedule/schedule_display_serviceへ移動
