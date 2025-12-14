@@ -856,7 +856,10 @@ fn get_entity_table_ref(table_name: &str) -> TableRef {
 fn should_use_upsert(table_name: &str) -> bool {
     matches!(
         table_name,
-        "channel_types" // guild_channelsから参照されているため
+        "battle_styles"  // battle_recruitments, quests, battle_recruitment_schedulesから参照
+        | "quests"       // quest_aliases, battle_recruitments, battle_recruitment_schedulesから参照
+        | "elements"     // recruitment_participantsから参照
+        | "channel_types" // guild_channelsから参照
     )
 }
 
@@ -898,59 +901,155 @@ async fn delete_unreferenced_records(
     table_name: &str,
     inserted_ids: &[&PostgresValue],
 ) -> Result<(), FacadeError> {
-    match table_name {
-        "channel_types" => {
-            // スプレッドシートに存在するIDのリストを作成
-            let id_list: Vec<i32> = inserted_ids
-                .iter()
-                .filter_map(|v| match v {
-                    PostgresValue::Integer(id) => Some(*id),
-                    _ => None,
-                })
-                .collect();
+    // スプレッドシートに存在するIDのリストを作成（全テーブル共通）
+    let id_list: Vec<i32> = inserted_ids
+        .iter()
+        .filter_map(|v| match v {
+            PostgresValue::Integer(id) => Some(*id),
+            _ => None,
+        })
+        .collect();
 
-            if id_list.is_empty() {
-                // 全削除（参照されていないもののみ）
-                // この複雑なサブクエリは生SQLで実装
-                let schema_name = get_schema_name("channel_types");
-                let guild_schema = get_schema_name("guild_channels");
-                let delete_sql = format!(
-                    "DELETE FROM {}.{} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
-                    schema_name, table_name, guild_schema
-                );
-                txn.execute(Statement::from_string(
-                    DatabaseBackend::Postgres,
-                    delete_sql,
-                ))
-                .await
-                .map_err(FacadeError::from)?;
+    match table_name {
+        "battle_styles" => {
+            // battle_recruitments, quests, battle_recruitment_schedulesから参照されているレコードは削除しない
+            let schema_name = get_schema_name("battle_styles");
+            let delete_sql = if id_list.is_empty() {
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN (
+                        SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
+                        UNION SELECT DISTINCT default_battle_style_id FROM master.quests
+                        UNION SELECT DISTINCT battle_style_id FROM worker.battle_recruitment_schedules
+                    )",
+                    schema_name, table_name
+                )
             } else {
-                // スプレッドシートに存在しないIDを削除（参照されていないもののみ）
                 let placeholders: Vec<String> = (1..=id_list.len())
                     .map(|i| format!("${}", i))
                     .collect();
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
+                        SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
+                        UNION SELECT DISTINCT default_battle_style_id FROM master.quests
+                        UNION SELECT DISTINCT battle_style_id FROM worker.battle_recruitment_schedules
+                    )",
+                    schema_name, table_name, placeholders.join(", ")
+                )
+            };
 
-                let schema_name = get_schema_name("channel_types");
-                let guild_schema = get_schema_name("guild_channels");
-                let delete_sql = format!(
+            if id_list.is_empty() {
+                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
+                    .await
+                    .map_err(FacadeError::from)?;
+            } else {
+                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
+                    .await
+                    .map_err(FacadeError::from)?;
+            }
+            tracing::debug!("battle_stylesテーブルから未参照レコードを削除しました");
+        }
+        "quests" => {
+            // quest_aliases, battle_recruitments, battle_recruitment_schedulesから参照されているレコードは削除しない
+            let schema_name = get_schema_name("quests");
+            let delete_sql = if id_list.is_empty() {
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN (
+                        SELECT DISTINCT quest_id FROM master.quest_aliases
+                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
+                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
+                    )",
+                    schema_name, table_name
+                )
+            } else {
+                let placeholders: Vec<String> = (1..=id_list.len())
+                    .map(|i| format!("${}", i))
+                    .collect();
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
+                        SELECT DISTINCT quest_id FROM master.quest_aliases
+                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
+                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
+                    )",
+                    schema_name, table_name, placeholders.join(", ")
+                )
+            };
+
+            if id_list.is_empty() {
+                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
+                    .await
+                    .map_err(FacadeError::from)?;
+            } else {
+                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
+                    .await
+                    .map_err(FacadeError::from)?;
+            }
+            tracing::debug!("questsテーブルから未参照レコードを削除しました");
+        }
+        "elements" => {
+            // recruitment_participantsから参照されているレコードは削除しない
+            let schema_name = get_schema_name("elements");
+            let delete_sql = if id_list.is_empty() {
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN (
+                        SELECT DISTINCT element_id FROM worker.recruitment_participants
+                    )",
+                    schema_name, table_name
+                )
+            } else {
+                let placeholders: Vec<String> = (1..=id_list.len())
+                    .map(|i| format!("${}", i))
+                    .collect();
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
+                        SELECT DISTINCT element_id FROM worker.recruitment_participants
+                    )",
+                    schema_name, table_name, placeholders.join(", ")
+                )
+            };
+
+            if id_list.is_empty() {
+                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
+                    .await
+                    .map_err(FacadeError::from)?;
+            } else {
+                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
+                    .await
+                    .map_err(FacadeError::from)?;
+            }
+            tracing::debug!("elementsテーブルから未参照レコードを削除しました");
+        }
+        "channel_types" => {
+            // guild_channelsから参照されているレコードは削除しない
+            let schema_name = get_schema_name("channel_types");
+            let guild_schema = get_schema_name("guild_channels");
+            let delete_sql = if id_list.is_empty() {
+                format!(
+                    "DELETE FROM {}.{} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
+                    schema_name, table_name, guild_schema
+                )
+            } else {
+                let placeholders: Vec<String> = (1..=id_list.len())
+                    .map(|i| format!("${}", i))
+                    .collect();
+                format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
                     schema_name, table_name, placeholders.join(", "), guild_schema
-                );
+                )
+            };
 
-                let values: Vec<SeaValue> = id_list
-                    .iter()
-                    .map(|id| SeaValue::Int(Some(*id)))
-                    .collect();
-
-                txn.execute(Statement::from_sql_and_values(
-                    DatabaseBackend::Postgres,
-                    delete_sql,
-                    values,
-                ))
-                .await
-                .map_err(FacadeError::from)?;
+            if id_list.is_empty() {
+                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
+                    .await
+                    .map_err(FacadeError::from)?;
+            } else {
+                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
+                    .await
+                    .map_err(FacadeError::from)?;
             }
-
             tracing::debug!("channel_typesテーブルから未参照レコードを削除しました");
         }
         _ => {
