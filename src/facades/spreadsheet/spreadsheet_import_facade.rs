@@ -15,6 +15,8 @@ use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
 use crate::facades::scheduler::SchedulerFacade;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
     ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresType,
     PostgresValue, RegisteredTableSchema, RowData, SchemaExtractorService,
@@ -343,6 +345,73 @@ impl SpreadsheetImportFacade {
             Err(e) => {
                 txn.rollback().await?;
                 error!(error = %e, "トランザクションをロールバックしました");
+                Err(e)
+            }
+        }
+    }
+
+    /// ギルド用スプレッドシートIDを取得
+    ///
+    /// # 引数
+    /// - `guild_id`: ギルドID
+    ///
+    /// # 戻り値
+    /// スプレッドシートID（未設定の場合はNone）
+    ///
+    /// # トランザクション管理
+    /// このメソッドはトランザクションを開始・コミット・ロールバックを管理します。
+    #[instrument(level = "info", skip(self), fields(guild_id = %guild_id))]
+    pub async fn get_guild_spreadsheet_id(&self, guild_id: i64) -> Result<Option<String>, FacadeError> {
+        info!(
+            guild_id = guild_id,
+            "ギルド用スプレッドシートID取得を開始します"
+        );
+
+        // トランザクション開始（Facade層の責務）
+        let txn = self.db.begin().await.map_err(|e| FacadeError::TransactionError {
+            message: format!("トランザクション開始に失敗しました: {}", e),
+        })?;
+
+        // RLSポリシーのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await.map_err(|e| FacadeError::TransactionError {
+            message: format!("セッション変数設定に失敗しました: {}", e),
+        })?;
+
+        let result = async {
+            let repository = GuildSpreadsheetConfigRepository::new();
+            let spreadsheet_id = GuildSpreadsheetConfigRepositoryTrait::find_import_spreadsheet_id(
+                &repository,
+                &txn,
+                guild_id,
+            )
+            .await?;
+
+            Ok::<_, FacadeError>(spreadsheet_id)
+        }
+        .await;
+
+        // 結果に応じてcommit/rollback（Facade層の責務）
+        match result {
+            Ok(spreadsheet_id) => {
+                txn.commit().await.map_err(|e| FacadeError::TransactionError {
+                    message: format!("トランザクションコミットに失敗しました: {}", e),
+                })?;
+                info!(
+                    guild_id = guild_id,
+                    spreadsheet_id = ?spreadsheet_id,
+                    "ギルド用スプレッドシートID取得に成功しました"
+                );
+                Ok(spreadsheet_id)
+            }
+            Err(e) => {
+                txn.rollback().await.map_err(|e| FacadeError::TransactionError {
+                    message: format!("トランザクションロールバックに失敗しました: {}", e),
+                })?;
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    "ギルド用スプレッドシートID取得に失敗しました"
+                );
                 Err(e)
             }
         }

@@ -4,11 +4,8 @@
 /// スプレッドシートからギルドデータをPostgreSQLに読み込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
-use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -44,55 +41,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         "ギルドスプレッドシート読み込みを開始"
     );
 
-    // データベースからギルドの読み込み用スプレッドシートIDを取得
     let app_state = &ctx.data().app_state;
-    let db = app_state.guild_db();
-
-    // RLSポリシーのためにトランザクションを開始してセッション変数を設定
-    let txn = db.begin().await?;
-    set_current_guild_id(&txn, guild_id).await?;
-
-    let repository = GuildSpreadsheetConfigRepository::new();
-
-    let spreadsheet_id = match GuildSpreadsheetConfigRepositoryTrait::find_import_spreadsheet_id(&repository, &txn, guild_id).await {
-        Ok(Some(id)) => id,
-        Ok(None) => {
-            txn.rollback().await?;
-            ctx.send(
-                poise::CreateReply::default()
-                    .content("❌ エラー: このギルドにスプレッドシートが登録されていません\n\
-                        `/gspread_regist` コマンドでスプレッドシートを登録してください")
-                    .ephemeral(true),
-            )
-            .await?;
-            error!(
-                guild_id = %guild_id,
-                "ギルド読み込み用スプレッドシートIDが設定されていません"
-            );
-            return Ok(());
-        }
-        Err(e) => {
-            txn.rollback().await?;
-            ctx.send(
-                poise::CreateReply::default()
-                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{}", e))
-                    .ephemeral(true),
-            )
-            .await?;
-            error!(
-                guild_id = %guild_id,
-                error = %e,
-                "スプレッドシート設定の取得に失敗"
-            );
-            return Ok(());
-        }
-    };
-
-    // トランザクションをコミット（スプレッドシートID取得が成功）
-    txn.commit().await?;
-
-    ctx.say("🔄 ギルドスプレッドシートからデータを読み込んでいます...")
-        .await?;
 
     // Facadeを作成
     let app_state_arc = Arc::new(app_state.clone());
@@ -110,6 +59,42 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             return Ok(());
         }
     };
+
+    // Facadeを使ってスプレッドシートIDを取得
+    let spreadsheet_id = match facade.get_guild_spreadsheet_id(guild_id).await {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("❌ エラー: このギルドにスプレッドシートが登録されていません\n\
+                        `/gspread_regist` コマンドでスプレッドシートを登録してください")
+                    .ephemeral(true),
+            )
+            .await?;
+            error!(
+                guild_id = %guild_id,
+                "ギルド読み込み用スプレッドシートIDが設定されていません"
+            );
+            return Ok(());
+        }
+        Err(e) => {
+            let error_msg = PresentationError::from(e).to_string();
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{}", error_msg))
+                    .ephemeral(true),
+            )
+            .await?;
+            error!(
+                guild_id = %guild_id,
+                "スプレッドシート設定の取得に失敗"
+            );
+            return Ok(());
+        }
+    };
+
+    ctx.say("🔄 ギルドスプレッドシートからデータを読み込んでいます...")
+        .await?;
 
     // インポート実行（ギルド版のメソッドを呼び出す）
     match facade.import_guild_spreadsheet(&spreadsheet_id, guild_id as u64).await {

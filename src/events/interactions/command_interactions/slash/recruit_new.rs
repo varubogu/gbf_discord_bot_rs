@@ -1,7 +1,6 @@
 use crate::facades::recruitment;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::facades::timezone::TimezoneFacade;
 use crate::services::datetime_parser;
-use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
 
@@ -39,13 +38,11 @@ pub async fn recruit_new(
         .guild_id()
         .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
 
-    // タイムゾーンを取得
-    let app_state = ctx.data();
-    let timezone_repo = Arc::new(GuildTimezoneRepository::new());
-    let timezone_service = TimezoneService::new(timezone_repo);
-    let timezone = timezone_service
-        .get_guild_timezone(app_state.app_state.guild_db(), guild_id.get() as i64)
-        .await?;
+    let app_state = &ctx.data().app_state;
+
+    // タイムゾーンを取得（Facade経由）
+    let timezone_facade = TimezoneFacade::new(Arc::new(app_state.clone()));
+    let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
 
     // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
     let parsed_date = datetime_parser::parse_event_date(&event_date, timezone)?;

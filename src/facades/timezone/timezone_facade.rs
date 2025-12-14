@@ -27,6 +27,34 @@ impl TimezoneFacade {
         Self { app_state }
     }
 
+    /// タイムゾーンを取得
+    ///
+    /// # 引数
+    /// - `guild_id`: ギルドID
+    ///
+    /// # 戻り値
+    /// タイムゾーン（未設定の場合はAsia/Tokyo）
+    pub async fn get_timezone(&self, guild_id: i64) -> Result<Tz> {
+        info!(
+            guild_id = guild_id,
+            "タイムゾーン取得を開始します"
+        );
+
+        let conn = self.app_state.guild_db();
+        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_service = TimezoneService::new(timezone_repo);
+
+        let timezone = timezone_service.get_guild_timezone(conn, guild_id).await?;
+
+        info!(
+            guild_id = guild_id,
+            timezone = %timezone,
+            "タイムゾーン取得に成功しました"
+        );
+
+        Ok(timezone)
+    }
+
     /// タイムゾーンを設定
     ///
     /// # 引数
