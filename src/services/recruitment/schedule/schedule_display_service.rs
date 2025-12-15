@@ -1,3 +1,5 @@
+use chrono::{TimeZone, Timelike};
+use chrono_tz::Tz;
 use poise::serenity_prelude::AutocompleteChoice;
 
 use crate::models::entities::battle_recruitment_schedule_days;
@@ -44,18 +46,28 @@ impl ScheduleDisplayService {
     }
 
     /// オートコンプリート用の候補へ変換（最大25件）
+    /// タイムゾーンを適用して時刻を表示
     pub fn to_autocomplete(
         schedules: &[(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)],
+        timezone: &Tz,
     ) -> Vec<AutocompleteChoice> {
         let mut choices = Vec::new();
 
         for (schedule, days) in schedules.iter().take(25) {
             let days_str = Self::format_days_for_display(days);
 
+            // UTC時刻をタイムゾーンに変換
+            // NaiveTimeを仮の日付（2000-01-01）と組み合わせてDateTime<Utc>に変換し、
+            // その後タイムゾーンに変換して時刻部分を抽出
+            let utc_datetime = chrono::Utc
+                .with_ymd_and_hms(2000, 1, 1, schedule.quest_start_time.hour() as u32, schedule.quest_start_time.minute() as u32, 0)
+                .unwrap();
+            let local_datetime = utc_datetime.with_timezone(timezone);
+
             let time_str = format!(
                 "{:02}:{:02}",
-                schedule.quest_start_time.hour(),
-                schedule.quest_start_time.minute()
+                local_datetime.hour(),
+                local_datetime.minute()
             );
 
             let status = if schedule.is_enabled { "⭕" } else { "❌" };

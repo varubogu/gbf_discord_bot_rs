@@ -1,9 +1,12 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
+use crate::services::timezone_service::TimezoneService;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
+use std::sync::Arc;
 use tracing::{debug, warn};
 
 /// 募集スケジュールの入力候補を取得するファサード
@@ -54,8 +57,20 @@ pub async fn get_schedules_for_autocomplete(
         }
     };
 
+    // タイムゾーンを取得（トランザクション内）
+    let timezone_repo = GuildTimezoneRepository::new();
+    let timezone_service = TimezoneService::new(Arc::new(timezone_repo));
+    let timezone = match timezone_service.get_guild_timezone(conn, guild_id).await {
+        Ok(tz) => tz,
+        Err(e) => {
+            warn!(error = %e, "タイムゾーンの取得に失敗しました");
+            let _ = txn.rollback().await;
+            return vec![];
+        }
+    };
+
     let _ = txn.commit().await;
 
-    // 表示用へ整形
-    ScheduleDisplayService::to_autocomplete(&schedules)
+    // 表示用へ整形（タイムゾーンを渡す）
+    ScheduleDisplayService::to_autocomplete(&schedules, &timezone)
 }
