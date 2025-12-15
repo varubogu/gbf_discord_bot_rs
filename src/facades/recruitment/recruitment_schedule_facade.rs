@@ -1,8 +1,10 @@
-use crate::types::app_state::AppState;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::{ScheduleCreateService, ScheduleCreationResult};
+use crate::services::schedule::schedule_query_service::{ScheduleListItem, ScheduleQueryService};
 use crate::services::timezone_service::TimezoneService;
+use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
@@ -120,6 +122,130 @@ impl RecruitmentScheduleFacade {
                     guild_id = guild_id,
                     "定期募集スケジュールの作成に失敗しました"
                 );
+                Err(e)
+            }
+        }
+    }
+
+    /// 募集スケジュール一覧取得（Facade: トランザクション境界の管理）
+    pub async fn list_recruitment_schedules(
+        &self,
+        guild_id: i64,
+        user_id: i64,
+        show_all: bool,
+    ) -> Result<Vec<ScheduleListItem>> {
+        let conn = self.app_state.guild_db();
+        let txn = conn.begin().await?;
+
+        // RLSのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
+
+        let result = async {
+            // タイムゾーン取得
+            let timezone_service = TimezoneService::new(Arc::new(GuildTimezoneRepository::new()));
+            let tz = timezone_service.get_guild_timezone(conn, guild_id).await?;
+
+            // 一覧取得
+            let service = ScheduleQueryService::new();
+            let list = service
+                .get_schedule_list(&txn, conn, guild_id, user_id, show_all, tz)
+                .await?;
+            Ok::<_, AppError>(list)
+        }
+        .await;
+
+        match result {
+            Ok(list) => {
+                txn.commit().await?;
+                Ok(list)
+            }
+            Err(e) => {
+                txn.rollback().await?;
+                Err(e)
+            }
+        }
+    }
+
+    /// スケジュール削除（権限チェックは後続でPermissionServiceへ委譲）
+    pub async fn delete_recruitment_schedule(&self, schedule_id: i32, user_id: i64) -> Result<()> {
+        let conn = self.app_state.guild_db();
+        let txn = conn.begin().await?;
+
+        // RLS適用のため、対象スケジュールのギルドIDを先に取得して設定したいが、
+        // 現時点では user_id は未使用。今後の拡張で権限チェックを追加予定。
+        let _ = user_id;
+
+        let result = async {
+            // RLS: 一旦スケジュールを読み出してギルドIDを取得
+            if let Some((model, _days)) = BattleRecruitmentScheduleRepository::new()
+                .find_by_id(conn, schedule_id)
+                .await?
+            {
+                set_current_guild_id(&txn, model.guild_id).await?;
+            }
+
+            BattleRecruitmentScheduleRepository::new()
+                .delete_with_txn(&txn, schedule_id)
+                .await?;
+            Ok::<_, AppError>(())
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                txn.commit().await?;
+                info!(schedule_id, "募集スケジュールを削除しました");
+                Ok(())
+            }
+            Err(e) => {
+                error!(error = %e, schedule_id, "募集スケジュールの削除に失敗しました");
+                txn.rollback().await?;
+                Err(e)
+            }
+        }
+    }
+
+    /// スケジュールの有効/無効切替（現在値を読み取り反転）
+    pub async fn toggle_recruitment_schedule(&self, schedule_id: i32, user_id: i64) -> Result<()> {
+        let conn = self.app_state.guild_db();
+        let txn = conn.begin().await?;
+
+        let _ = user_id; // TODO: 権限チェック追加
+
+        let result = async {
+            // 現在の有効状態とギルドIDを取得
+            let repo = BattleRecruitmentScheduleRepository::new();
+            let (guild_id, new_enabled) = if let Some((model, _)) = repo
+                .find_by_id(conn, schedule_id)
+                .await?
+            {
+                (model.guild_id, !model.is_enabled)
+            } else {
+                return Err(AppError::NotFound(format!(
+                    "スケジュールID {} が見つかりません",
+                    schedule_id
+                )));
+            };
+
+            // RLS設定
+            set_current_guild_id(&txn, guild_id).await?;
+
+            // 反転適用
+            repo.toggle_enabled_with_txn(&txn, schedule_id, new_enabled)
+                .await?;
+            Ok::<_, AppError>(())
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                txn.commit().await?;
+                info!(schedule_id, "募集スケジュールの有効/無効を切り替えました");
+                Ok(())
+            }
+            Err(e) => {
+                error!(error = %e, schedule_id, "募集スケジュールの切替に失敗しました");
+                txn.rollback().await?;
                 Err(e)
             }
         }
