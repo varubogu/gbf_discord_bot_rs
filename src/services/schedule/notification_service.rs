@@ -1,26 +1,28 @@
 use crate::models::entities::{battle_recruitments, message_texts, notifications};
-use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
+use crate::repository::database::schedule::{
+    NotificationRelBattleRecruitmentRepository, NotificationRepository,
+};
 use crate::types::Result;
 use chrono::Utc;
 use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait};
+use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 /// 通知実行サービス
+/// - DatabaseConnection を保持しない
+/// - すべてのDB操作はFacade層から渡されたトランザクション経由で実行する
 pub struct NotificationService {
-    db: DatabaseConnection,
     notification_repo: NotificationRepository,
     rel_repo: NotificationRelBattleRecruitmentRepository,
     http: Arc<Http>,
 }
 
 impl NotificationService {
-    pub fn new(db: DatabaseConnection, http: Arc<Http>) -> Self {
+    pub fn new(http: Arc<Http>) -> Self {
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelBattleRecruitmentRepository::new();
         Self {
-            db,
             notification_repo,
             rel_repo,
             http,
@@ -30,8 +32,11 @@ impl NotificationService {
     /// スケジュール通知を実行
     /// last_process_times.execute_timeから現在時刻までの通知を取得して実行
     /// last_process_timesが存在しない場合は現在時刻のみを対象とする
+    ///
+    /// 注意: トランザクション境界はFacade層が管理する
     pub async fn execute_scheduled_notifications(
         &self,
+        txn: &DatabaseTransaction,
         last_process_time: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<()> {
         let now = Utc::now();
@@ -46,10 +51,10 @@ impl NotificationService {
             "スケジュール通知の実行を開始します"
         );
 
-        // 実行対象の通知を取得
+        // 実行対象の通知を取得（トランザクション内）
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(&self.db, from, now)
+            .find_by_datetime_range_with_txn(txn, from, now)
             .await?;
 
         if notifications.is_empty() {
@@ -64,15 +69,17 @@ impl NotificationService {
 
         for notification in notifications {
             // 通知を送信
-            let send_result = self.send_notification(&notification).await;
+            let send_result = self.send_notification(txn, &notification).await;
 
             // 送信結果に関わらず、トランザクションでis_sentフラグを更新
             // 送信成功した場合のみフラグを立てる
             if send_result.is_ok() {
-                let txn = self.db.begin().await?;
-                match self.notification_repo.mark_as_sent_with_txn(&txn, notification.id).await {
+                match self
+                    .notification_repo
+                    .mark_as_sent_with_txn(txn, notification.id)
+                    .await
+                {
                     Ok(_) => {
-                        txn.commit().await?;
                         success_count += 1;
                         debug!(
                             notification_id = notification.id,
@@ -81,13 +88,15 @@ impl NotificationService {
                         );
                     }
                     Err(e) => {
-                        txn.rollback().await?;
                         error_count += 1;
                         error!(
                             error = %e,
                             notification_id = notification.id,
                             "is_sentフラグの更新に失敗しました（次回再送されます）"
                         );
+                        // markに失敗した場合はエラーとして扱う
+                        // Facade側でロールバックされる
+                        return Err(e);
                     }
                 }
             } else {
@@ -99,6 +108,10 @@ impl NotificationService {
                     channel_id = notification.channel_id,
                     "通知の送信に失敗しました（次回リトライされます）"
                 );
+                // 送信失敗はロールバック対象にする（再送のため）
+                return Err(crate::types::AppError::Business {
+                    message: "通知の送信に失敗しました".to_string(),
+                });
             }
         }
 
@@ -112,7 +125,11 @@ impl NotificationService {
     }
 
     /// 個別通知を送信
-    async fn send_notification(&self, notification: &notifications::Model) -> Result<()> {
+    async fn send_notification(
+        &self,
+        txn: &DatabaseTransaction,
+        notification: &notifications::Model,
+    ) -> Result<()> {
         debug!(
             notification_id = notification.id,
             message_text_id = %notification.message_text_id,
@@ -120,17 +137,22 @@ impl NotificationService {
         );
 
         // リレーションを確認してマルチ募集通知かどうかを判定
-        if let Some(rel) = self.rel_repo.find_by_notification_id(&self.db, notification.id).await? {
+        if let Some(rel) = self
+            .rel_repo
+            .find_by_notification_id(txn, notification.id)
+            .await?
+        {
             // マルチ募集通知の場合
             info!(
                 notification_id = notification.id,
                 recruit_id = rel.recruit_id,
                 "マルチ募集通知を送信します"
             );
-            self.send_recruitment_notification(notification, rel.recruit_id).await?;
+            self.send_recruitment_notification(txn, notification, rel.recruit_id)
+                .await?;
         } else {
             // 通常の通知の場合
-            self.send_normal_notification(notification).await?;
+            self.send_normal_notification(txn, notification).await?;
         }
 
         Ok(())
@@ -139,19 +161,22 @@ impl NotificationService {
     /// マルチ募集通知を送信（募集メッセージへの返信とメンション）
     async fn send_recruitment_notification(
         &self,
+        txn: &DatabaseTransaction,
         notification: &notifications::Model,
         recruit_id: i32,
     ) -> Result<()> {
         // 募集情報を取得
         let recruitment = battle_recruitments::Entity::find_by_id(recruit_id)
-            .one(&self.db)
+            .one(txn)
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!("募集ID {} が見つかりません", recruit_id))
             })?;
 
         // メッセージテキストを取得
-        let message_text = self.get_message_text(&notification.message_text_id).await?;
+        let message_text = self
+            .get_message_text(txn, &notification.message_text_id)
+            .await?;
 
         // チャンネルとメッセージIDを取得（i64 → u64にキャスト）
         let channel_id = ChannelId::new(recruitment.channel_id as u64);
@@ -166,7 +191,13 @@ impl NotificationService {
         for reaction in &recruit_message.reactions {
             // リアクションしたユーザーを取得（最大100人）
             let users = channel_id
-                .reaction_users(&self.http, message_id, reaction.reaction_type.clone(), Some(100), None)
+                .reaction_users(
+                    &self.http,
+                    message_id,
+                    reaction.reaction_type.clone(),
+                    Some(100),
+                    None,
+                )
                 .await?;
 
             for user in users {
@@ -222,9 +253,15 @@ impl NotificationService {
     }
 
     /// 通常の通知を送信
-    async fn send_normal_notification(&self, notification: &notifications::Model) -> Result<()> {
+    async fn send_normal_notification(
+        &self,
+        txn: &DatabaseTransaction,
+        notification: &notifications::Model,
+    ) -> Result<()> {
         // メッセージテキストを取得
-        let message_text = self.get_message_text(&notification.message_text_id).await?;
+        let message_text = self
+            .get_message_text(txn, &notification.message_text_id)
+            .await?;
 
         // チャンネルにメッセージを送信
         let channel_id = ChannelId::new(notification.channel_id as u64);
@@ -255,10 +292,14 @@ impl NotificationService {
     }
 
     /// メッセージテキストを取得
-    async fn get_message_text(&self, message_text_id: &str) -> Result<message_texts::Model> {
+    async fn get_message_text(
+        &self,
+        txn: &DatabaseTransaction,
+        message_text_id: &str,
+    ) -> Result<message_texts::Model> {
         let message_text = message_texts::Entity::find()
             .filter(message_texts::Column::Id.eq(message_text_id))
-            .one(&self.db)
+            .one(txn)
             .await
             .map_err(|e| {
                 error!(

@@ -2,7 +2,9 @@ use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::{guild_channels, last_process_times::LastProcessType};
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
+use crate::repository::database::battle_style_repository::{
+    BattleStyleRepository, SeaOrmBattleStyleRepository,
+};
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
@@ -12,10 +14,15 @@ use crate::repository::database::schedule::{
     NotificationRelEventScheduleRepository, NotificationRepository, ScheduleRepository,
 };
 use crate::repository::quests_repository::QuestRepository;
-use crate::services::recruitment::new::{create_initial_participants_text_for_buttons, create_recruitment_buttons};
+use crate::services::recruitment::new::{
+    create_initial_participants_text_for_buttons, create_recruitment_buttons,
+};
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
-use crate::services::schedule::{NotificationService, RecruitmentScheduleService, ScheduleCalculator};
+use crate::services::schedule::{RecruitmentScheduleService, ScheduleCalculator};
+use crate::services::schedule::{
+    notification_service::NotificationService, scheduler_service::SchedulerService,
+};
 use crate::services::timezone_service::TimezoneService;
 use crate::types::{AppState, Result};
 use chrono::{Duration, Utc};
@@ -45,63 +52,10 @@ impl SchedulerFacade {
         let txn = self.app_state.system_db().begin().await?;
 
         let result = async {
-            let schedule_repo = ScheduleRepository::new();
-            let notification_repo = NotificationRepository::new();
-            let calculator = ScheduleCalculator::new();
-
-            // 既存のスケジュールとリレーションをクリア
-            debug!("既存のスケジュールを削除します");
-            let rel_repo = NotificationRelEventScheduleRepository::new();
-            rel_repo.delete_all_with_txn(&txn).await?;
-            notification_repo.delete_all_with_txn(&txn).await?;
-
-            // イベントスケジュールと詳細を取得
-            let event_schedules = schedule_repo.find_all_event_schedules(self.app_state.system_db()).await?;
-            let event_schedule_details = schedule_repo.find_all_event_schedule_details(self.app_state.system_db()).await?;
-
-            debug!(
-                event_schedules = event_schedules.len(),
-                event_details = event_schedule_details.len(),
-                "イベントスケジュールを取得しました"
-            );
-
-            if event_schedules.is_empty() {
-                warn!("イベントスケジュールが登録されていません");
-                return Ok(());
-            }
-
-            // 通知対象のギルドとチャンネルを取得（channel_type別）
-            let guild_channels_by_type = self.get_notification_guild_channels_by_type().await?;
-
-            debug!(
-                channel_types = guild_channels_by_type.len(),
-                "通知対象のギルド・チャンネルを取得しました"
-            );
-
-            if guild_channels_by_type.is_empty() {
-                warn!("通知対象のギルド・チャンネルが登録されていません");
-                return Ok(());
-            }
-
-            // スケジュールを計算
-            let calculated_schedules = calculator.calculate_schedules(
-                event_schedules,
-                event_schedule_details,
-                guild_channels_by_type,
-            )?;
-
-            debug!(
-                calculated_schedules = calculated_schedules.len(),
-                "スケジュールを計算しました"
-            );
-
-            // 計算されたスケジュールをDBに保存
-            if !calculated_schedules.is_empty() {
-                self.save_calculated_schedules(&txn, calculated_schedules)
-                    .await?;
-            }
-
-            info!("スケジュール生成が完了しました");
+            let service = SchedulerService::new();
+            service
+                .generate_and_persist_schedules(&txn, &self.app_state)
+                .await?;
             Ok::<(), crate::types::AppError>(())
         }
         .await;
@@ -141,11 +95,23 @@ impl SchedulerFacade {
             "前回のスケジュール実行時刻を取得しました"
         );
 
-        // 通知を実行（各通知ごとにis_sentフラグを立てる）
-        let notification_service = NotificationService::new(self.app_state.system_db().clone(), http.clone());
-        notification_service
-            .execute_scheduled_notifications(last_execute_time)
-            .await?;
+        // 通知を実行（Facadeでトランザクション管理）
+        let txn = self.app_state.system_db().begin().await?;
+        let notification_service = NotificationService::new(http.clone());
+        let exec_result = notification_service
+            .execute_scheduled_notifications(&txn, last_execute_time)
+            .await;
+
+        match exec_result {
+            Ok(_) => {
+                txn.commit().await?;
+            }
+            Err(e) => {
+                error!(error = %e, "通知実行に失敗しました");
+                txn.rollback().await?;
+                return Err(e);
+            }
+        }
 
         // 定期募集を実行
         self.execute_recruitment_schedules(http.clone()).await?;
@@ -180,7 +146,9 @@ impl SchedulerFacade {
 
     /// 通知対象のギルド・チャンネル一覧をchannel_type別に取得
     /// 戻り値: HashMap<channel_type, Vec<(guild_id, channel_id)>>
-    async fn get_notification_guild_channels_by_type(&self) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
+    async fn get_notification_guild_channels_by_type(
+        &self,
+    ) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
         let guild_channels = guild_channels::Entity::find()
             .all(self.app_state.system_db())
             .await?;
@@ -273,7 +241,10 @@ impl SchedulerFacade {
         // 前回の定期募集実行時刻を取得
         let last_process_time_repo = LastProcessTimeRepository::new();
         let last_process_time = last_process_time_repo
-            .find_by_type(self.app_state.system_db(), LastProcessType::BattleRecruitmentSchedule)
+            .find_by_type(
+                self.app_state.system_db(),
+                LastProcessType::BattleRecruitmentSchedule,
+            )
             .await?;
 
         let last_execute_time = last_process_time.and_then(|lpt| lpt.execute_time);
@@ -332,8 +303,8 @@ impl SchedulerFacade {
         let mut all_calculated_times = Vec::new();
 
         for (schedule, days) in &schedules {
-            let calculated_times = recruitment_service
-                .calculate_next_recruitment_times(schedule, days, from, now)?;
+            let calculated_times =
+                recruitment_service.calculate_next_recruitment_times(schedule, days, from, now)?;
 
             debug!(
                 schedule_id = schedule.id,
