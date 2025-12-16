@@ -8,6 +8,8 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
+use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
     DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
     SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetWriterService,
@@ -208,6 +210,51 @@ impl SpreadsheetExportFacade {
         // グローバルと同様の処理（guild_idを考慮）
         // TODO: 実装を完成させる（現時点ではグローバルと同様）
         self.export_global_spreadsheet(spreadsheet_id).await
+    }
+
+    /// ギルド設定（DB）からスプレッドシートIDを取得してエクスポートを実行
+    /// - Facadeがトランザクション境界を管理
+    /// - RLS用に `set_current_guild_id` を適用
+    #[instrument(level = "info", skip(self), fields(guild_id = %guild_id))]
+    pub async fn export_for_guild_by_config(
+        &self,
+        guild_id: i64,
+    ) -> Result<ExportResult, FacadeError> {
+        // まず、設定取得のためにTx開始しRLS設定
+        let txn = self.db.begin().await?;
+        set_current_guild_id(&txn, guild_id).await?;
+
+        let repository = GuildSpreadsheetConfigRepository::new();
+        let spreadsheet_id =
+            match GuildSpreadsheetConfigRepositoryTrait::find_export_spreadsheet_id(
+                &repository,
+                &txn,
+                guild_id,
+            )
+            .await
+            {
+                Ok(Some(id)) => id,
+                Ok(None) => {
+                    txn.rollback().await?;
+                    return Err(FacadeError::BusinessRule {
+                        source: crate::errors::BusinessRuleError::InvalidState {
+                            entity: "GuildSpreadsheetConfig".to_string(),
+                            current_state: "書き込み用スプレッドシート未登録".to_string(),
+                        },
+                    });
+                }
+                Err(e) => {
+                    txn.rollback().await?;
+                    return Err(FacadeError::from(e));
+                }
+            };
+
+        // 設定取得成功 → commit
+        txn.commit().await?;
+
+        // 実際のエクスポート実行
+        self.export_guild_spreadsheet(&spreadsheet_id, guild_id as u64)
+            .await
     }
 }
 
