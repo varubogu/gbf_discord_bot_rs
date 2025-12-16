@@ -82,22 +82,22 @@ pub async fn recruitment_schedule_create(
 
     ctx.defer_ephemeral().await?;
 
-    let app_state = &ctx.data().app_state;
+    let app_state = ctx.data().app_state.clone();
 
     // Facade層を呼び出し
-    let facade = RecruitmentScheduleFacade::new(Arc::new(app_state.clone()));
+    let facade = RecruitmentScheduleFacade::new(Arc::new(app_state));
     let result = facade
         .create_recruitment_schedule(
             guild_id.get(),
             user_id.get(),
-            name.clone(),
+            name,
             &quest,
             &quest_start_time,
             &days,
             &recruit_start_time,
             battle_style,
             recruit_start_day_offset.unwrap_or(1) as i32,
-            note.clone(),
+            note,
         )
         .await;
 
