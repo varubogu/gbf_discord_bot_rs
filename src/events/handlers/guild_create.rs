@@ -1,8 +1,7 @@
-use crate::repository::database::guild_repository::GuildRepository;
+use crate::facades::guild::guild_management_facade::GuildManagementFacade;
 use crate::types::{PoiseData, Result};
 use poise::serenity_prelude::{Context, Guild};
-use sea_orm::TransactionTrait;
-use tracing::{error, info};
+use tracing::info;
 
 /// Botがギルドに参加した、またはBotが起動してギルド情報を受信した時に呼ばれる
 pub async fn on_guild_create(_ctx: &Context, guild: &Guild, data: &PoiseData) -> Result<()> {
@@ -13,39 +12,15 @@ pub async fn on_guild_create(_ctx: &Context, guild: &Guild, data: &PoiseData) ->
     );
 
     let app_state = &data.app_state;
-    // ギルド登録はSystemロールを使用（新規ギルド作成時はRLS適用できないため）
-    let txn = app_state.system_db().begin().await?;
+    let facade = GuildManagementFacade::new(std::sync::Arc::new(app_state.clone()));
+    facade
+        .register_new_guild(guild.id.get() as i64, &guild.name)
+        .await?;
 
-    let result = async {
-        let guild_repo = GuildRepository::new();
-
-        // ギルドを自動登録または更新
-        guild_repo
-            .upsert_with_txn(&txn, guild.id.get() as i64, guild.name.clone())
-            .await?;
-
-        Ok::<(), crate::types::AppError>(())
-    }
-    .await;
-
-    match result {
-        Ok(_) => {
-            txn.commit().await?;
-            info!(
-                guild_id = %guild.id,
-                guild_name = %guild.name,
-                "ギルドを登録または更新しました"
-            );
-            Ok(())
-        }
-        Err(e) => {
-            error!(
-                error = %e,
-                guild_id = %guild.id,
-                "ギルドの登録または更新に失敗しました"
-            );
-            txn.rollback().await?;
-            Err(e)
-        }
-    }
+    info!(
+        guild_id = %guild.id,
+        guild_name = %guild.name,
+        "ギルドを登録または更新しました"
+    );
+    Ok(())
 }

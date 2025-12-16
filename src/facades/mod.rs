@@ -1,5 +1,6 @@
 pub(crate) mod channel;
 pub(crate) mod environment;
+pub mod guild;
 pub(crate) mod recruitment;
 pub(crate) mod schedule;
 pub(crate) mod scheduler;
