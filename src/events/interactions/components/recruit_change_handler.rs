@@ -1,13 +1,9 @@
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::quests_repository::QuestRepository;
+use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
-    ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow,
-    CreateInputText, CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
+    ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow, CreateInputText,
+    CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal, CreateSelectMenu,
+    CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
 };
 use tracing::{error, info};
 
@@ -48,7 +44,7 @@ async fn handle_field_selection(
         _ => {
             return Err(AppError::Generic(
                 "予期しないコンポーネントタイプです".to_string(),
-            ))
+            ));
         }
     };
 
@@ -80,15 +76,11 @@ async fn show_quest_selection_menu(
     data: &PoiseData,
     message_id: u64,
 ) -> Result<()> {
-    // クエストリストを取得
-    let quest_repo = SeaOrmQuestRepository::new();
-    let quests = quest_repo.get_all(data.app_state.guild_db()).await?;
-
-    // セレクトメニューのオプションを作成（最大25個まで）
-    let options: Vec<CreateSelectMenuOption> = quests
-        .iter()
-        .take(25)
-        .map(|quest| CreateSelectMenuOption::new(&quest.name, quest.id.to_string()))
+    // クエストリストを取得（Facade経由）
+    let pairs = quest_list::list_quests_for_select_with_db(data.app_state.guild_db()).await;
+    let options: Vec<CreateSelectMenuOption> = pairs
+        .into_iter()
+        .map(|(name, id)| CreateSelectMenuOption::new(name, id.to_string()))
         .collect();
 
     let custom_id = format!("recruit_change_quest:{}", message_id);
@@ -118,14 +110,12 @@ async fn show_battle_style_selection_menu(
     data: &PoiseData,
     message_id: u64,
 ) -> Result<()> {
-    // 攻略方法リストを取得
-    let battle_style_repo = SeaOrmBattleStyleRepository::new();
-    let battle_styles = battle_style_repo.get_all(data.app_state.guild_db()).await?;
-
-    // セレクトメニューのオプションを作成
-    let options: Vec<CreateSelectMenuOption> = battle_styles
-        .iter()
-        .map(|style| CreateSelectMenuOption::new(&style.display_name, style.id.to_string()))
+    // 攻略方法リストを取得（Facade経由）
+    let pairs =
+        battle_style_list::list_battle_styles_for_select_with_db(data.app_state.guild_db()).await;
+    let options: Vec<CreateSelectMenuOption> = pairs
+        .into_iter()
+        .map(|(display_name, id)| CreateSelectMenuOption::new(display_name, id.to_string()))
         .collect();
 
     let custom_id = format!("recruit_change_style:{}", message_id);
@@ -156,13 +146,12 @@ async fn show_date_input_modal(
 ) -> Result<()> {
     let custom_id = format!("recruit_change_date_modal:{}", message_id);
 
-    let modal = CreateModal::new(custom_id, "出発日時変更").components(vec![
-        CreateActionRow::InputText(
+    let modal =
+        CreateModal::new(custom_id, "出発日時変更").components(vec![CreateActionRow::InputText(
             CreateInputText::new(InputTextStyle::Short, "出発日時", "event_date")
                 .placeholder("例: 12/25 22:30")
                 .required(true),
-        ),
-    ]);
+        )]);
 
     interaction
         .create_response(&ctx.http, CreateInteractionResponse::Modal(modal))
@@ -187,7 +176,7 @@ async fn handle_quest_selection(
         _ => {
             return Err(AppError::Generic(
                 "予期しないコンポーネントタイプです".to_string(),
-            ))
+            ));
         }
     };
 
@@ -196,15 +185,13 @@ async fn handle_quest_selection(
         .parse()
         .map_err(|_| AppError::Generic("クエストIDの解析に失敗しました".to_string()))?;
 
-    let quest_repo = SeaOrmQuestRepository::new();
-    let quest = quest_repo
-        .get_by_target_id(data.app_state.guild_db(), quest_id)
-        .await?
+    let quest_name = quest_list::get_quest_name_by_id_with_db(data.app_state.guild_db(), quest_id)
+        .await
         .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
 
     info!(
         message_id = %message_id,
-        quest_name = %quest.name,
+        quest_name = %quest_name,
         "クエストが選択されました"
     );
 
@@ -232,7 +219,7 @@ async fn handle_quest_selection(
         &ctx.http,
         guild_id,
         &target_message,
-        Some(&quest.name),
+        Some(&quest_name),
         None,
         None,
     )
@@ -244,7 +231,7 @@ async fn handle_quest_selection(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("クエストを「{}」に変更しました。", quest.name))
+                        .content(format!("クエストを「{}」に変更しました。", quest_name))
                         .components(vec![]),
                 )
                 .await?;
@@ -281,7 +268,7 @@ async fn handle_battle_style_selection(
         _ => {
             return Err(AppError::Generic(
                 "予期しないコンポーネントタイプです".to_string(),
-            ))
+            ));
         }
     };
 
@@ -289,17 +276,18 @@ async fn handle_battle_style_selection(
         .parse()
         .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
 
-    // 攻略方法名をDBから取得
-    let battle_style_repo = SeaOrmBattleStyleRepository::new();
-    let battle_style = battle_style_repo
-        .get_by_id(data.app_state.guild_db(), battle_style_id)
-        .await?
-        .ok_or_else(|| AppError::Generic("攻略方法が見つかりません".to_string()))?;
+    // 攻略方法名をFacade経由で取得
+    let battle_style_name = battle_style_list::get_battle_style_name_by_id_with_db(
+        data.app_state.guild_db(),
+        battle_style_id,
+    )
+    .await
+    .unwrap_or_else(|| format!("ID:{}", battle_style_id));
 
     info!(
         message_id = %message_id,
         battle_style_id = %battle_style_id,
-        battle_style_name = %battle_style.display_name,
+        battle_style_name = %battle_style_name,
         "攻略方法が選択されました"
     );
 
@@ -339,7 +327,10 @@ async fn handle_battle_style_selection(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("攻略方法を「{}」に変更しました。", battle_style.display_name))
+                        .content(format!(
+                            "攻略方法を「{}」に変更しました。",
+                            battle_style_name
+                        ))
                         .components(vec![]),
                 )
                 .await?;

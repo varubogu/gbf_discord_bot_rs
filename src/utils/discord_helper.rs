@@ -1,3 +1,4 @@
+use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::{GuildId, Message, User, UserId};
 use std::collections::{HashMap, HashSet};
 
@@ -150,6 +151,27 @@ pub async fn make_message_url(message: &Message) -> String {
         message.channel_id,
         message.id
     )
+}
+
+/// メッセージに複数のリアクションを追加する（UI/Discordヘルパー）
+pub async fn add_reactions(
+    ctx: &poise::serenity_prelude::all::Context,
+    channel_id: poise::serenity_prelude::all::ChannelId,
+    message_id: poise::serenity_prelude::all::MessageId,
+    reactions: &[ReactionType],
+) -> Result<(), String> {
+    let message = channel_id
+        .message(ctx, message_id)
+        .await
+        .map_err(|e| format!("failed to get message: {}", e))?;
+
+    for reaction in reactions {
+        message
+            .react(ctx, reaction.clone())
+            .await
+            .map_err(|e| format!("failed to add reaction: {}", e))?;
+    }
+    Ok(())
 }
 
 /// Gets all users who reacted to a message, grouped by reaction

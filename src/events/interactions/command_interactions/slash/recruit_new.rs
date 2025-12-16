@@ -2,6 +2,8 @@ use crate::facades::recruitment;
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::datetime_parser;
 use crate::types::{PoiseContext, Result};
+use crate::utils::discord_helper;
+use poise::serenity_prelude::all::MessageId;
 use std::sync::Arc;
 
 use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
@@ -34,9 +36,9 @@ pub async fn recruit_new(
     ctx.defer().await?;
 
     // ギルドIDを取得
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
 
     let app_state = &ctx.data().app_state;
 
@@ -48,10 +50,24 @@ pub async fn recruit_new(
     let parsed_date = datetime_parser::parse_event_date(&event_date, timezone)?;
 
     // Facade呼び出し（メッセージ送信とDB保存）リアクション版
-    let (message_id, reactions) = recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style, Some(parsed_date), false).await?;
+    let (message_id, reactions) = recruitment::new_recruit::new_recruitment(
+        &ctx,
+        &quest,
+        battle_style,
+        Some(parsed_date),
+        false,
+    )
+    .await?;
 
-    // リアクション追加（コマンド層の責務）
-    crate::services::recruitment::new::add_recruitment_reactions(&ctx, message_id, &reactions).await?;
+    // リアクション追加（UI層ヘルパー経由）
+    discord_helper::add_reactions(
+        ctx.serenity_context(),
+        ctx.channel_id(),
+        MessageId::new(message_id),
+        &reactions,
+    )
+    .await
+    .map_err(|e| crate::types::AppError::Generic(e))?;
 
     Ok(())
 }

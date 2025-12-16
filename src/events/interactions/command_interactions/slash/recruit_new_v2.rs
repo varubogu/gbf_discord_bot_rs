@@ -1,7 +1,6 @@
 use crate::facades::recruitment;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::facades::timezone::TimezoneFacade;
 use crate::services::datetime_parser;
-use crate::services::timezone_service::TimezoneService;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
 
@@ -35,23 +34,27 @@ pub async fn recruit_new_v2(
     ctx.defer().await?;
 
     // ギルドIDを取得
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
 
-    // タイムゾーンを取得
-    let app_state = ctx.data();
-    let timezone_repo = Arc::new(GuildTimezoneRepository::new());
-    let timezone_service = TimezoneService::new(timezone_repo);
-    let timezone = timezone_service
-        .get_guild_timezone(app_state.app_state.guild_db(), guild_id.get() as i64)
-        .await?;
+    // タイムゾーンを取得（Facade経由）
+    let app_state = &ctx.data().app_state;
+    let timezone_facade = TimezoneFacade::new(Arc::new(app_state.clone()));
+    let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
 
     // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
     let parsed_date = datetime_parser::parse_event_date(&event_date, timezone)?;
 
     // Facade呼び出し（メッセージ送信とDB保存）ボタン版
-    let (_message_id, _reactions) = recruitment::new_recruit::new_recruitment(&ctx, &quest, battle_style, Some(parsed_date), true).await?;
+    let (_message_id, _reactions) = recruitment::new_recruit::new_recruitment(
+        &ctx,
+        &quest,
+        battle_style,
+        Some(parsed_date),
+        true,
+    )
+    .await?;
 
     // ボタンは既にメッセージに含まれているため、追加の処理は不要
 
