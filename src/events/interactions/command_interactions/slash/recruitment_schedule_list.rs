@@ -13,7 +13,7 @@ use tracing::info;
     guild_only,
     ephemeral = true,
     name_localized("ja", "定期募集一覧"),
-    description_localized("ja", "登録されているマルチ募集スケジュールを表示します"),
+    description_localized("ja", "登録されているマルチ募集スケジュールを表示します")
 )]
 pub async fn recruitment_schedule_list(
     ctx: PoiseContext<'_>,
@@ -22,11 +22,11 @@ pub async fn recruitment_schedule_list(
     #[description_localized("ja", "全員のスケジュールを表示（デフォルト: false、自分のみ）")]
     show_all: Option<bool>,
 ) -> Result<()> {
-    let guild_id = ctx.guild_id().ok_or_else(|| {
-        crate::types::AppError::Business {
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| crate::types::AppError::Business {
             message: "このコマンドはサーバー内でのみ使用できます".to_string(),
-        }
-    })?;
+        })?;
 
     let user_id = ctx.author().id;
     let show_all = show_all.unwrap_or(false);

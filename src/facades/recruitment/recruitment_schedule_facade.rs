@@ -86,23 +86,26 @@ impl RecruitmentScheduleFacade {
 
             // 2. スケジュール作成Service
             let schedule_service = ScheduleCreateService::new();
-            let schedule_data = schedule_service.create_schedule(
-                &txn,
-                guild_id as i64,
-                user_id as i64,
-                name,
-                quest_alias,
-                quest_start_time,
-                days,
-                recruit_start_time,
-                battle_style_id,
-                recruit_day_offset,
-                note,
-                timezone,
-            ).await?;
+            let schedule_data = schedule_service
+                .create_schedule(
+                    &txn,
+                    guild_id as i64,
+                    user_id as i64,
+                    name,
+                    quest_alias,
+                    quest_start_time,
+                    days,
+                    recruit_start_time,
+                    battle_style_id,
+                    recruit_day_offset,
+                    note,
+                    timezone,
+                )
+                .await?;
 
             Ok::<_, AppError>(schedule_data)
-        }.await;
+        }
+        .await;
 
         // 結果に応じてcommit/rollback（Facade層の責務）
         match result {
@@ -215,17 +218,15 @@ impl RecruitmentScheduleFacade {
         let result = async {
             // 現在の有効状態とギルドIDを取得
             let repo = BattleRecruitmentScheduleRepository::new();
-            let (guild_id, new_enabled) = if let Some((model, _)) = repo
-                .find_by_id(conn, schedule_id)
-                .await?
-            {
-                (model.guild_id, !model.is_enabled)
-            } else {
-                return Err(AppError::NotFound(format!(
-                    "スケジュールID {} が見つかりません",
-                    schedule_id
-                )));
-            };
+            let (guild_id, new_enabled) =
+                if let Some((model, _)) = repo.find_by_id(conn, schedule_id).await? {
+                    (model.guild_id, !model.is_enabled)
+                } else {
+                    return Err(AppError::NotFound(format!(
+                        "スケジュールID {} が見つかりません",
+                        schedule_id
+                    )));
+                };
 
             // RLS設定
             set_current_guild_id(&txn, guild_id).await?;
