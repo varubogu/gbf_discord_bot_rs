@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use google_sheets4::Sheets;
 use google_sheets4::hyper::client::HttpConnector;
 use google_sheets4::hyper_rustls::HttpsConnector;
-use sea_orm::DatabaseTransaction;
+use sea_orm::{DatabaseConnection, DatabaseTransaction};
 
 #[async_trait]
 pub trait GuildSpreadsheetConfigServiceTrait: Send + Sync {
@@ -32,12 +32,14 @@ pub trait GuildSpreadsheetConfigServiceTrait: Send + Sync {
     /// 読み込み用スプレッドシートIDを取得
     async fn get_import_spreadsheet_id(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError>;
 
     /// 書き込み用スプレッドシートIDを取得
     async fn get_export_spreadsheet_id(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError>;
 }
@@ -48,7 +50,6 @@ where
     G: GoogleAuthServiceTrait,
     U: SpreadsheetUrlServiceTrait,
 {
-    db: sea_orm::DatabaseConnection,
     repository: R,
     google_auth_service: G,
     #[allow(unused)]
@@ -61,9 +62,8 @@ where
     G: GoogleAuthServiceTrait,
     U: SpreadsheetUrlServiceTrait,
 {
-    pub fn new(db: sea_orm::DatabaseConnection, repository: R, google_auth_service: G, url_service: U) -> Self {
+    pub fn new(repository: R, google_auth_service: G, url_service: U) -> Self {
         Self {
-            db,
             repository,
             google_auth_service,
             url_service,
@@ -153,10 +153,11 @@ where
 
     async fn get_import_spreadsheet_id(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
         self.repository
-            .find_import_spreadsheet_id(&self.db, guild_id)
+            .find_import_spreadsheet_id(db, guild_id)
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_imports".to_string(),
@@ -166,10 +167,11 @@ where
 
     async fn get_export_spreadsheet_id(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
         self.repository
-            .find_export_spreadsheet_id(&self.db, guild_id)
+            .find_export_spreadsheet_id(db, guild_id)
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_exports".to_string(),

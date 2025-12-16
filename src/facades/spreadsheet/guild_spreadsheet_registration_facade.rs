@@ -9,8 +9,8 @@ use crate::errors::FacadeError;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::GuildSpreadsheetConfigRepository;
 use crate::services::spreadsheet::{
-    GoogleAuthService, GuildSpreadsheetConfigService,
-    GuildSpreadsheetConfigServiceTrait, SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
+    GoogleAuthService, GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait,
+    SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
 };
 
 /// 登録結果
@@ -80,7 +80,6 @@ impl GuildSpreadsheetRegistrationFacade {
 
         // Serviceを作成
         let config_service = GuildSpreadsheetConfigService::new(
-            self.db.clone(),
             repository.clone(),
             self.google_auth_service.clone(),
             self.url_service.clone(),
