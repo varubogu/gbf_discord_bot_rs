@@ -1,6 +1,7 @@
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
+use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::types::{PoiseContext, Result};
-use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use poise::serenity_prelude::CreateEmbed;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -15,7 +16,10 @@ use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
     guild_only,
     ephemeral = true,
     name_localized("ja", "定期募集作成"),
-    description_localized("ja", "指定した曜日と時刻に自動的にマルチ募集を投稿するスケジュールを作成します"),
+    description_localized(
+        "ja",
+        "指定した曜日と時刻に自動的にマルチ募集を投稿するスケジュールを作成します"
+    )
 )]
 pub async fn recruitment_schedule_create(
     ctx: PoiseContext<'_>,
@@ -34,7 +38,10 @@ pub async fn recruitment_schedule_create(
     quest_start_time: String,
     #[name_localized("ja", "対象曜日")]
     #[description = "Target days (comma/space separated or continuous. e.g., 月,水,金 / 火 木 / 月火水 / 毎日)"]
-    #[description_localized("ja", "対象曜日（月火水木金土日から選択。区切り文字または連続入力。例: 月,水,金 / 火 木 / 月火水 / 金土日 / 毎日）")]
+    #[description_localized(
+        "ja",
+        "対象曜日（月火水木金土日から選択。区切り文字または連続入力。例: 月,水,金 / 火 木 / 月火水 / 金土日 / 毎日）"
+    )]
     days: String,
     #[name_localized("ja", "募集開始時刻")]
     #[description = "Recruitment start time (e.g., 20:00)"]
@@ -47,7 +54,10 @@ pub async fn recruitment_schedule_create(
     battle_style: Option<i32>,
     #[name_localized("ja", "募集開始日オフセット")]
     #[description = "Recruitment start day offset (0=same day, 1=day before, default: 1)"]
-    #[description_localized("ja", "募集開始日オフセット（0=当日、1=前日、2=二日前、デフォルト: 1）")]
+    #[description_localized(
+        "ja",
+        "募集開始日オフセット（0=当日、1=前日、2=二日前、デフォルト: 1）"
+    )]
     #[min = 0]
     #[max = 7]
     recruit_start_day_offset: Option<i64>,
@@ -56,11 +66,11 @@ pub async fn recruitment_schedule_create(
     #[description_localized("ja", "備考（省略可）")]
     note: Option<String>,
 ) -> Result<()> {
-    let guild_id = ctx.guild_id().ok_or_else(|| {
-        crate::types::AppError::Business {
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| crate::types::AppError::Business {
             message: "このコマンドはサーバー内でのみ使用できます".to_string(),
-        }
-    })?;
+        })?;
 
     let user_id = ctx.author().id;
 
@@ -76,51 +86,25 @@ pub async fn recruitment_schedule_create(
 
     // Facade層を呼び出し
     let facade = RecruitmentScheduleFacade::new(Arc::new(app_state.clone()));
-    let result = facade.create_recruitment_schedule(
-        guild_id.get(),
-        user_id.get(),
-        name.clone(),
-        &quest,
-        &quest_start_time,
-        &days,
-        &recruit_start_time,
-        battle_style,
-        recruit_start_day_offset.unwrap_or(1) as i32,
-        note.clone(),
-    ).await;
+    let result = facade
+        .create_recruitment_schedule(
+            guild_id.get(),
+            user_id.get(),
+            name.clone(),
+            &quest,
+            &quest_start_time,
+            &days,
+            &recruit_start_time,
+            battle_style,
+            recruit_start_day_offset.unwrap_or(1) as i32,
+            note.clone(),
+        )
+        .await;
 
     match result {
         Ok(schedule_data) => {
-            let embed = CreateEmbed::default()
-                .title("✅ 定期募集スケジュールを作成しました")
-                .description(format!(
-                    "**スケジュール名**: {}\n\
-                     **スケジュールID**: {}\n\
-                     **クエスト**: {} (ID: {})\n\
-                     **マルチ攻略方法**: {}\n\
-                     **対象曜日**: {} ({}タイムゾーン)\n\
-                     **クエスト開始時刻**: {}\n\
-                     **募集開始**: {}日前の{}\n\
-                     **備考**: {}\n\
-                     **作成者**: <@{}>\n\n\
-                     このスケジュールに基づいて、自動的に募集が投稿されます。\n\
-                     参加人数はクエストごとの設定を使用します。",
-                    schedule_data.schedule_name,
-                    schedule_data.schedule_id,
-                    schedule_data.quest_name,
-                    schedule_data.quest_id,
-                    schedule_data.battle_style_name,
-                    schedule_data.days_display,
-                    schedule_data.timezone,
-                    schedule_data.quest_start_time,
-                    schedule_data.recruit_start_day_offset,
-                    schedule_data.recruit_start_time,
-                    schedule_data.note.as_ref().unwrap_or(&"-".to_string()),
-                    user_id.get()
-                ))
-                .color(0x00ff00)
-                .footer(CreateEmbedFooter::new("スケジュールが正常に登録されました"));
-
+            let embed: CreateEmbed =
+                ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
             ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
                 .await?;
         }
