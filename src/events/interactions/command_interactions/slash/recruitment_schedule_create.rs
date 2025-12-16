@@ -101,18 +101,15 @@ pub async fn recruitment_schedule_create(
         )
         .await;
 
-    match result {
-        Ok(schedule_data) => {
-            let embed: CreateEmbed =
-                ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
-            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
-                .await?;
-        }
-        Err(e) => {
-            error!(error = %e, "定期募集スケジュールの作成に失敗しました");
-            return Err(e);
-        }
-    }
+    let schedule_data = result.map_err(|e| {
+        error!(error = %e, "定期募集スケジュールの作成に失敗しました");
+        e
+    })?;
+
+    let embed: CreateEmbed =
+        ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
+    ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+        .await?;
 
     Ok(())
 }

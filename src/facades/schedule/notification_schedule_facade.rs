@@ -33,8 +33,10 @@ impl NotificationScheduleFacade {
 
         let result = async {
             // 未来の通知は履歴サービスから30日先まで取得
-            let history = NotificationHistoryService::new(conn.clone());
-            let mut items = history.get_upcoming_notifications(guild_id, 30).await?;
+            let history = NotificationHistoryService::new();
+            let mut items = history
+                .get_upcoming_notifications(conn, guild_id, 30)
+                .await?;
             items.sort_by_key(|n| n.schedule_datetime);
             let items = items.into_iter().take(limit).collect::<Vec<_>>();
 
@@ -75,12 +77,12 @@ impl NotificationScheduleFacade {
         let txn = conn.begin().await?;
 
         let result = async {
-            let history_service = NotificationHistoryService::new(conn.clone());
+            let history_service = NotificationHistoryService::new();
             // 日数を計算（最低1日）
             let now = Utc::now();
             let days = (now - from).num_days().max(1) as i64;
             let items = history_service
-                .get_past_notifications(guild_id, days)
+                .get_past_notifications(conn, guild_id, days)
                 .await?;
 
             // 統計はScheduleQueryServiceを使用（from/to含む）

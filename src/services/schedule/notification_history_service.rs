@@ -8,20 +8,20 @@ use tracing::{debug, info};
 /// 通知履歴サービス
 /// 送信済み通知の管理を担当
 pub struct NotificationHistoryService {
-    db: DatabaseConnection,
     notification_repo: NotificationRepository,
 }
 
 impl NotificationHistoryService {
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new() -> Self {
         let notification_repo = NotificationRepository::new();
-        Self { db, notification_repo }
+        Self { notification_repo }
     }
 
     /// 過去の通知履歴を取得
     /// 指定した日数分の過去の通知を取得
     pub async fn get_past_notifications(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
         days: i64,
     ) -> Result<Vec<notifications::Model>> {
@@ -37,7 +37,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(&self.db, from, now)
+            .find_by_datetime_range(db, from, now)
             .await?;
 
         // ギルドでフィルタ
@@ -46,10 +46,7 @@ impl NotificationHistoryService {
             .filter(|n| n.guild_id == guild_id)
             .collect();
 
-        info!(
-            count = guild_notifications.len(),
-            "通知履歴を取得しました"
-        );
+        info!(count = guild_notifications.len(), "通知履歴を取得しました");
 
         Ok(guild_notifications)
     }
@@ -57,6 +54,7 @@ impl NotificationHistoryService {
     /// 今後予定されている通知を取得
     pub async fn get_upcoming_notifications(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
         days: i64,
     ) -> Result<Vec<notifications::Model>> {
@@ -72,7 +70,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(&self.db, now, to)
+            .find_by_datetime_range(db, now, to)
             .await?;
 
         // ギルドでフィルタ
@@ -92,6 +90,7 @@ impl NotificationHistoryService {
     /// 特定期間の通知統計を取得
     pub async fn get_notification_stats(
         &self,
+        db: &DatabaseConnection,
         guild_id: i64,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
@@ -105,7 +104,7 @@ impl NotificationHistoryService {
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range(&self.db, from, to)
+            .find_by_datetime_range(db, from, to)
             .await?;
 
         let guild_notifications: Vec<_> = notifications

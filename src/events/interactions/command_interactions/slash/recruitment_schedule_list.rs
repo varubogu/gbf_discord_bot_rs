@@ -124,22 +124,4 @@ pub async fn recruitment_schedule_list(
     Ok(())
 }
 
-/// 曜日を文字列に変換
-fn format_days(days: &[i32]) -> String {
-    let day_names: Vec<String> = days
-        .iter()
-        .map(|&d| match d {
-            0 => "毎日".to_string(),
-            1 => "月".to_string(),
-            2 => "火".to_string(),
-            3 => "水".to_string(),
-            4 => "木".to_string(),
-            5 => "金".to_string(),
-            6 => "土".to_string(),
-            7 => "日".to_string(),
-            _ => format!("不明({})", d),
-        })
-        .collect();
-
-    day_names.join(", ")
-}
+// 表示用の曜日フォーマットはサービス層で実施（ScheduleQueryService::format_days）
