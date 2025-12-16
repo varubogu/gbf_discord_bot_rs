@@ -1,7 +1,8 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
-use crate::services::recruitment::schedule::{ScheduleCreateService, ScheduleCreationResult};
+use crate::services::recruitment::schedule::{
+    ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
+};
 use crate::services::schedule::schedule_query_service::{ScheduleListItem, ScheduleQueryService};
 use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
@@ -179,17 +180,9 @@ impl RecruitmentScheduleFacade {
         let _ = user_id;
 
         let result = async {
-            // RLS: 一旦スケジュールを読み出してギルドIDを取得
-            if let Some((model, _days)) = BattleRecruitmentScheduleRepository::new()
-                .find_by_id(conn, schedule_id)
-                .await?
-            {
-                set_current_guild_id(&txn, model.guild_id).await?;
-            }
-
-            BattleRecruitmentScheduleRepository::new()
-                .delete_with_txn(&txn, schedule_id)
-                .await?;
+            // Service層に委譲
+            let service = ScheduleCommandService::new();
+            service.delete_schedule(&txn, conn, schedule_id).await?;
             Ok::<_, AppError>(())
         }
         .await;
@@ -216,23 +209,10 @@ impl RecruitmentScheduleFacade {
         let _ = user_id; // TODO: 権限チェック追加
 
         let result = async {
-            // 現在の有効状態とギルドIDを取得
-            let repo = BattleRecruitmentScheduleRepository::new();
-            let (guild_id, new_enabled) =
-                if let Some((model, _)) = repo.find_by_id(conn, schedule_id).await? {
-                    (model.guild_id, !model.is_enabled)
-                } else {
-                    return Err(AppError::NotFound(format!(
-                        "スケジュールID {} が見つかりません",
-                        schedule_id
-                    )));
-                };
-
-            // RLS設定
-            set_current_guild_id(&txn, guild_id).await?;
-
-            // 反転適用
-            repo.toggle_enabled_with_txn(&txn, schedule_id, new_enabled)
+            // Service層に委譲
+            let service = ScheduleCommandService::new();
+            service
+                .toggle_schedule_enabled(&txn, conn, schedule_id)
                 .await?;
             Ok::<_, AppError>(())
         }
