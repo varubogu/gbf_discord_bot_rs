@@ -2,9 +2,13 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_repository::GuildRepository;
-use crate::services::channel::channel_display_service::{ChannelDisplayService, ChannelSettingsDisplay};
+use crate::services::channel::channel_display_service::{
+    ChannelDisplayService, ChannelSettingsDisplay,
+};
+use crate::services::channel::channel_type_query_service::ChannelTypeQueryService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
+use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -36,6 +40,16 @@ pub struct ChannelManagementFacade {
 impl ChannelManagementFacade {
     pub fn new(app_state: Arc<AppState>) -> Self {
         Self { app_state }
+    }
+
+    /// チャンネル種別のオートコンプリート候補を取得
+    ///
+    /// - DBの参照のみでトランザクションは不要。
+    /// - Facade 層から Service を経由して Repository へアクセス。
+    pub async fn get_channel_types_for_autocomplete(&self) -> Result<Vec<AutocompleteChoice>> {
+        let conn = self.app_state.guild_db();
+        let service = ChannelTypeQueryService::new();
+        service.get_channel_types_for_autocomplete(conn).await
     }
 
     /// チャンネルを登録
@@ -79,7 +93,9 @@ impl ChannelManagementFacade {
             let display_service = ChannelDisplayService::new();
 
             // 1. ギルドが存在しない場合は自動登録
-            guild_repo.upsert_with_txn(&txn, guild_id, guild_name).await?;
+            guild_repo
+                .upsert_with_txn(&txn, guild_id, guild_name)
+                .await?;
 
             // 2. チャンネル種別が存在するか確認
             let channel_type_model = channel_type_repo
@@ -189,15 +205,16 @@ impl ChannelManagementFacade {
                 .get_by_guild_and_type_with_txn(&txn, guild_id, channel_type_id)
                 .await?;
 
-            let old_channel_id = existing_channel
-                .as_ref()
-                .map(|c| c.channel_id)
-                .ok_or_else(|| {
-                    AppError::NotFound(format!(
-                        "チャンネル種別「{}」の設定が見つかりませんでした",
-                        channel_type_model.name
-                    ))
-                })?;
+            let old_channel_id =
+                existing_channel
+                    .as_ref()
+                    .map(|c| c.channel_id)
+                    .ok_or_else(|| {
+                        AppError::NotFound(format!(
+                            "チャンネル種別「{}」の設定が見つかりませんでした",
+                            channel_type_model.name
+                        ))
+                    })?;
 
             // 3. ギルドチャンネルを削除
             guild_channel_repo
@@ -256,10 +273,7 @@ impl ChannelManagementFacade {
     /// # トランザクション管理
     /// このメソッドはトランザクションを開始・コミット・ロールバックを管理します。
     pub async fn show_channel_settings(&self, guild_id: i64) -> Result<ChannelSettingsDisplay> {
-        info!(
-            guild_id = guild_id,
-            "チャンネル設定表示を開始します"
-        );
+        info!(guild_id = guild_id, "チャンネル設定表示を開始します");
 
         // トランザクション開始（Facade層の責務）
         let conn = self.app_state.guild_db();
@@ -282,10 +296,7 @@ impl ChannelManagementFacade {
         match result {
             Ok(settings_display) => {
                 txn.commit().await?;
-                info!(
-                    guild_id = guild_id,
-                    "チャンネル設定表示に成功しました"
-                );
+                info!(guild_id = guild_id, "チャンネル設定表示に成功しました");
                 Ok(settings_display)
             }
             Err(e) => {

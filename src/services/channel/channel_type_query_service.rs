@@ -1,0 +1,37 @@
+use crate::repository::database::channel_type_repository::ChannelTypeRepository;
+use crate::types::Result;
+use poise::serenity_prelude::AutocompleteChoice;
+use sea_orm::ConnectionTrait;
+
+/// チャンネル種別クエリサービス
+///
+/// オートコンプリート等、読み取り系のユースケースを担当。
+pub struct ChannelTypeQueryService;
+
+impl ChannelTypeQueryService {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// オートコンプリート用にチャンネル種別一覧を取得（最大25件）
+    pub async fn get_channel_types_for_autocomplete<C: ConnectionTrait + Send + Sync>(
+        &self,
+        db: &C,
+    ) -> Result<Vec<AutocompleteChoice>> {
+        let repo = ChannelTypeRepository::new();
+        let items = repo.get_all(db).await?;
+
+        let mut choices: Vec<AutocompleteChoice> = items
+            .into_iter()
+            .map(|ct| AutocompleteChoice::new(ct.name.clone(), ct.id.to_string()))
+            .collect();
+        choices.truncate(25);
+        Ok(choices)
+    }
+}
+
+impl Default for ChannelTypeQueryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
