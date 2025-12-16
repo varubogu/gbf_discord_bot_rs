@@ -1,15 +1,13 @@
 use crate::facades::recruitment::battle_style_list;
 use crate::facades::recruitment::quest_list;
-use crate::services::timezone_service::TimezoneService;
+use crate::facades::recruitment::recruitment_schedule_list;
+use crate::facades::timezone::TimezoneFacade;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::AutocompleteChoice;
-use crate::facades::recruitment::recruitment_schedule_list;
+use std::sync::Arc;
 
 /// クエスト名の入力候補を取得
-pub async fn quest_auto_complete(
-    ctx: PoiseContext<'_>,
-    partial: &str,
-) -> Vec<AutocompleteChoice> {
+pub async fn quest_auto_complete(ctx: PoiseContext<'_>, partial: &str) -> Vec<AutocompleteChoice> {
     quest_list::search_quests_for_autocomplete(ctx, partial).await
 }
 
@@ -23,10 +21,13 @@ pub async fn battle_style_auto_complete(
 
 /// タイムゾーンの入力候補を取得
 pub async fn timezone_auto_complete(
-    _ctx: PoiseContext<'_>,
+    ctx: PoiseContext<'_>,
     partial: &str,
 ) -> Vec<AutocompleteChoice> {
-    TimezoneService::get_timezones_for_autocomplete(partial)
+    // Facade 経由に統一（DB不要だが、インターフェース一貫性のため Facade を使用）
+    let app_state = &ctx.data().app_state;
+    let facade = TimezoneFacade::new(Arc::new(app_state.clone()));
+    facade.get_timezones_for_autocomplete(partial)
 }
 
 /// 募集スケジュールの入力候補を取得

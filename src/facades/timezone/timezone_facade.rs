@@ -4,6 +4,7 @@ use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
 use chrono_tz::Tz;
+use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -27,6 +28,14 @@ impl TimezoneFacade {
         Self { app_state }
     }
 
+    /// タイムゾーンのオートコンプリート候補を取得（DB不要）
+    ///
+    /// - 文字列 `partial` にマッチする IANA タイムゾーンの候補を最大25件返します。
+    /// - トランザクションは不要なため、Facade内でのDB操作は行いません。
+    pub fn get_timezones_for_autocomplete(&self, partial: &str) -> Vec<AutocompleteChoice> {
+        TimezoneService::get_timezones_for_autocomplete(partial)
+    }
+
     /// タイムゾーンを取得
     ///
     /// # 引数
@@ -35,10 +44,7 @@ impl TimezoneFacade {
     /// # 戻り値
     /// タイムゾーン（未設定の場合はAsia/Tokyo）
     pub async fn get_timezone(&self, guild_id: i64) -> Result<Tz> {
-        info!(
-            guild_id = guild_id,
-            "タイムゾーン取得を開始します"
-        );
+        info!(guild_id = guild_id, "タイムゾーン取得を開始します");
 
         let conn = self.app_state.guild_db();
         let timezone_repo = Arc::new(GuildTimezoneRepository::new());
