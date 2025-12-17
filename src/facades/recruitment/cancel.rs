@@ -1,11 +1,11 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
     delete_cancelling_message, delete_confirmation_message, edit_original_message_as_cancelled,
     get_participants_from_reactions, send_cancel_reply_message, show_cancelling_message,
 };
+use crate::services::schedule::NotificationManagementService;
 use crate::types;
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext};
@@ -16,7 +16,7 @@ use poise::serenity_prelude::{
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{error, info, instrument, warn};
 
 // 未使用の構造体を削除（必要に応じて後で追加）
 
@@ -167,44 +167,14 @@ async fn cancel_recruitment_internal(
         .await?;
 
         // 7. キャンセルした募集の関連通知を削除
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-        let notification_repo = NotificationRepository::new();
-
-        // 募集に紐づく通知を検索
-        let relations = rel_repo.find_by_recruit_id_with_txn(&txn, recruitment.id).await?;
-
-        let relations_count = relations.len();
-
-        debug!(
-            recruit_id = recruitment.id,
-            relations_count = relations_count,
-            "キャンセルした募集の関連通知を削除します"
-        );
-
-        // 外部キー制約を考慮し、リレーション→通知の順で削除
-        for relation in relations {
-            // 7-1. リレーションを削除
-            rel_repo
-                .delete_by_notification_id_with_txn(&txn, relation.notification_id)
-                .await?;
-            debug!(
-                notification_id = relation.notification_id,
-                "リレーションを削除しました"
-            );
-
-            // 7-2. 通知を削除
-            notification_repo
-                .delete_by_id_with_txn(&txn, relation.notification_id)
-                .await?;
-            debug!(
-                notification_id = relation.notification_id,
-                "通知を削除しました"
-            );
-        }
+        let notification_management_service = NotificationManagementService::new();
+        let deleted_count = notification_management_service
+            .delete_recruitment_notifications(&txn, recruitment.id)
+            .await?;
 
         info!(
             recruit_id = recruitment.id,
-            deleted_notifications = relations_count,
+            deleted_notifications = deleted_count,
             "キャンセル処理完了"
         );
 

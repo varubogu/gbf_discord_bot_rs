@@ -7,6 +7,7 @@ mod quest_list;
 mod recruit_list;
 pub mod recruitment_creation_service;
 pub mod recruitment_participants_service;
+pub mod recruitment_query_service;
 pub mod role_notification;
 pub mod schedule;
 pub mod start;

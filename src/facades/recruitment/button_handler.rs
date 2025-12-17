@@ -1,10 +1,9 @@
-use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
-use crate::repository::BattleRecruitmentsRepository;
 use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
 };
+use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types::{AppError, AppState, RecruitmentComponentId, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};
 use sea_orm::TransactionTrait;
@@ -54,13 +53,10 @@ pub async fn handle_recruitment_button(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        // Repositoryコンテナを作成
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
-
         // 1. メッセージIDから募集情報を取得
-        let recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+        let query_service = RecruitmentQueryService::new();
+        let recruitment = query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "募集が見つかりませんでした".to_string(),
@@ -218,17 +214,14 @@ async fn update_recruitment_message(
     message_id: u64,
     channel_id: u64,
 ) -> Result<()> {
-    use crate::repository::database::battle_style_repository::{
-        BattleStyleRepository, SeaOrmBattleStyleRepository,
-    };
     use poise::serenity_prelude::{ChannelId, CreateEmbed, EditMessage, MessageId};
 
     info!("募集メッセージの参加者一覧を更新します");
 
     // 1. battle_styleの情報を取得（属性・絵文字の情報）
-    let battle_style_repo = SeaOrmBattleStyleRepository::new();
-    let battle_style = battle_style_repo
-        .get_by_id(txn, recruitment.battle_style_id)
+    let query_service = RecruitmentQueryService::new();
+    let battle_style = query_service
+        .get_battle_style_by_id(txn, recruitment.battle_style_id)
         .await?
         .ok_or_else(|| AppError::Business {
             message: "攻略方法が見つかりませんでした".to_string(),
