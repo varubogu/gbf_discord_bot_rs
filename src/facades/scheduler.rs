@@ -1,36 +1,14 @@
-use crate::infrastructure::database::container::RepositoryContainer;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::models::entities::{guild_channels, last_process_times::LastProcessType};
-use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, NotificationRelBattleRecruitmentRepository,
-    NotificationRelEventScheduleRepository, NotificationRepository, ScheduleRepository,
-};
-use crate::repository::quests_repository::QuestRepository;
-use crate::services::recruitment::new::{
-    create_initial_participants_text_for_buttons, create_recruitment_buttons,
-};
-use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::schedule_calculator::CalculatedSchedule;
-use crate::services::schedule::{RecruitmentScheduleService, ScheduleCalculator};
+use crate::models::entities::last_process_times::LastProcessType;
+use crate::services::schedule::RecruitmentScheduleService;
 use crate::services::schedule::{
     notification_service::NotificationService, scheduler_service::SchedulerService,
 };
-use crate::services::timezone_service::TimezoneService;
 use crate::types::{AppState, Result};
-use chrono::{Duration, Utc};
-use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
-use sea_orm::{DatabaseTransaction, EntityTrait, TransactionTrait};
-use std::collections::HashMap;
+use chrono::Utc;
+use poise::serenity_prelude::Http;
+use sea_orm::TransactionTrait;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// スケジューラーFacade
 /// スケジュール管理の協調とトランザクション管理を担当
@@ -81,11 +59,11 @@ impl SchedulerFacade {
         debug!("通知実行を開始します");
 
         let now = Utc::now();
+        let scheduler_service = SchedulerService::new();
 
         // 前回のスケジュール実行時刻を取得
-        let last_process_time_repo = LastProcessTimeRepository::new();
-        let last_process_time = last_process_time_repo
-            .find_schedule_last_process_time(self.app_state.system_db())
+        let last_process_time = scheduler_service
+            .get_last_process_time(self.app_state.system_db(), LastProcessType::Schedule)
             .await?;
 
         let last_execute_time = last_process_time.and_then(|lpt| lpt.execute_time);
@@ -119,14 +97,9 @@ impl SchedulerFacade {
         // last_process_timesを更新（次回実行時の検索範囲を決定するため）
         let txn = self.app_state.system_db().begin().await?;
 
-        let result = async {
-            last_process_time_repo
-                .upsert_with_txn(&txn, LastProcessType::Schedule, now)
-                .await?;
-
-            Ok::<(), crate::types::AppError>(())
-        }
-        .await;
+        let result = scheduler_service
+            .update_last_process_time(&txn, LastProcessType::Schedule, now)
+            .await;
 
         match result {
             Ok(_) => {
@@ -144,104 +117,17 @@ impl SchedulerFacade {
         Ok(())
     }
 
-    /// 通知対象のギルド・チャンネル一覧をchannel_type別に取得
-    /// 戻り値: HashMap<channel_type, Vec<(guild_id, channel_id)>>
-    async fn get_notification_guild_channels_by_type(
-        &self,
-    ) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
-        let guild_channels = guild_channels::Entity::find()
-            .all(self.app_state.system_db())
-            .await?;
-
-        let mut channels_by_type: HashMap<i32, Vec<(i64, i64)>> = HashMap::new();
-
-        for gc in guild_channels {
-            channels_by_type
-                .entry(gc.channel_type)
-                .or_insert_with(Vec::new)
-                .push((gc.guild_id, gc.channel_id));
-        }
-
-        debug!(
-            channel_types = channels_by_type.len(),
-            total_channels = channels_by_type.values().map(|v| v.len()).sum::<usize>(),
-            "channel_type別のギルド・チャンネルを取得しました"
-        );
-
-        Ok(channels_by_type)
-    }
-
-    /// 計算されたスケジュールをDBに保存
-    async fn save_calculated_schedules(
-        &self,
-        txn: &DatabaseTransaction,
-        schedules: Vec<CalculatedSchedule>,
-    ) -> Result<()> {
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelEventScheduleRepository::new();
-        let now = Utc::now();
-
-        debug!(count = schedules.len(), "通知とリレーションを作成します");
-
-        let mut created_count = 0;
-        let mut skipped_count = 0;
-
-        // 各スケジュールに対して通知とリレーションを作成
-        for schedule in schedules {
-            // 通知日時が既に過ぎている場合はスキップ
-            if schedule.schedule_datetime < now {
-                debug!(
-                    schedule_datetime = %schedule.schedule_datetime,
-                    now = %now,
-                    "通知日時が既に過ぎているためスキップします"
-                );
-                skipped_count += 1;
-                continue;
-            }
-
-            // 通知を作成
-            let notification = notification_repo
-                .create_with_txn(
-                    txn,
-                    schedule.schedule_datetime,
-                    schedule.guild_id,
-                    schedule.channel_id,
-                    schedule.message_text_id,
-                )
-                .await?;
-
-            // イベントスケジュールとのリレーションを作成
-            rel_repo
-                .create_with_txn(
-                    txn,
-                    schedule.event_schedule_id,
-                    schedule.event_schedule_detail_id,
-                    notification.id,
-                )
-                .await?;
-
-            created_count += 1;
-        }
-
-        info!(
-            created = created_count,
-            skipped = skipped_count,
-            "通知とリレーションの作成が完了しました"
-        );
-        Ok(())
-    }
-
     /// 定期募集を実行
     /// 有効なスケジュールから募集を作成し、battle_recruitmentsに登録
     pub async fn execute_recruitment_schedules(&self, _http: Arc<Http>) -> Result<()> {
         debug!("定期募集実行を開始します");
 
         let now = Utc::now();
+        let scheduler_service = SchedulerService::new();
 
         // 前回の定期募集実行時刻を取得
-        let last_process_time_repo = LastProcessTimeRepository::new();
-        let last_process_time = last_process_time_repo
-            .find_by_type(
+        let last_process_time = scheduler_service
+            .get_last_process_time(
                 self.app_state.system_db(),
                 LastProcessType::BattleRecruitmentSchedule,
             )
@@ -259,9 +145,8 @@ impl SchedulerFacade {
         );
 
         // 有効な全スケジュールと曜日情報を取得
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
-        let schedules = schedule_repo
-            .find_all_enabled_schedules_with_days(self.app_state.system_db())
+        let schedules = scheduler_service
+            .find_enabled_recruitment_schedules_with_days(self.app_state.system_db())
             .await?;
 
         debug!(
@@ -274,13 +159,9 @@ impl SchedulerFacade {
 
             // last_process_timesを更新
             let txn = self.app_state.system_db().begin().await?;
-            let result = async {
-                last_process_time_repo
-                    .upsert_with_txn(&txn, LastProcessType::BattleRecruitmentSchedule, now)
-                    .await?;
-                Ok::<(), crate::types::AppError>(())
-            }
-            .await;
+            let result = scheduler_service
+                .update_last_process_time(&txn, LastProcessType::BattleRecruitmentSchedule, now)
+                .await;
 
             match result {
                 Ok(_) => {
@@ -361,14 +242,9 @@ impl SchedulerFacade {
         // last_process_timesを更新
         let txn = self.app_state.system_db().begin().await?;
 
-        let result = async {
-            last_process_time_repo
-                .upsert_with_txn(&txn, LastProcessType::BattleRecruitmentSchedule, now)
-                .await?;
-
-            Ok::<(), crate::types::AppError>(())
-        }
-        .await;
+        let result = scheduler_service
+            .update_last_process_time(&txn, LastProcessType::BattleRecruitmentSchedule, now)
+            .await;
 
         match result {
             Ok(_) => {
@@ -402,159 +278,13 @@ impl SchedulerFacade {
         let conn = self.app_state.guild_db();
         let txn = conn.begin().await?;
 
-        // RLSポリシーのためにセッション変数を設定
-        set_current_guild_id(&txn, calculated_time.guild_id).await?;
-
-        let result = async {
-            // 0. マルチ募集チャンネルを取得（channel_type = 1）
-            let guild_channel_repo = GuildChannelRepository::new();
-            let guild_channel = guild_channel_repo
-                // channel_type = 2 (マルチ募集チャンネル)
-                .get_by_guild_and_type_with_txn(&txn, calculated_time.guild_id, 2)
-                .await?
-                .ok_or_else(|| crate::types::AppError::NotFound(format!(
-                    "ギルドID {} にマルチ募集チャンネルが登録されていません",
-                    calculated_time.guild_id
-                )))?;
-
-            let recruitment_channel_id = guild_channel.channel_id;
-            debug!(
-                recruitment_channel_id = recruitment_channel_id,
-                "マルチ募集チャンネルを取得しました"
+        let recruitment_creation_service =
+            crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService::new(
             );
 
-            // 1. Quest, BattleStyle, タイムゾーンを取得
-            let quest_repo = SeaOrmQuestRepository::new();
-            let battle_style_repo = SeaOrmBattleStyleRepository::new();
-            let timezone_repo = Arc::new(GuildTimezoneRepository::new());
-            let timezone_service = TimezoneService::new(timezone_repo);
-
-            let quest = quest_repo
-                .get_by_target_id(conn, calculated_time.quest_id)
-                .await?
-                .ok_or_else(|| crate::types::AppError::NotFound(format!(
-                    "クエストID {} が見つかりませんでした",
-                    calculated_time.quest_id
-                )))?;
-
-            let battle_style = battle_style_repo
-                .get_by_id(conn, calculated_time.battle_style_id)
-                .await?
-                .ok_or_else(|| crate::types::AppError::NotFound(format!(
-                    "攻略方法ID {} が見つかりませんでした",
-                    calculated_time.battle_style_id
-                )))?;
-
-            let timezone = timezone_service
-                .get_guild_timezone(conn, calculated_time.guild_id)
-                .await?;
-
-            // 2. ロールメンションを取得
-            let role_service = RoleNotificationService::new();
-            let role_mentions = role_service
-                .get_role_mentions(&txn, calculated_time.guild_id, quest.id)
-                .await?;
-
-            // 3. メッセージ内容を作成
-            let mut message_content = crate::services::recruitment::new::create_message_content(
-                &quest.name,
-                &battle_style.display_name,
-                &calculated_time.quest_start_at,
-                timezone,
-            );
-
-            // 備考がある場合は追加
-            if let Some(note) = &calculated_time.note {
-                message_content.push_str(&format!("\n備考: {}", note));
-            }
-
-            // ロールメンションを先頭に追加
-            if !role_mentions.is_empty() {
-                debug!(role_mentions = %role_mentions, "ロールメンションを募集メッセージの先頭に追加します");
-                message_content = format!("{}\n{}", role_mentions, message_content);
-            }
-
-            // 4. Embedを作成
-            let initial_participants_text =
-                create_initial_participants_text_for_buttons(&battle_style.display_name);
-            let embed = CreateEmbed::new()
-                .title("参加者一覧")
-                .description(&initial_participants_text)
-                .color(0x0099ff);
-
-            // 5. ボタンを作成
-            let buttons = create_recruitment_buttons(&battle_style.display_name);
-
-            // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
-            let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
-            let message = channel_id
-                .send_message(
-                    http,
-                    CreateMessage::new()
-                        .content(message_content)
-                        .embed(embed)
-                        .components(buttons),
-                )
-                .await?;
-
-            let message_id = message.id.get();
-
-            debug!(message_id = %message_id, "Discordメッセージを投稿しました");
-
-            // 7. battle_recruitmentsに保存
-            let repos = RepositoryContainer::new();
-            let battle_recruitment_repo = repos.battle_recruitment();
-
-            let recruitment = battle_recruitment_repo
-                .create_with_txn(
-                    &txn,
-                    calculated_time.guild_id as u64,
-                    recruitment_channel_id as u64,
-                    message_id,
-                    quest.id,
-                    calculated_time.battle_style_id,
-                    calculated_time.quest_start_at,
-                )
-                .await?;
-
-            info!(
-                recruitment_id = recruitment.id,
-                "募集をデータベースに登録しました"
-            );
-
-            // 8. 出発時刻の通知を登録（出発5分前）
-            let notification_repo = NotificationRepository::new();
-            let notify_time = calculated_time.quest_start_at - Duration::minutes(5);
-
-            debug!(
-                quest_start_at = %calculated_time.quest_start_at,
-                notify_time = %notify_time,
-                "募集の出発通知を登録します"
-            );
-
-            let notification = notification_repo
-                .create_with_txn(
-                    &txn,
-                    notify_time,
-                    calculated_time.guild_id,
-                    recruitment_channel_id,
-                    "MSG00033".to_string(),
-                )
-                .await?;
-
-            info!("募集の出発通知を登録しました");
-
-            // 9. 通知と募集のリレーションを作成
-            let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-            rel_repo
-                .create_with_txn(&txn, recruitment.id, notification.id)
-                .await?;
-
-            info!("募集と通知のリレーションを登録しました");
-
-            Ok::<(), crate::types::AppError>(())
-        }
-        .await;
+        let result = recruitment_creation_service
+            .create_recruitment_from_schedule(&txn, conn, http, calculated_time)
+            .await;
 
         match result {
             Ok(_) => {

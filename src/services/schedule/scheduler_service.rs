@@ -2,14 +2,19 @@ use crate::models::entities::guild_channels;
 use crate::services::schedule::ScheduleCalculator;
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::types::{AppState, Result};
-use chrono::Utc;
-use sea_orm::{DatabaseTransaction, EntityTrait};
+use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
 use crate::repository::database::schedule::{
-    NotificationRelEventScheduleRepository, NotificationRepository, ScheduleRepository,
+    BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
+    NotificationRepository, ScheduleRepository,
 };
+use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
+use crate::models::entities::battle_recruitment_schedules;
+use crate::models::entities::last_process_times::LastProcessType;
+use crate::models::last_process_times::LastProcessTime;
+use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;
 
@@ -157,5 +162,52 @@ impl SchedulerService {
             "通知とリレーションの作成が完了しました"
         );
         Ok(())
+    }
+
+    /// 前回の処理時刻を取得
+    pub async fn get_last_process_time(
+        &self,
+        db: &DatabaseConnection,
+        process_type: LastProcessType,
+    ) -> Result<Option<LastProcessTime>> {
+        let last_process_time_repo = LastProcessTimeRepository::new();
+        match process_type {
+            LastProcessType::Schedule => {
+                last_process_time_repo
+                    .find_schedule_last_process_time(db)
+                    .await
+            }
+            _ => last_process_time_repo.find_by_type(db, process_type).await,
+        }
+    }
+
+    /// 処理時刻を更新
+    pub async fn update_last_process_time(
+        &self,
+        txn: &DatabaseTransaction,
+        process_type: LastProcessType,
+        execute_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<()> {
+        let last_process_time_repo = LastProcessTimeRepository::new();
+        last_process_time_repo
+            .upsert_with_txn(txn, process_type, execute_time)
+            .await
+            .map(|_| ())
+    }
+
+    /// 有効な募集スケジュールを曜日情報付きで取得
+    pub async fn find_enabled_recruitment_schedules_with_days(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<
+        Vec<(
+            battle_recruitment_schedules::Model,
+            Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
+        )>,
+    > {
+        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        schedule_repo
+            .find_all_enabled_schedules_with_days(db)
+            .await
     }
 }

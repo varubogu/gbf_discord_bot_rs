@@ -3,9 +3,9 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
+use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
@@ -90,7 +90,6 @@ pub async fn new_recruitment(
         let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
         // 4. 出発時刻の通知を登録（出発5分前）
-        let notification_repo = NotificationRepository::new();
         let notify_time = recruitment_data.expiry_date - Duration::minutes(5);
 
         debug!(
@@ -99,25 +98,16 @@ pub async fn new_recruitment(
             "募集の出発通知を登録します"
         );
 
-        let notification = notification_repo
-            .create_with_txn(
+        let notification_management_service = NotificationManagementService::new();
+        notification_management_service
+            .create_recruitment_departure_notification(
                 &txn,
                 notify_time,
                 guild_id as i64,
                 channel_id as i64,
-                "MSG00033".to_string(),
+                recruitment.id,
             )
             .await?;
-
-        info!("募集の出発通知を登録しました");
-
-        // 6. 通知と募集のリレーションを作成
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-        rel_repo
-            .create_with_txn(&txn, recruitment.id, notification.id)
-            .await?;
-
-        info!("募集と通知のリレーションを登録しました");
 
         // message_idとreactionsを返す
         Ok((message_id, recruitment_data.reactions.clone()))
