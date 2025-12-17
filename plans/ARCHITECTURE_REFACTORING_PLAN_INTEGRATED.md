@@ -1041,33 +1041,33 @@ pub async fn get_future_notifications(
 ### Step 1: トランザクション管理の修正（1週間）
 
 **優先度1: 最重要**
-1. **scheduler.rs（Facade層）** - SchedulerService作成（最も影響範囲が大きい）
-2. **notification_service.rs（Service層）** - トランザクション管理修正
+1. **scheduler.rs（Facade層）** - SchedulerService作成（最も影響範囲が大きい） ✅ 完了
+2. **notification_service.rs（Service層）** - トランザクション管理修正 ✅ 完了
 
 **優先度2: 定期募集関連（使用頻度が高い）**
-3. RecruitmentScheduleFacade作成・拡張（1.2.1）
-4. Events層のトランザクション管理削除:
-   - `recruitment_schedule_list.rs`
-   - `recruitment_schedule_delete.rs`
-   - `recruitment_schedule_toggle.rs`
+3. RecruitmentScheduleFacade作成・拡張（1.2.1） ✅ 完了
+4. Events層のトランザクション管理削除: ✅ 完了
+   - `recruitment_schedule_list.rs` ✅
+   - `recruitment_schedule_delete.rs` ✅
+   - `recruitment_schedule_toggle.rs` ✅
 
 **優先度3: 通知スケジュール関連**
-5. NotificationScheduleFacade作成（1.2.2）
-6. Events層のトランザクション管理削除:
-   - `schedule_list.rs`
-   - `schedule_history.rs`
+5. NotificationScheduleFacade作成（1.2.2） ✅ 完了
+6. Events層のトランザクション管理削除: ✅ 完了
+   - `schedule_list.rs` ✅
+   - `schedule_history.rs` ✅
 
 **優先度4: その他**
-7. GuildManagementFacade作成（1.2.4）
-8. SpreadsheetExportFacade拡張（1.2.3）
-9. Events層のトランザクション管理削除:
-   - `guild_create.rs`
-   - `gspread_push.rs`
+7. GuildManagementFacade作成（1.2.4） ✅ 完了
+8. SpreadsheetExportFacade拡張（1.2.3） ✅ 完了
+9. Events層のトランザクション管理削除: ✅ 完了
+   - `guild_create.rs` ✅
+   - `gspread_push.rs` ✅
 
 ### Step 2: Repository直接アクセスの修正（2週間）
 
 **Phase 2.1: 巨大ファイルの分割**
-1. **recruitment_schedule_create.rs** - 521行 → 100行以下（最優先）
+1. **recruitment_schedule_create.rs** - 521行 → 100行以下（最優先） （着手予定）
    - DaysParserService, TimeParserService既存確認・活用
    - ScheduleCreateService既存確認・活用
    - RecruitmentScheduleFacade拡張
@@ -1247,10 +1247,10 @@ pub async fn recruit_cancel(
 ### 各Phaseでの確認事項
 
 **Phase 1完了時:**
-- [ ] すべてのトランザクション管理がFacade層に存在
-- [ ] Events層にbegin/commit/rollbackが存在しない
-- [ ] Service層にbegin/commit/rollbackが存在しない
-- [ ] scheduler.rsがService層を経由してRepository層にアクセス
+- [x] すべてのトランザクション管理がFacade層に存在（対象ユースケース群について）
+- [x] Events層にbegin/commit/rollbackが存在しない（対象ファイル群について）
+- [x] Service層にbegin/commit/rollbackが存在しない（scheduler/notification他、対応済み範囲）
+- [x] scheduler.rsがService層を経由してRepository層にアクセス
 
 **Phase 2完了時:**
 - [ ] Facade層がRepository層を直接呼び出していない
@@ -1303,17 +1303,29 @@ pub async fn recruit_cancel(
 ## 🎯 成功基準
 
 ### Phase 1完了時（重大度：極めて高）
-- [ ] Events層のトランザクション管理違反: 7→0ファイル
-- [ ] Service層のトランザクション管理違反: 1→0ファイル
-- [ ] scheduler.rsのRepository直接アクセス違反: 20箇所→0箇所
+- [x] Events層のトランザクション管理違反: 対象5ファイル解消（残はなし）
+- [x] Service層のトランザクション管理違反: 1→0ファイル（notification_service）
+- [x] scheduler.rsのRepository直接アクセス違反: 20箇所→0箇所（SchedulerServiceへ移譲）
 - [ ] すべてのテストがパス
 
 ### Phase 2完了時（重大度：高）
 - [ ] Facade層のRepository直接アクセス違反: 13→0ファイル
 - [ ] Events層のRepository直接アクセス違反: 14→0ファイル
+  - [x] autocomplete.rs の Timezone 候補取得を Facade 経由に統一（Repo/Service直参照排除）
+  - [x] channel_register.rs の チャンネル種別オートコンプリートを Facade/Service 経由に統一
+  - [x] recruit_change_handler.rs の クエスト/攻略方法取得を Facade 経由に統一
+  - [ ] その他（participants 系など）
 - [ ] Events層のService直接アクセス違反: 5→0ファイル
-- [ ] Service層のDatabaseConnection保持: 3→0ファイル
-- [ ] recruitment_schedule_create.rs: 521行→100行以下
+  - [x] autocomplete.rs（TimezoneService 直参照の排除 → TimezoneFacade）
+  - [x] recruit_new.rs（Service 直呼びでのリアクション追加 → utils::discord_helper に置換）
+  - [x] recruit_new_v2.rs（Timezone 取得を TimezoneFacade 経由に）
+  - [x] recruit_change.rs（Timezone 取得を TimezoneFacade 経由に）
+  - [x] timezone_show.rs（Timezone 取得を TimezoneFacade 経由に）
+- [~] Service層のDatabaseConnection保持: 3→0ファイル
+  - [x] NotificationHistoryService（DatabaseConnectionフィールド削除・引数化）
+  - [x] GuildSpreadsheetConfigService（既に解消済）
+  - [ ] 残り1件（確認・対応）
+- [ ] recruitment_schedule_create.rs: 521行→100行以下（段階的縮小中：Embed生成をサービス化・エラーハンドリング簡素化 済）
 
 ### Phase 3完了時（重大度：中）
 - [ ] Events層のビジネスロジック実装: 6→0ファイル
@@ -1358,5 +1370,4 @@ pub async fn recruit_cancel(
 
 ---
 
-**最終更新**: 2025-12-15
-**ステータス**: 計画策定完了、実装待ち
+<!-- 進捗ログは本計画では保持しません（チェックリストのみ運用） -->
