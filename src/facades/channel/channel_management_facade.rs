@@ -5,6 +5,7 @@ use crate::repository::database::guild_repository::GuildRepository;
 use crate::services::channel::channel_display_service::{
     ChannelDisplayService, ChannelSettingsDisplay,
 };
+use crate::services::channel::ChannelManagementService;
 use crate::services::channel::channel_type_query_service::ChannelTypeQueryService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
@@ -87,30 +88,22 @@ impl ChannelManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let guild_repo = GuildRepository::new();
-            let channel_type_repo = ChannelTypeRepository::new();
-            let guild_channel_repo = GuildChannelRepository::new();
+            let management_service = ChannelManagementService::new();
             let display_service = ChannelDisplayService::new();
 
             // 1. ギルドが存在しない場合は自動登録
-            guild_repo
-                .upsert_with_txn(&txn, guild_id, guild_name)
+            management_service
+                .register_guild(&txn, guild_id, guild_name)
                 .await?;
 
             // 2. チャンネル種別が存在するか確認
-            let channel_type_model = channel_type_repo
-                .get_by_id(&txn, channel_type_id)
-                .await?
-                .ok_or_else(|| {
-                    AppError::NotFound(format!(
-                        "チャンネル種別ID {} が見つかりませんでした",
-                        channel_type_id
-                    ))
-                })?;
+            let channel_type_model = management_service
+                .get_channel_type_by_id(&txn, channel_type_id)
+                .await?;
 
             // 3. ギルドチャンネルを登録または更新
-            guild_channel_repo
-                .upsert_with_txn(&txn, guild_id, channel_type_id, channel_id)
+            management_service
+                .register_guild_channel(&txn, guild_id, channel_type_id, channel_id)
                 .await?;
 
             info!(
@@ -185,24 +178,17 @@ impl ChannelManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let channel_type_repo = ChannelTypeRepository::new();
-            let guild_channel_repo = GuildChannelRepository::new();
+            let management_service = ChannelManagementService::new();
             let display_service = ChannelDisplayService::new();
 
             // 1. チャンネル種別が存在するか確認
-            let channel_type_model = channel_type_repo
-                .get_by_id(&txn, channel_type_id)
-                .await?
-                .ok_or_else(|| {
-                    AppError::NotFound(format!(
-                        "チャンネル種別ID {} が見つかりませんでした",
-                        channel_type_id
-                    ))
-                })?;
+            let channel_type_model = management_service
+                .get_channel_type_by_id(&txn, channel_type_id)
+                .await?;
 
             // 2. 削除前に現在の設定を取得
-            let existing_channel = guild_channel_repo
-                .get_by_guild_and_type_with_txn(&txn, guild_id, channel_type_id)
+            let existing_channel = management_service
+                .get_guild_channel(&txn, guild_id, channel_type_id)
                 .await?;
 
             let old_channel_id =
@@ -217,8 +203,8 @@ impl ChannelManagementFacade {
                     })?;
 
             // 3. ギルドチャンネルを削除
-            guild_channel_repo
-                .delete_with_txn(&txn, guild_id, channel_type_id)
+            management_service
+                .delete_guild_channel(&txn, guild_id, channel_type_id)
                 .await?;
 
             info!(
