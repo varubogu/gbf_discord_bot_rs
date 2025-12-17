@@ -1,0 +1,42 @@
+use crate::infrastructure::database::container::RepositoryContainer;
+use crate::repository::BattleRecruitmentsRepository;
+use crate::types::Result;
+use chrono::{DateTime, Utc};
+use sea_orm::DatabaseTransaction;
+use tracing::info;
+
+/// 募集情報更新Service
+/// 募集情報の更新操作の責務を持つ
+pub struct RecruitmentUpdateService;
+
+impl RecruitmentUpdateService {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// 募集情報を更新
+    pub async fn update_recruitment(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+        quest_id: i32,
+        battle_style_id: i32,
+        expiry_date: DateTime<Utc>,
+    ) -> Result<()> {
+        let repos = RepositoryContainer::new();
+        let battle_recruitment_repo = repos.battle_recruitment();
+
+        battle_recruitment_repo
+            .update_with_txn(txn, recruitment_id, quest_id, battle_style_id, expiry_date)
+            .await?;
+
+        info!(
+            recruitment_id = recruitment_id,
+            quest_id = quest_id,
+            battle_style_id = battle_style_id,
+            "募集情報を更新しました"
+        );
+
+        Ok(())
+    }
+}

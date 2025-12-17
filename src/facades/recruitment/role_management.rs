@@ -1,6 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::QuestRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
@@ -40,7 +39,7 @@ pub async fn add_recruitment_notification_roles(
 
     let result = async {
         let role_service = RoleNotificationService::new();
-        let quest_repository = SeaOrmQuestRepository::new();
+        let quest_query_service = QuestQueryService::new();
 
         let mut added_count = 0;
 
@@ -57,18 +56,11 @@ pub async fn add_recruitment_notification_roles(
             }
         } else {
             // クエスト名またはエイリアスでクエストIDを解決
-            let search_results = quest_repository
-                .search_by_name_or_alias(conn, quest_name_or_alias)
+            let quest = quest_query_service
+                .search_and_get_quest_by_name(conn, quest_name_or_alias)
                 .await?;
 
-            let quest_search_result = search_results
-                .first()
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエスト '{}' が見つかりませんでした",
-                    quest_name_or_alias
-                )))?;
-
-            let quest_id = quest_search_result.quest_id;
+            let quest_id = quest.id;
 
             info!(quest_id = quest_id, "クエスト別募集通知ロールとして登録します");
 
@@ -133,7 +125,7 @@ pub async fn remove_recruitment_notification_roles(
 
     let result = async {
         let role_service = RoleNotificationService::new();
-        let quest_repository = SeaOrmQuestRepository::new();
+        let quest_query_service = QuestQueryService::new();
 
         let mut deleted_count: u64 = 0;
 
@@ -148,18 +140,11 @@ pub async fn remove_recruitment_notification_roles(
             }
         } else {
             // クエスト名またはエイリアスでクエストIDを解決
-            let search_results = quest_repository
-                .search_by_name_or_alias(conn, quest_name_or_alias)
+            let quest = quest_query_service
+                .search_and_get_quest_by_name(conn, quest_name_or_alias)
                 .await?;
 
-            let quest_search_result = search_results
-                .first()
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエスト '{}' が見つかりませんでした",
-                    quest_name_or_alias
-                )))?;
-
-            let quest_id = quest_search_result.quest_id;
+            let quest_id = quest.id;
 
             info!(quest_id = quest_id, "クエスト別募集通知ロールから削除します");
 

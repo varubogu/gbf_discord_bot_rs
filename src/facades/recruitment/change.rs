@@ -1,15 +1,14 @@
-use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{
-    NotificationRelBattleRecruitmentRepository, NotificationRepository,
-};
-use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::QuestRepository;
 use crate::services::recruitment::new;
+use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
+use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
+use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
@@ -63,12 +62,15 @@ pub async fn change_recruitment_information_internal(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        // RepositoryContainerとRepositoryの取得
+        // Serviceの取得
         let db = app_state.guild_db();
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
         let quest_repository = SeaOrmQuestRepository::new();
         let battle_style_repository = SeaOrmBattleStyleRepository::new();
+        let query_service = RecruitmentQueryService::new();
+        let quest_query_service = QuestQueryService::new();
+        let update_service = RecruitmentUpdateService::new();
+        let notification_service = NotificationManagementService::new();
+
         let channel_id = message.channel_id.get();
         let message_id = message.id.get();
 
@@ -86,8 +88,8 @@ pub async fn change_recruitment_information_internal(
         let message_id_obj = MessageId::new(message_id);
 
         // 1. DBから既存の募集情報を取得
-        let existing_recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+        let existing_recruitment = query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| {
                 error!(
@@ -102,24 +104,9 @@ pub async fn change_recruitment_information_internal(
         // 2. 更新する値を決定（指定されていればそれを使用、未指定なら既存の値を使用）
         let new_quest_id = if let Some(quest_name) = quest {
             // クエスト名が指定されている場合、新しいクエストを検索
-            let search_results = quest_repository
-                .search_by_name_or_alias(db, quest_name)
+            let quest = quest_query_service
+                .search_and_get_quest_by_name(db, quest_name)
                 .await?;
-
-            let quest_search_result = search_results
-                .first()
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエスト '{}' が見つかりませんでした",
-                    quest_name
-                )))?;
-
-            let quest = quest_repository
-                .get_by_target_id(db, quest_search_result.quest_id)
-                .await?
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエストID {} の詳細情報が見つかりませんでした",
-                    quest_search_result.quest_id
-                )))?;
 
             quest.id
         } else {
@@ -132,13 +119,7 @@ pub async fn change_recruitment_information_internal(
             style_id
         } else if quest.is_some() {
             // クエストが変更されている場合、新しいクエストのデフォルト攻略方法を使用
-            let quest = quest_repository
-                .get_by_target_id(db, new_quest_id)
-                .await?
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエストID {} が見つかりませんでした",
-                    new_quest_id
-                )))?;
+            let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
             quest.default_battle_style_id
         } else {
             // どちらも指定されていない場合、既存の値を使用
@@ -153,18 +134,12 @@ pub async fn change_recruitment_information_internal(
         let timezone = timezone_service.get_guild_timezone(db, guild_id as i64).await?;
 
         // 3. メッセージ表示用の募集データを作成
+        let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
         let recruitment_data = new::create_recruitment_data(
             db,
             &quest_repository,
             &battle_style_repository,
-            &quest_repository
-                .get_by_target_id(db, new_quest_id)
-                .await?
-                .ok_or_else(|| types::AppError::NotFound(format!(
-                    "クエストID {} が見つかりませんでした",
-                    new_quest_id
-                )))?
-                .name,
+            &quest.name,
             Some(new_battle_style_id),
             channel_id,
             guild_id,
@@ -194,8 +169,8 @@ pub async fn change_recruitment_information_internal(
         }
 
         // 5. DBの募集情報を更新
-        battle_recruitment_repo
-            .update_with_txn(
+        update_service
+            .update_recruitment(
                 &txn,
                 existing_recruitment.id,
                 new_quest_id,
@@ -253,37 +228,21 @@ pub async fn change_recruitment_information_internal(
 
         // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
         if event_date.is_some() {
-            let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-            let notification_repo = NotificationRepository::new();
-
-            // 既存の通知リレーションを取得
-            let old_relations = rel_repo.find_by_recruit_id_with_txn(&txn, existing_recruitment.id).await?;
-
             // 既存の通知を削除
-            for relation in old_relations {
-                rel_repo
-                    .delete_by_notification_id_with_txn(&txn, relation.notification_id)
-                    .await?;
-                notification_repo
-                    .delete_by_id_with_txn(&txn, relation.notification_id)
-                    .await?;
-            }
+            notification_service
+                .delete_recruitment_notifications(&txn, existing_recruitment.id)
+                .await?;
 
             // 新しい通知を登録（出発5分前）
             let notify_time = new_expiry_date - Duration::minutes(5);
-            let notification = notification_repo
-                .create_with_txn(
+            notification_service
+                .create_recruitment_departure_notification(
                     &txn,
                     notify_time,
                     guild_id as i64,
                     channel_id as i64,
-                    "MSG00033".to_string(),
+                    existing_recruitment.id,
                 )
-                .await?;
-
-            // 新しい通知リレーションを作成
-            rel_repo
-                .create_with_txn(&txn, existing_recruitment.id, notification.id)
                 .await?;
         }
 

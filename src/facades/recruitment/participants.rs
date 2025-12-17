@@ -1,11 +1,10 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
-use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
-use crate::repository::QuestRepository;
 use crate::services::recruitment::participants::ParticipantsService;
+use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
+use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types;
 use poise::serenity_prelude::Context;
 use sea_orm::TransactionTrait;
@@ -37,7 +36,8 @@ pub async fn update_participants(
         // Service層のインスタンスを作成
         let battle_recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new());
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
-        let quest_repo = SeaOrmQuestRepository::new();
+        let query_service = RecruitmentQueryService::new();
+        let quest_query_service = QuestQueryService::new();
 
         // 募集情報の存在確認（キャンセル済み・期限切れチェック含む）
         let recruitment = match participants_service
@@ -56,9 +56,8 @@ pub async fn update_participants(
         // リアクション情報が提供されている場合、DBに登録/削除
         if let (Some(uid), Some(emoji)) = (user_id, reaction_emoji) {
             // battle_styleからリアクション絵文字リストを取得してelement_idを特定
-            let battle_style_repo = SeaOrmBattleStyleRepository::new();
-            let battle_style = battle_style_repo
-                .get_by_id(&txn, recruitment.battle_style_id)
+            let battle_style = query_service
+                .get_battle_style_by_id(&txn, recruitment.battle_style_id)
                 .await?
                 .ok_or_else(|| types::AppError::Business {
                     message: "攻略方法が見つかりませんでした".to_string(),
@@ -119,7 +118,7 @@ pub async fn update_participants(
         info!("現在の参加者数: {}", unique_participant_count);
 
         // questの規定人数を取得
-        if let Ok(Some(quest)) = quest_repo.get_by_target_id(db, recruitment.quest_id).await {
+        if let Ok(quest) = quest_query_service.get_quest_by_id(db, recruitment.quest_id).await {
             let recruit_count = quest.recruit_count as usize;
             info!("規定人数: {}", recruit_count);
 
