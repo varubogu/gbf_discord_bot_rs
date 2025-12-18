@@ -1,5 +1,7 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
 use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
 };
@@ -239,9 +241,14 @@ async fn update_recruitment_message(
         .await
         .map_err(|e| AppError::Database(e))?;
 
+    // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+    let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+    let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
+    let element_emojis = guild_env_service.get_element_emojis(txn, &ctx.http, recruitment.guild_id as i64).await?;
+
     // 3. 参加者一覧のテキストを作成
     let participants_text =
-        create_participants_text(&battle_style.display_name, &participants, ctx).await?;
+        create_participants_text(&battle_style.display_name, &participants, &element_emojis, ctx).await?;
 
     // 3.5. ユニーク参加者数を計算（複数属性でも1人とカウント）
     use std::collections::HashSet;
@@ -305,6 +312,7 @@ async fn update_recruitment_message(
 async fn create_participants_text(
     battle_style_name: &str,
     participants: &[crate::models::entities::recruitment_participants::Model],
+    element_emojis: &ElementEmojis,
     _ctx: &Context,
 ) -> Result<String> {
     use std::collections::HashMap;
@@ -323,9 +331,10 @@ async fn create_participants_text(
 
     // 6属性の場合
     if battle_style_name == "6属性" {
-        use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES};
+        use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES};
 
-        for (idx, (emoji, name)) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
+        let emojis_array = element_emojis.as_array();
+        for (idx, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
             let element_id = (idx + 1) as i32;
             if let Some(user_ids) = participants_by_element.get(&element_id) {
                 let user_mentions: Vec<String> = user_ids

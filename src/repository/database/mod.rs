@@ -4,6 +4,7 @@ pub mod battle_style_repository;
 pub mod channel_type_repository;
 pub mod db_compat;
 pub mod guild_channel_repository;
+pub mod guild_environment_repository;
 pub mod guild_repository;
 pub mod guild_timezone_repository;
 pub mod last_process_time_repository;

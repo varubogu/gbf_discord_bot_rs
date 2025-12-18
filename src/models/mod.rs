@@ -5,6 +5,7 @@ pub(crate) mod elements;
 pub(crate) mod entities;
 pub(crate) mod environments;
 pub(crate) mod event_schedule_details;
+pub(crate) mod guild_environments;
 pub(crate) mod event_schedules;
 pub(crate) mod guilds;
 pub(crate) mod last_process_times;

@@ -5,9 +5,11 @@ use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,
 };
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::quests_repository::QuestRepository;
+use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new::{
     create_initial_participants_text_for_buttons, create_message_content,
     create_recruitment_buttons,
@@ -125,16 +127,21 @@ impl RecruitmentCreationService {
             message_content = format!("{}\n{}", role_mentions, message_content);
         }
 
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+        let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
+        let element_emojis = guild_env_service.get_element_emojis(txn, http, calculated_time.guild_id).await?;
+
         // 4. Embedを作成
         let initial_participants_text =
-            create_initial_participants_text_for_buttons(&battle_style.display_name);
+            create_initial_participants_text_for_buttons(&battle_style.display_name, &element_emojis);
         let embed = CreateEmbed::new()
             .title("参加者一覧")
             .description(&initial_participants_text)
             .color(0x0099ff);
 
         // 5. ボタンを作成
-        let buttons = create_recruitment_buttons(&battle_style.display_name);
+        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
         let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);

@@ -7,6 +7,7 @@ use tracing::info;
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
+use crate::services::guild_environment_service::ElementEmojis;
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
@@ -23,6 +24,7 @@ pub struct RecruitmentData {
     pub message_content: String,
     pub embed: CreateEmbed,
     pub reactions: Vec<poise::serenity_prelude::ReactionType>,
+    pub element_emojis: ElementEmojis,
 }
 
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
@@ -30,6 +32,7 @@ pub async fn create_recruitment_data<'c, C, Q, B>(
     db: &'c C,
     quest_repository: &Q,
     battle_style_repository: &B,
+    element_emojis: &ElementEmojis,
     quest_name_or_alias: &str,
     battle_style_id: Option<i32>,
     channel_id: u64,
@@ -80,7 +83,16 @@ where
         )))?;
 
     // reactionsをパース
-    let reactions = parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"));
+    // 6属性の場合はelement_emojisから取得、それ以外はbattle_styleのreactionsをパース
+    let reactions = if battle_style.display_name == "6属性" {
+        let emojis_array = element_emojis.as_array();
+        emojis_array
+            .iter()
+            .map(|emoji| ReactionType::Unicode(emoji.to_string()))
+            .collect()
+    } else {
+        parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"))
+    };
 
     // メッセージ内容を作成
     let message_content = create_message_content(&quest.name, &battle_style.display_name, &expiry_date, timezone);
@@ -101,6 +113,7 @@ where
             .description(&initial_participants_text)
             .color(0x0099ff),
         reactions,
+        element_emojis: element_emojis.clone(),
     })
 }
 
@@ -213,12 +226,13 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
 
 /// ボタン版用の初期参加者一覧テキストを作成
 /// 修正済みの絵文字を使用
-pub fn create_initial_participants_text_for_buttons(battle_style_name: &str) -> String {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
+pub fn create_initial_participants_text_for_buttons(battle_style_name: &str, element_emojis: &ElementEmojis) -> String {
+    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
 
     if battle_style_name == "6属性" {
         let mut text = String::new();
-        for (emoji, name) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()) {
+        let emojis_array = element_emojis.as_array();
+        for (emoji, name) in emojis_array.iter().zip(ELEMENT_NAMES.iter()) {
             text.push_str(&format!("{} {}: なし\n", emoji, name));
         }
         text.push_str(&format!("{} 全属性可能: なし\n", ALL_ELEMENTS_EMOJI));
@@ -232,16 +246,18 @@ pub fn create_initial_participants_text_for_buttons(battle_style_name: &str) -> 
 ///
 /// # 引数
 /// * `battle_style_name` - 攻略方法の名前（「6属性」かどうかで分岐）
+/// * `element_emojis` - カスタム属性絵文字
 ///
 /// # 戻り値
 /// CreateActionRowのVec（Discord Message Componentsとして使用）
-pub fn create_recruitment_buttons(battle_style_name: &str) -> Vec<CreateActionRow> {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES};
+pub fn create_recruitment_buttons(battle_style_name: &str, element_emojis: &ElementEmojis) -> Vec<CreateActionRow> {
+    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES};
 
     if battle_style_name == "6属性" {
         // 6属性の場合：属性1-6ボタン + 全属性可能ボタン
         let mut element_buttons = Vec::new();
-        for (i, (emoji, name)) in ELEMENT_EMOJIS.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
+        let emojis_array = element_emojis.as_array();
+        for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
             let button = CreateButton::new(format!("recruit_join_{}", i + 1))
                 .label(format!("{} {}", emoji, name))
                 .style(ButtonStyle::Primary);
@@ -292,10 +308,10 @@ pub async fn send_recruitment_message_with_buttons(
     use poise::serenity_prelude::CreateEmbed;
 
     // ボタンを生成
-    let buttons = create_recruitment_buttons(&recruitment_data.battle_style_name);
+    let buttons = create_recruitment_buttons(&recruitment_data.battle_style_name, &recruitment_data.element_emojis);
 
     // ボタン版用の初期参加者一覧を作成
-    let initial_text = create_initial_participants_text_for_buttons(&recruitment_data.battle_style_name);
+    let initial_text = create_initial_participants_text_for_buttons(&recruitment_data.battle_style_name, &recruitment_data.element_emojis);
 
     // ボタン版用のembedを作成（絵文字を修正済みのものを使用）
     let embed = CreateEmbed::new()
@@ -318,6 +334,7 @@ pub async fn send_recruitment_message_with_buttons(
 /// Facade層から呼び出すためのラッパー関数
 pub async fn create_recruitment_data_with_repos<'c, C>(
     db: &'c C,
+    element_emojis: &ElementEmojis,
     quest_name_or_alias: &str,
     battle_style_id: Option<i32>,
     channel_id: u64,
@@ -338,6 +355,7 @@ where
         db,
         &quest_repository,
         &battle_style_repository,
+        element_emojis,
         quest_name_or_alias,
         battle_style_id,
         channel_id,

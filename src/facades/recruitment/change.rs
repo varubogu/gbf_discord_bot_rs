@@ -1,5 +1,7 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
@@ -128,10 +130,16 @@ pub async fn change_recruitment_information_internal(
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service.get_guild_timezone(db, guild_id as i64).await?;
 
+        // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+        let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
+        let element_emojis = guild_env_service.get_element_emojis(db, http, guild_id as i64).await?;
+
         // 3. メッセージ表示用の募集データを作成
         let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
         let recruitment_data = new::create_recruitment_data_with_repos(
             db,
+            &element_emojis,
             &quest.name,
             Some(new_battle_style_id),
             channel_id,
