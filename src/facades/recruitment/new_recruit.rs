@@ -1,8 +1,6 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::NotificationManagementService;
@@ -42,23 +40,19 @@ pub async fn new_recruitment(
     let channel_id = ctx.channel_id().get();
 
     let result = async {
-        // RepositoryContainerとRepositoryの取得
+        // RepositoryContainerの取得
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
-        let quest_repository = SeaOrmQuestRepository::new();
-        let battle_style_repository = SeaOrmBattleStyleRepository::new();
 
         // タイムゾーンを取得
         let timezone_repo = Arc::new(GuildTimezoneRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service.get_guild_timezone(conn, guild_id as i64).await?;
 
-        // 1. 募集データ作成（QuestRepository, BattleStyleRepositoryを使用）
+        // 1. 募集データ作成（Serviceラッパー関数を使用）
         let mut recruitment_data =
-            new::create_recruitment_data(
+            new::create_recruitment_data_with_repos(
                 conn,
-                &quest_repository,
-                &battle_style_repository,
                 quest_alias,
                 battle_style_id,
                 channel_id,

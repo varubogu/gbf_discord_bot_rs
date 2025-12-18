@@ -152,6 +152,26 @@ impl TimezoneService {
         }
     }
 
+    /// ギルドのタイムゾーンを設定（upsert）
+    pub async fn set_guild_timezone(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: i64,
+        timezone_name: &str,
+    ) -> Result<()> {
+        self.repository
+            .upsert_with_txn(txn, guild_id, timezone_name)
+            .await?;
+
+        info!(
+            guild_id = guild_id,
+            timezone = timezone_name,
+            "ギルドのタイムゾーンを設定しました"
+        );
+
+        Ok(())
+    }
+
     /// タイムゾーン名のバリデーション
     pub fn validate_timezone(timezone_str: &str) -> Result<Tz> {
         timezone_str.parse::<Tz>().map_err(|_| {

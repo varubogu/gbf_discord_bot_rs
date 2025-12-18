@@ -1,7 +1,7 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
+use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::AutocompleteChoice;
@@ -47,8 +47,8 @@ pub async fn get_schedules_for_autocomplete(
     }
 
     // スケジュール一覧（自分が作成したもの）
-    let schedule_repo = BattleRecruitmentScheduleRepository::new();
-    let schedules = match schedule_repo.find_by_created_by(&txn, user_id).await {
+    let schedule_query_service = ScheduleQueryService::new();
+    let schedules = match schedule_query_service.get_schedules_by_user(&txn, user_id).await {
         Ok(s) => s,
         Err(e) => {
             warn!(error = %e, "スケジュールの取得に失敗しました");

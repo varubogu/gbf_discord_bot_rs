@@ -4,7 +4,7 @@ use tracing::{error, info};
 use sea_orm::TransactionTrait;
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_repository::GuildRepository;
+use crate::services::channel::ChannelManagementService;
 use crate::types::{AppError, Result, app_state::AppState};
 
 /// ギルド管理ファサード
@@ -28,9 +28,10 @@ impl GuildManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let repo = GuildRepository::new();
+            let service = ChannelManagementService::new();
             // 既存なければ作成、あれば更新
-            repo.upsert_with_txn(&txn, guild_id, guild_name.to_string())
+            service
+                .register_guild(&txn, guild_id, guild_name.to_string())
                 .await?;
             info!(guild_id, guild_name, "ギルドを登録または更新しました");
             Ok::<_, AppError>(())

@@ -1,3 +1,4 @@
+pub mod battle_style_query_service;
 pub mod cancel;
 pub mod get;
 mod message;

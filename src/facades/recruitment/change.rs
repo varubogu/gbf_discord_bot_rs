@@ -1,8 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
 use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::QuestRepository;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
@@ -64,8 +61,6 @@ pub async fn change_recruitment_information_internal(
     let result = async {
         // Serviceの取得
         let db = app_state.guild_db();
-        let quest_repository = SeaOrmQuestRepository::new();
-        let battle_style_repository = SeaOrmBattleStyleRepository::new();
         let query_service = RecruitmentQueryService::new();
         let quest_query_service = QuestQueryService::new();
         let update_service = RecruitmentUpdateService::new();
@@ -135,10 +130,8 @@ pub async fn change_recruitment_information_internal(
 
         // 3. メッセージ表示用の募集データを作成
         let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
-        let recruitment_data = new::create_recruitment_data(
+        let recruitment_data = new::create_recruitment_data_with_repos(
             db,
-            &quest_repository,
-            &battle_style_repository,
             &quest.name,
             Some(new_battle_style_id),
             channel_id,

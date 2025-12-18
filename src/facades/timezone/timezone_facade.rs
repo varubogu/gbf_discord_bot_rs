@@ -95,10 +95,11 @@ impl TimezoneFacade {
 
         let result = async {
             let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+            let timezone_service = TimezoneService::new(timezone_repo);
 
             // タイムゾーンをupsert
-            timezone_repo
-                .upsert_with_txn(&txn, guild_id, timezone.name())
+            timezone_service
+                .set_guild_timezone(&txn, guild_id, timezone.name())
                 .await?;
 
             info!(

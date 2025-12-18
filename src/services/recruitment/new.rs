@@ -313,3 +313,37 @@ pub async fn send_recruitment_message_with_buttons(
     let message = ctx.send(reply).await?;
     Ok(message.message().await?.id.get())
 }
+
+/// 募集データを作成する（Repository直接アクセス版）
+/// Facade層から呼び出すためのラッパー関数
+pub async fn create_recruitment_data_with_repos<'c, C>(
+    db: &'c C,
+    quest_name_or_alias: &str,
+    battle_style_id: Option<i32>,
+    channel_id: u64,
+    guild_id: u64,
+    event_date: Option<DateTime<Utc>>,
+    timezone: chrono_tz::Tz,
+) -> types::Result<RecruitmentData>
+where
+    C: sea_orm::ConnectionTrait,
+{
+    use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
+    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+
+    let quest_repository = SeaOrmQuestRepository::new();
+    let battle_style_repository = SeaOrmBattleStyleRepository::new();
+
+    create_recruitment_data(
+        db,
+        &quest_repository,
+        &battle_style_repository,
+        quest_name_or_alias,
+        battle_style_id,
+        channel_id,
+        guild_id,
+        event_date,
+        timezone,
+    )
+    .await
+}

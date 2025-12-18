@@ -1,6 +1,7 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::quest::search::QuestSearchService;
+use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::DatabaseConnection;
@@ -38,9 +39,9 @@ pub async fn search_quests_for_autocomplete(
 /// セレクトメニュー用にクエスト一覧（最大25件）を返す
 pub async fn list_quests_for_select(ctx: PoiseContext<'_>) -> Vec<(String, i32)> {
     let db_conn = ctx.data().app_state.guild_db();
-    let quest_repository = SeaOrmQuestRepository::new();
+    let service = QuestQueryService::new();
 
-    match quest_repository.get_all(db_conn).await {
+    match service.get_all_quests(db_conn).await {
         Ok(list) => list.into_iter().take(25).map(|q| (q.name, q.id)).collect(),
         Err(e) => {
             error!(error = %e, "クエスト一覧の取得に失敗しました");
@@ -52,17 +53,17 @@ pub async fn list_quests_for_select(ctx: PoiseContext<'_>) -> Vec<(String, i32)>
 /// クエストIDから名称を取得
 pub async fn get_quest_name_by_id(ctx: PoiseContext<'_>, quest_id: i32) -> Option<String> {
     let db_conn = ctx.data().app_state.guild_db();
-    let quest_repository = SeaOrmQuestRepository::new();
-    match quest_repository.get_by_target_id(db_conn, quest_id).await {
-        Ok(Some(model)) => Some(model.name),
+    let service = QuestQueryService::new();
+    match service.get_quest_by_id(db_conn, quest_id).await {
+        Ok(quest) => Some(quest.name),
         _ => None,
     }
 }
 
 /// セレクトメニュー用にクエスト一覧（最大25件）を返す（DB直渡し版）
 pub async fn list_quests_for_select_with_db(db: &DatabaseConnection) -> Vec<(String, i32)> {
-    let quest_repository = SeaOrmQuestRepository::new();
-    match quest_repository.get_all(db).await {
+    let service = QuestQueryService::new();
+    match service.get_all_quests(db).await {
         Ok(list) => list.into_iter().take(25).map(|q| (q.name, q.id)).collect(),
         Err(e) => {
             error!(error = %e, "クエスト一覧の取得に失敗しました");
@@ -76,9 +77,9 @@ pub async fn get_quest_name_by_id_with_db(
     db: &DatabaseConnection,
     quest_id: i32,
 ) -> Option<String> {
-    let quest_repository = SeaOrmQuestRepository::new();
-    match quest_repository.get_by_target_id(db, quest_id).await {
-        Ok(Some(model)) => Some(model.name),
+    let service = QuestQueryService::new();
+    match service.get_quest_by_id(db, quest_id).await {
+        Ok(quest) => Some(quest.name),
         _ => None,
     }
 }

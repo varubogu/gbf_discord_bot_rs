@@ -70,4 +70,15 @@ impl QuestQueryService {
 
         Ok(quest)
     }
+
+    /// すべてのクエストを取得
+    pub async fn get_all_quests(&self, db: &DatabaseConnection) -> Result<Vec<Quest>> {
+        let quest_repository = SeaOrmQuestRepository::new();
+
+        let quests = quest_repository.get_all(db).await?;
+
+        debug!(count = quests.len(), "クエスト一覧を取得しました");
+
+        Ok(quests)
+    }
 }

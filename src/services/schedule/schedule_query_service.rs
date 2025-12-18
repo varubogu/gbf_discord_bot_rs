@@ -43,6 +43,26 @@ impl ScheduleQueryService {
         Self
     }
 
+    /// ユーザーが作成したスケジュールを取得（オートコンプリート用）
+    ///
+    /// # 引数
+    /// - `txn`: データベーストランザクション
+    /// - `user_id`: ユーザーID
+    ///
+    /// # 戻り値
+    /// スケジュールと曜日のタプルのベクタ
+    pub async fn get_schedules_by_user(
+        &self,
+        txn: &DatabaseTransaction,
+        user_id: i64,
+    ) -> Result<Vec<(
+        crate::models::entities::battle_recruitment_schedules::Model,
+        Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
+    )>> {
+        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        schedule_repo.find_by_created_by(txn, user_id).await
+    }
+
     /// スケジュール一覧を取得
     ///
     /// # 引数
