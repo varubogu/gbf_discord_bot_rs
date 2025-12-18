@@ -31,11 +31,19 @@ pub struct ScheduleCreationResult {
 /// スケジュール作成サービス
 ///
 /// 定期募集スケジュールの作成ビジネスロジックを担当するサービス。
-pub struct ScheduleCreateService;
+pub struct ScheduleCreateService {
+    time_parser: TimeParserService,
+    days_parser: DaysParserService,
+    schedule_service: RecruitmentScheduleService,
+}
 
 impl ScheduleCreateService {
     pub fn new() -> Self {
-        Self
+        Self {
+            time_parser: TimeParserService::new(),
+            days_parser: DaysParserService::new(),
+            schedule_service: RecruitmentScheduleService::new(),
+        }
     }
 
     /// 定期募集スケジュールを作成
@@ -80,18 +88,13 @@ impl ScheduleCreateService {
         let final_battle_style_id = battle_style_id.unwrap_or(default_battle_style_id);
         let battle_style_name = self.get_battle_style_name(txn, final_battle_style_id).await?;
 
-        // 3. パーサーサービスを初期化
-        let time_parser = TimeParserService::new();
-        let days_parser = DaysParserService::new();
+        // 3. 時刻・曜日パース
+        let quest_start_time_local = self.time_parser.parse_time_string(quest_start_time)?;
+        let recruit_start_time_local = self.time_parser.parse_time_string(recruit_start_time)?;
+        let local_day_of_weeks = self.days_parser.parse_days_input(days)?;
 
-        // 4. 時刻・曜日パース
-        let quest_start_time_local = time_parser.parse_time_string(quest_start_time)?;
-        let recruit_start_time_local = time_parser.parse_time_string(recruit_start_time)?;
-        let local_day_of_weeks = days_parser.parse_days_input(days)?;
-
-        // 5. バリデーション
-        let schedule_service = RecruitmentScheduleService::new();
-        schedule_service.validate_schedule_input(
+        // 4. バリデーション
+        self.schedule_service.validate_schedule_input(
             &local_day_of_weeks,
             quest_start_time_local,
             recruit_day_offset,
@@ -147,7 +150,7 @@ impl ScheduleCreateService {
             quest_id,
             battle_style_name,
             battle_style_id: final_battle_style_id,
-            days_display: days_parser.format_days(&local_day_of_weeks),
+            days_display: self.days_parser.format_days(&local_day_of_weeks),
             quest_start_time: quest_start_time_local.format("%H:%M").to_string(),
             recruit_start_day_offset: recruit_day_offset,
             recruit_start_time: recruit_start_time_local.format("%H:%M").to_string(),

@@ -109,13 +109,29 @@ pub struct ConvertedGlobalData {
 pub struct GlobalLoaderServiceImpl {
     spreadsheet_id: String,
     google_auth_service: GoogleAuthService,
+    table_definition_service: TableDefinitionService,
+    data_converter_service: DataConverterService,
+    reader_service: SpreadsheetReaderService<TableDefinitionService, DataConverterService>,
+    schema_extractor: SchemaExtractorService,
 }
 
 impl GlobalLoaderServiceImpl {
     pub fn new(spreadsheet_id: String, service_account_key_file: String) -> Self {
+        let table_definition_service = TableDefinitionService::new();
+        let data_converter_service = DataConverterService::new();
+        let reader_service = SpreadsheetReaderService::new(
+            table_definition_service.clone(),
+            data_converter_service.clone(),
+        );
+        let schema_extractor = SchemaExtractorService::new();
+
         Self {
             spreadsheet_id,
             google_auth_service: GoogleAuthService::new(service_account_key_file),
+            table_definition_service,
+            data_converter_service,
+            reader_service,
+            schema_extractor,
         }
     }
 }
@@ -141,18 +157,12 @@ impl GlobalLoaderService for GlobalLoaderServiceImpl {
             .await
             .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;
 
-        let table_definition_service = TableDefinitionService::new();
-        let data_converter_service = DataConverterService::new();
-        let reader_service =
-            SpreadsheetReaderService::new(table_definition_service, data_converter_service);
-
-        let table_definitions = reader_service
+        let table_definitions = self.reader_service
             .read_table_definitions(&sheets_client, &self.spreadsheet_id)
             .await
             .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;
 
-        let schema_extractor = SchemaExtractorService::new();
-        let registered_tables = schema_extractor.extract_registered_tables();
+        let registered_tables = self.schema_extractor.extract_registered_tables();
 
         let mut schema_map: HashMap<String, Vec<ColumnSchema>> = HashMap::new();
         for registered in registered_tables {
@@ -176,7 +186,7 @@ impl GlobalLoaderService for GlobalLoaderServiceImpl {
                 continue;
             };
 
-            let read_result = reader_service
+            let read_result = self.reader_service
                 .read_table_data(&sheets_client, &self.spreadsheet_id, &table_def, schema)
                 .await
                 .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;
