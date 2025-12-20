@@ -30,11 +30,16 @@ pub async fn handle_recruit_change_date_modal(
     // モーダルから日時を取得
     let event_date_str = interaction
         .data
-        .components.first()
+        .components
+        .first()
         .and_then(|row| row.components.first())
         .and_then(|component| {
             if let ActionRowComponent::InputText(input) = component {
-                input.value.as_ref().filter(|s| !s.trim().is_empty()).cloned()
+                input
+                    .value
+                    .as_ref()
+                    .filter(|s| !s.trim().is_empty())
+                    .cloned()
             } else {
                 None
             }
@@ -89,11 +94,7 @@ pub async fn handle_recruit_change_date_modal(
 
     // 募集情報を更新
     let result = recruit_change_handler::update_recruitment_date(
-        ctx,
-        data,
-        guild_id,
-        message_id,
-        event_date,
+        ctx, data, guild_id, message_id, event_date,
     )
     .await;
 

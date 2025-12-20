@@ -1,10 +1,12 @@
-use crate::repository::database::battle_style_repository::{BattleStyleRepository, SeaOrmBattleStyleRepository};
+use crate::repository::database::battle_style_repository::{
+    BattleStyleRepository, SeaOrmBattleStyleRepository,
+};
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::recruitment::schedule::{DaysParserService, TimeParserService};
-use crate::services::schedule::{convert_local_days_and_time_to_utc, RecruitmentScheduleService};
+use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::types::{AppError, Result};
 use chrono_tz::Tz;
 use sea_orm::DatabaseTransaction;
@@ -85,7 +87,9 @@ impl ScheduleCreateService {
 
         // 2. バトルスタイル決定・取得
         let final_battle_style_id = battle_style_id.unwrap_or(default_battle_style_id);
-        let battle_style_name = self.get_battle_style_name(txn, final_battle_style_id).await?;
+        let battle_style_name = self
+            .get_battle_style_name(txn, final_battle_style_id)
+            .await?;
 
         // 3. 時刻・曜日パース
         let quest_start_time_local = self.time_parser.parse_time_string(quest_start_time)?;
@@ -101,10 +105,16 @@ impl ScheduleCreateService {
         )?;
 
         // 6. UTC変換
-        let (utc_quest_days, quest_start_time_utc) =
-            convert_local_days_and_time_to_utc(&local_day_of_weeks, quest_start_time_local, timezone)?;
-        let (_, recruit_start_time_utc) =
-            convert_local_days_and_time_to_utc(&local_day_of_weeks, recruit_start_time_local, timezone)?;
+        let (utc_quest_days, quest_start_time_utc) = convert_local_days_and_time_to_utc(
+            &local_day_of_weeks,
+            quest_start_time_local,
+            timezone,
+        )?;
+        let (_, recruit_start_time_utc) = convert_local_days_and_time_to_utc(
+            &local_day_of_weeks,
+            recruit_start_time_local,
+            timezone,
+        )?;
 
         info!(
             quest_local_time = %quest_start_time,
@@ -119,21 +129,23 @@ impl ScheduleCreateService {
 
         // 8. スケジュール保存
         let schedule_repo = BattleRecruitmentScheduleRepository::new();
-        let (schedule, _) = schedule_repo.create_with_txn(
-            txn,
-            name.clone(),
-            guild_id,
-            channel_id,
-            quest_id,
-            final_battle_style_id,
-            quest_start_time_utc,
-            recruit_day_offset,
-            Some(recruit_start_time_utc),
-            None, // max_participants はクエストごとの設定を使用
-            note.clone(),
-            user_id,
-            utc_quest_days.clone(),
-        ).await?;
+        let (schedule, _) = schedule_repo
+            .create_with_txn(
+                txn,
+                name.clone(),
+                guild_id,
+                channel_id,
+                quest_id,
+                final_battle_style_id,
+                quest_start_time_utc,
+                recruit_day_offset,
+                Some(recruit_start_time_utc),
+                None, // max_participants はクエストごとの設定を使用
+                note.clone(),
+                user_id,
+                utc_quest_days.clone(),
+            )
+            .await?;
 
         info!(
             schedule_id = schedule.id,
@@ -167,15 +179,11 @@ impl ScheduleCreateService {
         let quest_repo = SeaOrmQuestRepository::new();
 
         // クエスト検索
-        let search_results = quest_repo
-            .search_by_name_or_alias(txn, quest_alias)
-            .await?;
+        let search_results = quest_repo.search_by_name_or_alias(txn, quest_alias).await?;
 
-        let quest_search_result = search_results
-            .first()
-            .ok_or_else(|| AppError::NotFound(format!(
-                "クエスト '{quest_alias}' が見つかりませんでした"
-            )))?;
+        let quest_search_result = search_results.first().ok_or_else(|| {
+            AppError::NotFound(format!("クエスト '{quest_alias}' が見つかりませんでした"))
+        })?;
 
         let quest_id = quest_search_result.quest_id;
 
@@ -183,9 +191,11 @@ impl ScheduleCreateService {
         let quest_detail = quest_repo
             .get_by_target_id(txn, quest_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!(
-                "クエストID {quest_id} の詳細情報が見つかりませんでした"
-            )))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "クエストID {quest_id} の詳細情報が見つかりませんでした"
+                ))
+            })?;
 
         Ok((
             quest_id,
@@ -204,9 +214,11 @@ impl ScheduleCreateService {
         let battle_style = battle_style_repo
             .get_by_id(txn, battle_style_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!(
-                "バトルスタイルID {battle_style_id} が見つかりませんでした"
-            )))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "バトルスタイルID {battle_style_id} が見つかりませんでした"
+                ))
+            })?;
 
         Ok(battle_style.display_name.clone())
     }
@@ -224,7 +236,8 @@ impl ScheduleCreateService {
             .ok_or_else(|| AppError::Business {
                 message: "マルチ募集チャンネルが登録されていません。\n\n\
                     定期募集を作成するには、先に管理者に `/チャンネル登録` コマンドで\
-                    マルチ募集チャンネルを登録してもらってください。".to_string(),
+                    マルチ募集チャンネルを登録してもらってください。"
+                    .to_string(),
             })?;
 
         Ok(guild_channel.channel_id)

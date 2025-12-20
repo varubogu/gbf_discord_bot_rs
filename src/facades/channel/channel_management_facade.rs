@@ -1,8 +1,8 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::services::channel::ChannelManagementService;
 use crate::services::channel::channel_display_service::{
     ChannelDisplayService, ChannelSettingsDisplay,
 };
-use crate::services::channel::ChannelManagementService;
 use crate::services::channel::channel_type_query_service::ChannelTypeQueryService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};

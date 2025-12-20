@@ -14,7 +14,10 @@ use tracing::{error, info};
     check = "check_bot_admin_server",
     ephemeral = true,
     name_localized("ja", "グローバルスプレッドシート書き込み"),
-    description_localized("ja", "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）"),
+    description_localized(
+        "ja",
+        "グローバルデータをスプレッドシートに書き込み（管理者専用サーバー）"
+    )
 )]
 pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保
@@ -34,7 +37,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
                     .content("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
                     .ephemeral(true),
             )
-                .await?;
+            .await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
@@ -45,7 +48,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             .content("🔄 グローバルデータをスプレッドシートに書き込んでいます...")
             .ephemeral(true),
     )
-        .await?;
+    .await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
@@ -115,7 +118,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
                     .content(format!("❌ グローバルデータ書き込み失敗\n\n{error_msg}"))
                     .ephemeral(true),
             )
-                .await?;
+            .await?;
 
             error!("グローバルデータ書き込み失敗");
 

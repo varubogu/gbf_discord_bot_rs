@@ -21,7 +21,9 @@ impl NotificationRelBattleRecruitmentRepository {
         C: sea_orm::ConnectionTrait,
     {
         let result = notification_rel_battle_recruitments::Entity::find()
-            .filter(notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id))
+            .filter(
+                notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id),
+            )
             .one(db)
             .await?;
 
@@ -79,7 +81,9 @@ impl NotificationRelBattleRecruitmentRepository {
         notification_id: i32,
     ) -> Result<u64> {
         let result = notification_rel_battle_recruitments::Entity::delete_many()
-            .filter(notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id))
+            .filter(
+                notification_rel_battle_recruitments::Column::NotificationId.eq(notification_id),
+            )
             .exec(txn)
             .await?;
 

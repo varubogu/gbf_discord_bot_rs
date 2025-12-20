@@ -1,5 +1,7 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{BattleRecruitmentScheduleRepository, NotificationRepository};
+use crate::repository::database::schedule::{
+    BattleRecruitmentScheduleRepository, NotificationRepository,
+};
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::schedule::convert_utc_days_and_time_to_local;
 use crate::types::Result;
@@ -55,10 +57,12 @@ impl ScheduleQueryService {
         &self,
         txn: &DatabaseTransaction,
         user_id: i64,
-    ) -> Result<Vec<(
-        crate::models::entities::battle_recruitment_schedules::Model,
-        Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
-    )>> {
+    ) -> Result<
+        Vec<(
+            crate::models::entities::battle_recruitment_schedules::Model,
+            Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
+        )>,
+    > {
         let schedule_repo = BattleRecruitmentScheduleRepository::new();
         schedule_repo.find_by_created_by(txn, user_id).await
     }

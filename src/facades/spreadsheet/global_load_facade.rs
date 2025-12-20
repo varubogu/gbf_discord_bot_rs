@@ -93,8 +93,7 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
 
             match scheduler_facade.generate_schedules().await {
                 Ok(_) => {
-                    ctx.say("✅ 通知スケジュールの生成が完了しました")
-                        .await?;
+                    ctx.say("✅ 通知スケジュールの生成が完了しました").await?;
                     info!("通知スケジュール生成完了");
                 }
                 Err(e) => {

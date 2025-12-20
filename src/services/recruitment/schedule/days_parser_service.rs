@@ -44,7 +44,8 @@ impl DaysParserService {
         }
 
         // 区切り文字があるかチェック
-        let has_delimiter = days_str.contains(',') || days_str.contains(' ') || days_str.contains('　');
+        let has_delimiter =
+            days_str.contains(',') || days_str.contains(' ') || days_str.contains('　');
 
         let result = if has_delimiter {
             // 区切り文字で分割して解析
@@ -87,18 +88,34 @@ impl DaysParserService {
 
         for ch in days_str.chars() {
             match ch {
-                '月' => { result_set.insert(1); },
-                '火' => { result_set.insert(2); },
-                '水' => { result_set.insert(3); },
-                '木' => { result_set.insert(4); },
-                '金' => { result_set.insert(5); },
-                '土' => { result_set.insert(6); },
-                '日' => { result_set.insert(7); },
+                '月' => {
+                    result_set.insert(1);
+                }
+                '火' => {
+                    result_set.insert(2);
+                }
+                '水' => {
+                    result_set.insert(3);
+                }
+                '木' => {
+                    result_set.insert(4);
+                }
+                '金' => {
+                    result_set.insert(5);
+                }
+                '土' => {
+                    result_set.insert(6);
+                }
+                '日' => {
+                    result_set.insert(7);
+                }
                 '曜' => continue, // 「曜」はスキップ（"月曜火曜" のような入力に対応）
                 _ => {
                     return Err(AppError::Business {
-                        message: format!("無効な文字が含まれています: '{ch}'（使用可能: 月火水木金土日）"),
-                    })
+                        message: format!(
+                            "無効な文字が含まれています: '{ch}'（使用可能: 月火水木金土日）"
+                        ),
+                    });
                 }
             };
         }

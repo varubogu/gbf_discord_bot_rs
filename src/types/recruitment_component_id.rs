@@ -45,9 +45,9 @@ impl RecruitmentComponentId {
             "recruit_join" => Ok(Self::Join),
             "recruit_leave_all" => Ok(Self::LeaveAll),
             s if s.starts_with("recruit_join_") => {
-                let element_id_str = s.strip_prefix("recruit_join_").ok_or_else(|| {
-                    AppError::Generic(format!("無効なCustom ID形式: {s}"))
-                })?;
+                let element_id_str = s
+                    .strip_prefix("recruit_join_")
+                    .ok_or_else(|| AppError::Generic(format!("無効なCustom ID形式: {s}")))?;
 
                 let element_id: i32 = element_id_str.parse().map_err(|_| {
                     AppError::Generic(format!("属性IDが数値ではありません: {element_id_str}"))
@@ -173,10 +173,7 @@ mod tests {
 
     #[test]
     fn test_to_custom_id() {
-        assert_eq!(
-            RecruitmentComponentId::Join.to_custom_id(),
-            "recruit_join"
-        );
+        assert_eq!(RecruitmentComponentId::Join.to_custom_id(), "recruit_join");
         assert_eq!(
             RecruitmentComponentId::JoinElement(1).to_custom_id(),
             "recruit_join_1"

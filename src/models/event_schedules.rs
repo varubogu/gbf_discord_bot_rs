@@ -11,8 +11,8 @@ pub struct EventSchedule {
     pub event_count: i64,
     pub profile: String,
     pub weak_attribute: i32,
-    pub start_at: chrono::NaiveDateTime,  // JST（timestamp型、タイムゾーンなし）
-    pub end_at: chrono::NaiveDateTime,    // JST（timestamp型、タイムゾーンなし）
+    pub start_at: chrono::NaiveDateTime, // JST（timestamp型、タイムゾーンなし）
+    pub end_at: chrono::NaiveDateTime,   // JST（timestamp型、タイムゾーンなし）
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -25,8 +25,8 @@ impl From<event_schedules::Model> for EventSchedule {
             event_count: model.event_count,
             profile: model.profile,
             weak_attribute: model.weak_attribute,
-            start_at: model.start_at,  // NaiveDateTime → NaiveDateTime（そのまま）
-            end_at: model.end_at,      // NaiveDateTime → NaiveDateTime（そのまま）
+            start_at: model.start_at, // NaiveDateTime → NaiveDateTime（そのまま）
+            end_at: model.end_at,     // NaiveDateTime → NaiveDateTime（そのまま）
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

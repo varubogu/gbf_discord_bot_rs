@@ -31,8 +31,10 @@ impl SpreadsheetUrlService {
             // - HTTPSのみ許可
             // - docs.google.com ドメインのみ（サブドメイン不可）
             // - /spreadsheets/d/{id} のパス構造を強制
-            url_pattern: Regex::new(r"^https://docs\.google\.com/spreadsheets/d/([A-Za-z0-9-_]+)(?:/|$)")
-                .expect("正規表現パターンが不正です"),
+            url_pattern: Regex::new(
+                r"^https://docs\.google\.com/spreadsheets/d/([A-Za-z0-9-_]+)(?:/|$)",
+            )
+            .expect("正規表現パターンが不正です"),
             // スプレッドシートIDは20〜80文字の英数字とハイフン、アンダースコア
             id_pattern: Regex::new(r"^[A-Za-z0-9-_]{20,80}$").expect("正規表現パターンが不正です"),
         }
@@ -63,7 +65,8 @@ impl SpreadsheetUrlServiceTrait for SpreadsheetUrlService {
             if trimmed.starts_with("http://") {
                 return Err(ValidationError::InvalidFormat {
                     field: "spreadsheet_url".to_string(),
-                    reason: "セキュリティ上の理由により、HTTPSのURLのみ許可されています".to_string(),
+                    reason: "セキュリティ上の理由により、HTTPSのURLのみ許可されています"
+                        .to_string(),
                 });
             }
 
@@ -220,7 +223,8 @@ mod tests {
     #[test]
     fn test_reject_wrong_domain() {
         let service = SpreadsheetUrlService::new();
-        let url = "https://evil.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit";
+        let url =
+            "https://evil.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit";
         let result = service.extract_spreadsheet_id(url);
         assert!(result.is_err());
     }

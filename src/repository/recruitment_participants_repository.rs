@@ -46,11 +46,7 @@ pub trait RecruitmentParticipantsRepository: Send + Sync + std::fmt::Debug {
         C: sea_orm::ConnectionTrait;
 
     /// 募集に参加しているユニークユーザー数を取得（トランザクション対応）
-    async fn count_unique_users<'c, C>(
-        &self,
-        db: &'c C,
-        recruitment_id: i32,
-    ) -> Result<i64>
+    async fn count_unique_users<'c, C>(&self, db: &'c C, recruitment_id: i32) -> Result<i64>
     where
         C: sea_orm::ConnectionTrait;
 

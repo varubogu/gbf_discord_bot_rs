@@ -15,7 +15,10 @@ use tracing::{error, info};
     check = "check_bot_control_role",
     ephemeral = true,
     name_localized("ja", "スケジュール生成"),
-    description_localized("ja", "イベントスケジュールと詳細から通知スケジュールを再計算してDBに保存します。（管理者専用サーバーのみ実施可能）"),
+    description_localized(
+        "ja",
+        "イベントスケジュールと詳細から通知スケジュールを再計算してDBに保存します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
     info!(
@@ -51,11 +54,7 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
                 )
                 .footer(CreateEmbedFooter::new("10秒間隔で自動的に通知が送信されます"));
 
-            ctx.send(
-                poise::CreateReply::default()
-                    .embed(embed)
-                    .ephemeral(true),
-            )
+            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
                 .await?;
         }
         Err(e) => {
@@ -63,15 +62,13 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
 
             let embed = CreateEmbed::default()
                 .title("❌ スケジュール生成エラー")
-                .description(format!("スケジュールの生成中にエラーが発生しました。\n```\n{e}\n```"))
+                .description(format!(
+                    "スケジュールの生成中にエラーが発生しました。\n```\n{e}\n```"
+                ))
                 .color(0xff0000)
                 .footer(CreateEmbedFooter::new("詳細はログを確認してください"));
 
-            ctx.send(
-                poise::CreateReply::default()
-                    .embed(embed)
-                    .ephemeral(true),
-            )
+            ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
                 .await?;
         }
     }

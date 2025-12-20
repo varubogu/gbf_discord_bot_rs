@@ -8,7 +8,11 @@ use crate::types;
 #[async_trait]
 pub trait BattleStyleRepository: Send + Sync {
     /// IDからBattleStyleを取得
-    async fn get_by_id<'c, C>(&self, db: &'c C, id: i32) -> types::Result<Option<battle_styles::Model>>
+    async fn get_by_id<'c, C>(
+        &self,
+        db: &'c C,
+        id: i32,
+    ) -> types::Result<Option<battle_styles::Model>>
     where
         C: sea_orm::ConnectionTrait;
 
@@ -29,7 +33,11 @@ impl SeaOrmBattleStyleRepository {
 
 #[async_trait]
 impl BattleStyleRepository for SeaOrmBattleStyleRepository {
-    async fn get_by_id<'c, C>(&self, db: &'c C, id: i32) -> types::Result<Option<battle_styles::Model>>
+    async fn get_by_id<'c, C>(
+        &self,
+        db: &'c C,
+        id: i32,
+    ) -> types::Result<Option<battle_styles::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {

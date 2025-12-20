@@ -1,3 +1,4 @@
+use crate::types::Result;
 /// 日時パースサービス
 /// 様々な形式の日時文字列をDateTime<Utc>に変換する
 /// ユーザー入力はサーバー設定のタイムゾーンとして解釈し、UTCに変換する
@@ -5,7 +6,6 @@ use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, 
 use chrono_tz::Tz;
 use lazy_static::lazy_static;
 use regex::Regex;
-use crate::types::Result;
 
 const DEFAULT_HOUR: u32 = 21; // デフォルト時刻（21時）
 
@@ -206,16 +206,24 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
 
     // "1月2日3時4分" 形式
     if let Some(caps) = RE_JAPANESE_FULL.captures(s) {
-        let month: u32 = caps[1].parse().map_err(|_| "月のパースエラー".to_string())?;
-        let day: u32 = caps[2].parse().map_err(|_| "日のパースエラー".to_string())?;
-        let hour: u32 = caps[3].parse().map_err(|_| "時のパースエラー".to_string())?;
-        let minute: u32 = caps[4].parse().map_err(|_| "分のパースエラー".to_string())?;
+        let month: u32 = caps[1]
+            .parse()
+            .map_err(|_| "月のパースエラー".to_string())?;
+        let day: u32 = caps[2]
+            .parse()
+            .map_err(|_| "日のパースエラー".to_string())?;
+        let hour: u32 = caps[3]
+            .parse()
+            .map_err(|_| "時のパースエラー".to_string())?;
+        let minute: u32 = caps[4]
+            .parse()
+            .map_err(|_| "分のパースエラー".to_string())?;
 
         let year = now_tz.year();
-        let naive_date = NaiveDate::from_ymd_opt(year, month, day)
-            .ok_or_else(|| "無効な日付".to_string())?;
-        let naive_time = NaiveTime::from_hms_opt(hour, minute, 0)
-            .ok_or_else(|| "無効な時刻".to_string())?;
+        let naive_date =
+            NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| "無効な日付".to_string())?;
+        let naive_time =
+            NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
         let naive_dt = NaiveDateTime::new(naive_date, naive_time);
 
         let tz_dt = timezone
@@ -228,7 +236,9 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     // "午後9時半" 形式
     if let Some(caps) = RE_JAPANESE_TIME.captures(s) {
         let is_pm = caps.get(1).is_some_and(|m| m.as_str() == "午後");
-        let mut hour: u32 = caps[2].parse().map_err(|_| "時のパースエラー".to_string())?;
+        let mut hour: u32 = caps[2]
+            .parse()
+            .map_err(|_| "時のパースエラー".to_string())?;
 
         if is_pm && hour != 12 {
             hour += 12;
@@ -239,27 +249,33 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
         let minute: u32 = if caps.get(3).is_some_and(|m| m.as_str() == "半") {
             30
         } else if let Some(m) = caps.get(4) {
-            m.as_str().parse().map_err(|_| "分のパースエラー".to_string())?
+            m.as_str()
+                .parse()
+                .map_err(|_| "分のパースエラー".to_string())?
         } else {
             0
         };
 
-        let naive_time = NaiveTime::from_hms_opt(hour, minute, 0)
-            .ok_or_else(|| "無効な時刻".to_string())?;
+        let naive_time =
+            NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
 
         return create_datetime_from_time(now_tz, naive_time, timezone);
     }
 
     // "1月2日" 形式（時刻は21時固定）
     if let Some(caps) = RE_JAPANESE_DATE.captures(s) {
-        let month: u32 = caps[1].parse().map_err(|_| "月のパースエラー".to_string())?;
-        let day: u32 = caps[2].parse().map_err(|_| "日のパースエラー".to_string())?;
+        let month: u32 = caps[1]
+            .parse()
+            .map_err(|_| "月のパースエラー".to_string())?;
+        let day: u32 = caps[2]
+            .parse()
+            .map_err(|_| "日のパースエラー".to_string())?;
 
         let year = now_tz.year();
-        let naive_date = NaiveDate::from_ymd_opt(year, month, day)
-            .ok_or_else(|| "無効な日付".to_string())?;
-        let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0)
-            .expect("DEFAULT_HOURは常に有効な時刻です");
+        let naive_date =
+            NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| "無効な日付".to_string())?;
+        let naive_time =
+            NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0).expect("DEFAULT_HOURは常に有効な時刻です");
         let naive_dt = NaiveDateTime::new(naive_date, naive_time);
 
         let tz_dt = timezone

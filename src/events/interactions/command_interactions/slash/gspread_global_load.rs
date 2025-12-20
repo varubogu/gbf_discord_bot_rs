@@ -15,7 +15,10 @@ use tracing::{error, info};
     check = "check_bot_admin_server",
     ephemeral = true,
     name_localized("ja", "グローバルスプレッドシート読み込み"),
-    description_localized("ja", "グローバルスプレッドシートからデータ読み込み（管理者専用サーバー）"),
+    description_localized(
+        "ja",
+        "グローバルスプレッドシートからデータ読み込み（管理者専用サーバー）"
+    )
 )]
 pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保
@@ -35,7 +38,7 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
                     .content("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
                     .ephemeral(true),
             )
-                .await?;
+            .await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
@@ -46,23 +49,24 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             .content("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
             .ephemeral(true),
     )
-        .await?;
+    .await?;
 
     // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
     let app_state = Arc::new(ctx.data().app_state.clone());
-    let facade = match SpreadsheetImportFacade::new(app_state.global_db().clone(), app_state.clone()) {
-        Ok(f) => f,
-        Err(e) => {
-            let error_msg = PresentationError::from(e).to_string();
-            ctx.send(
-                poise::CreateReply::default()
-                    .content(format!("❌ {error_msg}"))
-                    .ephemeral(true),
-            )
-            .await?;
-            return Ok(());
-        }
-    };
+    let facade =
+        match SpreadsheetImportFacade::new(app_state.global_db().clone(), app_state.clone()) {
+            Ok(f) => f,
+            Err(e) => {
+                let error_msg = PresentationError::from(e).to_string();
+                ctx.send(
+                    poise::CreateReply::default()
+                        .content(format!("❌ {error_msg}"))
+                        .ephemeral(true),
+                )
+                .await?;
+                return Ok(());
+            }
+        };
 
     // インポート実行
     match facade.import_global_spreadsheet(&spreadsheet_id).await {
@@ -118,10 +122,12 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             );
 
             let error_msg = PresentationError::from(e).to_string();
-            ctx.send(poise::CreateReply::default().content(format!(
-                    "❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"
-                ))
-                .ephemeral(true),
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!(
+                        "❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"
+                    ))
+                    .ephemeral(true),
             )
             .await?;
 

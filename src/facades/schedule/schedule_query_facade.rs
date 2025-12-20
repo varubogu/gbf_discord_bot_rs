@@ -105,11 +105,7 @@ impl ScheduleQueryFacade {
     /// # トランザクション管理
     /// このメソッドはトランザクションを開始・コミット・ロールバックを管理します。
     pub async fn get_stats(&self, guild_id: i64, days: i64) -> Result<ScheduleStats> {
-        info!(
-            guild_id = guild_id,
-            days = days,
-            "通知統計取得を開始します"
-        );
+        info!(guild_id = guild_id, days = days, "通知統計取得を開始します");
 
         // トランザクション開始（Facade層の責務）
         let conn = self.app_state.guild_db();

@@ -19,7 +19,12 @@ impl BattleRecruitmentScheduleRepository {
     pub async fn find_all_enabled_schedules_with_days(
         &self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)>> {
+    ) -> Result<
+        Vec<(
+            battle_recruitment_schedules::Model,
+            Vec<battle_recruitment_schedule_days::Model>,
+        )>,
+    > {
         debug!("有効な全スケジュールと曜日情報を取得します");
 
         // 有効なスケジュールを取得
@@ -49,7 +54,10 @@ impl BattleRecruitmentScheduleRepository {
             result.push((schedule, days));
         }
 
-        debug!(total_schedules = result.len(), "スケジュールと曜日情報の取得が完了しました");
+        debug!(
+            total_schedules = result.len(),
+            "スケジュールと曜日情報の取得が完了しました"
+        );
         Ok(result)
     }
 
@@ -58,7 +66,12 @@ impl BattleRecruitmentScheduleRepository {
         &self,
         db: &'c C,
         guild_id: i64,
-    ) -> Result<Vec<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)>>
+    ) -> Result<
+        Vec<(
+            battle_recruitment_schedules::Model,
+            Vec<battle_recruitment_schedule_days::Model>,
+        )>,
+    >
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -97,7 +110,12 @@ impl BattleRecruitmentScheduleRepository {
         &self,
         db: &'c C,
         created_by: i64,
-    ) -> Result<Vec<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)>>
+    ) -> Result<
+        Vec<(
+            battle_recruitment_schedules::Model,
+            Vec<battle_recruitment_schedule_days::Model>,
+        )>,
+    >
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -136,7 +154,12 @@ impl BattleRecruitmentScheduleRepository {
         &self,
         db: &'c C,
         id: i32,
-    ) -> Result<Option<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)>>
+    ) -> Result<
+        Option<(
+            battle_recruitment_schedules::Model,
+            Vec<battle_recruitment_schedule_days::Model>,
+        )>,
+    >
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -184,7 +207,10 @@ impl BattleRecruitmentScheduleRepository {
         note: Option<String>,
         created_by: i64,
         day_of_weeks: Vec<i32>,
-    ) -> Result<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)> {
+    ) -> Result<(
+        battle_recruitment_schedules::Model,
+        Vec<battle_recruitment_schedule_days::Model>,
+    )> {
         debug!(
             name = %name,
             guild_id = %guild_id,
@@ -258,7 +284,10 @@ impl BattleRecruitmentScheduleRepository {
         max_participants: Option<Option<i32>>,
         note: Option<Option<String>>,
         day_of_weeks: Option<Vec<i32>>,
-    ) -> Result<(battle_recruitment_schedules::Model, Vec<battle_recruitment_schedule_days::Model>)> {
+    ) -> Result<(
+        battle_recruitment_schedules::Model,
+        Vec<battle_recruitment_schedule_days::Model>,
+    )> {
         debug!(id = %id, "スケジュールを更新します");
 
         // 既存のスケジュールを取得

@@ -56,15 +56,12 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
         active_model.user_id = Set(user_id as i64);
         active_model.element_id = Set(element_id);
 
-        active_model
-            .insert(txn)
-            .await
-            .map_err(|e| match e {
-                DbErr::RecordNotInserted => AppError::Business {
-                    message: "参加レコードの挿入に失敗しました".to_string(),
-                },
-                _ => AppError::Database(e),
-            })?;
+        active_model.insert(txn).await.map_err(|e| match e {
+            DbErr::RecordNotInserted => AppError::Business {
+                message: "参加レコードの挿入に失敗しました".to_string(),
+            },
+            _ => AppError::Database(e),
+        })?;
 
         Ok(true)
     }
@@ -130,11 +127,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
         Ok(result.is_some())
     }
 
-    async fn count_unique_users<'c, C>(
-        &self,
-        db: &'c C,
-        recruitment_id: i32,
-    ) -> Result<i64>
+    async fn count_unique_users<'c, C>(&self, db: &'c C, recruitment_id: i32) -> Result<i64>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -144,10 +137,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
         let count = RecruitmentParticipantEntity::find()
             .filter(Column::RecruitmentId.eq(recruitment_id))
             .select_only()
-            .column_as(
-                Expr::cust("COUNT(DISTINCT user_id)"),
-                "distinct_user_count",
-            )
+            .column_as(Expr::cust("COUNT(DISTINCT user_id)"), "distinct_user_count")
             .into_tuple::<i64>()
             .one(db)
             .await

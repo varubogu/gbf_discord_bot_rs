@@ -1,5 +1,5 @@
-use sea_orm::{ConnectionTrait, DbErr, Statement};
 use sea_orm::DatabaseBackend;
+use sea_orm::{ConnectionTrait, DbErr, Statement};
 
 /// 現在のギルドIDをセッション変数に設定
 ///
@@ -21,10 +21,7 @@ use sea_orm::DatabaseBackend;
 /// // ... トランザクション内での処理
 /// txn.commit().await?;
 /// ```
-pub async fn set_current_guild_id<C>(
-    conn: &C,
-    guild_id: i64,
-) -> Result<(), DbErr>
+pub async fn set_current_guild_id<C>(conn: &C, guild_id: i64) -> Result<(), DbErr>
 where
     C: ConnectionTrait,
 {
@@ -32,11 +29,8 @@ where
     // トランザクション終了後は自動的にリセットされる
     let sql = format!("SET LOCAL app.current_guild_id = '{guild_id}'");
 
-    conn.execute(Statement::from_string(
-        DatabaseBackend::Postgres,
-        sql,
-    ))
-    .await?;
+    conn.execute(Statement::from_string(DatabaseBackend::Postgres, sql))
+        .await?;
 
     Ok(())
 }

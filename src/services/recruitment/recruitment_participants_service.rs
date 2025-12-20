@@ -252,11 +252,7 @@ mod tests {
             Ok(self.is_participating)
         }
 
-        async fn count_unique_users<'c, C>(
-            &self,
-            _db: &'c C,
-            _recruitment_id: i32,
-        ) -> Result<i64>
+        async fn count_unique_users<'c, C>(&self, _db: &'c C, _recruitment_id: i32) -> Result<i64>
         where
             C: sea_orm::ConnectionTrait,
         {

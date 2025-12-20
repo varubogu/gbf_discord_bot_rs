@@ -221,15 +221,14 @@ async fn handle_cancel_check_result(
     can_cancel_result: CanCancelResult,
 ) -> types::Result<()> {
     let (should_exit, exit_message) = is_exit(ctx, can_cancel_result).await;
-    if should_exit
-        && !exit_message.is_empty() {
-            ctx.send(
-                poise::CreateReply::default()
-                    .content(exit_message)
-                    .ephemeral(true),
-            )
-            .await?;
-        }
+    if should_exit && !exit_message.is_empty() {
+        ctx.send(
+            poise::CreateReply::default()
+                .content(exit_message)
+                .ephemeral(true),
+        )
+        .await?;
+    }
     Ok(())
 }
 

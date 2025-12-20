@@ -128,7 +128,8 @@ fn test_create_message_content() {
     let expiry_date = Utc::now() + chrono::Duration::hours(3);
     let timezone = chrono_tz::Asia::Tokyo;
 
-    let message = new::create_message_content(quest_name, battle_style_name, &expiry_date, timezone);
+    let message =
+        new::create_message_content(quest_name, battle_style_name, &expiry_date, timezone);
 
     // クエスト名が含まれていることを確認
     assert!(message.contains(quest_name));
@@ -146,7 +147,8 @@ fn test_create_message_content_simple() {
     let expiry_date = Utc::now() + chrono::Duration::hours(3);
     let timezone = chrono_tz::Asia::Tokyo;
 
-    let message = new::create_message_content(quest_name, battle_style_name, &expiry_date, timezone);
+    let message =
+        new::create_message_content(quest_name, battle_style_name, &expiry_date, timezone);
 
     // クエスト名が含まれていることを確認
     assert!(message.contains(quest_name));

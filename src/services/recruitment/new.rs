@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
+use poise::serenity_prelude::ButtonStyle;
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed};
-use poise::serenity_prelude::ButtonStyle;
 use tracing::info;
 
 use crate::models::quests::Quest;
@@ -51,20 +51,22 @@ where
         .await?;
 
     // 最初にマッチしたクエストを使用
-    let quest_search_result = search_results
-        .first()
-        .ok_or_else(|| types::AppError::NotFound(format!(
+    let quest_search_result = search_results.first().ok_or_else(|| {
+        types::AppError::NotFound(format!(
             "クエスト '{quest_name_or_alias}' が見つかりませんでした"
-        )))?;
+        ))
+    })?;
 
     // クエストの詳細情報を取得
     let quest = quest_repository
         .get_by_target_id(db, quest_search_result.quest_id)
         .await?
-        .ok_or_else(|| types::AppError::NotFound(format!(
-            "クエストID {} の詳細情報が見つかりませんでした",
-            quest_search_result.quest_id
-        )))?;
+        .ok_or_else(|| {
+            types::AppError::NotFound(format!(
+                "クエストID {} の詳細情報が見つかりませんでした",
+                quest_search_result.quest_id
+            ))
+        })?;
 
     // イベント日時の決定（既にUTCで受け取っている）
     let expiry_date = event_date.unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::days(7));
@@ -76,9 +78,11 @@ where
     let battle_style = battle_style_repository
         .get_by_id(db, actual_battle_style_id)
         .await?
-        .ok_or_else(|| types::AppError::NotFound(format!(
-            "攻略方法ID {actual_battle_style_id} が見つかりませんでした"
-        )))?;
+        .ok_or_else(|| {
+            types::AppError::NotFound(format!(
+                "攻略方法ID {actual_battle_style_id} が見つかりませんでした"
+            ))
+        })?;
 
     // reactionsをパース
     // 6属性の場合はelement_emojisから取得、それ以外はbattle_styleのreactionsをパース
@@ -93,7 +97,12 @@ where
     };
 
     // メッセージ内容を作成
-    let message_content = create_message_content(&quest.name, &battle_style.display_name, &expiry_date, timezone);
+    let message_content = create_message_content(
+        &quest.name,
+        &battle_style.display_name,
+        &expiry_date,
+        timezone,
+    );
 
     // 初期参加者一覧を作成
     let initial_participants_text = create_initial_participants_text(&reactions);
@@ -186,7 +195,10 @@ pub fn create_message_content(
 
     // 表示用にサーバー設定のタイムゾーンに変換
     let local_date = expiry_date.with_timezone(&timezone);
-    message_text.push_str(&format!("\n開催日時：{}", local_date.format("%m/%d %H:%M %Z")));
+    message_text.push_str(&format!(
+        "\n開催日時：{}",
+        local_date.format("%m/%d %H:%M %Z")
+    ));
 
     message_text
 }
@@ -224,7 +236,10 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
 
 /// ボタン版用の初期参加者一覧テキストを作成
 /// 修正済みの絵文字を使用
-pub fn create_initial_participants_text_for_buttons(battle_style_name: &str, element_emojis: &ElementEmojis) -> String {
+pub fn create_initial_participants_text_for_buttons(
+    battle_style_name: &str,
+    element_emojis: &ElementEmojis,
+) -> String {
     use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
 
     if battle_style_name == "6属性" {
@@ -248,7 +263,10 @@ pub fn create_initial_participants_text_for_buttons(battle_style_name: &str, ele
 ///
 /// # 戻り値
 /// CreateActionRowのVec（Discord Message Componentsとして使用）
-pub fn create_recruitment_buttons(battle_style_name: &str, element_emojis: &ElementEmojis) -> Vec<CreateActionRow> {
+pub fn create_recruitment_buttons(
+    battle_style_name: &str,
+    element_emojis: &ElementEmojis,
+) -> Vec<CreateActionRow> {
     use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES};
 
     if battle_style_name == "6属性" {
@@ -306,16 +324,24 @@ pub async fn send_recruitment_message_with_buttons(
     use poise::serenity_prelude::CreateEmbed;
 
     // ボタンを生成
-    let buttons = create_recruitment_buttons(&recruitment_data.battle_style_name, &recruitment_data.element_emojis);
+    let buttons = create_recruitment_buttons(
+        &recruitment_data.battle_style_name,
+        &recruitment_data.element_emojis,
+    );
 
     // ボタン版用の初期参加者一覧を作成
-    let initial_text = create_initial_participants_text_for_buttons(&recruitment_data.battle_style_name, &recruitment_data.element_emojis);
+    let initial_text = create_initial_participants_text_for_buttons(
+        &recruitment_data.battle_style_name,
+        &recruitment_data.element_emojis,
+    );
 
     // ボタン版用のembedを作成（絵文字を修正済みのものを使用）
     let embed = CreateEmbed::new()
         .title("参加者一覧")
         .description(&initial_text)
-        .footer(poise::serenity_prelude::CreateEmbedFooter::new("参加者数: 0人"))
+        .footer(poise::serenity_prelude::CreateEmbedFooter::new(
+            "参加者数: 0人",
+        ))
         .color(0x0099ff);
 
     // deferした応答を完了させる形でボタン付きメッセージを送信

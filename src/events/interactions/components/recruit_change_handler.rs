@@ -327,9 +327,7 @@ async fn handle_battle_style_selection(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!(
-                            "攻略方法を「{battle_style_name}」に変更しました。"
-                        ))
+                        .content(format!("攻略方法を「{battle_style_name}」に変更しました。"))
                         .components(vec![]),
                 )
                 .await?;

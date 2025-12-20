@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(schema_name = "worker", table_name = "notification_rel_event_schedules")]
+#[sea_orm(
+    schema_name = "worker",
+    table_name = "notification_rel_event_schedules"
+)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub event_schedule_id: Uuid,

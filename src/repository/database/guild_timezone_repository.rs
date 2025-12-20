@@ -87,10 +87,7 @@ impl GuildTimezoneRepository {
         db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<guild_timezones::Model>> {
-        debug!(
-            guild_id = guild_id,
-            "ギルドタイムゾーンを取得します"
-        );
+        debug!(guild_id = guild_id, "ギルドタイムゾーンを取得します");
 
         let model = guild_timezones::Entity::find_by_id(guild_id)
             .one(db)

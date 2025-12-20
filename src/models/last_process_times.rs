@@ -3,7 +3,9 @@ use crate::models::entities::{
     last_process_times::LastProcessType,
 };
 use crate::repository::database::db_compat::Database;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

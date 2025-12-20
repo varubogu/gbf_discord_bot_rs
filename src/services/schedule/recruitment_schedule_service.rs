@@ -77,14 +77,17 @@ impl RecruitmentScheduleService {
             let weekday = current_date.weekday();
 
             // 対象曜日かチェック（0=毎日 or 対応する曜日）
-            if target_weekdays.contains(&0) || target_weekdays.contains(&Self::weekday_to_number(weekday)) {
+            if target_weekdays.contains(&0)
+                || target_weekdays.contains(&Self::weekday_to_number(weekday))
+            {
                 // クエスト開始日時を計算（UTC時刻として直接使用）
                 let quest_start_datetime = current_date
                     .and_time(Self::time_time_to_naive_time(quest_start_time))
                     .and_utc();
 
                 // 募集開始日時を計算（recruit_start_day_offsetを考慮、UTC時刻として直接使用）
-                let recruit_date = current_date - Duration::days(schedule.recruit_start_day_offset as i64);
+                let recruit_date =
+                    current_date - Duration::days(schedule.recruit_start_day_offset as i64);
                 let recruit_start_datetime = recruit_date
                     .and_time(Self::time_time_to_naive_time(recruit_start_time))
                     .and_utc();
@@ -139,9 +142,7 @@ impl RecruitmentScheduleService {
         for &day in day_of_weeks {
             if !(0..=7).contains(&day) {
                 return Err(crate::types::AppError::Business {
-                    message: format!(
-                        "無効な曜日です: {day}（0-7の範囲で指定してください）"
-                    ),
+                    message: format!("無効な曜日です: {day}（0-7の範囲で指定してください）"),
                 });
             }
         }
@@ -174,7 +175,9 @@ impl RecruitmentScheduleService {
         if let Some(recruit_time) = recruit_start_time {
             if recruit_start_day_offset == 0 && recruit_time > quest_start_time {
                 return Err(crate::types::AppError::Business {
-                    message: "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります".to_string(),
+                    message:
+                        "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
+                            .to_string(),
                 });
             }
         }
@@ -207,8 +210,12 @@ impl RecruitmentScheduleService {
 
     /// TimeTime（SeaORM型）をNaiveTime（chrono型）に変換
     fn time_time_to_naive_time(time: sea_orm::prelude::TimeTime) -> NaiveTime {
-        NaiveTime::from_hms_opt(time.hour() as u32, time.minute() as u32, time.second() as u32)
-            .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+        NaiveTime::from_hms_opt(
+            time.hour() as u32,
+            time.minute() as u32,
+            time.second() as u32,
+        )
+        .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
     }
 }
 
@@ -218,8 +225,14 @@ mod tests {
 
     #[test]
     fn test_weekday_to_number() {
-        assert_eq!(RecruitmentScheduleService::weekday_to_number(Weekday::Mon), 1);
-        assert_eq!(RecruitmentScheduleService::weekday_to_number(Weekday::Sun), 7);
+        assert_eq!(
+            RecruitmentScheduleService::weekday_to_number(Weekday::Mon),
+            1
+        );
+        assert_eq!(
+            RecruitmentScheduleService::weekday_to_number(Weekday::Sun),
+            7
+        );
     }
 
     #[test]

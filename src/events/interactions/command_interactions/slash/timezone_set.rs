@@ -25,19 +25,24 @@ pub async fn timezone_set(
     ctx.defer_ephemeral().await?;
 
     // ギルドIDを取得
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?;
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
 
     let app_state = &ctx.data().app_state;
 
     // Facadeを呼び出し
     let facade = TimezoneFacade::new(Arc::new(app_state.clone()));
-    let result = facade.set_timezone(guild_id.get() as i64, &timezone).await?;
+    let result = facade
+        .set_timezone(guild_id.get() as i64, &timezone)
+        .await?;
 
     // 成功メッセージ
-    ctx.say(format!("タイムゾーンを {} に設定しました。", result.timezone.name()))
-        .await?;
+    ctx.say(format!(
+        "タイムゾーンを {} に設定しました。",
+        result.timezone.name()
+    ))
+    .await?;
 
     Ok(())
 }

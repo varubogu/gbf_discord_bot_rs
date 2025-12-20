@@ -147,9 +147,7 @@ impl UpdateRecruitmentService {
         original_message_id: u64,
         status: &str,
     ) -> Result<Message, String> {
-        let status_message = format!(
-            "募集更新 (元メッセージ: {original_message_id}): {status}"
-        );
+        let status_message = format!("募集更新 (元メッセージ: {original_message_id}): {status}");
 
         match ChannelId::from(channel_id)
             .say(&ctx.http, status_message)

@@ -136,11 +136,15 @@ impl RecruitmentCreationService {
         // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service.get_element_emojis(txn, http, calculated_time.guild_id).await?;
+        let element_emojis = guild_env_service
+            .get_element_emojis(txn, http, calculated_time.guild_id)
+            .await?;
 
         // 4. Embedを作成
-        let initial_participants_text =
-            create_initial_participants_text_for_buttons(&battle_style.display_name, &element_emojis);
+        let initial_participants_text = create_initial_participants_text_for_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
         let embed = CreateEmbed::new()
             .title("参加者一覧")
             .description(&initial_participants_text)

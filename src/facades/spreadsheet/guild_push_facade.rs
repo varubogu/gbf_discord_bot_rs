@@ -25,8 +25,7 @@ pub async fn execute_push(ctx: &PoiseContext<'_>) -> Result<()> {
     // gbf_bot_controlロール権限チェック
     let has_permission_result = has_bot_control_permission(ctx, &member).await;
     if let Err(permission_error) = has_permission_result {
-        ctx.say(&format!("権限エラー: {permission_error}"))
-            .await?;
+        ctx.say(&format!("権限エラー: {permission_error}")).await?;
         return Ok(());
     }
 

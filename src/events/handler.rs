@@ -43,7 +43,11 @@ pub async fn event_handler(
             // ModalInteraction（モーダル送信）を処理
             else if let Some(modal_interaction) = interaction.as_modal_submit() {
                 // 日時入力モーダルの処理
-                if modal_interaction.data.custom_id.starts_with("recruit_change_date_modal:") {
+                if modal_interaction
+                    .data
+                    .custom_id
+                    .starts_with("recruit_change_date_modal:")
+                {
                     use crate::events::interactions::modal::recruit_change_date_modal;
                     recruit_change_date_modal::handle_recruit_change_date_modal(
                         ctx,

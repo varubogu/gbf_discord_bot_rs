@@ -5,10 +5,7 @@ use crate::models::entities::{
 use crate::models::last_process_times::LastProcessTime;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait,
-    QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
 /// last_process_timesリポジトリ
@@ -52,7 +49,10 @@ impl LastProcessTimeRepository {
     // }
 
     /// スケジュール処理のlast_process_timeを取得
-    pub async fn find_schedule_last_process_time<'c, C>(&self, db: &'c C) -> Result<Option<LastProcessTime>>
+    pub async fn find_schedule_last_process_time<'c, C>(
+        &self,
+        db: &'c C,
+    ) -> Result<Option<LastProcessTime>>
     where
         C: sea_orm::ConnectionTrait,
     {

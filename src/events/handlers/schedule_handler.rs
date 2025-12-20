@@ -26,7 +26,10 @@ impl ScheduleNotificationTimer {
     /// タイマーを起動
     /// 無限ループで10秒ごとに通知を実行
     pub async fn start(self: Arc<Self>) {
-        info!("スケジュール通知タイマーを開始します（間隔: {:?}）", self.interval);
+        info!(
+            "スケジュール通知タイマーを開始します（間隔: {:?}）",
+            self.interval
+        );
 
         let mut interval = tokio::time::interval(self.interval);
 

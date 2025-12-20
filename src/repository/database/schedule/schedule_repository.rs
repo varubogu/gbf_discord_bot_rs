@@ -70,7 +70,10 @@ impl ScheduleRepository {
                 e
             })?;
 
-        debug!(count = details.len(), "イベントスケジュール詳細を取得しました");
+        debug!(
+            count = details.len(),
+            "イベントスケジュール詳細を取得しました"
+        );
         Ok(details)
     }
 
@@ -95,21 +98,24 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュールを取得
-    pub async fn find_all_event_schedules<'c, C>(&self, db: &'c C) -> Result<Vec<event_schedules::Model>>
+    pub async fn find_all_event_schedules<'c, C>(
+        &self,
+        db: &'c C,
+    ) -> Result<Vec<event_schedules::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {
         debug!("すべてのイベントスケジュールを取得します");
 
-        let schedules = event_schedules::Entity::find()
-            .all(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "イベントスケジュールの取得に失敗しました");
-                e
-            })?;
+        let schedules = event_schedules::Entity::find().all(db).await.map_err(|e| {
+            error!(error = %e, "イベントスケジュールの取得に失敗しました");
+            e
+        })?;
 
-        debug!(count = schedules.len(), "イベントスケジュールを取得しました");
+        debug!(
+            count = schedules.len(),
+            "イベントスケジュールを取得しました"
+        );
         Ok(schedules)
     }
 }

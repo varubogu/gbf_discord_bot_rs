@@ -1,10 +1,9 @@
 use crate::models::entities::{
-    quest_aliases, quest_aliases::Entity as QuestAliasEntity, quests,
-    quests::Entity as QuestEntity,
+    quest_aliases, quest_aliases::Entity as QuestAliasEntity, quests, quests::Entity as QuestEntity,
 };
 use crate::models::quests::Quest;
-use crate::repository::quests_repository::QuestSearchResult;
 use crate::repository::QuestRepository;
+use crate::repository::quests_repository::QuestSearchResult;
 use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
@@ -24,9 +23,7 @@ impl QuestRepository for SeaOrmQuestRepository {
     where
         C: sea_orm::ConnectionTrait,
     {
-        let quests = QuestEntity::find()
-            .all(db)
-            .await?;
+        let quests = QuestEntity::find().all(db).await?;
 
         Ok(quests
             .into_iter()
@@ -62,7 +59,11 @@ impl QuestRepository for SeaOrmQuestRepository {
         }))
     }
 
-    async fn search_by_name_or_alias<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestSearchResult>>
+    async fn search_by_name_or_alias<'c, C>(
+        &self,
+        db: &'c C,
+        partial: &str,
+    ) -> Result<Vec<QuestSearchResult>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -134,7 +135,8 @@ impl QuestRepository for SeaOrmQuestRepository {
 mod tests {
     use super::*;
 
-    async fn setup_test_db() -> std::result::Result<(SeaOrmQuestRepository, sea_orm::DatabaseConnection), String> {
+    async fn setup_test_db()
+    -> std::result::Result<(SeaOrmQuestRepository, sea_orm::DatabaseConnection), String> {
         let conn = match crate::repository::database::db_compat::Database::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
@@ -159,10 +161,7 @@ mod tests {
             Ok(quests) => {
                 println!("Retrieved {} quests", quests.len());
                 for quest in quests {
-                    assert!(
-                        !quest.name.is_empty(),
-                        "Quest name should not be empty"
-                    );
+                    assert!(!quest.name.is_empty(), "Quest name should not be empty");
                     assert!(quest.id > 0, "Quest ID should be positive");
                 }
             }
@@ -188,7 +187,10 @@ mod tests {
                 println!("Found {} matching quests", results.len());
                 for result in results {
                     assert!(!result.name.is_empty(), "Quest name should not be empty");
-                    assert!(!result.matched_text.is_empty(), "Matched text should not be empty");
+                    assert!(
+                        !result.matched_text.is_empty(),
+                        "Matched text should not be empty"
+                    );
                 }
             }
             Err(e) => {

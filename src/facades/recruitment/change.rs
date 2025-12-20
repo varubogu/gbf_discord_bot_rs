@@ -116,7 +116,9 @@ pub async fn change_recruitment_information_internal(
             style_id
         } else if quest.is_some() {
             // クエストが変更されている場合、新しいクエストのデフォルト攻略方法を使用
-            let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
+            let quest = quest_query_service
+                .get_quest_by_id(db, new_quest_id)
+                .await?;
             quest.default_battle_style_id
         } else {
             // どちらも指定されていない場合、既存の値を使用
@@ -128,15 +130,21 @@ pub async fn change_recruitment_information_internal(
         // タイムゾーンを取得
         let timezone_repo = Arc::new(GuildTimezoneRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
-        let timezone = timezone_service.get_guild_timezone(db, guild_id as i64).await?;
+        let timezone = timezone_service
+            .get_guild_timezone(db, guild_id as i64)
+            .await?;
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service.get_element_emojis(db, http, guild_id as i64).await?;
+        let element_emojis = guild_env_service
+            .get_element_emojis(db, http, guild_id as i64)
+            .await?;
 
         // 3. メッセージ表示用の募集データを作成
-        let quest = quest_query_service.get_quest_by_id(db, new_quest_id).await?;
+        let quest = quest_query_service
+            .get_quest_by_id(db, new_quest_id)
+            .await?;
         let recruitment_data = new::create_recruitment_data_with_repos(
             db,
             &element_emojis,
@@ -153,7 +161,13 @@ pub async fn change_recruitment_information_internal(
         let mut participant_ids = std::collections::HashSet::new();
         for reaction in &message.reactions {
             let users = channel_id_obj
-                .reaction_users(http, message_id_obj, reaction.reaction_type.clone(), Some(100), None)
+                .reaction_users(
+                    http,
+                    message_id_obj,
+                    reaction.reaction_type.clone(),
+                    Some(100),
+                    None,
+                )
                 .await?;
 
             for user in users {

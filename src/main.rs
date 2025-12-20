@@ -1,5 +1,5 @@
-use gbf_discord_bot_rs::events::{command::commands, handler::event_handler};
 use gbf_discord_bot_rs::events::handlers::schedule_handler::ScheduleNotificationTimer;
+use gbf_discord_bot_rs::events::{command::commands, handler::event_handler};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
@@ -12,7 +12,10 @@ use std::path::Path;
 use std::time::Duration;
 use tracing::{error, info};
 
-async fn initialize_database(database_url: &str, run_migration: bool) -> Result<sea_orm::DatabaseConnection> {
+async fn initialize_database(
+    database_url: &str,
+    run_migration: bool,
+) -> Result<sea_orm::DatabaseConnection> {
     info!("Initializing optimized database connection...");
 
     // SeaORMコネクションプールの最適化設定
@@ -240,16 +243,17 @@ async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
 
             // Discord上にはユーザーフレンドリーなメッセージのみ表示
             let user_message = error.user_message();
-            if let Err(e) = ctx.send(
-                poise::CreateReply::default()
-                    .content(user_message)
-                    .ephemeral(true),
-            )
-            .await
+            if let Err(e) = ctx
+                .send(
+                    poise::CreateReply::default()
+                        .content(user_message)
+                        .ephemeral(true),
+                )
+                .await
             {
                 error!(error = %e, "エラーメッセージの送信に失敗しました");
             }
-        },
+        }
         // その他のエラー
         other => error!("Poise framework error: {:?}", other),
     }

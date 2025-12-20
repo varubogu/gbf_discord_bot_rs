@@ -33,12 +33,7 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
 
     // DBから募集情報を取得（エラーの場合はNone扱い）（トランザクション対応版を使用）
     let recruitment_opt = battle_recruitment_repo
-        .get_by_message_with_txn(
-            txn,
-            guild_id,
-            channel_id.into(),
-            message_id.into(),
-        )
+        .get_by_message_with_txn(txn, guild_id, channel_id.into(), message_id.into())
         .await?;
 
     // Discordからメッセージを取得（エラーの場合はNone扱い）
@@ -90,9 +85,14 @@ pub async fn cancel_recruitment_by_message<R: crate::repository::BattleRecruitme
     info!("cancel_recruitment_by_message - キャンセル処理開始");
 
     // 募集情報の存在確認（トランザクション対応版を使用）
-    let recruitment =
-        get_recruitment_from_database(guild_id, channel_id, message_id, battle_recruitment_repo, txn)
-            .await?;
+    let recruitment = get_recruitment_from_database(
+        guild_id,
+        channel_id,
+        message_id,
+        battle_recruitment_repo,
+        txn,
+    )
+    .await?;
 
     // 募集をキャンセル済み状態に更新
     mark_recruitment_as_cancelled(
@@ -222,7 +222,6 @@ pub async fn create_cancelled_message_content(original_content: &str) -> Result<
 
 /// キャンセル通知メッセージ作成
 pub async fn create_cancel_notification_text(participants: &[String]) -> Result<String> {
-
     if participants.is_empty() {
         Ok("募集がキャンセルされました。".to_string())
     } else {

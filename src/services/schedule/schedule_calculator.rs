@@ -54,18 +54,19 @@ impl ScheduleCalculator {
 
             for detail in matching_details {
                 // notification_channel_typeに対応するギルド・チャンネルを取得
-                let guild_channels = match guild_channels_by_type.get(&detail.notification_channel_type) {
-                    Some(channels) => channels,
-                    None => {
-                        warn!(
-                            channel_type = detail.notification_channel_type,
-                            profile = %event_schedule.profile,
-                            schedule_name = %detail.schedule_name,
-                            "該当するchannel_typeのギルド・チャンネルが登録されていません"
-                        );
-                        continue;
-                    }
-                };
+                let guild_channels =
+                    match guild_channels_by_type.get(&detail.notification_channel_type) {
+                        Some(channels) => channels,
+                        None => {
+                            warn!(
+                                channel_type = detail.notification_channel_type,
+                                profile = %event_schedule.profile,
+                                schedule_name = %detail.schedule_name,
+                                "該当するchannel_typeのギルド・チャンネルが登録されていません"
+                            );
+                            continue;
+                        }
+                    };
 
                 // 各ギルド・チャンネルに対してスケジュールを生成
                 for (guild_id, channel_id) in guild_channels {
@@ -315,19 +316,27 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            calculator.parse_start_day_relative("0", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("0", start, end)
+                .unwrap(),
             vec![0]
         );
         assert_eq!(
-            calculator.parse_start_day_relative("+1", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("+1", start, end)
+                .unwrap(),
             vec![1]
         );
         assert_eq!(
-            calculator.parse_start_day_relative("-1", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("-1", start, end)
+                .unwrap(),
             vec![-1]
         );
         assert_eq!(
-            calculator.parse_start_day_relative("5", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("5", start, end)
+                .unwrap(),
             vec![5]
         );
     }
@@ -373,25 +382,33 @@ mod tests {
 
         // "start"
         assert_eq!(
-            calculator.parse_start_day_relative("start", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("start", start, end)
+                .unwrap(),
             vec![0]
         );
 
         // "end"
         let end_offset = (end - start).num_days();
         assert_eq!(
-            calculator.parse_start_day_relative("end", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("end", start, end)
+                .unwrap(),
             vec![end_offset]
         );
 
         // "*" または "all"
         let all_days: Vec<i64> = (0..end_offset).collect();
         assert_eq!(
-            calculator.parse_start_day_relative("*", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("*", start, end)
+                .unwrap(),
             all_days
         );
         assert_eq!(
-            calculator.parse_start_day_relative("all", start, end).unwrap(),
+            calculator
+                .parse_start_day_relative("all", start, end)
+                .unwrap(),
             all_days
         );
     }
@@ -506,10 +523,19 @@ mod tests {
         assert_eq!(results.len(), 3);
 
         // 0日目: JST 2025-01-15 05:00 → UTC 2025-01-14 20:00
-        assert_eq!(results[0].format("%Y-%m-%d %H:%M").to_string(), "2025-01-14 20:00");
+        assert_eq!(
+            results[0].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-14 20:00"
+        );
         // 1日目: JST 2025-01-16 05:00 → UTC 2025-01-15 20:00
-        assert_eq!(results[1].format("%Y-%m-%d %H:%M").to_string(), "2025-01-15 20:00");
+        assert_eq!(
+            results[1].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-15 20:00"
+        );
         // 2日目: JST 2025-01-17 05:00 → UTC 2025-01-16 20:00
-        assert_eq!(results[2].format("%Y-%m-%d %H:%M").to_string(), "2025-01-16 20:00");
+        assert_eq!(
+            results[2].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-16 20:00"
+        );
     }
 }

@@ -1,7 +1,9 @@
 use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::DatabaseBackend;
-use sea_orm::sea_query::{Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, TableRef, Value as SeaValue};
+use sea_orm::sea_query::{
+    Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, TableRef, Value as SeaValue,
+};
 use sea_orm::{ConnectionTrait, DatabaseTransaction, Statement};
 use tracing::warn;
 
@@ -22,19 +24,25 @@ use chrono::{DateTime, Utc};
 fn get_schema_name(table_name: &str) -> &str {
     match table_name {
         // master スキーマ
-        "quests" | "quest_aliases" | "battle_styles" | "elements" | "channel_types"
-        | "event_schedules" | "event_schedule_details" | "message_texts" | "environments" => {
-            "master"
-        }
+        "quests"
+        | "quest_aliases"
+        | "battle_styles"
+        | "elements"
+        | "channel_types"
+        | "event_schedules"
+        | "event_schedule_details"
+        | "message_texts"
+        | "environments" => "master",
         // guild_master スキーマ
         "guilds" | "guild_channels" | "guild_spreadsheet_exports" | "guild_spreadsheet_imports" => {
             "guild_master"
         }
         // worker スキーマ
-        "battle_recruitments" | "notifications" | "notification_rel_battle_recruitments"
-        | "notification_rel_event_schedules" | "last_process_times" => {
-            "worker"
-        }
+        "battle_recruitments"
+        | "notifications"
+        | "notification_rel_battle_recruitments"
+        | "notification_rel_event_schedules"
+        | "last_process_times" => "worker",
         // デフォルトはpublicスキーマ（後方互換性のため）
         _ => "public",
     }
@@ -157,7 +165,8 @@ impl GlobalLoaderService for GlobalLoaderServiceImpl {
             .await
             .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;
 
-        let table_definitions = self.reader_service
+        let table_definitions = self
+            .reader_service
             .read_table_definitions(&sheets_client, &self.spreadsheet_id)
             .await
             .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;
@@ -186,7 +195,8 @@ impl GlobalLoaderService for GlobalLoaderServiceImpl {
                 continue;
             };
 
-            let read_result = self.reader_service
+            let read_result = self
+                .reader_service
                 .read_table_data(&sheets_client, &self.spreadsheet_id, &table_def, schema)
                 .await
                 .map_err(|e| crate::types::AppError::Generic(e.to_string()))?;

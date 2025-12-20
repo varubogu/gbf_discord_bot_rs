@@ -1,15 +1,12 @@
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{
-    CreateActionRow, CreateInteractionResponse, CreateInteractionResponseMessage,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, Message,
+    CreateActionRow, CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu,
+    CreateSelectMenuKind, CreateSelectMenuOption, Message,
 };
 
 /// メッセージコンテキストメニューから募集内容変更を開始
 #[poise::command(context_menu_command = "募集内容変更")]
-pub async fn recruit_change_context_menu(
-    ctx: PoiseContext<'_>,
-    message: Message,
-) -> Result<()> {
+pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message) -> Result<()> {
     // カスタムIDにメッセージIDを含める
     let custom_id = format!("recruit_change_select_field:{}", message.id);
 

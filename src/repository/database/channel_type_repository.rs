@@ -18,13 +18,10 @@ impl ChannelTypeRepository {
     {
         debug!("すべてのチャンネル種別を取得します");
 
-        let channel_types = channel_types::Entity::find()
-            .all(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "チャンネル種別の取得に失敗しました");
-                e
-            })?;
+        let channel_types = channel_types::Entity::find().all(db).await.map_err(|e| {
+            error!(error = %e, "チャンネル種別の取得に失敗しました");
+            e
+        })?;
 
         debug!(count = channel_types.len(), "チャンネル種別を取得しました");
         Ok(channel_types)

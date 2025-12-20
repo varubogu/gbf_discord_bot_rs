@@ -1,4 +1,4 @@
-﻿use crate::models::battle_recruitments::BattleRecruitments;
+use crate::models::battle_recruitments::BattleRecruitments;
 use crate::models::entities::battle_recruitments::{
     ActiveModel, Column, Entity as BattleRecruitmentEntity,
 };
@@ -7,8 +7,8 @@ use crate::types::{AppError, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseTransaction,
-    EntityTrait, QueryFilter, Set,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait,
+    QueryFilter, Set,
 };
 
 /// SeaORM を使用したバトル募集リポジトリの実装
@@ -47,10 +47,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model.battle_style_id = Set(battle_style_id);
         active_model.quest_start_at = Set(quest_start_at);
 
-        let result = active_model
-            .insert(txn)
-            .await
-            .map_err(AppError::Database)?;
+        let result = active_model.insert(txn).await.map_err(AppError::Database)?;
 
         Ok(BattleRecruitments::from(result))
     }
@@ -113,10 +110,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
             .into();
 
         active_model.recruit_end_message_id = Set(Some(message_id.get() as i64)); // u64 → i64に変換
-        active_model
-            .update(db)
-            .await
-            .map_err(AppError::Database)?;
+        active_model.update(db).await.map_err(AppError::Database)?;
 
         Ok(())
     }
@@ -138,10 +132,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
 
         active_model.recruit_end_message_id = Set(Some(message_id.get() as i64)); // u64 → i64に変換
         active_model.is_canceled = Set(true);
-        active_model
-            .update(txn)
-            .await
-            .map_err(AppError::Database)?;
+        active_model.update(txn).await.map_err(AppError::Database)?;
 
         Ok(())
     }
@@ -167,10 +158,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model.battle_style_id = Set(battle_style_id);
         active_model.quest_start_at = Set(quest_start_at);
 
-        active_model
-            .update(txn)
-            .await
-            .map_err(AppError::Database)?;
+        active_model.update(txn).await.map_err(AppError::Database)?;
 
         Ok(())
     }

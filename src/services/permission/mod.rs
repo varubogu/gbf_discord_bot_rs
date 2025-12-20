@@ -12,9 +12,9 @@ pub async fn has_role(
     let guild = ctx.guild().ok_or_else(|| {
         "ギルド情報を取得できませんでした。このコマンドはサーバー内でのみ実行可能です".to_string()
     })?;
-    let role = guild.role_by_name(role_name).ok_or_else(|| {
-        format!("role is not found: '{role_name}'")
-    })?;
+    let role = guild
+        .role_by_name(role_name)
+        .ok_or_else(|| format!("role is not found: '{role_name}'"))?;
 
     let has_permission = member.roles.iter().any(|role_id| role_id.eq(&role.id));
     if has_permission {

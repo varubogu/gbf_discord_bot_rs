@@ -47,7 +47,8 @@ impl AppError {
                 "データベースエラーが発生しました。管理者に連絡してください。".to_string()
             }
             AppError::Discord(_) => {
-                "Discord APIエラーが発生しました。しばらく待ってから再度お試しください。".to_string()
+                "Discord APIエラーが発生しました。しばらく待ってから再度お試しください。"
+                    .to_string()
             }
             AppError::Business { message } => message.clone(),
             AppError::Config { message } => {

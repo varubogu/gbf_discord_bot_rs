@@ -14,11 +14,11 @@ use tracing::{error, info};
     check = "check_bot_control_role",
     ephemeral = true,
     name_localized("ja", "スプレッドシート登録"),
-    description_localized("ja", "ギルド用のGoogleスプレッドシートを登録"),
+    description_localized("ja", "ギルド用のGoogleスプレッドシートを登録")
 )]
 pub async fn gspread_regist(
     ctx: PoiseContext<'_>,
- 
+
     #[max_length = 512]
     #[name_localized("ja", "読み込み用スプレッドシート")]
     #[description = "Read-only spreadsheet URL (or ID)"]
@@ -43,7 +43,7 @@ pub async fn gspread_regist(
                     .content("❌ このコマンドはギルド内でのみ実行可能です")
                     .ephemeral(true),
             )
-                .await?;
+            .await?;
             return Ok(());
         }
     };
@@ -59,7 +59,7 @@ pub async fn gspread_regist(
             .content("🔄 ギルドスプレッドシートを登録しています...")
             .ephemeral(true),
     )
-        .await?;
+    .await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;

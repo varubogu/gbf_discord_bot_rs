@@ -1,9 +1,9 @@
+use crate::types::Result;
 /// タイムゾーン変換ユーティリティ
 /// 定期スケジュールのローカル時刻⇔UTC変換を行う
 use chrono::{Datelike, Duration, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use sea_orm::prelude::TimeTime;
-use crate::types::Result;
 
 /// ローカル曜日・時刻をUTC曜日・時刻に変換
 ///
@@ -161,8 +161,12 @@ fn weekday_to_number(weekday: Weekday) -> i32 {
 
 /// TimeTime（SeaORM型）をNaiveTime（chrono型）に変換
 fn time_time_to_naive_time(time: TimeTime) -> NaiveTime {
-    NaiveTime::from_hms_opt(time.hour() as u32, time.minute() as u32, time.second() as u32)
-        .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+    NaiveTime::from_hms_opt(
+        time.hour() as u32,
+        time.minute() as u32,
+        time.second() as u32,
+    )
+    .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
 }
 
 /// NaiveTimeをTimeTimeに変換
@@ -182,7 +186,8 @@ mod tests {
         let local_days = vec![2]; // 火曜
         let local_time = NaiveTime::from_hms_opt(22, 0, 0).unwrap();
 
-        let (utc_days, utc_time) = convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
+        let (utc_days, utc_time) =
+            convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
 
         assert_eq!(utc_days, vec![2]); // 火曜
         assert_eq!(utc_time.hour(), 13);
@@ -195,7 +200,8 @@ mod tests {
         let local_days = vec![2]; // 火曜
         let local_time = NaiveTime::from_hms_opt(1, 0, 0).unwrap();
 
-        let (utc_days, utc_time) = convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
+        let (utc_days, utc_time) =
+            convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
 
         assert_eq!(utc_days, vec![1]); // 月曜
         assert_eq!(utc_time.hour(), 16);
@@ -208,7 +214,8 @@ mod tests {
         let utc_days = vec![2]; // 火曜
         let utc_time = TimeTime::from_hms(13, 0, 0).unwrap();
 
-        let (local_days, local_time) = convert_utc_days_and_time_to_local(&utc_days, utc_time, Tokyo).unwrap();
+        let (local_days, local_time) =
+            convert_utc_days_and_time_to_local(&utc_days, utc_time, Tokyo).unwrap();
 
         assert_eq!(local_days, vec![2]); // 火曜
         assert_eq!(local_time.hour(), 22);
@@ -221,7 +228,8 @@ mod tests {
         let utc_days = vec![1]; // 月曜
         let utc_time = TimeTime::from_hms(16, 0, 0).unwrap();
 
-        let (local_days, local_time) = convert_utc_days_and_time_to_local(&utc_days, utc_time, Tokyo).unwrap();
+        let (local_days, local_time) =
+            convert_utc_days_and_time_to_local(&utc_days, utc_time, Tokyo).unwrap();
 
         assert_eq!(local_days, vec![2]); // 火曜
         assert_eq!(local_time.hour(), 1);
@@ -234,7 +242,8 @@ mod tests {
         let local_days = vec![0]; // 毎日
         let local_time = NaiveTime::from_hms_opt(22, 0, 0).unwrap();
 
-        let (utc_days, utc_time) = convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
+        let (utc_days, utc_time) =
+            convert_local_days_and_time_to_utc(&local_days, local_time, Tokyo).unwrap();
 
         assert_eq!(utc_days, vec![0]); // 毎日
         assert_eq!(utc_time.hour(), 13);

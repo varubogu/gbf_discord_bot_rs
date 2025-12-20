@@ -20,7 +20,9 @@ pub async fn on_component_interaction(
 
         info!(custom_id = %custom_id, "募集変更インタラクションを検出");
 
-        match recruit_change_handler::handle_recruit_change_interaction(ctx, interaction, data).await {
+        match recruit_change_handler::handle_recruit_change_interaction(ctx, interaction, data)
+            .await
+        {
             Ok(_) => {
                 info!("募集変更の処理が正常に完了しました");
             }

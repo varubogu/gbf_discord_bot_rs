@@ -29,7 +29,9 @@ impl ChannelManagementService {
         guild_name: String,
     ) -> Result<()> {
         let guild_repo = GuildRepository::new();
-        guild_repo.upsert_with_txn(txn, guild_id, guild_name).await?;
+        guild_repo
+            .upsert_with_txn(txn, guild_id, guild_name)
+            .await?;
 
         debug!(guild_id = guild_id, "ギルドを登録しました");
         Ok(())

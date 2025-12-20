@@ -10,7 +10,10 @@ use super::autocomplete::quest_auto_complete;
     name_localized("ja", "募集ロール追加"),
     check = "check_bot_control_role",
     ephemeral = true,
-    description_localized("ja", "マルチバトル募集の通知ロールを追加します（gbf_bot_controlロール必須）"),
+    description_localized(
+        "ja",
+        "マルチバトル募集の通知ロールを追加します（gbf_bot_controlロール必須）"
+    )
 )]
 pub async fn recruit_role_add(
     ctx: PoiseContext<'_>,
@@ -18,7 +21,10 @@ pub async fn recruit_role_add(
     #[autocomplete = "quest_auto_complete"]
     #[name_localized("ja", "クエスト名")]
     #[description = "quest name or alias (use 'すべて' for all recruitments)"]
-    #[description_localized("ja", "クエスト名またはクエスト別名（全ての募集の場合は「すべて」を入力）")]
+    #[description_localized(
+        "ja",
+        "クエスト名またはクエスト別名（全ての募集の場合は「すべて」を入力）"
+    )]
     quest: String,
 
     #[name_localized("ja", "ロール1")]
@@ -72,16 +78,15 @@ pub async fn recruit_role_add(
     }
 
     // Facadeを呼び出し
-    let added_count = role_management::add_recruitment_notification_roles(
-        &ctx,
-        &quest,
-        role_ids,
-    ).await?;
+    let added_count =
+        role_management::add_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
 
     // 結果をユーザーに通知
     ctx.send(
         poise::CreateReply::default()
-            .content(format!("{added_count}個のロールを募集通知ロールとして登録しました。"))
+            .content(format!(
+                "{added_count}個のロールを募集通知ロールとして登録しました。"
+            ))
             .ephemeral(true),
     )
     .await?;

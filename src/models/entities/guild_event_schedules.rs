@@ -13,8 +13,8 @@ pub struct Model {
     pub event_count: i64,
     pub profile: String,
     pub weak_attribute: i32,
-    pub start_at: DateTime,  // スプレッドシート（JST）と一致させる - timestamp型（タイムゾーンなし）
-    pub end_at: DateTime,    // スプレッドシート（JST）と一致させる - timestamp型（タイムゾーンなし）
+    pub start_at: DateTime, // スプレッドシート（JST）と一致させる - timestamp型（タイムゾーンなし）
+    pub end_at: DateTime,   // スプレッドシート（JST）と一致させる - timestamp型（タイムゾーンなし）
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

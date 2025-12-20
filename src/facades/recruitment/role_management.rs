@@ -4,7 +4,7 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::TransactionTrait;
-use tracing::{info, warn, instrument};
+use tracing::{info, instrument, warn};
 
 /// 募集通知ロールを追加するFacade
 ///
@@ -62,7 +62,10 @@ pub async fn add_recruitment_notification_roles(
 
             let quest_id = quest.id;
 
-            info!(quest_id = quest_id, "クエスト別募集通知ロールとして登録します");
+            info!(
+                quest_id = quest_id,
+                "クエスト別募集通知ロールとして登録します"
+            );
 
             for role_id in role_ids {
                 let is_added = role_service
@@ -146,7 +149,10 @@ pub async fn remove_recruitment_notification_roles(
 
             let quest_id = quest.id;
 
-            info!(quest_id = quest_id, "クエスト別募集通知ロールから削除します");
+            info!(
+                quest_id = quest_id,
+                "クエスト別募集通知ロールから削除します"
+            );
 
             for role_id in role_ids {
                 let count = role_service

@@ -1,6 +1,4 @@
-use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateMessage, MessageId,
-};
+use poise::serenity_prelude::all::{ChannelId, Context, CreateMessage, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{error, info, warn};
@@ -143,7 +141,6 @@ impl StartRecruitmentService {
         quest_name: &str,
         participants: &[String],
     ) -> Result<String> {
-
         let participant_mentions = if participants.is_empty() {
             "参加者がいません".to_string()
         } else {

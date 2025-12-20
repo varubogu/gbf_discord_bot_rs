@@ -2,7 +2,9 @@ use crate::models::entities::guild_environments::{self, Entity as GuildEnvironme
 use crate::models::guild_environments::GuildEnvironments;
 use crate::repository::GuildEnvironmentRepository;
 use async_trait::async_trait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set,
+};
 use std::collections::HashMap;
 
 pub struct SeaOrmGuildEnvironmentRepository;
@@ -49,10 +51,7 @@ impl GuildEnvironmentRepository for SeaOrmGuildEnvironmentRepository {
             .all(db)
             .await?;
 
-        let map = models
-            .into_iter()
-            .map(|m| (m.key, m.value))
-            .collect();
+        let map = models.into_iter().map(|m| (m.key, m.value)).collect();
 
         Ok(map)
     }

@@ -81,7 +81,10 @@ impl ChannelDisplayService {
 
         for setting in &display.settings {
             if let Some(channel_id) = setting.channel_id {
-                lines.push(format!("• **{}**: <#{}>\n", setting.channel_type_name, channel_id));
+                lines.push(format!(
+                    "• **{}**: <#{}>\n",
+                    setting.channel_type_name, channel_id
+                ));
             } else {
                 lines.push(format!("• **{}**: 未設定\n", setting.channel_type_name));
             }

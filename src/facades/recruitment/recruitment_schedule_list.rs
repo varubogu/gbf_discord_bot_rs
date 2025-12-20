@@ -14,9 +14,7 @@ use tracing::{debug, warn};
 /// - RLS/トランザクション管理
 /// - Repositoryでスケジュール一覧取得（作成者フィルタ）
 /// - 表示整形（サービス）
-pub async fn get_schedules_for_autocomplete(
-    ctx: PoiseContext<'_>,
-) -> Vec<AutocompleteChoice> {
+pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteChoice> {
     // ギルドIDを取得（サーバー外では空）
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
@@ -48,7 +46,10 @@ pub async fn get_schedules_for_autocomplete(
 
     // スケジュール一覧（自分が作成したもの）
     let schedule_query_service = ScheduleQueryService::new();
-    let schedules = match schedule_query_service.get_schedules_by_user(&txn, user_id).await {
+    let schedules = match schedule_query_service
+        .get_schedules_by_user(&txn, user_id)
+        .await
+    {
         Ok(s) => s,
         Err(e) => {
             warn!(error = %e, "スケジュールの取得に失敗しました");

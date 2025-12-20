@@ -40,9 +40,12 @@ impl From<FacadeError> for PresentationError {
                             2. 右上の「共有」をクリック\n\
                             3. サービスアカウントのメールアドレスに「編集者」権限を付与\n\n\
                             ※データベースへの登録はロールバックされました。\n\
-                            権限を付与した後、再度読み込みコマンドを実行してください。".to_string()
+                            権限を付与した後、再度読み込みコマンドを実行してください。"
+                            .to_string()
                     } else {
-                        format!("🔧 Googleスプレッドシートへのアクセスに失敗しました。\n詳細: {message}")
+                        format!(
+                            "🔧 Googleスプレッドシートへのアクセスに失敗しました。\n詳細: {message}"
+                        )
                     }
                 }
                 ExternalServiceError::GoogleAuthError { .. } => {

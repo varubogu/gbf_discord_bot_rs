@@ -83,10 +83,9 @@ pub async fn handle_recruitment_button(
 
         // 4. Service層を使って参加/退出処理
         let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
-        let service =
-            RecruitmentParticipantsService::<RecruitmentParticipantsRepositoryImpl>::new(
-                Arc::new(participants_repo),
-            );
+        let service = RecruitmentParticipantsService::<RecruitmentParticipantsRepositoryImpl>::new(
+            Arc::new(participants_repo),
+        );
 
         let response_message: String = match component_id {
             RecruitmentComponentId::Join => {
@@ -147,23 +146,15 @@ pub async fn handle_recruitment_button(
         );
 
         // 6. メッセージを更新して参加者一覧を反映
-        update_recruitment_message(
-            ctx,
-            &txn,
-            &recruitment,
-            message_id,
-            channel_id,
-        )
-        .await?;
+        update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
 
         // 7. インタラクションに応答（deferの後なのでedit_response）
         interaction
             .edit_response(
                 &ctx.http,
-                poise::serenity_prelude::EditInteractionResponse::new()
-                    .content(format!(
-                        "{response_message}\n\n現在の参加者数: **{participant_count}人**"
-                    )),
+                poise::serenity_prelude::EditInteractionResponse::new().content(format!(
+                    "{response_message}\n\n現在の参加者数: **{participant_count}人**"
+                )),
             )
             .await
             .map_err(AppError::Discord)?;
@@ -243,11 +234,18 @@ async fn update_recruitment_message(
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
     let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
     let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-    let element_emojis = guild_env_service.get_element_emojis(txn, &ctx.http, recruitment.guild_id as i64).await?;
+    let element_emojis = guild_env_service
+        .get_element_emojis(txn, &ctx.http, recruitment.guild_id as i64)
+        .await?;
 
     // 3. 参加者一覧のテキストを作成
-    let participants_text =
-        create_participants_text(&battle_style.display_name, &participants, &element_emojis, ctx).await?;
+    let participants_text = create_participants_text(
+        &battle_style.display_name,
+        &participants,
+        &element_emojis,
+        ctx,
+    )
+    .await?;
 
     // 3.5. ユニーク参加者数を計算（複数属性でも1人とカウント）
     use std::collections::HashSet;
@@ -273,11 +271,11 @@ async fn update_recruitment_message(
         if let Some(color) = old_embed.colour {
             embed = embed.color(color);
         }
-        embed = embed
-            .description(&participants_text)
-            .footer(poise::serenity_prelude::CreateEmbedFooter::new(format!(
+        embed = embed.description(&participants_text).footer(
+            poise::serenity_prelude::CreateEmbedFooter::new(format!(
                 "参加者数: {participant_count}人"
-            )));
+            )),
+        );
         embed
     } else {
         // embedが存在しない場合は新規作成
@@ -334,11 +332,14 @@ async fn create_participants_text(
         for (idx, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
             let element_id = (idx + 1) as i32;
             if let Some(user_ids) = participants_by_element.get(&element_id) {
-                let user_mentions: Vec<String> = user_ids
-                    .iter()
-                    .map(|&uid| format!("<@{uid}>"))
-                    .collect();
-                text.push_str(&format!("{} {}: {}\n", emoji, name, user_mentions.join(" ")));
+                let user_mentions: Vec<String> =
+                    user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+                text.push_str(&format!(
+                    "{} {}: {}\n",
+                    emoji,
+                    name,
+                    user_mentions.join(" ")
+                ));
             } else {
                 text.push_str(&format!("{emoji} {name}: なし\n"));
             }
@@ -346,11 +347,13 @@ async fn create_participants_text(
 
         // 全属性可能（element_id = 0）
         if let Some(user_ids) = participants_by_element.get(&0) {
-            let user_mentions: Vec<String> = user_ids
-                .iter()
-                .map(|&uid| format!("<@{uid}>"))
-                .collect();
-            text.push_str(&format!("{} 全属性可能: {}\n", ALL_ELEMENTS_EMOJI, user_mentions.join(" ")));
+            let user_mentions: Vec<String> =
+                user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+            text.push_str(&format!(
+                "{} 全属性可能: {}\n",
+                ALL_ELEMENTS_EMOJI,
+                user_mentions.join(" ")
+            ));
         } else {
             text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
         }
@@ -359,11 +362,13 @@ async fn create_participants_text(
         use crate::types::SIMPLE_JOIN_EMOJI;
 
         if let Some(user_ids) = participants_by_element.get(&0) {
-            let user_mentions: Vec<String> = user_ids
-                .iter()
-                .map(|&uid| format!("<@{uid}>"))
-                .collect();
-            text.push_str(&format!("{} 参加: {}\n", SIMPLE_JOIN_EMOJI, user_mentions.join(" ")));
+            let user_mentions: Vec<String> =
+                user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+            text.push_str(&format!(
+                "{} 参加: {}\n",
+                SIMPLE_JOIN_EMOJI,
+                user_mentions.join(" ")
+            ));
         } else {
             text.push_str(&format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n"));
         }

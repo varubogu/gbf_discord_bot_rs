@@ -1,6 +1,6 @@
 use crate::models::quests::Quest;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::QuestRepository;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseConnection;
 use tracing::debug;
@@ -58,11 +58,7 @@ impl QuestQueryService {
     }
 
     /// クエストIDでクエスト詳細を取得
-    pub async fn get_quest_by_id(
-        &self,
-        db: &DatabaseConnection,
-        quest_id: i32,
-    ) -> Result<Quest> {
+    pub async fn get_quest_by_id(&self, db: &DatabaseConnection, quest_id: i32) -> Result<Quest> {
         let quest_repository = SeaOrmQuestRepository::new();
 
         let quest = quest_repository

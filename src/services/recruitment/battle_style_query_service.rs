@@ -22,10 +22,7 @@ impl BattleStyleQueryService {
     }
 
     /// すべての攻略方法を取得
-    pub async fn get_all_battle_styles(
-        &self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<BattleStyle>> {
+    pub async fn get_all_battle_styles(&self, db: &DatabaseConnection) -> Result<Vec<BattleStyle>> {
         let repository = SeaOrmBattleStyleRepository::new();
 
         let models = repository.get_all(db).await?;
@@ -55,10 +52,7 @@ impl BattleStyleQueryService {
 
         let battle_style: BattleStyle = model.into();
 
-        debug!(
-            battle_style_id = battle_style_id,
-            "攻略方法を取得しました"
-        );
+        debug!(battle_style_id = battle_style_id, "攻略方法を取得しました");
 
         Ok(battle_style)
     }

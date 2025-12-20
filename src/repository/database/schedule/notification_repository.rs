@@ -1,10 +1,7 @@
 use crate::models::entities::notifications;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait,
-    QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
 /// 通知リポジトリ
@@ -190,7 +187,11 @@ impl NotificationRepository {
     }
 
     /// 通知IDで通知を削除（トランザクション付き）
-    pub async fn delete_by_id_with_txn(&self, txn: &DatabaseTransaction, notification_id: i32) -> Result<u64> {
+    pub async fn delete_by_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        notification_id: i32,
+    ) -> Result<u64> {
         debug!(notification_id = %notification_id, "通知を削除します");
 
         let result = notifications::Entity::delete_by_id(notification_id)
@@ -222,7 +223,11 @@ impl NotificationRepository {
     }
 
     /// 通知を送信済みとしてマーク（トランザクション付き）
-    pub async fn mark_as_sent_with_txn(&self, txn: &DatabaseTransaction, notification_id: i32) -> Result<notifications::Model> {
+    pub async fn mark_as_sent_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        notification_id: i32,
+    ) -> Result<notifications::Model> {
         debug!(notification_id = %notification_id, "通知を送信済みとしてマークします");
 
         // 通知を取得

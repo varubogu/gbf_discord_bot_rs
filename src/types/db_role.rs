@@ -106,7 +106,11 @@ mod tests {
     fn test_db_role_description() {
         assert!(DbRole::System.description().contains("システム処理用"));
         assert!(DbRole::Guild.description().contains("通常のコマンド実行用"));
-        assert!(DbRole::Global.description().contains("グローバルデータ更新用"));
+        assert!(
+            DbRole::Global
+                .description()
+                .contains("グローバルデータ更新用")
+        );
         assert!(DbRole::Admin.description().contains("マイグレーション"));
     }
 }

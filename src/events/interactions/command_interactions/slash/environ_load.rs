@@ -5,7 +5,7 @@ use crate::types::{PoiseContext, Result};
     slash_command,
     ephemeral = true,
     name_localized("ja", "設定値リロード"),
-    description_localized("ja", "Botの設定値をサーバーから読み込みます"),
+    description_localized("ja", "Botの設定値をサーバーから読み込みます")
 )]
 pub async fn environ_load(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer().await?;

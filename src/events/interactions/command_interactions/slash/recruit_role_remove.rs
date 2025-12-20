@@ -10,7 +10,10 @@ use super::autocomplete::quest_auto_complete;
     name_localized("ja", "募集ロール削除"),
     check = "check_bot_control_role",
     ephemeral = true,
-    description_localized("ja", "マルチバトル募集の通知ロールを削除します（gbf_bot_controlロール必須）"),
+    description_localized(
+        "ja",
+        "マルチバトル募集の通知ロールを削除します（gbf_bot_controlロール必須）"
+    )
 )]
 pub async fn recruit_role_remove(
     ctx: PoiseContext<'_>,
@@ -18,7 +21,10 @@ pub async fn recruit_role_remove(
     #[autocomplete = "quest_auto_complete"]
     #[name_localized("ja", "クエスト名")]
     #[description = "quest name or alias (use 'すべて' for all recruitments)"]
-    #[description_localized("ja", "クエスト名またはクエスト別名（全ての募集の場合は「すべて」を入力）")]
+    #[description_localized(
+        "ja",
+        "クエスト名またはクエスト別名（全ての募集の場合は「すべて」を入力）"
+    )]
     quest: String,
 
     #[name_localized("ja", "ロール1")]
@@ -72,16 +78,15 @@ pub async fn recruit_role_remove(
     }
 
     // Facadeを呼び出し
-    let deleted_count = role_management::remove_recruitment_notification_roles(
-        &ctx,
-        &quest,
-        role_ids,
-    ).await?;
+    let deleted_count =
+        role_management::remove_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
 
     // 結果をユーザーに通知
     ctx.send(
         poise::CreateReply::default()
-            .content(format!("{deleted_count}個のロールを募集通知ロールから削除しました。"))
+            .content(format!(
+                "{deleted_count}個のロールを募集通知ロールから削除しました。"
+            ))
             .ephemeral(true),
     )
     .await?;

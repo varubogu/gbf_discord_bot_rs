@@ -30,13 +30,11 @@ const COMMON_TIMEZONES: &[(&str, &str)] = &[
     ("Asia/Manila", "フィリピン標準時 (PST)"),
     ("Asia/Kolkata", "インド標準時 (IST)"),
     ("Asia/Dubai", "湾岸標準時 (GST)"),
-
     // オセアニア
     ("Australia/Sydney", "オーストラリア東部標準時 (AEST)"),
     ("Australia/Melbourne", "オーストラリア東部標準時 (AEST)"),
     ("Australia/Perth", "オーストラリア西部標準時 (AWST)"),
     ("Pacific/Auckland", "ニュージーランド標準時 (NZST)"),
-
     // 北米
     ("America/New_York", "米国東部標準時 (EST)"),
     ("America/Chicago", "米国中部標準時 (CST)"),
@@ -45,12 +43,10 @@ const COMMON_TIMEZONES: &[(&str, &str)] = &[
     ("America/Anchorage", "アラスカ標準時 (AKST)"),
     ("America/Toronto", "カナダ東部標準時 (EST)"),
     ("America/Vancouver", "カナダ太平洋標準時 (PST)"),
-
     // 中南米
     ("America/Mexico_City", "メキシコ中部標準時 (CST)"),
     ("America/Sao_Paulo", "ブラジリア時間 (BRT)"),
     ("America/Buenos_Aires", "アルゼンチン時間 (ART)"),
-
     // ヨーロッパ
     ("Europe/London", "グリニッジ標準時 (GMT)"),
     ("Europe/Paris", "中央ヨーロッパ標準時 (CET)"),
@@ -58,11 +54,9 @@ const COMMON_TIMEZONES: &[(&str, &str)] = &[
     ("Europe/Rome", "中央ヨーロッパ標準時 (CET)"),
     ("Europe/Madrid", "中央ヨーロッパ標準時 (CET)"),
     ("Europe/Moscow", "モスクワ標準時 (MSK)"),
-
     // アフリカ
     ("Africa/Cairo", "東ヨーロッパ標準時 (EET)"),
     ("Africa/Johannesburg", "南アフリカ標準時 (SAST)"),
-
     // UTC
     ("UTC", "協定世界時 (UTC)"),
 ];

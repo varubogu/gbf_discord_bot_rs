@@ -6,7 +6,9 @@ use std::{collections::HashMap, env};
 
 use chrono::Utc;
 use sea_orm::DbErr;
-use sea_orm::sea_query::{Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, TableRef, Value as SeaValue};
+use sea_orm::sea_query::{
+    Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, TableRef, Value as SeaValue,
+};
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseConnection, DatabaseTransaction, Statement,
     TransactionTrait,
@@ -298,7 +300,11 @@ impl SpreadsheetImportFacade {
                     );
 
                     if let Err(e) = self
-                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &import_result.generated_uuids)
+                        .write_back_generated_uuids(
+                            &sheets_client,
+                            spreadsheet_id,
+                            &import_result.generated_uuids,
+                        )
                         .await
                     {
                         error!(
@@ -360,21 +366,30 @@ impl SpreadsheetImportFacade {
     /// # トランザクション管理
     /// このメソッドはトランザクションを開始・コミット・ロールバックを管理します。
     #[instrument(level = "info", skip(self), fields(guild_id = %guild_id))]
-    pub async fn get_guild_spreadsheet_id(&self, guild_id: i64) -> Result<Option<String>, FacadeError> {
+    pub async fn get_guild_spreadsheet_id(
+        &self,
+        guild_id: i64,
+    ) -> Result<Option<String>, FacadeError> {
         info!(
             guild_id = guild_id,
             "ギルド用スプレッドシートID取得を開始します"
         );
 
         // トランザクション開始（Facade層の責務）
-        let txn = self.db.begin().await.map_err(|e| FacadeError::TransactionError {
-            message: format!("トランザクション開始に失敗しました: {e}"),
-        })?;
+        let txn = self
+            .db
+            .begin()
+            .await
+            .map_err(|e| FacadeError::TransactionError {
+                message: format!("トランザクション開始に失敗しました: {e}"),
+            })?;
 
         // RLSポリシーのためにセッション変数を設定
-        set_current_guild_id(&txn, guild_id).await.map_err(|e| FacadeError::TransactionError {
-            message: format!("セッション変数設定に失敗しました: {e}"),
-        })?;
+        set_current_guild_id(&txn, guild_id)
+            .await
+            .map_err(|e| FacadeError::TransactionError {
+                message: format!("セッション変数設定に失敗しました: {e}"),
+            })?;
 
         let result = async {
             let repository = GuildSpreadsheetConfigRepository::new();
@@ -392,9 +407,11 @@ impl SpreadsheetImportFacade {
         // 結果に応じてcommit/rollback（Facade層の責務）
         match result {
             Ok(spreadsheet_id) => {
-                txn.commit().await.map_err(|e| FacadeError::TransactionError {
-                    message: format!("トランザクションコミットに失敗しました: {e}"),
-                })?;
+                txn.commit()
+                    .await
+                    .map_err(|e| FacadeError::TransactionError {
+                        message: format!("トランザクションコミットに失敗しました: {e}"),
+                    })?;
                 info!(
                     guild_id = guild_id,
                     spreadsheet_id = ?spreadsheet_id,
@@ -403,9 +420,11 @@ impl SpreadsheetImportFacade {
                 Ok(spreadsheet_id)
             }
             Err(e) => {
-                txn.rollback().await.map_err(|e| FacadeError::TransactionError {
-                    message: format!("トランザクションロールバックに失敗しました: {e}"),
-                })?;
+                txn.rollback()
+                    .await
+                    .map_err(|e| FacadeError::TransactionError {
+                        message: format!("トランザクションロールバックに失敗しました: {e}"),
+                    })?;
                 error!(
                     error = %e,
                     guild_id = guild_id,
@@ -640,7 +659,11 @@ impl SpreadsheetImportFacade {
                     );
 
                     if let Err(e) = self
-                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &import_result.generated_uuids)
+                        .write_back_generated_uuids(
+                            &sheets_client,
+                            spreadsheet_id,
+                            &import_result.generated_uuids,
+                        )
                         .await
                     {
                         error!(
@@ -684,7 +707,9 @@ impl SpreadsheetImportFacade {
     async fn write_back_generated_uuids(
         &self,
         sheets_client: &google_sheets4::Sheets<
-            google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+            google_sheets4::hyper_rustls::HttpsConnector<
+                google_sheets4::hyper::client::HttpConnector,
+            >,
         >,
         spreadsheet_id: &str,
         generated_uuids: &[GeneratedUuidInfo],
@@ -724,12 +749,10 @@ impl SpreadsheetImportFacade {
                     .value_input_option("USER_ENTERED")
                     .doit()
                     .await
-                    .map_err(|e| {
-                        FacadeError::ExternalService {
-                            source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
-                                message: format!("UUID書き戻しに失敗しました: {e}"),
-                            },
-                        }
+                    .map_err(|e| FacadeError::ExternalService {
+                        source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
+                            message: format!("UUID書き戻しに失敗しました: {e}"),
+                        },
                     })?;
 
                 tracing::debug!(
@@ -811,21 +834,31 @@ fn column_index_to_letter(index: usize) -> String {
 fn get_schema_name(table_name: &str) -> &str {
     match table_name {
         // master スキーマ
-        "quests" | "quest_aliases" | "battle_styles" | "elements" | "channel_types"
-        | "event_schedules" | "event_schedule_details" | "message_texts" | "environments" => {
-            "master"
-        }
+        "quests"
+        | "quest_aliases"
+        | "battle_styles"
+        | "elements"
+        | "channel_types"
+        | "event_schedules"
+        | "event_schedule_details"
+        | "message_texts"
+        | "environments" => "master",
         // guild_master スキーマ
-        "guilds" | "guild_channels" | "guild_spreadsheet_exports" | "guild_spreadsheet_imports"
-        | "guild_environments" | "guild_event_schedules" | "guild_event_schedule_details"
-        | "guild_message_texts" | "guild_last_process_times" => {
-            "guild_master"
-        }
+        "guilds"
+        | "guild_channels"
+        | "guild_spreadsheet_exports"
+        | "guild_spreadsheet_imports"
+        | "guild_environments"
+        | "guild_event_schedules"
+        | "guild_event_schedule_details"
+        | "guild_message_texts"
+        | "guild_last_process_times" => "guild_master",
         // worker スキーマ
-        "battle_recruitments" | "notifications" | "notification_rel_battle_recruitments"
-        | "notification_rel_event_schedules" | "last_process_times" => {
-            "worker"
-        }
+        "battle_recruitments"
+        | "notifications"
+        | "notification_rel_battle_recruitments"
+        | "notification_rel_event_schedules"
+        | "last_process_times" => "worker",
         // デフォルトはpublicスキーマ（後方互換性のため）
         _ => "public",
     }
@@ -921,9 +954,8 @@ async fn delete_unreferenced_records(
                     )"
                 )
             } else {
-                let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${i}"))
-                    .collect();
+                let placeholders: Vec<String> =
+                    (1..=id_list.len()).map(|i| format!("${i}")).collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
                         SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
@@ -935,14 +967,22 @@ async fn delete_unreferenced_records(
             };
 
             if id_list.is_empty() {
-                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
-                    .await
-                    .map_err(FacadeError::from)?;
+                txn.execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             } else {
-                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
-                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
-                    .await
-                    .map_err(FacadeError::from)?;
+                let values: Vec<SeaValue> =
+                    id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                    values,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             }
             tracing::debug!("battle_stylesテーブルから未参照レコードを削除しました");
         }
@@ -958,28 +998,37 @@ async fn delete_unreferenced_records(
                     )"
                 )
             } else {
-                let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${i}"))
-                    .collect();
+                let placeholders: Vec<String> =
+                    (1..=id_list.len()).map(|i| format!("${i}")).collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
                         SELECT DISTINCT quest_id FROM master.quest_aliases
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
                     )",
-                    schema_name, table_name, placeholders.join(", ")
+                    schema_name,
+                    table_name,
+                    placeholders.join(", ")
                 )
             };
 
             if id_list.is_empty() {
-                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
-                    .await
-                    .map_err(FacadeError::from)?;
+                txn.execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             } else {
-                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
-                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
-                    .await
-                    .map_err(FacadeError::from)?;
+                let values: Vec<SeaValue> =
+                    id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                    values,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             }
             tracing::debug!("questsテーブルから未参照レコードを削除しました");
         }
@@ -993,26 +1042,35 @@ async fn delete_unreferenced_records(
                     )"
                 )
             } else {
-                let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${i}"))
-                    .collect();
+                let placeholders: Vec<String> =
+                    (1..=id_list.len()).map(|i| format!("${i}")).collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
                         SELECT DISTINCT element_id FROM worker.recruitment_participants
                     )",
-                    schema_name, table_name, placeholders.join(", ")
+                    schema_name,
+                    table_name,
+                    placeholders.join(", ")
                 )
             };
 
             if id_list.is_empty() {
-                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
-                    .await
-                    .map_err(FacadeError::from)?;
+                txn.execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             } else {
-                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
-                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
-                    .await
-                    .map_err(FacadeError::from)?;
+                let values: Vec<SeaValue> =
+                    id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                    values,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             }
             tracing::debug!("elementsテーブルから未参照レコードを削除しました");
         }
@@ -1025,24 +1083,34 @@ async fn delete_unreferenced_records(
                     "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {guild_schema}.guild_channels)"
                 )
             } else {
-                let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${i}"))
-                    .collect();
+                let placeholders: Vec<String> =
+                    (1..=id_list.len()).map(|i| format!("${i}")).collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
-                    schema_name, table_name, placeholders.join(", "), guild_schema
+                    schema_name,
+                    table_name,
+                    placeholders.join(", "),
+                    guild_schema
                 )
             };
 
             if id_list.is_empty() {
-                txn.execute(Statement::from_string(DatabaseBackend::Postgres, delete_sql))
-                    .await
-                    .map_err(FacadeError::from)?;
+                txn.execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             } else {
-                let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
-                txn.execute(Statement::from_sql_and_values(DatabaseBackend::Postgres, delete_sql, values))
-                    .await
-                    .map_err(FacadeError::from)?;
+                let values: Vec<SeaValue> =
+                    id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
+                txn.execute(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    delete_sql,
+                    values,
+                ))
+                .await
+                .map_err(FacadeError::from)?;
             }
             tracing::debug!("channel_typesテーブルから未参照レコードを削除しました");
         }
@@ -1097,10 +1165,17 @@ async fn persist_table_data(
     let insert_columns: Vec<Alias> = if guild_id.is_some() {
         // guild_idカラムを先頭に追加
         let mut columns = vec![Alias::new("guild_id")];
-        columns.extend(filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())));
+        columns.extend(
+            filtered_schema
+                .iter()
+                .map(|col| Alias::new(col.column_name.clone())),
+        );
         columns
     } else {
-        filtered_schema.iter().map(|col| Alias::new(col.column_name.clone())).collect()
+        filtered_schema
+            .iter()
+            .map(|col| Alias::new(col.column_name.clone()))
+            .collect()
     };
 
     let mut insert = Query::insert();
@@ -1138,11 +1213,13 @@ async fn persist_table_data(
             }
         }
 
-        insert.values(filtered_values).map_err(|err| FacadeError::Database {
-            source: DbErr::Custom(format!(
-                "テーブル「{table_name}」のINSERT値生成に失敗しました: {err}"
-            )),
-        })?;
+        insert
+            .values(filtered_values)
+            .map_err(|err| FacadeError::Database {
+                source: DbErr::Custom(format!(
+                    "テーブル「{table_name}」のINSERT値生成に失敗しました: {err}"
+                )),
+            })?;
 
         inserted_rows += 1;
     }

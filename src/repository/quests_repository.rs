@@ -37,7 +37,11 @@ pub trait QuestRepository: Send + Sync {
     /// # Arguments
     /// * `db` - DatabaseConnection または DatabaseTransaction
     /// * `partial` - 検索文字列
-    async fn search_by_name_or_alias<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestSearchResult>>
+    async fn search_by_name_or_alias<'c, C>(
+        &self,
+        db: &'c C,
+        partial: &str,
+    ) -> Result<Vec<QuestSearchResult>>
     where
         C: sea_orm::ConnectionTrait;
 }

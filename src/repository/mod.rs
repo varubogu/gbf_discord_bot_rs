@@ -35,13 +35,13 @@ pub use quests_repository::QuestRepository;
 //         let provider = Self::create_database_provider().await?;
 //         Ok(Box::new(database::QuestRepositoryImpl::new(provider)))
 //     }
-    
+
 //     /// メッセージテキストリポジトリを作成
 //     pub async fn create_message_text_repository() -> Result<Box<dyn MessageTextRepository>, PoiseError> {
 //         let provider = Self::create_database_provider().await?;
 //         Ok(Box::new(database::MessageTextRepositoryImpl::new(provider)))
 //     }
-    
+
 //     /// 環境設定リポジトリを作成
 //     pub async fn create_environment_repository() -> Result<Box<dyn EnvironmentRepository>, PoiseError> {
 //         let provider = Self::create_database_provider().await?;
@@ -53,7 +53,7 @@ pub use quests_repository::QuestRepository;
 //         let provider = Self::create_database_provider().await?;
 //         Ok(database::DatabaseTransactionManager::new(provider))
 //     }
-    
+
 //     /// データベースプロバイダーを作成（内部実装を隠蔽）
 //     async fn create_database_provider() -> Result<database::DatabaseProvider, PoiseError> {
 //         // データベース接続の詳細を内部で処理

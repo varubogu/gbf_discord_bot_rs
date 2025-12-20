@@ -43,7 +43,10 @@ impl ParticipantsService {
 
         // キャンセル済みの募集は処理を終了
         if recruitment.is_canceled {
-            info!(recruitment_id = recruitment.id, "キャンセル済み募集のため処理をスキップします");
+            info!(
+                recruitment_id = recruitment.id,
+                "キャンセル済み募集のため処理をスキップします"
+            );
             return Err(AppError::Business {
                 message: "この募集はキャンセル済みです".to_string(),
             });
@@ -261,12 +264,20 @@ impl ParticipantsService {
         let target_message_id = MessageId::from(message_id);
 
         // チャンネルの最近のメッセージを取得（最大100件）
-        match channel.messages(&ctx.http, poise::serenity_prelude::GetMessages::new().limit(100)).await {
+        match channel
+            .messages(
+                &ctx.http,
+                poise::serenity_prelude::GetMessages::new().limit(100),
+            )
+            .await
+        {
             Ok(messages) => {
                 // 募集メッセージへの返信で「参加人数が集まりました」を含むメッセージを探す
                 for msg in messages {
                     if let Some(ref_msg) = &msg.referenced_message {
-                        if ref_msg.id == target_message_id && msg.content.contains("参加人数が集まりました") {
+                        if ref_msg.id == target_message_id
+                            && msg.content.contains("参加人数が集まりました")
+                        {
                             info!("既に規定人数到達通知が送信済みです");
                             return Ok(true);
                         }
@@ -299,10 +310,7 @@ impl ParticipantsService {
         );
 
         let channel = ChannelId::from(channel_id);
-        let notification_message = format!(
-            "{}\n参加人数が集まりました。",
-            participants.join(" ")
-        );
+        let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
         // メッセージIDから参照を作成
         use poise::serenity_prelude::all::MessageReference;

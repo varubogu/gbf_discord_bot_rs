@@ -1,5 +1,5 @@
-use crate::repository::quests_repository::QuestSearchResult;
 use crate::repository::QuestRepository;
+use crate::repository::quests_repository::QuestSearchResult;
 use crate::types::Result;
 
 /// オートコンプリート用のクエスト情報
@@ -24,7 +24,11 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
 
     /// クエスト名またはエイリアスで部分一致検索を行い、結果を返す
     /// Discord autocompleteの制限に合わせて最大25件まで返す
-    pub async fn search_for_autocomplete<'c, C>(&self, db: &'c C, partial: &str) -> Result<Vec<QuestAutocompleteItem>>
+    pub async fn search_for_autocomplete<'c, C>(
+        &self,
+        db: &'c C,
+        partial: &str,
+    ) -> Result<Vec<QuestAutocompleteItem>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -41,7 +45,9 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
                 .collect()
         } else {
             // 部分一致検索
-            self.quest_repository.search_by_name_or_alias(db, partial).await?
+            self.quest_repository
+                .search_by_name_or_alias(db, partial)
+                .await?
         };
 
         // Discord autocompleteは最大25件まで
@@ -89,19 +95,31 @@ mod tests {
             sea_orm::DatabaseBackend::Postgres
         }
 
-        async fn execute(&self, _stmt: sea_orm::Statement) -> std::result::Result<sea_orm::ExecResult, sea_orm::DbErr> {
+        async fn execute(
+            &self,
+            _stmt: sea_orm::Statement,
+        ) -> std::result::Result<sea_orm::ExecResult, sea_orm::DbErr> {
             unimplemented!("テストでは使用されません")
         }
 
-        async fn execute_unprepared(&self, _sql: &str) -> std::result::Result<sea_orm::ExecResult, sea_orm::DbErr> {
+        async fn execute_unprepared(
+            &self,
+            _sql: &str,
+        ) -> std::result::Result<sea_orm::ExecResult, sea_orm::DbErr> {
             unimplemented!("テストでは使用されません")
         }
 
-        async fn query_one(&self, _stmt: sea_orm::Statement) -> std::result::Result<Option<sea_orm::QueryResult>, sea_orm::DbErr> {
+        async fn query_one(
+            &self,
+            _stmt: sea_orm::Statement,
+        ) -> std::result::Result<Option<sea_orm::QueryResult>, sea_orm::DbErr> {
             unimplemented!("テストでは使用されません")
         }
 
-        async fn query_all(&self, _stmt: sea_orm::Statement) -> std::result::Result<Vec<sea_orm::QueryResult>, sea_orm::DbErr> {
+        async fn query_all(
+            &self,
+            _stmt: sea_orm::Statement,
+        ) -> std::result::Result<Vec<sea_orm::QueryResult>, sea_orm::DbErr> {
             unimplemented!("テストでは使用されません")
         }
     }
@@ -143,14 +161,22 @@ mod tests {
                 .expect("get_all was called but no expectation was set")
         }
 
-        async fn get_by_target_id<'c, C>(&self, _db: &'c C, _target_id: i32) -> Result<Option<crate::models::quests::Quest>>
+        async fn get_by_target_id<'c, C>(
+            &self,
+            _db: &'c C,
+            _target_id: i32,
+        ) -> Result<Option<crate::models::quests::Quest>>
         where
             C: sea_orm::ConnectionTrait,
         {
             unimplemented!("このテストでは使用されません")
         }
 
-        async fn search_by_name_or_alias<'c, C>(&self, _db: &'c C, _partial: &str) -> Result<Vec<QuestSearchResult>>
+        async fn search_by_name_or_alias<'c, C>(
+            &self,
+            _db: &'c C,
+            _partial: &str,
+        ) -> Result<Vec<QuestSearchResult>>
         where
             C: sea_orm::ConnectionTrait,
         {

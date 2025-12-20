@@ -7,11 +7,7 @@ use sea_orm::DbErr;
 #[async_trait]
 pub trait MessageTextRepository: Send + Sync {
     /// メッセージIDでメッセージテキストを取得
-    async fn get_by_id<'c, C>(
-        &self,
-        db: &'c C,
-        id: &str,
-    ) -> Result<Option<MessageTexts>, DbErr>
+    async fn get_by_id<'c, C>(&self, db: &'c C, id: &str) -> Result<Option<MessageTexts>, DbErr>
     where
         C: sea_orm::ConnectionTrait;
 }

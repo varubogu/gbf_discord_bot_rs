@@ -16,7 +16,10 @@ use tracing::info;
     check = "check_bot_control_role",
     ephemeral = true,
     name_localized("ja", "スケジュール統計"),
-    description_localized("ja", "指定した期間の通知統計を表示します。（管理者専用サーバーのみ実施可能）"),
+    description_localized(
+        "ja",
+        "指定した期間の通知統計を表示します。（管理者専用サーバーのみ実施可能）"
+    )
 )]
 pub async fn schedule_stats(
     ctx: PoiseContext<'_>,
@@ -25,11 +28,11 @@ pub async fn schedule_stats(
     #[max = 90]
     days: Option<i64>,
 ) -> Result<()> {
-    let guild_id = ctx.guild_id().ok_or_else(|| {
-        crate::types::AppError::Business {
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| crate::types::AppError::Business {
             message: "このコマンドはサーバー内でのみ使用できます".to_string(),
-        }
-    })?;
+        })?;
 
     let days = days.unwrap_or(7);
 
@@ -78,12 +81,8 @@ pub async fn schedule_stats(
         .color(0x00aaff)
         .footer(CreateEmbedFooter::new("詳細な統計情報"));
 
-    ctx.send(
-        poise::CreateReply::default()
-            .embed(embed)
-            .ephemeral(true),
-    )
-    .await?;
+    ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
+        .await?;
 
     Ok(())
 }

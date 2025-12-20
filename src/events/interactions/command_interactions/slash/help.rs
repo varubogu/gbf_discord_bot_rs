@@ -5,7 +5,7 @@ use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
     slash_command,
     name_localized("ja", "ヘルプ"),
     description_localized("ja", "ヘルプを表示します"),
-    ephemeral = true,
+    ephemeral = true
 )]
 pub async fn help(ctx: PoiseContext<'_>) -> Result<()> {
     // Create an embed with help information

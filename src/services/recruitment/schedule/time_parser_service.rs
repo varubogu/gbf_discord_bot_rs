@@ -36,22 +36,16 @@ impl TimeParserService {
             });
         }
 
-        let hour = parts[0].parse::<u32>().map_err(|_| {
-            AppError::Business {
-                message: format!("無効な時刻です: {time_str}"),
-            }
+        let hour = parts[0].parse::<u32>().map_err(|_| AppError::Business {
+            message: format!("無効な時刻です: {time_str}"),
         })?;
 
-        let minute = parts[1].parse::<u32>().map_err(|_| {
-            AppError::Business {
-                message: format!("無効な時刻です: {time_str}"),
-            }
+        let minute = parts[1].parse::<u32>().map_err(|_| AppError::Business {
+            message: format!("無効な時刻です: {time_str}"),
         })?;
 
-        NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| {
-            AppError::Business {
-                message: format!("無効な時刻です: {time_str}"),
-            }
+        NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| AppError::Business {
+            message: format!("無効な時刻です: {time_str}"),
         })
     }
 }

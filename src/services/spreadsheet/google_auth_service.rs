@@ -53,9 +53,7 @@ impl GoogleAuthService {
         let key_file_content = tokio::fs::read_to_string(&self.service_account_key_file)
             .await
             .map_err(|e| ExternalServiceError::GoogleAuthError {
-                message: format!(
-                    "サービスアカウントキーファイルの読み込みに失敗しました: {e}"
-                ),
+                message: format!("サービスアカウントキーファイルの読み込みに失敗しました: {e}"),
             })?;
 
         // JSONをパース

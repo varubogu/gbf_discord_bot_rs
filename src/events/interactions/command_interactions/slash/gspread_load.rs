@@ -30,7 +30,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
                     .content("❌ このコマンドはギルド内でのみ実行可能です")
                     .ephemeral(true),
             )
-                .await?;
+            .await?;
             return Ok(());
         }
     };
@@ -45,20 +45,20 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
 
     // Facadeを作成
     let app_state_arc = Arc::new(app_state.clone());
-    let facade = match SpreadsheetImportFacade::new(app_state.guild_db().clone(), app_state_arc.clone())
-    {
-        Ok(f) => f,
-        Err(e) => {
-            let error_msg = PresentationError::from(e).to_string();
-            ctx.send(
-                poise::CreateReply::default()
-                    .content(format!("❌ {error_msg}"))
-                    .ephemeral(true),
-            )
-            .await?;
-            return Ok(());
-        }
-    };
+    let facade =
+        match SpreadsheetImportFacade::new(app_state.guild_db().clone(), app_state_arc.clone()) {
+            Ok(f) => f,
+            Err(e) => {
+                let error_msg = PresentationError::from(e).to_string();
+                ctx.send(
+                    poise::CreateReply::default()
+                        .content(format!("❌ {error_msg}"))
+                        .ephemeral(true),
+                )
+                .await?;
+                return Ok(());
+            }
+        };
 
     // Facadeを使ってスプレッドシートIDを取得
     let spreadsheet_id = match facade.get_guild_spreadsheet_id(guild_id).await {
@@ -66,8 +66,10 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(None) => {
             ctx.send(
                 poise::CreateReply::default()
-                    .content("❌ エラー: このギルドにスプレッドシートが登録されていません\n\
-                        `/gspread_regist` コマンドでスプレッドシートを登録してください")
+                    .content(
+                        "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
+                        `/gspread_regist` コマンドでスプレッドシートを登録してください",
+                    )
                     .ephemeral(true),
             )
             .await?;
@@ -81,7 +83,9 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{error_msg}"))
+                    .content(format!(
+                        "❌ エラー: スプレッドシート設定の取得に失敗しました\n{error_msg}"
+                    ))
                     .ephemeral(true),
             )
             .await?;
@@ -97,7 +101,10 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         .await?;
 
     // インポート実行（ギルド版のメソッドを呼び出す）
-    match facade.import_guild_spreadsheet(&spreadsheet_id, guild_id as u64).await {
+    match facade
+        .import_guild_spreadsheet(&spreadsheet_id, guild_id as u64)
+        .await
+    {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
                 format!(
@@ -151,7 +158,9 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"))
+                    .content(format!(
+                        "❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"
+                    ))
                     .ephemeral(true),
             )
             .await?;

@@ -6,14 +6,14 @@ use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
+use crate::models::entities::battle_recruitment_schedules;
+use crate::models::entities::last_process_times::LastProcessType;
+use crate::models::last_process_times::LastProcessTime;
+use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
 use crate::repository::database::schedule::{
     BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
     NotificationRepository, ScheduleRepository,
 };
-use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
-use crate::models::entities::battle_recruitment_schedules;
-use crate::models::entities::last_process_times::LastProcessType;
-use crate::models::last_process_times::LastProcessTime;
 use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;
@@ -212,8 +212,6 @@ impl SchedulerService {
         )>,
     > {
         let schedule_repo = BattleRecruitmentScheduleRepository::new();
-        schedule_repo
-            .find_all_enabled_schedules_with_days(db)
-            .await
+        schedule_repo.find_all_enabled_schedules_with_days(db).await
     }
 }

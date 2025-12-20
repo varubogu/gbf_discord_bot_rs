@@ -26,12 +26,12 @@ const ELEMENT_KEYS: [&str; 6] = [
 /// 属性スタンプ解決結果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElementEmojis {
-    pub fire: String,    // 火
-    pub water: String,   // 水
-    pub earth: String,   // 土
-    pub wind: String,    // 風
-    pub light: String,   // 光
-    pub dark: String,    // 闇
+    pub fire: String,  // 火
+    pub water: String, // 水
+    pub earth: String, // 土
+    pub wind: String,  // 風
+    pub light: String, // 光
+    pub dark: String,  // 闇
 }
 
 impl ElementEmojis {
@@ -230,7 +230,8 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
                     "サーバー絵文字一覧を取得しました"
                 );
                 // EmojiId を u64 に変換
-                guild.emojis
+                guild
+                    .emojis
                     .into_iter()
                     .map(|(emoji_id, emoji)| (emoji_id.get(), emoji))
                     .collect()
@@ -268,7 +269,10 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
                     debug!(emoji_id = emoji_id, "カスタム絵文字がサーバーに存在します");
                     return Some(value.to_string());
                 } else {
-                    debug!(emoji_id = emoji_id, "カスタム絵文字がサーバーに存在しません");
+                    debug!(
+                        emoji_id = emoji_id,
+                        "カスタム絵文字がサーバーに存在しません"
+                    );
                     return None;
                 }
             }
@@ -336,5 +340,4 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
         }
         None
     }
-
 }
