@@ -170,7 +170,7 @@ impl NotificationService {
             .one(txn)
             .await?
             .ok_or_else(|| {
-                crate::types::AppError::NotFound(format!("募集ID {} が見つかりません", recruit_id))
+                crate::types::AppError::NotFound(format!("募集ID {recruit_id} が見つかりません"))
             })?;
 
         // メッセージテキストを取得
@@ -214,7 +214,7 @@ impl NotificationService {
         // 参加者メンションを作成
         let mut mentions = String::new();
         for user_id in participant_ids {
-            mentions.push_str(&format!("<@{}> ", user_id));
+            mentions.push_str(&format!("<@{user_id}> "));
         }
 
         // 通知メッセージを作成（募集メッセージへの返信）
@@ -316,8 +316,7 @@ impl NotificationService {
                 "メッセージテキストが見つかりません"
             );
             crate::types::AppError::NotFound(format!(
-                "メッセージテキストが見つかりません: {}",
-                message_text_id
+                "メッセージテキストが見つかりません: {message_text_id}"
             ))
         })
     }

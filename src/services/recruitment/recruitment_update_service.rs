@@ -9,6 +9,12 @@ use tracing::info;
 /// 募集情報の更新操作の責務を持つ
 pub struct RecruitmentUpdateService;
 
+impl Default for RecruitmentUpdateService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentUpdateService {
     pub fn new() -> Self {
         Self

@@ -271,7 +271,7 @@ impl BattleRecruitmentScheduleRepository {
             })?
             .ok_or_else(|| {
                 error!(id = %id, "スケジュールが見つかりません");
-                crate::types::AppError::NotFound(format!("スケジュールID {} が見つかりません", id))
+                crate::types::AppError::NotFound(format!("スケジュールID {id} が見つかりません"))
             })?;
 
         let now = chrono::Utc::now();
@@ -371,8 +371,7 @@ impl BattleRecruitmentScheduleRepository {
         if result.rows_affected == 0 {
             error!(id = %id, "スケジュールが見つかりません");
             return Err(crate::types::AppError::NotFound(format!(
-                "スケジュールID {} が見つかりません",
-                id
+                "スケジュールID {id} が見つかりません"
             )));
         }
 
@@ -399,7 +398,7 @@ impl BattleRecruitmentScheduleRepository {
             })?
             .ok_or_else(|| {
                 error!(id = %id, "スケジュールが見つかりません");
-                crate::types::AppError::NotFound(format!("スケジュールID {} が見つかりません", id))
+                crate::types::AppError::NotFound(format!("スケジュールID {id} が見つかりません"))
             })?;
 
         let now = chrono::Utc::now();

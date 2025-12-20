@@ -7,6 +7,12 @@ use tracing::{debug, error, info};
 /// guild_timezonesテーブルのRepository
 pub struct GuildTimezoneRepository;
 
+impl Default for GuildTimezoneRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GuildTimezoneRepository {
     pub fn new() -> Self {
         Self
@@ -62,8 +68,7 @@ impl GuildTimezoneRepository {
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!(
-                    "ギルドタイムゾーンの取得に失敗しました: guild_id={}",
-                    guild_id
+                    "ギルドタイムゾーンの取得に失敗しました: guild_id={guild_id}"
                 ))
             })?;
 

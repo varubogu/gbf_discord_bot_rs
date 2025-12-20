@@ -28,6 +28,12 @@ use tracing::{debug, info};
 /// スケジュールから募集を作成する責務を持つ
 pub struct RecruitmentCreationService;
 
+impl Default for RecruitmentCreationService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentCreationService {
     pub fn new() -> Self {
         Self
@@ -115,7 +121,7 @@ impl RecruitmentCreationService {
 
         // 備考がある場合は追加
         if let Some(note) = &calculated_time.note {
-            message_content.push_str(&format!("\n備考: {}", note));
+            message_content.push_str(&format!("\n備考: {note}"));
         }
 
         // ロールメンションを先頭に追加
@@ -124,7 +130,7 @@ impl RecruitmentCreationService {
                 role_mentions = %role_mentions,
                 "ロールメンションを募集メッセージの先頭に追加します"
             );
-            message_content = format!("{}\n{}", role_mentions, message_content);
+            message_content = format!("{role_mentions}\n{message_content}");
         }
 
         // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）

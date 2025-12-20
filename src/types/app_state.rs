@@ -31,16 +31,16 @@ impl AppState {
 
     /// Guild ロール用DB接続を取得（通常のコマンド実行用）
     pub fn guild_db(&self) -> &DatabaseConnection {
-        &*self.guild_db
+        &self.guild_db
     }
 
     /// System ロール用DB接続を取得（スケジューラー用）
     pub fn system_db(&self) -> &DatabaseConnection {
-        &*self.system_db
+        &self.system_db
     }
 
     /// Global ロール用DB接続を取得（マスターデータ更新用）
     pub fn global_db(&self) -> &DatabaseConnection {
-        &*self.global_db
+        &self.global_db
     }
 }

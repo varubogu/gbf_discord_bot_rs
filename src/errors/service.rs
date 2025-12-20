@@ -109,12 +109,12 @@ impl From<crate::errors::RepositoryError> for BusinessRuleError {
             crate::errors::RepositoryError::NotFound { entity_type, id } => {
                 BusinessRuleError::InvalidState {
                     entity: entity_type,
-                    current_state: format!("ID {} が見つかりません", id),
+                    current_state: format!("ID {id} が見つかりません"),
                 }
             }
             crate::errors::RepositoryError::ConstraintViolation { constraint } => {
                 BusinessRuleError::DuplicateOperation {
-                    operation: format!("制約違反: {}", constraint),
+                    operation: format!("制約違反: {constraint}"),
                 }
             }
             _ => BusinessRuleError::InvalidState {

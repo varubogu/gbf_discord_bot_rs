@@ -19,10 +19,10 @@ impl From<FacadeError> for PresentationError {
     fn from(err: FacadeError) -> Self {
         let message = match &err {
             FacadeError::Validation { source } => {
-                format!("❌ 入力エラー: {}", source)
+                format!("❌ 入力エラー: {source}")
             }
             FacadeError::BusinessRule { source } => {
-                format!("⚠️ 操作できません: {}", source)
+                format!("⚠️ 操作できません: {source}")
             }
             FacadeError::ExternalService { source } => match source {
                 ExternalServiceError::ServiceTimeout { .. } => {
@@ -32,8 +32,7 @@ impl From<FacadeError> for PresentationError {
                 ExternalServiceError::GoogleSheetsApiError { message } => {
                     // UUID書き込み失敗のメッセージを検出
                     if message.contains("UUID書き戻しに失敗") {
-                        format!(
-                            "❌ スプレッドシートへのUUID書き込みに失敗しました\n\n\
+                        "❌ スプレッドシートへのUUID書き込みに失敗しました\n\n\
                             【原因】\n\
                             サービスアカウントにスプレッドシートの編集権限がありません。\n\n\
                             【対処方法】\n\
@@ -41,10 +40,9 @@ impl From<FacadeError> for PresentationError {
                             2. 右上の「共有」をクリック\n\
                             3. サービスアカウントのメールアドレスに「編集者」権限を付与\n\n\
                             ※データベースへの登録はロールバックされました。\n\
-                            権限を付与した後、再度読み込みコマンドを実行してください。"
-                        )
+                            権限を付与した後、再度読み込みコマンドを実行してください。".to_string()
                     } else {
-                        format!("🔧 Googleスプレッドシートへのアクセスに失敗しました。\n詳細: {}", message)
+                        format!("🔧 Googleスプレッドシートへのアクセスに失敗しました。\n詳細: {message}")
                     }
                 }
                 ExternalServiceError::GoogleAuthError { .. } => {
@@ -62,7 +60,7 @@ impl From<FacadeError> for PresentationError {
                 "🔧 処理に失敗しました。再試行してください。".to_string()
             }
             FacadeError::Initialization { message } => {
-                format!("🔧 初期化エラー: {}", message)
+                format!("🔧 初期化エラー: {message}")
             }
             FacadeError::Database { .. } => {
                 "🔧 データベースエラーが発生しました。管理者に連絡してください。".to_string()

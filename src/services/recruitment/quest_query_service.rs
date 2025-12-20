@@ -9,6 +9,12 @@ use tracing::debug;
 /// クエスト検索・取得の責務を持つ
 pub struct QuestQueryService;
 
+impl Default for QuestQueryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuestQueryService {
     pub fn new() -> Self {
         Self
@@ -28,7 +34,7 @@ impl QuestQueryService {
             .await?;
 
         let quest_search_result = search_results.first().ok_or_else(|| {
-            AppError::NotFound(format!("クエスト '{}' が見つかりませんでした", quest_name))
+            AppError::NotFound(format!("クエスト '{quest_name}' が見つかりませんでした"))
         })?;
 
         // クエスト詳細を取得
@@ -63,7 +69,7 @@ impl QuestQueryService {
             .get_by_target_id(db, quest_id)
             .await?
             .ok_or_else(|| {
-                AppError::NotFound(format!("クエストID {} が見つかりませんでした", quest_id))
+                AppError::NotFound(format!("クエストID {quest_id} が見つかりませんでした"))
             })?;
 
         debug!(quest_id = quest_id, "クエスト詳細を取得しました");

@@ -269,7 +269,7 @@ impl std::fmt::Display for ExportResult {
         if !self.errors.is_empty() {
             write!(f, "\n\n❌ エラー詳細:\n")?;
             for error in &self.errors {
-                write!(f, "  - {}\n", error)?;
+                writeln!(f, "  - {error}")?;
             }
         }
 

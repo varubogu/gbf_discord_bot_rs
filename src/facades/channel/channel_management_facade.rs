@@ -1,7 +1,4 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
-use crate::repository::database::guild_repository::GuildRepository;
 use crate::services::channel::channel_display_service::{
     ChannelDisplayService, ChannelSettingsDisplay,
 };

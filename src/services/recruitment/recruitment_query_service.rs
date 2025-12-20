@@ -12,6 +12,12 @@ use tracing::debug;
 /// 募集情報とBattleStyleの取得を担当
 pub struct RecruitmentQueryService;
 
+impl Default for RecruitmentQueryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentQueryService {
     pub fn new() -> Self {
         Self

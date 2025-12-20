@@ -106,7 +106,7 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
             .repository
             .get_multiple_by_guild(db, guild_id, &ELEMENT_KEYS)
             .await
-            .map_err(|e| crate::types::AppError::Database(e))?;
+            .map_err(crate::types::AppError::Database)?;
 
         // サーバーの絵文字一覧を取得（カスタム絵文字の検証用）
         let guild_emojis = Self::fetch_guild_emojis(http, guild_id as u64).await;
@@ -296,9 +296,9 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
                 if emoji.name == emoji_name {
                     // 見つかった！<:name:id> 形式に変換
                     let resolved = if emoji.animated {
-                        format!("<a:{}:{}>", emoji_name, emoji_id)
+                        format!("<a:{emoji_name}:{emoji_id}>")
                     } else {
-                        format!("<:{}:{}>", emoji_name, emoji_id)
+                        format!("<:{emoji_name}:{emoji_id}>")
                     };
                     debug!(
                         emoji_name = emoji_name,

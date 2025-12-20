@@ -97,7 +97,7 @@ where
                     })
                 } else {
                     Err(ExternalServiceError::GoogleSheetsApiError {
-                        message: format!("スプレッドシートへのアクセスに失敗しました: {}", e),
+                        message: format!("スプレッドシートへのアクセスに失敗しました: {e}"),
                     })
                 }
             }
@@ -137,7 +137,7 @@ where
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_imports".to_string(),
-                current_state: format!("登録失敗: {}", e),
+                current_state: format!("登録失敗: {e}"),
             })?;
 
         self.repository
@@ -145,7 +145,7 @@ where
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_exports".to_string(),
-                current_state: format!("登録失敗: {}", e),
+                current_state: format!("登録失敗: {e}"),
             })?;
 
         Ok(())
@@ -161,7 +161,7 @@ where
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_imports".to_string(),
-                current_state: format!("取得失敗: {}", e),
+                current_state: format!("取得失敗: {e}"),
             })
     }
 
@@ -175,7 +175,7 @@ where
             .await
             .map_err(|e| BusinessRuleError::InvalidState {
                 entity: "guild_spreadsheet_exports".to_string(),
-                current_state: format!("取得失敗: {}", e),
+                current_state: format!("取得失敗: {e}"),
             })
     }
 }

@@ -19,18 +19,14 @@ impl ErrorFormatter {
 
         let error_details = err.to_string();
 
-        let possible_causes = vec![
-            "PostgreSQLサーバーが起動していない",
+        let possible_causes = ["PostgreSQLサーバーが起動していない",
             "データベース名が間違っている",
             "ホストまたはポートに到達できない",
-            "認証に失敗している",
-        ];
+            "認証に失敗している"];
 
-        let troubleshooting = vec![
-            "PostgreSQLサーバーの状態を確認: sudo systemctl status postgresql",
+        let troubleshooting = ["PostgreSQLサーバーの状態を確認: sudo systemctl status postgresql",
             "データベース接続情報を確認: DB_HOST, DB_PORT, DB_NAME, *_DB_USER, *_DB_PASSWORD",
-            "接続をテスト: psql \"postgresql://<user>:<password>@<host>:<port>/<database>\"",
-        ];
+            "接続をテスト: psql \"postgresql://<user>:<password>@<host>:<port>/<database>\""];
 
         format!(
             "\n❌ {}\n\
@@ -46,7 +42,7 @@ impl ErrorFormatter {
             error_details,
             possible_causes
                 .iter()
-                .map(|c| format!("  - {}", c))
+                .map(|c| format!("  - {c}"))
                 .collect::<Vec<_>>()
                 .join("\n"),
             troubleshooting
@@ -62,17 +58,13 @@ impl ErrorFormatter {
     pub fn format_json_error(err: &serde_json::Error, file_path: &str) -> String {
         let error_details = err.to_string();
 
-        let possible_causes = vec![
-            "ファイルが空である",
+        let possible_causes = ["ファイルが空である",
             "無効なJSON形式が含まれている",
-            "ファイルのエンコーディングが不正",
-        ];
+            "ファイルのエンコーディングが不正"];
 
-        let troubleshooting = vec![
-            format!("ファイル内容を確認: cat {}", file_path),
-            format!("JSON形式を検証: jq . {}", file_path),
-            "Google Cloud Consoleからサービスアカウントキーを再ダウンロード".to_string(),
-        ];
+        let troubleshooting = [format!("ファイル内容を確認: cat {file_path}"),
+            format!("JSON形式を検証: jq . {file_path}"),
+            "Google Cloud Consoleからサービスアカウントキーを再ダウンロード".to_string()];
 
         format!(
             "\n❌ JSON Parse Error\n\
@@ -88,7 +80,7 @@ impl ErrorFormatter {
             error_details,
             possible_causes
                 .iter()
-                .map(|c| format!("  - {}", c))
+                .map(|c| format!("  - {c}"))
                 .collect::<Vec<_>>()
                 .join("\n"),
             troubleshooting
@@ -124,7 +116,7 @@ impl ErrorFormatter {
                 // パスワード部分をマスク
                 let before_password = &db_url[..colon_pos + 1];
                 let after_password = &db_url[at_pos..];
-                return format!("{}***{}", before_password, after_password);
+                return format!("{before_password}***{after_password}");
             }
         }
         // マスクできない場合はそのまま返す（パスワードがない形式の可能性）

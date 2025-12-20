@@ -72,8 +72,7 @@ impl StartRecruitmentService {
             None => {
                 warn!("募集情報が見つかりません: message_id={}", message_id);
                 Err(AppError::NotFound(format!(
-                    "Recruitment not found for message_id: {}",
-                    message_id
+                    "Recruitment not found for message_id: {message_id}"
                 )))
             }
         }
@@ -99,7 +98,7 @@ impl StartRecruitmentService {
             Ok(message) => message,
             Err(e) => {
                 error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {}", e).into());
+                return Err(format!("Failed to get message: {e}").into());
             }
         };
 
@@ -152,8 +151,7 @@ impl StartRecruitmentService {
         };
 
         let message = format!(
-            "🚀 **クエスト出発時間です！** 🚀\n\n{}\n\n参加者の皆さん: {}\n\nクエストを開始してください！",
-            quest_name, participant_mentions
+            "🚀 **クエスト出発時間です！** 🚀\n\n{quest_name}\n\n参加者の皆さん: {participant_mentions}\n\nクエストを開始してください！"
         );
         Ok(message)
     }
@@ -185,7 +183,7 @@ impl StartRecruitmentService {
             }
             Err(e) => {
                 error!("開始返信送信エラー: {:?}", e);
-                Err(format!("Failed to send start reply: {}", e).into())
+                Err(format!("Failed to send start reply: {e}").into())
             }
         }
     }

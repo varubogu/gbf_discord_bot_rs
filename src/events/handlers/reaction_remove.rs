@@ -32,7 +32,7 @@ pub async fn on_reaction_remove(
         }
         Err(e) => {
             warn!("ユーザー取得エラー: {:?}", e);
-            return Err(format!("ユーザー取得エラー: {:?}", e));
+            return Err(format!("ユーザー取得エラー: {e:?}"));
         }
     };
     let user_id = user.id;

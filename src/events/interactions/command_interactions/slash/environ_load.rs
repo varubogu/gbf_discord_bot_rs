@@ -11,6 +11,6 @@ pub async fn environ_load(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer().await?;
     match environment::load(&ctx).await {
         Ok(_) => Ok(()),
-        Err(e) => return Err(e),
+        Err(e) => Err(e),
     }
 }

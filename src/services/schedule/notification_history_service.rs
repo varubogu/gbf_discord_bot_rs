@@ -11,6 +11,12 @@ pub struct NotificationHistoryService {
     notification_repo: NotificationRepository,
 }
 
+impl Default for NotificationHistoryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NotificationHistoryService {
     pub fn new() -> Self {
         let notification_repo = NotificationRepository::new();

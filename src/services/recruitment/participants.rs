@@ -87,7 +87,7 @@ impl ParticipantsService {
             Ok(message) => message,
             Err(e) => {
                 error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {}", e).into());
+                return Err(format!("Failed to get message: {e}").into());
             }
         };
 
@@ -186,7 +186,7 @@ impl ParticipantsService {
             Ok(message) => message,
             Err(e) => {
                 error!("更新対象メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message for update: {}", e).into());
+                return Err(format!("Failed to get message for update: {e}").into());
             }
         };
 
@@ -202,7 +202,7 @@ impl ParticipantsService {
             for emoji in &emoji_order {
                 if let Some(users) = participants_by_reaction.get(*emoji) {
                     if users.is_empty() {
-                        text.push_str(&format!("{} なし\n", emoji));
+                        text.push_str(&format!("{emoji} なし\n"));
                     } else {
                         text.push_str(&format!("{} {}\n", emoji, users.join(" ")));
                     }
@@ -213,7 +213,7 @@ impl ParticipantsService {
             for (emoji, users) in participants_by_reaction {
                 if !emoji_order.contains(&emoji.as_str()) {
                     if users.is_empty() {
-                        text.push_str(&format!("{} なし\n", emoji));
+                        text.push_str(&format!("{emoji} なし\n"));
                     } else {
                         text.push_str(&format!("{} {}\n", emoji, users.join(" ")));
                     }
@@ -243,7 +243,7 @@ impl ParticipantsService {
             }
             Err(e) => {
                 error!("メッセージ更新エラー: {:?}", e);
-                Err(format!("Failed to update message: {}", e).into())
+                Err(format!("Failed to update message: {e}").into())
             }
         }
     }
@@ -319,7 +319,7 @@ impl ParticipantsService {
             }
             Err(e) => {
                 error!("規定人数到達通知送信エラー: {:?}", e);
-                Err(format!("Failed to send notification: {}", e).into())
+                Err(format!("Failed to send notification: {e}").into())
             }
         }
     }

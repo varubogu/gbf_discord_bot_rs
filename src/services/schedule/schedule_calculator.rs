@@ -150,7 +150,7 @@ impl ScheduleCalculator {
                 .from_local_datetime(&naive_datetime)
                 .single()
                 .ok_or_else(|| crate::types::AppError::Validation {
-                    field: format!("日時計算: {}", naive_datetime),
+                    field: format!("日時計算: {naive_datetime}"),
                 })?;
 
             let schedule_datetime_utc = schedule_datetime_jst.with_timezone(&Utc);
@@ -214,7 +214,7 @@ impl ScheduleCalculator {
                     "範囲指定の開始日のパースに失敗しました"
                 );
                 crate::types::AppError::Validation {
-                    field: format!("範囲指定の開始日: {}", start_str),
+                    field: format!("範囲指定の開始日: {start_str}"),
                 }
             })?;
 
@@ -225,7 +225,7 @@ impl ScheduleCalculator {
                     "範囲指定の終了日のパースに失敗しました"
                 );
                 crate::types::AppError::Validation {
-                    field: format!("範囲指定の終了日: {}", end_str),
+                    field: format!("範囲指定の終了日: {end_str}"),
                 }
             })?;
 
@@ -242,7 +242,7 @@ impl ScheduleCalculator {
             "start_day_relativeの形式が不正です"
         );
         Err(crate::types::AppError::Validation {
-            field: format!("start_day_relative: {}", relative_day),
+            field: format!("start_day_relative: {relative_day}"),
         })
     }
 
@@ -285,7 +285,7 @@ impl ScheduleCalculator {
                     "時刻のパースに失敗しました"
                 );
                 crate::types::AppError::Validation {
-                    field: format!("時刻形式: {}", time_str),
+                    field: format!("時刻形式: {time_str}"),
                 }
             })
     }

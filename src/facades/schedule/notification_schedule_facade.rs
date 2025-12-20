@@ -80,7 +80,7 @@ impl NotificationScheduleFacade {
             let history_service = NotificationHistoryService::new();
             // 日数を計算（最低1日）
             let now = Utc::now();
-            let days = (now - from).num_days().max(1) as i64;
+            let days = (now - from).num_days().max(1);
             let items = history_service
                 .get_past_notifications(conn, guild_id, days)
                 .await?;

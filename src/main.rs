@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
             info!("✅ All startup validations passed");
         }
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             error!("❌ Startup validation failed, exiting");
             std::process::exit(1);
         }

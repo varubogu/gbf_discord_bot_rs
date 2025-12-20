@@ -6,7 +6,6 @@ use crate::repository::quests_repository::QuestRepository;
 use crate::services::recruitment::schedule::{DaysParserService, TimeParserService};
 use crate::services::schedule::{convert_local_days_and_time_to_utc, RecruitmentScheduleService};
 use crate::types::{AppError, Result};
-use chrono::NaiveTime;
 use chrono_tz::Tz;
 use sea_orm::DatabaseTransaction;
 use tracing::info;
@@ -175,8 +174,7 @@ impl ScheduleCreateService {
         let quest_search_result = search_results
             .first()
             .ok_or_else(|| AppError::NotFound(format!(
-                "クエスト '{}' が見つかりませんでした",
-                quest_alias
+                "クエスト '{quest_alias}' が見つかりませんでした"
             )))?;
 
         let quest_id = quest_search_result.quest_id;
@@ -186,8 +184,7 @@ impl ScheduleCreateService {
             .get_by_target_id(txn, quest_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!(
-                "クエストID {} の詳細情報が見つかりませんでした",
-                quest_id
+                "クエストID {quest_id} の詳細情報が見つかりませんでした"
             )))?;
 
         Ok((
@@ -208,8 +205,7 @@ impl ScheduleCreateService {
             .get_by_id(txn, battle_style_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!(
-                "バトルスタイルID {} が見つかりませんでした",
-                battle_style_id
+                "バトルスタイルID {battle_style_id} が見つかりませんでした"
             )))?;
 
         Ok(battle_style.display_name.clone())
@@ -226,11 +222,9 @@ impl ScheduleCreateService {
             .get_by_guild_and_type_with_txn(txn, guild_id, 2)
             .await?
             .ok_or_else(|| AppError::Business {
-                message: format!(
-                    "マルチ募集チャンネルが登録されていません。\n\n\
+                message: "マルチ募集チャンネルが登録されていません。\n\n\
                     定期募集を作成するには、先に管理者に `/チャンネル登録` コマンドで\
-                    マルチ募集チャンネルを登録してもらってください。"
-                ),
+                    マルチ募集チャンネルを登録してもらってください。".to_string(),
             })?;
 
         Ok(guild_channel.channel_id)

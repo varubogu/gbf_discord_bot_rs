@@ -10,6 +10,12 @@ use tracing::info;
 /// 通知の作成・削除・リレーション管理の責務を持つ
 pub struct NotificationManagementService;
 
+impl Default for NotificationManagementService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NotificationManagementService {
     pub fn new() -> Self {
         Self

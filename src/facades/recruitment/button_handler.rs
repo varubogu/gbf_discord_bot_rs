@@ -107,10 +107,10 @@ pub async fn handle_recruitment_button(
                     .await?;
                 match action {
                     ParticipationAction::Joined => {
-                        format!("✅ {}属性で参加しました！", element_name)
+                        format!("✅ {element_name}属性で参加しました！")
                     }
                     ParticipationAction::Left => {
-                        format!("👋 {}属性の参加を取り消しました", element_name)
+                        format!("👋 {element_name}属性の参加を取り消しました")
                     }
                 }
             }
@@ -162,12 +162,11 @@ pub async fn handle_recruitment_button(
                 &ctx.http,
                 poise::serenity_prelude::EditInteractionResponse::new()
                     .content(format!(
-                        "{}\n\n現在の参加者数: **{}人**",
-                        response_message, participant_count
+                        "{response_message}\n\n現在の参加者数: **{participant_count}人**"
                     )),
             )
             .await
-            .map_err(|e| AppError::Discord(e))?;
+            .map_err(AppError::Discord)?;
 
         Ok(())
     }
@@ -239,7 +238,7 @@ async fn update_recruitment_message(
         .filter(ParticipantColumn::RecruitmentId.eq(recruitment.id))
         .all(txn)
         .await
-        .map_err(|e| AppError::Database(e))?;
+        .map_err(AppError::Database)?;
 
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
     let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
@@ -260,7 +259,7 @@ async fn update_recruitment_message(
     let mut message = channel
         .message(&ctx.http, MessageId::new(message_id))
         .await
-        .map_err(|e| AppError::Discord(e))?;
+        .map_err(AppError::Discord)?;
 
     // 既存のembedを取得（最初のembedを使用）
     let existing_embed = message.embeds.first().cloned();
@@ -277,8 +276,7 @@ async fn update_recruitment_message(
         embed = embed
             .description(&participants_text)
             .footer(poise::serenity_prelude::CreateEmbedFooter::new(format!(
-                "参加者数: {}人",
-                participant_count
+                "参加者数: {participant_count}人"
             )));
         embed
     } else {
@@ -287,8 +285,7 @@ async fn update_recruitment_message(
             .title("参加者一覧")
             .description(&participants_text)
             .footer(poise::serenity_prelude::CreateEmbedFooter::new(format!(
-                "参加者数: {}人",
-                participant_count
+                "参加者数: {participant_count}人"
             )))
             .color(0x0099ff)
     };
@@ -297,7 +294,7 @@ async fn update_recruitment_message(
     message
         .edit(&ctx.http, EditMessage::new().embed(new_embed))
         .await
-        .map_err(|e| AppError::Discord(e))?;
+        .map_err(AppError::Discord)?;
 
     info!("募集メッセージの参加者一覧を更新しました");
     Ok(())
@@ -323,7 +320,7 @@ async fn create_participants_text(
         let element_id = participant.element_id.unwrap_or(0);
         participants_by_element
             .entry(element_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(participant.user_id as u64);
     }
 
@@ -339,11 +336,11 @@ async fn create_participants_text(
             if let Some(user_ids) = participants_by_element.get(&element_id) {
                 let user_mentions: Vec<String> = user_ids
                     .iter()
-                    .map(|&uid| format!("<@{}>", uid))
+                    .map(|&uid| format!("<@{uid}>"))
                     .collect();
                 text.push_str(&format!("{} {}: {}\n", emoji, name, user_mentions.join(" ")));
             } else {
-                text.push_str(&format!("{} {}: なし\n", emoji, name));
+                text.push_str(&format!("{emoji} {name}: なし\n"));
             }
         }
 
@@ -351,11 +348,11 @@ async fn create_participants_text(
         if let Some(user_ids) = participants_by_element.get(&0) {
             let user_mentions: Vec<String> = user_ids
                 .iter()
-                .map(|&uid| format!("<@{}>", uid))
+                .map(|&uid| format!("<@{uid}>"))
                 .collect();
             text.push_str(&format!("{} 全属性可能: {}\n", ALL_ELEMENTS_EMOJI, user_mentions.join(" ")));
         } else {
-            text.push_str(&format!("{} 全属性可能: なし\n", ALL_ELEMENTS_EMOJI));
+            text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
         }
     } else {
         // シンプル参加の場合（element_id = null）
@@ -364,11 +361,11 @@ async fn create_participants_text(
         if let Some(user_ids) = participants_by_element.get(&0) {
             let user_mentions: Vec<String> = user_ids
                 .iter()
-                .map(|&uid| format!("<@{}>", uid))
+                .map(|&uid| format!("<@{uid}>"))
                 .collect();
             text.push_str(&format!("{} 参加: {}\n", SIMPLE_JOIN_EMOJI, user_mentions.join(" ")));
         } else {
-            text.push_str(&format!("{} 参加: なし\n", SIMPLE_JOIN_EMOJI));
+            text.push_str(&format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n"));
         }
     }
 

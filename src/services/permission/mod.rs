@@ -10,10 +10,10 @@ pub async fn has_role(
     role_name: &str,
 ) -> Result<(), String> {
     let guild = ctx.guild().ok_or_else(|| {
-        format!("ギルド情報を取得できませんでした。このコマンドはサーバー内でのみ実行可能です")
+        "ギルド情報を取得できませんでした。このコマンドはサーバー内でのみ実行可能です".to_string()
     })?;
     let role = guild.role_by_name(role_name).ok_or_else(|| {
-        format!("role is not found: '{}'", role_name)
+        format!("role is not found: '{role_name}'")
     })?;
 
     let has_permission = member.roles.iter().any(|role_id| role_id.eq(&role.id));
@@ -101,13 +101,13 @@ pub async fn check_bot_control_role(
         .http()
         .get_guild_roles(guild_id)
         .await
-        .map_err(|e| crate::types::AppError::Discord(e))?;
+        .map_err(crate::types::AppError::Discord)?;
 
     let control_role = roles
         .iter()
         .find(|r| r.name == ROLL_GBF_BOT_CONTROLS)
         .ok_or_else(|| crate::types::AppError::Config {
-            message: format!("ロール '{}' が見つかりません", ROLL_GBF_BOT_CONTROLS),
+            message: format!("ロール '{ROLL_GBF_BOT_CONTROLS}' が見つかりません"),
         })?;
 
     let has_permission = member

@@ -84,7 +84,7 @@ lazy_static! {
                     let minutes = (total_seconds % 3600) / 60;
 
                     if minutes == 0 {
-                        format!("UTC{:+}", hours)
+                        format!("UTC{hours:+}")
                     } else {
                         format!("UTC{:+}:{:02}", hours, minutes.abs())
                     }
@@ -93,7 +93,7 @@ lazy_static! {
                 };
 
                 // 表示名: "Asia/Tokyo - 日本標準時 (JST) [UTC+9]"
-                let display_name = format!("{} - {} [{}]", tz_name, description, offset_str);
+                let display_name = format!("{tz_name} - {description} [{offset_str}]");
 
                 TimezoneChoiceData {
                     display_name,
@@ -177,8 +177,7 @@ impl TimezoneService {
         timezone_str.parse::<Tz>().map_err(|_| {
             AppError::Validation {
                 field: format!(
-                    "timezone: {}（IANAタイムゾーン名を指定してください。例: Asia/Tokyo, America/New_York）",
-                    timezone_str
+                    "timezone: {timezone_str}（IANAタイムゾーン名を指定してください。例: Asia/Tokyo, America/New_York）"
                 ),
             }
         })

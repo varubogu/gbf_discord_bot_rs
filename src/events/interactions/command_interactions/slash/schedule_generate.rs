@@ -63,7 +63,7 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
 
             let embed = CreateEmbed::default()
                 .title("❌ スケジュール生成エラー")
-                .description(format!("スケジュールの生成中にエラーが発生しました。\n```\n{}\n```", e))
+                .description(format!("スケジュールの生成中にエラーが発生しました。\n```\n{e}\n```"))
                 .color(0xff0000)
                 .footer(CreateEmbedFooter::new("詳細はログを確認してください"));
 

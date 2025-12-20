@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Duration, Local, Timelike};
+use chrono::{DateTime, Local, Timelike};
 use dateparser;
 use tracing::error;
 
@@ -20,8 +20,7 @@ pub async fn parse_event_date(date_str: &str) -> Result<DateTime<Local>, String>
         Err(e) => {
             error!("Failed to parse date string '{}': {}", trimmed_input, e);
             Err(format!(
-                "Failed to parse date string '{}': {}",
-                trimmed_input, e
+                "Failed to parse date string '{trimmed_input}': {e}"
             ))
         }
     }

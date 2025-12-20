@@ -315,7 +315,7 @@ impl EnvValidator {
                 "Service Account Key File".to_string(),
                 ValidationStatus::Error,
             )
-            .with_message(format!("ファイルが見つかりません: {}", file_path))
+            .with_message(format!("ファイルが見つかりません: {file_path}"))
             .with_help("GOOGLE_SERVICE_ACCOUNT_KEY_FILE のパスを確認してください".to_string());
         }
 
@@ -328,7 +328,7 @@ impl EnvValidator {
                     "Service Account Key File".to_string(),
                     ValidationStatus::Error,
                 )
-                .with_message(format!("ファイルの読み込みに失敗しました: {}", e))
+                .with_message(format!("ファイルの読み込みに失敗しました: {e}"))
                 .with_help("ファイルの権限を確認してください".to_string());
             }
         };
@@ -375,8 +375,8 @@ impl EnvValidator {
                 "Service Account Key File".to_string(),
                 ValidationStatus::Error,
             )
-            .with_message(format!("無効なJSON形式: {}", e))
-            .with_help(format!("ファイル内容を確認してください: cat {}", file_path)),
+            .with_message(format!("無効なJSON形式: {e}"))
+            .with_help(format!("ファイル内容を確認してください: cat {file_path}")),
         }
     }
 }
@@ -550,8 +550,8 @@ impl StartupValidator {
         let dots = ".".repeat(padding.max(1));
 
         let msg = match &result.message {
-            Some(m) if result.status != ValidationStatus::Ok => format!(" ({})", m),
-            Some(m) => format!(" ({})", m),
+            Some(m) if result.status != ValidationStatus::Ok => format!(" ({m})"),
+            Some(m) => format!(" ({m})"),
             None => String::new(),
         };
 

@@ -309,8 +309,7 @@ impl SpreadsheetImportFacade {
                         return Err(FacadeError::ExternalService {
                             source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
                                 message: format!(
-                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {}",
-                                    e
+                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {e}"
                                 ),
                             },
                         });
@@ -369,12 +368,12 @@ impl SpreadsheetImportFacade {
 
         // トランザクション開始（Facade層の責務）
         let txn = self.db.begin().await.map_err(|e| FacadeError::TransactionError {
-            message: format!("トランザクション開始に失敗しました: {}", e),
+            message: format!("トランザクション開始に失敗しました: {e}"),
         })?;
 
         // RLSポリシーのためにセッション変数を設定
         set_current_guild_id(&txn, guild_id).await.map_err(|e| FacadeError::TransactionError {
-            message: format!("セッション変数設定に失敗しました: {}", e),
+            message: format!("セッション変数設定に失敗しました: {e}"),
         })?;
 
         let result = async {
@@ -394,7 +393,7 @@ impl SpreadsheetImportFacade {
         match result {
             Ok(spreadsheet_id) => {
                 txn.commit().await.map_err(|e| FacadeError::TransactionError {
-                    message: format!("トランザクションコミットに失敗しました: {}", e),
+                    message: format!("トランザクションコミットに失敗しました: {e}"),
                 })?;
                 info!(
                     guild_id = guild_id,
@@ -405,7 +404,7 @@ impl SpreadsheetImportFacade {
             }
             Err(e) => {
                 txn.rollback().await.map_err(|e| FacadeError::TransactionError {
-                    message: format!("トランザクションロールバックに失敗しました: {}", e),
+                    message: format!("トランザクションロールバックに失敗しました: {e}"),
                 })?;
                 error!(
                     error = %e,
@@ -652,8 +651,7 @@ impl SpreadsheetImportFacade {
                         return Err(FacadeError::ExternalService {
                             source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
                                 message: format!(
-                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {}",
-                                    e
+                                    "UUID書き戻しに失敗しました。次回読み込み時のID不整合を防ぐため、DB登録もロールバックしました: {e}"
                                 ),
                             },
                         });
@@ -699,7 +697,7 @@ impl SpreadsheetImportFacade {
         for uuid_info in generated_uuids {
             updates_by_sheet
                 .entry(uuid_info.sheet_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push((
                     uuid_info.row_number,
                     uuid_info.column_index,
@@ -712,7 +710,7 @@ impl SpreadsheetImportFacade {
             for (row_number, column_index, uuid_str) in updates {
                 // A1記法に変換（列番号をアルファベットに変換）
                 let column_letter = column_index_to_letter(column_index);
-                let range = format!("'{}'!{}{}", sheet_name, column_letter, row_number);
+                let range = format!("'{sheet_name}'!{column_letter}{row_number}");
 
                 let value_range = ValueRange {
                     values: Some(vec![vec![serde_json::Value::String(uuid_str.clone())]]),
@@ -729,7 +727,7 @@ impl SpreadsheetImportFacade {
                     .map_err(|e| {
                         FacadeError::ExternalService {
                             source: crate::errors::ExternalServiceError::GoogleSheetsApiError {
-                                message: format!("UUID書き戻しに失敗しました: {}", e),
+                                message: format!("UUID書き戻しに失敗しました: {e}"),
                             },
                         }
                     })?;
@@ -758,14 +756,14 @@ impl std::fmt::Display for ImportResult {
         if !self.warnings.is_empty() {
             write!(f, "\n\n⚠️ 警告:\n")?;
             for warning in &self.warnings {
-                write!(f, "  - {}\n", warning)?;
+                writeln!(f, "  - {warning}")?;
             }
         }
 
         if !self.errors.is_empty() {
             write!(f, "\n\n❌ エラー詳細:\n")?;
             for error in &self.errors {
-                write!(f, "  - {}\n", error)?;
+                writeln!(f, "  - {error}")?;
             }
         }
 
@@ -916,16 +914,15 @@ async fn delete_unreferenced_records(
             let schema_name = get_schema_name("battle_styles");
             let delete_sql = if id_list.is_empty() {
                 format!(
-                    "DELETE FROM {}.{} WHERE id NOT IN (
+                    "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (
                         SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
                         UNION SELECT DISTINCT default_battle_style_id FROM master.quests
                         UNION SELECT DISTINCT battle_style_id FROM worker.battle_recruitment_schedules
-                    )",
-                    schema_name, table_name
+                    )"
                 )
             } else {
                 let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${}", i))
+                    .map(|i| format!("${i}"))
                     .collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
@@ -954,16 +951,15 @@ async fn delete_unreferenced_records(
             let schema_name = get_schema_name("quests");
             let delete_sql = if id_list.is_empty() {
                 format!(
-                    "DELETE FROM {}.{} WHERE id NOT IN (
+                    "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (
                         SELECT DISTINCT quest_id FROM master.quest_aliases
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
-                    )",
-                    schema_name, table_name
+                    )"
                 )
             } else {
                 let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${}", i))
+                    .map(|i| format!("${i}"))
                     .collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
@@ -992,14 +988,13 @@ async fn delete_unreferenced_records(
             let schema_name = get_schema_name("elements");
             let delete_sql = if id_list.is_empty() {
                 format!(
-                    "DELETE FROM {}.{} WHERE id NOT IN (
+                    "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (
                         SELECT DISTINCT element_id FROM worker.recruitment_participants
-                    )",
-                    schema_name, table_name
+                    )"
                 )
             } else {
                 let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${}", i))
+                    .map(|i| format!("${i}"))
                     .collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
@@ -1027,12 +1022,11 @@ async fn delete_unreferenced_records(
             let guild_schema = get_schema_name("guild_channels");
             let delete_sql = if id_list.is_empty() {
                 format!(
-                    "DELETE FROM {}.{} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
-                    schema_name, table_name, guild_schema
+                    "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (SELECT DISTINCT channel_type FROM {guild_schema}.guild_channels)"
                 )
             } else {
                 let placeholders: Vec<String> = (1..=id_list.len())
-                    .map(|i| format!("${}", i))
+                    .map(|i| format!("${i}"))
                     .collect();
                 format!(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (SELECT DISTINCT channel_type FROM {}.guild_channels)",
@@ -1146,8 +1140,7 @@ async fn persist_table_data(
 
         insert.values(filtered_values).map_err(|err| FacadeError::Database {
             source: DbErr::Custom(format!(
-                "テーブル「{}」のINSERT値生成に失敗しました: {}",
-                table_name, err
+                "テーブル「{table_name}」のINSERT値生成に失敗しました: {err}"
             )),
         })?;
 

@@ -84,7 +84,7 @@ where
 
     /// シート名からデータ範囲を構築（A2以降、ヘッダー除く）
     fn build_data_range(sheet_name: &str) -> String {
-        format!("'{}'!A2:ZZ", sheet_name)
+        format!("'{sheet_name}'!A2:ZZ")
     }
 
     /// PostgreSQL値の行をスプレッドシート文字列に変換
@@ -204,7 +204,7 @@ where
             .doit()
             .await
             .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
-                message: format!("シート「{}」への書き込みに失敗しました: {}", sheet_name, e),
+                message: format!("シート「{sheet_name}」への書き込みに失敗しました: {e}"),
             })?;
 
         let rows_written = string_rows.len();
@@ -246,7 +246,7 @@ where
             .doit()
             .await
             .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
-                message: format!("シート「{}」のクリアに失敗しました: {}", sheet_name, e),
+                message: format!("シート「{sheet_name}」のクリアに失敗しました: {e}"),
             })?;
 
         Ok(())

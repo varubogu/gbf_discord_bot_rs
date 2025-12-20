@@ -99,7 +99,7 @@ impl SpreadsheetUrlServiceTrait for SpreadsheetUrlService {
     }
 
     fn build_spreadsheet_url(&self, spreadsheet_id: &str) -> String {
-        format!("https://docs.google.com/spreadsheets/d/{}", spreadsheet_id)
+        format!("https://docs.google.com/spreadsheets/d/{spreadsheet_id}")
     }
 }
 

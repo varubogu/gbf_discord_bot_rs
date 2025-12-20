@@ -54,8 +54,7 @@ where
     let quest_search_result = search_results
         .first()
         .ok_or_else(|| types::AppError::NotFound(format!(
-            "クエスト '{}' が見つかりませんでした",
-            quest_name_or_alias
+            "クエスト '{quest_name_or_alias}' が見つかりませんでした"
         )))?;
 
     // クエストの詳細情報を取得
@@ -78,8 +77,7 @@ where
         .get_by_id(db, actual_battle_style_id)
         .await?
         .ok_or_else(|| types::AppError::NotFound(format!(
-            "攻略方法ID {} が見つかりませんでした",
-            actual_battle_style_id
+            "攻略方法ID {actual_battle_style_id} が見つかりませんでした"
         )))?;
 
     // reactionsをパース
@@ -179,7 +177,7 @@ pub fn create_message_content(
     expiry_date: &DateTime<chrono::Utc>,
     timezone: chrono_tz::Tz,
 ) -> String {
-    let mut message_text = format!("{}の参加者を募集します。", quest_name);
+    let mut message_text = format!("{quest_name}の参加者を募集します。");
 
     // 攻略方法が「6属性」の場合は追加メッセージを表示
     if battle_style_name == "6属性" {
@@ -214,7 +212,7 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
             ReactionType::Unicode(emoji_str) => emoji_str,
             _ => continue,
         };
-        text.push_str(&format!("{} なし\n", emoji));
+        text.push_str(&format!("{emoji} なし\n"));
     }
 
     if text.is_empty() {
@@ -233,12 +231,12 @@ pub fn create_initial_participants_text_for_buttons(battle_style_name: &str, ele
         let mut text = String::new();
         let emojis_array = element_emojis.as_array();
         for (emoji, name) in emojis_array.iter().zip(ELEMENT_NAMES.iter()) {
-            text.push_str(&format!("{} {}: なし\n", emoji, name));
+            text.push_str(&format!("{emoji} {name}: なし\n"));
         }
-        text.push_str(&format!("{} 全属性可能: なし\n", ALL_ELEMENTS_EMOJI));
+        text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
         text
     } else {
-        format!("{} 参加: なし\n", SIMPLE_JOIN_EMOJI)
+        format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n")
     }
 }
 
@@ -259,14 +257,14 @@ pub fn create_recruitment_buttons(battle_style_name: &str, element_emojis: &Elem
         let emojis_array = element_emojis.as_array();
         for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
             let button = CreateButton::new(format!("recruit_join_{}", i + 1))
-                .label(format!("{} {}", emoji, name))
+                .label(format!("{emoji} {name}"))
                 .style(ButtonStyle::Primary);
             element_buttons.push(button);
         }
 
         // 全属性可能ボタン
         let all_elements_button = CreateButton::new("recruit_join_0")
-            .label(format!("{} 全属性可能", ALL_ELEMENTS_EMOJI))
+            .label(format!("{ALL_ELEMENTS_EMOJI} 全属性可能"))
             .style(ButtonStyle::Success);
 
         // 全て取り消しボタン
@@ -287,7 +285,7 @@ pub fn create_recruitment_buttons(battle_style_name: &str, element_emojis: &Elem
         use crate::types::SIMPLE_JOIN_EMOJI;
 
         let join_button = CreateButton::new("recruit_join")
-            .label(format!("{} 参加", SIMPLE_JOIN_EMOJI))
+            .label(format!("{SIMPLE_JOIN_EMOJI} 参加"))
             .style(ButtonStyle::Success);
 
         let leave_all_button = CreateButton::new("recruit_leave_all")

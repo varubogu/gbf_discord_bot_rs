@@ -12,6 +12,12 @@ pub struct RepositoryContainer {
     // 他のrepositoryも追加可能
 }
 
+impl Default for RepositoryContainer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RepositoryContainer {
     /// RepositoryContainerを作成
     ///

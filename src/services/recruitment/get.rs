@@ -37,7 +37,7 @@ impl GetRecruitmentService {
             Ok(recruitment) => Ok(recruitment),
             Err(e) => {
                 error!("Error getting recruitment by message: {:?}", e);
-                Err(format!("Failed to get recruitment: {}", e))
+                Err(format!("Failed to get recruitment: {e}"))
             }
         }
     }

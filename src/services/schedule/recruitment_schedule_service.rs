@@ -21,6 +21,12 @@ pub struct CalculatedRecruitmentTime {
     pub note: Option<String>,
 }
 
+impl Default for RecruitmentScheduleService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentScheduleService {
     pub fn new() -> Self {
         Self
@@ -134,8 +140,7 @@ impl RecruitmentScheduleService {
             if !(0..=7).contains(&day) {
                 return Err(crate::types::AppError::Business {
                     message: format!(
-                        "無効な曜日です: {}（0-7の範囲で指定してください）",
-                        day
+                        "無効な曜日です: {day}（0-7の範囲で指定してください）"
                     ),
                 });
             }
@@ -160,8 +165,7 @@ impl RecruitmentScheduleService {
         if !(0..=7).contains(&recruit_start_day_offset) {
             return Err(crate::types::AppError::Business {
                 message: format!(
-                    "無効な募集開始日オフセットです: {}（0-7の範囲で指定してください）",
-                    recruit_start_day_offset
+                    "無効な募集開始日オフセットです: {recruit_start_day_offset}（0-7の範囲で指定してください）"
                 ),
             });
         }

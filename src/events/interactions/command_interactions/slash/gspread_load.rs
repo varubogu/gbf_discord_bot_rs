@@ -52,7 +52,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ {}", error_msg))
+                    .content(format!("❌ {error_msg}"))
                     .ephemeral(true),
             )
             .await?;
@@ -81,7 +81,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{}", error_msg))
+                    .content(format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{error_msg}"))
                     .ephemeral(true),
             )
             .await?;
@@ -151,7 +151,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{}", error_msg))
+                    .content(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"))
                     .ephemeral(true),
             )
             .await?;

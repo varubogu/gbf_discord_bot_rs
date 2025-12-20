@@ -108,7 +108,7 @@ where
 
     /// シート名からセル範囲を取得（ヘッダー行を含む）
     fn build_range(sheet_name: &str) -> String {
-        format!("'{}'!A1:ZZ", sheet_name)
+        format!("'{sheet_name}'!A1:ZZ")
     }
 
     /// 生の文字列行をPostgreSQL値に変換
@@ -149,7 +149,7 @@ where
             .doit()
             .await
             .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
-                message: format!("テーブル定義シートの読み込みに失敗しました: {}", e),
+                message: format!("テーブル定義シートの読み込みに失敗しました: {e}"),
             })?;
 
         // 値を取得
@@ -175,7 +175,7 @@ where
             .parse_table_definitions(string_values)
             .await
             .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
-                message: format!("テーブル定義のパースに失敗しました: {}", e),
+                message: format!("テーブル定義のパースに失敗しました: {e}"),
             })
     }
 

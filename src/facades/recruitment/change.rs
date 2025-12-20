@@ -166,7 +166,7 @@ pub async fn change_recruitment_information_internal(
         // 参加者メンションを作成
         let mut mentions = String::new();
         for user_id in participant_ids {
-            mentions.push_str(&format!("<@{}> ", user_id));
+            mentions.push_str(&format!("<@{user_id}> "));
         }
 
         // 5. DBの募集情報を更新

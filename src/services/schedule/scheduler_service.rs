@@ -18,6 +18,12 @@ use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;
 
+impl Default for SchedulerService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SchedulerService {
     pub fn new() -> Self {
         Self
@@ -109,7 +115,7 @@ impl SchedulerService {
         for gc in guild_channels {
             channels_by_type
                 .entry(gc.channel_type)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push((gc.guild_id, gc.channel_id));
         }
         Ok(channels_by_type)

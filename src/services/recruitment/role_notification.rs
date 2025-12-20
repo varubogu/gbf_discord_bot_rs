@@ -10,6 +10,12 @@ pub struct RoleNotificationService {
     quest_roles_repo: QuestRecruitmentNotificationRolesRepository,
 }
 
+impl Default for RoleNotificationService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoleNotificationService {
     pub fn new() -> Self {
         Self {

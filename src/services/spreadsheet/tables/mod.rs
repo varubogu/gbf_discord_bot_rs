@@ -137,7 +137,7 @@ where
         let column_name = column.to_string();
 
         // ColumnTypeを取得してPostgresTypeに変換
-        if let Some(postgres_type) = convert_column_type(&column_def.get_column_type()) {
+        if let Some(postgres_type) = convert_column_type(column_def.get_column_type()) {
             let is_nullable = column_def.is_null();
 
             schemas.push(ColumnSchema {

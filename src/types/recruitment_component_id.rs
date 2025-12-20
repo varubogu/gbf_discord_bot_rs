@@ -46,11 +46,11 @@ impl RecruitmentComponentId {
             "recruit_leave_all" => Ok(Self::LeaveAll),
             s if s.starts_with("recruit_join_") => {
                 let element_id_str = s.strip_prefix("recruit_join_").ok_or_else(|| {
-                    AppError::Generic(format!("無効なCustom ID形式: {}", s))
+                    AppError::Generic(format!("無効なCustom ID形式: {s}"))
                 })?;
 
                 let element_id: i32 = element_id_str.parse().map_err(|_| {
-                    AppError::Generic(format!("属性IDが数値ではありません: {}", element_id_str))
+                    AppError::Generic(format!("属性IDが数値ではありません: {element_id_str}"))
                 })?;
 
                 // element_id = 0 は全属性可能
@@ -60,12 +60,11 @@ impl RecruitmentComponentId {
                     Ok(Self::JoinElement(element_id))
                 } else {
                     Err(AppError::Generic(format!(
-                        "無効な属性ID: {}（1-6の範囲で指定してください）",
-                        element_id
+                        "無効な属性ID: {element_id}（1-6の範囲で指定してください）"
                     )))
                 }
             }
-            _ => Err(AppError::Generic(format!("未知のCustom ID: {}", custom_id))),
+            _ => Err(AppError::Generic(format!("未知のCustom ID: {custom_id}"))),
         }
     }
 
@@ -86,7 +85,7 @@ impl RecruitmentComponentId {
     pub fn to_custom_id(&self) -> String {
         match self {
             Self::Join => "recruit_join".to_string(),
-            Self::JoinElement(element_id) => format!("recruit_join_{}", element_id),
+            Self::JoinElement(element_id) => format!("recruit_join_{element_id}"),
             Self::JoinAllElements => "recruit_join_0".to_string(),
             Self::LeaveAll => "recruit_leave_all".to_string(),
         }

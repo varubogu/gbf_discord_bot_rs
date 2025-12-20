@@ -163,13 +163,13 @@ pub async fn add_reactions(
     let message = channel_id
         .message(ctx, message_id)
         .await
-        .map_err(|e| format!("failed to get message: {}", e))?;
+        .map_err(|e| format!("failed to get message: {e}"))?;
 
     for reaction in reactions {
         message
             .react(ctx, reaction.clone())
             .await
-            .map_err(|e| format!("failed to add reaction: {}", e))?;
+            .map_err(|e| format!("failed to add reaction: {e}"))?;
     }
     Ok(())
 }
@@ -297,7 +297,7 @@ pub async fn update_embed_with_participants(
         .await
     {
         tracing::error!("Error updating message embed: {:?}", e);
-        return Err(format!("Failed to update a message: {}", e));
+        return Err(format!("Failed to update a message: {e}"));
     }
 
     Ok(())

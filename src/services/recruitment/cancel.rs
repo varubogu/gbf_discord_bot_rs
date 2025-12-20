@@ -35,7 +35,7 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
     let recruitment_opt = battle_recruitment_repo
         .get_by_message_with_txn(
             txn,
-            guild_id.clone().into(),
+            guild_id,
             channel_id.into(),
             message_id.into(),
         )
@@ -131,7 +131,7 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
         None => {
             warn!("募集情報が見つかりません: message_id={}", message_id);
             Err(AppError::Business {
-                message: format!("Recruitment not found for message_id: {}", message_id),
+                message: format!("Recruitment not found for message_id: {message_id}"),
             })
         }
     }
@@ -216,8 +216,7 @@ pub async fn get_participants_from_reactions(
 pub async fn create_cancelled_message_content(original_content: &str) -> Result<String> {
     // 元のメッセージに打ち消し線と「キャンセル済み」を追加
     Ok(format!(
-        "~~{}~~\n\n**この募集はキャンセルされました**",
-        original_content
+        "~~{original_content}~~\n\n**この募集はキャンセルされました**"
     ))
 }
 
@@ -229,8 +228,7 @@ pub async fn create_cancel_notification_text(participants: &[String]) -> Result<
     } else {
         let participants_str = participants.join(" ");
         Ok(format!(
-            "募集がキャンセルされました。\n参加予定だった皆さん: {}",
-            participants_str
+            "募集がキャンセルされました。\n参加予定だった皆さん: {participants_str}"
         ))
     }
 }

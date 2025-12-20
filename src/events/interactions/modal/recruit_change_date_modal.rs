@@ -30,9 +30,8 @@ pub async fn handle_recruit_change_date_modal(
     // モーダルから日時を取得
     let event_date_str = interaction
         .data
-        .components
-        .get(0)
-        .and_then(|row| row.components.get(0))
+        .components.first()
+        .and_then(|row| row.components.first())
         .and_then(|component| {
             if let ActionRowComponent::InputText(input) = component {
                 input.value.as_ref().filter(|s| !s.trim().is_empty()).cloned()
@@ -74,7 +73,7 @@ pub async fn handle_recruit_change_date_modal(
                 .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new()
-                        .content(format!("日時の解析に失敗しました: {}", e))
+                        .content(format!("日時の解析に失敗しました: {e}"))
                         .components(vec![]),
                 )
                 .await?;

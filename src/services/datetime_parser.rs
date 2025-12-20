@@ -60,7 +60,7 @@ pub fn parse_event_date(date_str: &str, timezone: Tz) -> Result<DateTime<Utc>> {
         return Ok(dt);
     }
 
-    Err(format!("日時のパースに失敗しました: {}", date_str).into())
+    Err(format!("日時のパースに失敗しました: {date_str}").into())
 }
 
 /// 完全な日時形式をパース (yyyy/MM/dd HH:mm, yyyy-MM-dd HH:mm)
@@ -102,8 +102,8 @@ fn parse_datetime_without_year(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
 
     for pattern in patterns {
         // 年を追加してパース
-        let with_year = format!("{}/{}", current_year, s);
-        let year_pattern = format!("%Y/{}", pattern);
+        let with_year = format!("{current_year}/{s}");
+        let year_pattern = format!("%Y/{pattern}");
 
         if let Ok(naive_dt) = NaiveDateTime::parse_from_str(&with_year, &year_pattern) {
             // サーバー設定のタイムゾーンとして解釈し、UTCに変換
@@ -141,8 +141,8 @@ fn parse_date_only(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     // MM/dd または MM-dd 形式（年は現在年）
     let patterns_without_year = vec!["%m/%d", "%m-%d"];
     for pattern in patterns_without_year {
-        let with_year = format!("{}/{}", current_year, s);
-        if let Ok(naive_date) = NaiveDate::parse_from_str(&with_year, &format!("%Y/{}", pattern)) {
+        let with_year = format!("{current_year}/{s}");
+        if let Ok(naive_date) = NaiveDate::parse_from_str(&with_year, &format!("%Y/{pattern}")) {
             let naive_time = NaiveTime::from_hms_opt(DEFAULT_HOUR, 0, 0)
                 .expect("DEFAULT_HOURは常に有効な時刻です");
             let naive_dt = NaiveDateTime::new(naive_date, naive_time);
@@ -194,7 +194,7 @@ fn create_datetime_from_time<Tz2: TimeZone>(
 
     // 指定時刻が現在時刻より前なら翌日にする
     if dt_tz <= now_tz.with_timezone(&timezone) {
-        dt_tz = dt_tz + chrono::Duration::days(1);
+        dt_tz += chrono::Duration::days(1);
     }
 
     Ok(dt_tz.with_timezone(&Utc))
@@ -227,7 +227,7 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
 
     // "午後9時半" 形式
     if let Some(caps) = RE_JAPANESE_TIME.captures(s) {
-        let is_pm = caps.get(1).map_or(false, |m| m.as_str() == "午後");
+        let is_pm = caps.get(1).is_some_and(|m| m.as_str() == "午後");
         let mut hour: u32 = caps[2].parse().map_err(|_| "時のパースエラー".to_string())?;
 
         if is_pm && hour != 12 {
@@ -236,7 +236,7 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
             hour = 0;
         }
 
-        let minute: u32 = if caps.get(3).map_or(false, |m| m.as_str() == "半") {
+        let minute: u32 = if caps.get(3).is_some_and(|m| m.as_str() == "半") {
             30
         } else if let Some(m) = caps.get(4) {
             m.as_str().parse().map_err(|_| "分のパースエラー".to_string())?

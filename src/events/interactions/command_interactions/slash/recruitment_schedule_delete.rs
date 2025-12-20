@@ -57,9 +57,8 @@ pub async fn recruitment_schedule_delete(
     let embed = CreateEmbed::default()
         .title("✅ 定期募集スケジュールを削除しました")
         .description(format!(
-            "**スケジュールID**: {}\n\n\
-             このスケジュールは削除され、今後自動投稿されなくなります。",
-            schedule_id
+            "**スケジュールID**: {schedule_id}\n\n\
+             このスケジュールは削除され、今後自動投稿されなくなります。"
         ))
         .color(0xff0000);
 

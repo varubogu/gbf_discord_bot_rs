@@ -10,6 +10,12 @@ use tracing::{debug, info};
 /// チャンネル登録・削除のビジネスロジックの責務を持つ
 pub struct ChannelManagementService;
 
+impl Default for ChannelManagementService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChannelManagementService {
     pub fn new() -> Self {
         Self
@@ -41,8 +47,7 @@ impl ChannelManagementService {
             .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!(
-                    "チャンネル種別ID {} が見つかりませんでした",
-                    channel_type_id
+                    "チャンネル種別ID {channel_type_id} が見つかりませんでした"
                 ))
             })?;
 

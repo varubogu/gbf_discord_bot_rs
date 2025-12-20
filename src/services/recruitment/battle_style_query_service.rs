@@ -10,6 +10,12 @@ use tracing::debug;
 /// 攻略方法検索・取得の責務を持つ
 pub struct BattleStyleQueryService;
 
+impl Default for BattleStyleQueryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BattleStyleQueryService {
     pub fn new() -> Self {
         Self
@@ -43,8 +49,7 @@ impl BattleStyleQueryService {
             .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!(
-                    "攻略方法ID {} が見つかりませんでした",
-                    battle_style_id
+                    "攻略方法ID {battle_style_id} が見つかりませんでした"
                 ))
             })?;
 

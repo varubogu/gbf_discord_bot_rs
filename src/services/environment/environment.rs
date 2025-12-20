@@ -33,6 +33,12 @@ pub struct Environment {
     db: Option<Arc<Database>>,
 }
 
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Environment {
     pub fn new() -> Self {
         Self {
@@ -69,7 +75,7 @@ impl Environment {
             Err(e) => {
                 error!("Failed to load .env file: {}", e);
                 Err(Box::new(EnvironmentError {
-                    message: format!("Failed to load .env file: {}", e),
+                    message: format!("Failed to load .env file: {e}"),
                 }))
             }
         }
@@ -185,8 +191,7 @@ impl Environment {
             .unwrap_or_else(|| "5432".to_string());
 
         Ok(format!(
-            "postgresql://{}:{}@{}:{}/{}",
-            user, password, host, port, database
+            "postgresql://{user}:{password}@{host}:{port}/{database}"
         ))
     }
 }

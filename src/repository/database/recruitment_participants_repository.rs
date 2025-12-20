@@ -13,6 +13,12 @@ use sea_orm::{
 #[derive(Debug)]
 pub struct RecruitmentParticipantsRepositoryImpl;
 
+impl Default for RecruitmentParticipantsRepositoryImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecruitmentParticipantsRepositoryImpl {
     pub fn new() -> Self {
         Self
@@ -38,7 +44,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             })
             .one(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         if exists.is_some() {
             return Ok(false); // 既に存在する場合は false を返す
@@ -79,7 +85,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             })
             .exec(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(delete_result.rows_affected > 0)
     }
@@ -95,7 +101,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             .filter(Column::UserId.eq(user_id as i64))
             .exec(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(delete_result.rows_affected)
     }
@@ -119,7 +125,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             })
             .one(db)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(result.is_some())
     }
@@ -132,7 +138,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
     where
         C: sea_orm::ConnectionTrait,
     {
-        use sea_orm::sea_query::{Expr, Func};
+        use sea_orm::sea_query::Expr;
 
         // SELECT COUNT(DISTINCT user_id) FROM recruitment_participants WHERE recruitment_id = ?
         let count = RecruitmentParticipantEntity::find()
@@ -145,7 +151,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             .into_tuple::<i64>()
             .one(db)
             .await
-            .map_err(|e| AppError::Database(e))?
+            .map_err(AppError::Database)?
             .unwrap_or(0);
 
         Ok(count)
@@ -165,7 +171,7 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
             .filter(Column::UserId.eq(user_id as i64))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(results.into_iter().map(|model| model.element_id).collect())
     }

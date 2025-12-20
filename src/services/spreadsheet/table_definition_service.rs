@@ -43,7 +43,7 @@ impl TableIO {
             "in,out" | "out,in" | "both" => Ok(TableIO::Both),
             _ => Err(BusinessRuleError::TableDefinitionError {
                 table_name: "tablesシート".to_string(),
-                reason: format!("不正なtable_io値: {}", s),
+                reason: format!("不正なtable_io値: {s}"),
             }),
         }
     }
@@ -79,7 +79,7 @@ impl TableType {
             "history" => Ok(TableType::History),
             _ => Err(BusinessRuleError::TableDefinitionError {
                 table_name: "tablesシート".to_string(),
-                reason: format!("不正なtable_type値: {}", s),
+                reason: format!("不正なtable_type値: {s}"),
             }),
         }
     }
@@ -133,7 +133,7 @@ impl TableDefinitionService {
                 .sheet_name(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
                     table_name: "tablesシート".to_string(),
-                    reason: format!("sheet_nameが空です（行: {}）", row_number),
+                    reason: format!("sheet_nameが空です（行: {row_number}）"),
                 })?;
 
         let table_name =
@@ -141,7 +141,7 @@ impl TableDefinitionService {
                 .table_name(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
                     table_name: "tablesシート".to_string(),
-                    reason: format!("table_nameが空です（行: {}）", row_number),
+                    reason: format!("table_nameが空です（行: {row_number}）"),
                 })?;
 
         let table_io_str =
@@ -149,7 +149,7 @@ impl TableDefinitionService {
                 .table_io(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
                     table_name: "tablesシート".to_string(),
-                    reason: format!("table_ioが空です（行: {}）", row_number),
+                    reason: format!("table_ioが空です（行: {row_number}）"),
                 })?;
 
         let table_type_str =
@@ -157,7 +157,7 @@ impl TableDefinitionService {
                 .table_type(row)
                 .ok_or_else(|| BusinessRuleError::TableDefinitionError {
                     table_name: "tablesシート".to_string(),
-                    reason: format!("table_typeが空です（行: {}）", row_number),
+                    reason: format!("table_typeが空です（行: {row_number}）"),
                 })?;
 
         let table_io = TableIO::from_str(table_io_str)?;

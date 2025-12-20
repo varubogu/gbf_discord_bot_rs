@@ -105,7 +105,7 @@ pub async fn update_participants(
         let message = channel
             .message(&ctx.http, poise::serenity_prelude::MessageId::from(message_id))
             .await
-            .map_err(|e| crate::types::AppError::Discord(e))?;
+            .map_err(crate::types::AppError::Discord)?;
         let message_content = message.content.clone();
 
         // 募集メッセージを編集して参加者一覧部分を反映

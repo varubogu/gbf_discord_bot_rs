@@ -64,7 +64,7 @@ impl DaysParserService {
         let mut result = Vec::new();
 
         // カンマ、半角スペース、全角スペースで分割
-        for day in days_str.split(|c| c == ',' || c == ' ' || c == '　') {
+        for day in days_str.split([',', ' ', '　']) {
             let day = day.trim();
 
             // 空文字列はスキップ
@@ -97,7 +97,7 @@ impl DaysParserService {
                 '曜' => continue, // 「曜」はスキップ（"月曜火曜" のような入力に対応）
                 _ => {
                     return Err(AppError::Business {
-                        message: format!("無効な文字が含まれています: '{}'（使用可能: 月火水木金土日）", ch),
+                        message: format!("無効な文字が含まれています: '{ch}'（使用可能: 月火水木金土日）"),
                     })
                 }
             };
@@ -127,7 +127,7 @@ impl DaysParserService {
             "土" | "土曜" | "土曜日" | "sat" | "saturday" => Ok(6),
             "日" | "日曜" | "日曜日" | "sun" | "sunday" => Ok(7),
             _ => Err(AppError::Business {
-                message: format!("無効な曜日です: {}", day),
+                message: format!("無効な曜日です: {day}"),
             }),
         }
     }
@@ -147,7 +147,7 @@ impl DaysParserService {
                 5 => "金".to_string(),
                 6 => "土".to_string(),
                 7 => "日".to_string(),
-                _ => format!("不明({})", d),
+                _ => format!("不明({d})"),
             })
             .collect();
 

@@ -46,8 +46,7 @@ impl ScheduleCommandService {
                 (model.guild_id, !model.is_enabled)
             } else {
                 return Err(crate::types::AppError::NotFound(format!(
-                    "スケジュールID {} が見つかりません",
-                    schedule_id
+                    "スケジュールID {schedule_id} が見つかりません"
                 )));
             };
 

@@ -67,7 +67,7 @@ pub async fn recruit_new(
         &reactions,
     )
     .await
-    .map_err(|e| crate::types::AppError::Generic(e))?;
+    .map_err(crate::types::AppError::Generic)?;
 
     Ok(())
 }

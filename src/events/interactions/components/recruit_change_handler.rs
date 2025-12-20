@@ -83,7 +83,7 @@ async fn show_quest_selection_menu(
         .map(|(name, id)| CreateSelectMenuOption::new(name, id.to_string()))
         .collect();
 
-    let custom_id = format!("recruit_change_quest:{}", message_id);
+    let custom_id = format!("recruit_change_quest:{message_id}");
     let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
         .placeholder("変更するクエストを選択してください");
 
@@ -118,7 +118,7 @@ async fn show_battle_style_selection_menu(
         .map(|(display_name, id)| CreateSelectMenuOption::new(display_name, id.to_string()))
         .collect();
 
-    let custom_id = format!("recruit_change_style:{}", message_id);
+    let custom_id = format!("recruit_change_style:{message_id}");
     let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
         .placeholder("攻略方法を選択してください");
 
@@ -144,7 +144,7 @@ async fn show_date_input_modal(
     interaction: &ComponentInteraction,
     message_id: u64,
 ) -> Result<()> {
-    let custom_id = format!("recruit_change_date_modal:{}", message_id);
+    let custom_id = format!("recruit_change_date_modal:{message_id}");
 
     let modal =
         CreateModal::new(custom_id, "出発日時変更").components(vec![CreateActionRow::InputText(
@@ -231,7 +231,7 @@ async fn handle_quest_selection(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("クエストを「{}」に変更しました。", quest_name))
+                        .content(format!("クエストを「{quest_name}」に変更しました。"))
                         .components(vec![]),
                 )
                 .await?;
@@ -282,7 +282,7 @@ async fn handle_battle_style_selection(
         battle_style_id,
     )
     .await
-    .unwrap_or_else(|| format!("ID:{}", battle_style_id));
+    .unwrap_or_else(|| format!("ID:{battle_style_id}"));
 
     info!(
         message_id = %message_id,
@@ -328,8 +328,7 @@ async fn handle_battle_style_selection(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
                         .content(format!(
-                            "攻略方法を「{}」に変更しました。",
-                            battle_style_name
+                            "攻略方法を「{battle_style_name}」に変更しました。"
                         ))
                         .components(vec![]),
                 )

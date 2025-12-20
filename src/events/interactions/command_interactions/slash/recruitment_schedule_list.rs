@@ -114,8 +114,7 @@ pub async fn recruitment_schedule_list(
         .description(description)
         .color(0x00aaff)
         .footer(CreateEmbedFooter::new(format!(
-            "全 {} 件のスケジュール（{}件表示）",
-            total_count, display_count
+            "全 {total_count} 件のスケジュール（{display_count}件表示）"
         )));
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))

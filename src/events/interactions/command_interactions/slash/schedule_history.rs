@@ -55,7 +55,7 @@ pub async fn schedule_history(
     if formatted.is_empty() {
         let embed = CreateEmbed::default()
             .title("📜 通知履歴")
-            .description(format!("過去 {} 日間の通知履歴はありません。", days))
+            .description(format!("過去 {days} 日間の通知履歴はありません。"))
             .color(0xffaa00);
 
         ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
@@ -64,7 +64,7 @@ pub async fn schedule_history(
     }
 
     let embed = CreateEmbed::default()
-        .title(format!("📜 通知履歴（過去{}日間）", days))
+        .title(format!("📜 通知履歴（過去{days}日間）"))
         .description(formatted)
         .color(0x00aaff)
         .footer(CreateEmbedFooter::new(format!(

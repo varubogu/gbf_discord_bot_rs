@@ -4,6 +4,12 @@ use tracing::{error, info};
 
 pub struct UpdateRecruitmentService {}
 
+impl Default for UpdateRecruitmentService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpdateRecruitmentService {
     pub fn new() -> Self {
         Self {}
@@ -142,8 +148,7 @@ impl UpdateRecruitmentService {
         status: &str,
     ) -> Result<Message, String> {
         let status_message = format!(
-            "募集更新 (元メッセージ: {}): {}",
-            original_message_id, status
+            "募集更新 (元メッセージ: {original_message_id}): {status}"
         );
 
         match ChannelId::from(channel_id)

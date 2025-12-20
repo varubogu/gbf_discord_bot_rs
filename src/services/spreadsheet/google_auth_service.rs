@@ -54,15 +54,14 @@ impl GoogleAuthService {
             .await
             .map_err(|e| ExternalServiceError::GoogleAuthError {
                 message: format!(
-                    "サービスアカウントキーファイルの読み込みに失敗しました: {}",
-                    e
+                    "サービスアカウントキーファイルの読み込みに失敗しました: {e}"
                 ),
             })?;
 
         // JSONをパース
         let service_account_key: ServiceAccountKey = serde_json::from_str(&key_file_content)
             .map_err(|e| ExternalServiceError::GoogleAuthError {
-                message: format!("サービスアカウントキーのパースに失敗しました: {}", e),
+                message: format!("サービスアカウントキーのパースに失敗しました: {e}"),
             })?;
 
         // 認証器を作成
@@ -70,7 +69,7 @@ impl GoogleAuthService {
             .build()
             .await
             .map_err(|e| ExternalServiceError::GoogleAuthError {
-                message: format!("Google認証に失敗しました: {}", e),
+                message: format!("Google認証に失敗しました: {e}"),
             })?;
 
         Ok(auth)
@@ -87,7 +86,7 @@ impl GoogleAuthService {
         let https = hyper_rustls::HttpsConnectorBuilder::new()
             .with_native_roots()
             .map_err(|e| ExternalServiceError::GoogleAuthError {
-                message: format!("HTTPSコネクタの初期化に失敗しました: {}", e),
+                message: format!("HTTPSコネクタの初期化に失敗しました: {e}"),
             })?
             .https_or_http()
             .enable_http1()

@@ -55,7 +55,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ {}", error_msg))
+                    .content(format!("❌ {error_msg}"))
                     .ephemeral(true),
             )
             .await?;
@@ -113,7 +113,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ ギルドデータ書き込み失敗\n\n{}", error_msg))
+                    .content(format!("❌ ギルドデータ書き込み失敗\n\n{error_msg}"))
                     .ephemeral(true),
             )
             .await?;

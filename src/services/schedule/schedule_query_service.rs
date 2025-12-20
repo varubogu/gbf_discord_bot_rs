@@ -207,7 +207,7 @@ impl ScheduleQueryService {
                 5 => "金".to_string(),
                 6 => "土".to_string(),
                 7 => "日".to_string(),
-                _ => format!("不明({})", d),
+                _ => format!("不明({d})"),
             })
             .collect();
 

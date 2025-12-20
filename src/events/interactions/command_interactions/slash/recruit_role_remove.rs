@@ -81,7 +81,7 @@ pub async fn recruit_role_remove(
     // 結果をユーザーに通知
     ctx.send(
         poise::CreateReply::default()
-            .content(format!("{}個のロールを募集通知ロールから削除しました。", deleted_count))
+            .content(format!("{deleted_count}個のロールを募集通知ロールから削除しました。"))
             .ephemeral(true),
     )
     .await?;

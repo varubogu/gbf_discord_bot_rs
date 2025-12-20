@@ -1,6 +1,4 @@
 use async_trait::async_trait;
-use std::future::Future;
-use std::pin::Pin;
 
 /// データベース非依存のトランザクション抽象化
 #[async_trait]

@@ -295,7 +295,7 @@ impl DataConverterServiceTrait for DataConverterService {
             PostgresValue::Json(v) => {
                 serde_json::to_string(v).map_err(|_| ValidationError::TypeConversionError {
                     field: "json".to_string(),
-                    value: format!("{:?}", v),
+                    value: format!("{v:?}"),
                     expected_type: "JSON string".to_string(),
                 })?
             }

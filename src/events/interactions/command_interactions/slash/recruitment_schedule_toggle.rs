@@ -58,7 +58,7 @@ pub async fn recruitment_schedule_toggle(
 
     let embed = CreateEmbed::default()
         .title("🔄 定期募集スケジュールの有効/無効を切り替えました")
-        .description(format!("**スケジュールID**: {}", schedule_id))
+        .description(format!("**スケジュールID**: {schedule_id}"))
         .color(0x00aaff);
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))

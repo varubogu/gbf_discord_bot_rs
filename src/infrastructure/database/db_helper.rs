@@ -30,7 +30,7 @@ where
 {
     // SET LOCALを使用することで、トランザクション内でのみ有効な変数として設定
     // トランザクション終了後は自動的にリセットされる
-    let sql = format!("SET LOCAL app.current_guild_id = '{}'", guild_id);
+    let sql = format!("SET LOCAL app.current_guild_id = '{guild_id}'");
 
     conn.execute(Statement::from_string(
         DatabaseBackend::Postgres,

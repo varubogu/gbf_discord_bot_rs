@@ -1,5 +1,4 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::quests_repository::QuestRepository;
 use crate::services::quest::search::QuestSearchService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::types::PoiseContext;

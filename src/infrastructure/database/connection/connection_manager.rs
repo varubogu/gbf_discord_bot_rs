@@ -48,8 +48,7 @@ pub fn build_database_url() -> Result<String, DatabaseConnectionError> {
     let port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
 
     let url = format!(
-        "postgresql://{}:{}@{}:{}/{}",
-        user, password, host, port, database
+        "postgresql://{user}:{password}@{host}:{port}/{database}"
     );
     info!(
         "Built database URL for host: {} port: {} database: {}",

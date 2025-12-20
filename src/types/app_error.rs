@@ -51,15 +51,15 @@ impl AppError {
             }
             AppError::Business { message } => message.clone(),
             AppError::Config { message } => {
-                format!("設定エラー: {}", message)
+                format!("設定エラー: {message}")
             }
             AppError::Validation { field } => {
-                format!("入力エラー: {} の値が不正です。", field)
+                format!("入力エラー: {field} の値が不正です。")
             }
             AppError::Generic(msg) => msg.clone(),
             AppError::NotFound(msg) => msg.clone(),
             AppError::DiscordOperation(e) => {
-                format!("Discord操作エラー: {}", e)
+                format!("Discord操作エラー: {e}")
             }
         }
     }

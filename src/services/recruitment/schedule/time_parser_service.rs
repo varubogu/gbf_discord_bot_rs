@@ -32,25 +32,25 @@ impl TimeParserService {
 
         if parts.len() != 2 {
             return Err(AppError::Business {
-                message: format!("無効な時刻形式です: {}（HH:MM形式で指定してください）", time_str),
+                message: format!("無効な時刻形式です: {time_str}（HH:MM形式で指定してください）"),
             });
         }
 
         let hour = parts[0].parse::<u32>().map_err(|_| {
             AppError::Business {
-                message: format!("無効な時刻です: {}", time_str),
+                message: format!("無効な時刻です: {time_str}"),
             }
         })?;
 
         let minute = parts[1].parse::<u32>().map_err(|_| {
             AppError::Business {
-                message: format!("無効な時刻です: {}", time_str),
+                message: format!("無効な時刻です: {time_str}"),
             }
         })?;
 
         NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| {
             AppError::Business {
-                message: format!("無効な時刻です: {}", time_str),
+                message: format!("無効な時刻です: {time_str}"),
             }
         })
     }

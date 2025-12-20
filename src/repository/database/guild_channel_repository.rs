@@ -69,8 +69,7 @@ impl GuildChannelRepository {
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!(
-                    "ギルドチャンネルの取得に失敗しました: guild_id={}, channel_type={}",
-                    guild_id, channel_type
+                    "ギルドチャンネルの取得に失敗しました: guild_id={guild_id}, channel_type={channel_type}"
                 ))
             })?;
 
@@ -168,8 +167,7 @@ impl GuildChannelRepository {
 
         if result.rows_affected == 0 {
             return Err(crate::types::AppError::NotFound(format!(
-                "削除対象のギルドチャンネルが見つかりませんでした: guild_id={}, channel_type={}",
-                guild_id, channel_type
+                "削除対象のギルドチャンネルが見つかりませんでした: guild_id={guild_id}, channel_type={channel_type}"
             )));
         }
 

@@ -55,7 +55,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ {}", error_msg))
+                    .content(format!("❌ {error_msg}"))
                     .ephemeral(true),
             )
             .await?;
@@ -112,7 +112,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ グローバルデータ書き込み失敗\n\n{}", error_msg))
+                    .content(format!("❌ グローバルデータ書き込み失敗\n\n{error_msg}"))
                     .ephemeral(true),
             )
                 .await?;

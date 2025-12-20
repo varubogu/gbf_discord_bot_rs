@@ -41,7 +41,7 @@ impl DbRole {
         };
 
         env::var(var_name).map_err(|_| AppError::Config {
-            message: format!("{} not set", var_name),
+            message: format!("{var_name} not set"),
         })
     }
 
@@ -55,7 +55,7 @@ impl DbRole {
         };
 
         env::var(var_name).map_err(|_| AppError::Config {
-            message: format!("{} not set", var_name),
+            message: format!("{var_name} not set"),
         })
     }
 

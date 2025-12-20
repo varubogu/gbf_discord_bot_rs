@@ -69,7 +69,7 @@ pub async fn gspread_regist(
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ {}", error_msg))
+                    .content(format!("❌ {error_msg}"))
                     .ephemeral(true),
             )
             .await?;
@@ -112,7 +112,7 @@ pub async fn gspread_regist(
             let error_msg = PresentationError::from(e).to_string();
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("❌ ギルドスプレッドシート登録失敗\n\n{}", error_msg))
+                    .content(format!("❌ ギルドスプレッドシート登録失敗\n\n{error_msg}"))
                     .ephemeral(true),
             )
             .await?;

@@ -202,12 +202,10 @@ async fn cancel_with_confirmation_internal(
     message: &Message,
 ) -> types::Result<()> {
     // キャンセル可能かチェック
-    let can_cancel_result = check_can_cancel_recruitment_internal(ctx, &message).await?;
+    let can_cancel_result = check_can_cancel_recruitment_internal(ctx, message).await?;
 
     // チェック以前に終了するパターン
-    if let Err(e) = handle_cancel_check_result(ctx, can_cancel_result).await {
-        return Err(e);
-    }
+    handle_cancel_check_result(ctx, can_cancel_result).await?;
 
     // 確認ボタンを表示してユーザーの応答を待機
     let reply = confirm_interaction(ctx).await?;
@@ -223,8 +221,8 @@ async fn handle_cancel_check_result(
     can_cancel_result: CanCancelResult,
 ) -> types::Result<()> {
     let (should_exit, exit_message) = is_exit(ctx, can_cancel_result).await;
-    if should_exit {
-        if !exit_message.is_empty() {
+    if should_exit
+        && !exit_message.is_empty() {
             ctx.send(
                 poise::CreateReply::default()
                     .content(exit_message)
@@ -232,7 +230,6 @@ async fn handle_cancel_check_result(
             )
             .await?;
         }
-    }
     Ok(())
 }
 
@@ -311,7 +308,7 @@ async fn handle_confirm_cancel(
         }
         Err(e) => {
             // エラーをユーザーに表示してから伝播
-            let error_msg = format!("キャンセル処理中にエラーが発生しました: {}", e);
+            let error_msg = format!("キャンセル処理中にエラーが発生しました: {e}");
             interaction
                 .edit_response(
                     &ctx.http(),

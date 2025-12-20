@@ -235,7 +235,7 @@ impl NotificationRepository {
             })?
             .ok_or_else(|| {
                 error!(notification_id = %notification_id, "通知が見つかりません");
-                crate::types::AppError::NotFound(format!("通知が見つかりません: {}", notification_id))
+                crate::types::AppError::NotFound(format!("通知が見つかりません: {notification_id}"))
             })?;
 
         // is_sentをtrueに更新

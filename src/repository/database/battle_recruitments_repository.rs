@@ -15,6 +15,12 @@ use sea_orm::{
 #[derive(Debug)]
 pub struct BattleRecruitmentsRepositoryImpl;
 
+impl Default for BattleRecruitmentsRepositoryImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BattleRecruitmentsRepositoryImpl {
     pub fn new() -> Self {
         Self
@@ -44,7 +50,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         let result = active_model
             .insert(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(BattleRecruitments::from(result))
     }
@@ -65,7 +71,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
             .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
             .one(db)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(result.map(BattleRecruitments::from))
     }
@@ -83,7 +89,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
             .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
             .one(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(result.map(BattleRecruitments::from))
     }
@@ -100,7 +106,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(db)
             .await
-            .map_err(|e| AppError::Database(e))?
+            .map_err(AppError::Database)?
             .ok_or_else(|| AppError::Business {
                 message: "Recruitment not found".to_string(),
             })?
@@ -110,7 +116,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model
             .update(db)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(())
     }
@@ -124,7 +130,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(txn)
             .await
-            .map_err(|e| AppError::Database(e))?
+            .map_err(AppError::Database)?
             .ok_or_else(|| AppError::Business {
                 message: "Recruitment not found".to_string(),
             })?
@@ -135,7 +141,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model
             .update(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(())
     }
@@ -151,7 +157,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(txn)
             .await
-            .map_err(|e| AppError::Database(e))?
+            .map_err(AppError::Database)?
             .ok_or_else(|| AppError::Business {
                 message: "Recruitment not found".to_string(),
             })?
@@ -164,7 +170,7 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         active_model
             .update(txn)
             .await
-            .map_err(|e| AppError::Database(e))?;
+            .map_err(AppError::Database)?;
 
         Ok(())
     }

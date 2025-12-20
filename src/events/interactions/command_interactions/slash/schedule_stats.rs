@@ -64,7 +64,7 @@ pub async fn schedule_stats(
         counts.sort_by(|a, b| b.1.cmp(a.1));
 
         for (message_id, count) in counts.iter().take(10) {
-            description.push_str(&format!("- `{}`: {} 件\n", message_id, count));
+            description.push_str(&format!("- `{message_id}`: {count} 件\n"));
         }
 
         if counts.len() > 10 {
@@ -73,7 +73,7 @@ pub async fn schedule_stats(
     }
 
     let embed = CreateEmbed::default()
-        .title(format!("📊 通知統計（過去{}日間）", days))
+        .title(format!("📊 通知統計（過去{days}日間）"))
         .description(description)
         .color(0x00aaff)
         .footer(CreateEmbedFooter::new("詳細な統計情報"));

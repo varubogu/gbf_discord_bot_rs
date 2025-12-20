@@ -44,6 +44,12 @@ pub struct GlobalPushServiceImpl {
     // 将来的にRepository層やGoogle Sheets APIクライアントを注入
 }
 
+impl Default for GlobalPushServiceImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GlobalPushServiceImpl {
     pub fn new() -> Self {
         Self {}
