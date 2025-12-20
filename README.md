@@ -1,12 +1,15 @@
 # GBF Discord Bot (Rust)
 
-This is a Rust implementation of the GBF Discord Bot, originally written in Python using discord.py. The bot is designed to help manage Granblue Fantasy game activities in Discord servers.
+English | [日本語](README.ja.md)
+
+A Discord bot to support Granblue Fantasy (GBF) game activities. Originally implemented in Python with discord.py, now reimplemented in Rust.
 
 ## Features
 
 - Battle recruitment system with reactions for different elements
 - Database integration for storing quest information and battle recruitments
 - Slash command support
+- Emoji replacement feature for multi-battle recruitment
 
 ## Requirements
 
@@ -41,21 +44,85 @@ This is a Rust implementation of the GBF Discord Bot, originally written in Pyth
 
 - `/recruit quest:<quest_name> [battle_type:<type>] [event_date:<date>]` - Create a battle recruitment
 
+## Architecture
+
+This project adopts Clean Architecture with clear layer-based responsibilities:
+
+```
+events (Presentation) → facades (Application) → services (Business Logic) → repository (Data Access)
+```
+
+See [CLAUDE.md](CLAUDE.md) for more details.
+
+## Key Technologies
+
+- **Discord Bot Framework**: poise 0.6.1
+- **Async Runtime**: tokio 1.47 (multi-thread)
+- **ORM**: SeaORM 1.1 (PostgreSQL)
+- **Error Handling**: thiserror 1.0
+- **Logging**: tracing 0.1 + tracing-subscriber 0.3
+- **Testing**: tokio-test, mockall
+
+## Development
+
+### Build and Run
+
+```bash
+# Build the project
+cargo build
+
+# Build for release
+cargo build --release
+
+# Run the bot (requires .env configuration)
+cargo run
+
+# Run tests
+cargo test
+
+# Run a specific test
+cargo test test_name
+```
+
+### Linting and Formatting
+
+```bash
+# Check code with Clippy
+cargo clippy
+
+# Format code
+cargo fmt
+
+# Check formatting without modifying files
+cargo fmt -- --check
+```
+
+### Database Migrations
+
+```bash
+# Run migrations
+cargo run -- migrate
+
+# Create a new migration
+cd migration
+sea-orm-cli migrate generate migration_name
+```
+
 ## Migration Notes
 
 ### Key Differences Between Python and Rust Implementations
 
 1. **Architecture**
    - Python: Uses discord.py's Cog system for organizing commands
-   - Rust: Uses a modular approach with separate modules for commands and database interactions
+   - Rust: Uses Clean Architecture with modular layers
 
 2. **Database Interaction**
    - Python: Uses SQLAlchemy ORM
-   - Rust: Uses SQLx for direct SQL queries
+   - Rust: Uses SeaORM
 
 3. **Command Handling**
    - Python: Mix of prefix commands and slash commands
-   - Rust: Exclusively uses slash commands via serenity's command system
+   - Rust: Exclusively uses slash commands via poise framework
 
 4. **Error Handling**
    - Python: Mix of try/except blocks and error propagation
@@ -67,9 +134,9 @@ This is a Rust implementation of the GBF Discord Bot, originally written in Pyth
 
 ### Migration Challenges
 
-1. **API Differences**: Discord.py and serenity have different API designs, requiring significant adaptation
+1. **API Differences**: Discord.py and poise have different API designs, requiring significant adaptation
 2. **Type System**: Rust's strict type system required more explicit handling of optional values and error cases
-3. **Database Integration**: Moving from an ORM to direct SQL queries required more manual mapping
+3. **Database Integration**: Moving from SQLAlchemy to SeaORM
 4. **Asynchronous Programming**: Different approaches to async/await between Python and Rust
 
 ### Benefits of Rust Implementation
@@ -85,3 +152,7 @@ This is a Rust implementation of the GBF Discord Bot, originally written in Pyth
 2. Add more commands from the original Python bot
 3. Improve error handling and user feedback
 4. Add tests for core functionality
+
+## License
+
+Please contact the project maintainers for license information.
