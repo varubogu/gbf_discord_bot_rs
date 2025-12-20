@@ -1,7 +1,7 @@
 # ================================
 # ビルドステージ
 # ================================
-FROM rust:1.85 AS builder
+FROM rust:latest AS builder
 
 WORKDIR /build
 
