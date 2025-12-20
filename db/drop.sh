@@ -12,7 +12,7 @@ echo "データベース削除開始"
 echo "=========================================="
 
 # 環境変数の確認（デフォルト値を設定）
-DB_HOST="${DB_HOST:-gbf_discord_bot_rs_devcontainer-db-1.orb.local}"
+DB_HOST="${DB_HOST:-localhost}"
 DB_USER="${DB_USER:-postgres}"
 
 echo "接続先: ${DB_HOST}"

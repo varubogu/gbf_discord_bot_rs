@@ -17,7 +17,7 @@ GUILD_DB_PASSWORD="${GUILD_DB_PASSWORD:-change_this_guild_password}"
 GLOBAL_DB_PASSWORD="${GLOBAL_DB_PASSWORD:-change_this_global_password}"
 ADMIN_DB_PASSWORD="${ADMIN_DB_PASSWORD:-change_this_admin_password}"
 DB_NAME="${DB_NAME:-gbf_bot_db}"
-DB_HOST="${DB_HOST:-gbf_discord_bot_rs_devcontainer-db-1.orb.local}"
+DB_HOST="${DB_HOST:-localhost}"
 DB_USER="${DB_USER:-postgres}"
 
 echo "データベース名: ${DB_NAME}"
