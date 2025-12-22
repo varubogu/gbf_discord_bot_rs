@@ -7,7 +7,6 @@ pub(crate) mod discord_operation;
 pub(crate) mod domain_interface_result;
 pub(crate) mod poise_data;
 pub(crate) mod recruitment_component_id;
-pub(crate) mod transaction;
 
 pub use app_config::AppConfig;
 pub use app_error::{AppError, Result};

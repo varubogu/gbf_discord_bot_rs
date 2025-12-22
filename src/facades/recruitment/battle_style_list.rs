@@ -29,19 +29,6 @@ pub async fn get_battle_styles_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<Au
         .collect()
 }
 
-/// セレクトメニュー用に攻略方法一覧を返す
-pub async fn list_battle_styles_for_select(ctx: PoiseContext<'_>) -> Vec<(String, i32)> {
-    let db_conn = ctx.data().app_state.guild_db();
-    let service = BattleStyleQueryService::new();
-    match service.get_all_battle_styles(db_conn).await {
-        Ok(list) => list.into_iter().map(|s| (s.display_name, s.id)).collect(),
-        Err(e) => {
-            error!(error = %e, "攻略方法一覧の取得に失敗しました");
-            vec![]
-        }
-    }
-}
-
 /// セレクトメニュー用に攻略方法一覧を返す（DB直渡し版）
 pub async fn list_battle_styles_for_select_with_db(db: &DatabaseConnection) -> Vec<(String, i32)> {
     let service = BattleStyleQueryService::new();
