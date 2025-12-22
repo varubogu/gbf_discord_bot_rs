@@ -165,4 +165,27 @@ impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl
 
         Ok(results.into_iter().map(|model| model.element_id).collect())
     }
+
+    async fn get_all_participant_user_ids<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+    ) -> Result<Vec<u64>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let results = RecruitmentParticipantEntity::find()
+            .filter(Column::RecruitmentId.eq(recruitment_id))
+            .all(db)
+            .await
+            .map_err(AppError::Database)?;
+
+        // user_idの重複を排除してu64に変換
+        let user_ids: std::collections::HashSet<u64> = results
+            .into_iter()
+            .map(|model| model.user_id as u64)
+            .collect();
+
+        Ok(user_ids.into_iter().collect())
+    }
 }

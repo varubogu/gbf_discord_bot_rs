@@ -1,7 +1,9 @@
 use crate::models::entities::{battle_recruitments, message_texts, notifications};
+use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
+use crate::repository::RecruitmentParticipantsRepository;
 use crate::types::Result;
 use chrono::Utc;
 use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
@@ -178,38 +180,18 @@ impl NotificationService {
         let channel_id = ChannelId::new(recruitment.channel_id as u64);
         let message_id = MessageId::new(recruitment.message_id as u64);
 
-        // 募集メッセージを取得してリアクション参加者を取得
-        let recruit_message = channel_id.message(&self.http, message_id).await?;
+        // recruitment_participantsテーブルから参加者を取得
+        let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+        let participant_user_ids = participants_repo
+            .get_all_participant_user_ids(txn, recruit_id)
+            .await?;
 
-        // 全リアクションから参加者のユーザーIDを収集
-        let mut participant_ids = std::collections::HashSet::new();
-
-        for reaction in &recruit_message.reactions {
-            // リアクションしたユーザーを取得（最大100人）
-            let users = channel_id
-                .reaction_users(
-                    &self.http,
-                    message_id,
-                    reaction.reaction_type.clone(),
-                    Some(100),
-                    None,
-                )
-                .await?;
-
-            for user in users {
-                // Botは除外
-                if !user.bot {
-                    participant_ids.insert(user.id);
-                }
-            }
-        }
-
-        // 参加者数を保存（メンション作成でmoveされる前に）
-        let participants_count = participant_ids.len();
+        // 参加者数を保存
+        let participants_count = participant_user_ids.len();
 
         // 参加者メンションを作成
         let mut mentions = String::new();
-        for user_id in participant_ids {
+        for user_id in participant_user_ids {
             mentions.push_str(&format!("<@{user_id}> "));
         }
 

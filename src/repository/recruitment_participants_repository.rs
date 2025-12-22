@@ -59,4 +59,13 @@ pub trait RecruitmentParticipantsRepository: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<Option<i32>>>
     where
         C: sea_orm::ConnectionTrait;
+
+    /// 募集に参加している全ユーザーのIDリストを取得（重複なし）
+    async fn get_all_participant_user_ids<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+    ) -> Result<Vec<u64>>
+    where
+        C: sea_orm::ConnectionTrait;
 }
