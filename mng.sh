@@ -23,12 +23,12 @@ show_help() {
     echo -e "${YELLOW}Commands:${NC}"
     echo -e "${WHITE}  up      - Start services (default)${NC}"
     echo -e "${WHITE}  down    - Stop services${NC}"
-    echo -e "${WHITE}  nocache - Build without cache and start (prod only)${NC}"
+    # echo -e "${WHITE}  nocache - Build without cache and start (prod only)${NC}"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo -e "${WHITE}  ./mng.sh dev up${NC}"
     echo -e "${WHITE}  ./mng.sh prod down${NC}"
-    echo -e "${WHITE}  ./mng.sh prod nocache${NC}"
+    # echo -e "${WHITE}  ./mng.sh prod nocache${NC}"
 }
 
 # 入力補完機能
@@ -56,7 +56,8 @@ _mng_completion() {
                 opts="up down"
                 ;;
             prod)
-                opts="up down nocache"
+                opts="up down"  # nocache is commented out
+                # opts="up down nocache"
                 ;;
             *)
                 opts=""
@@ -111,12 +112,14 @@ case $ENVIRONMENT in
         ;;
     prod)
         case $COMMAND in
-            up|down|nocache|help)
+            up|down|help)  # nocache is commented out
+            # up|down|nocache|help)
                 # 有効なコマンド
                 ;;
             *)
                 echo -e "${RED}❌ Invalid command for prod: $COMMAND${NC}"
-                echo -e "${YELLOW}Available commands for prod: up, down, nocache${NC}"
+                echo -e "${YELLOW}Available commands for prod: up, down${NC}"  # nocache is commented out
+                # echo -e "${YELLOW}Available commands for prod: up, down, nocache${NC}"
                 show_help
                 exit 1
                 ;;
@@ -205,18 +208,18 @@ prod_down() {
     docker compose down
 }
 
-# prod nocache の処理
-prod_nocache() {
-    echo -e "${CYAN}🔄 キャッシュなしでビルドしています...${NC}"
-    docker compose build --no-cache
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}🚀 サービスを起動しています...${NC}"
-        docker compose up -d
-    else
-        echo -e "${RED}❌ ビルド中にエラーが発生しました${NC}"
-        exit 1
-    fi
-}
+# prod nocache の処理 (commented out - no longer needed as production pulls pre-built images)
+# prod_nocache() {
+#     echo -e "${CYAN}🔄 キャッシュなしでビルドしています...${NC}"
+#     docker compose build --no-cache
+#     if [ $? -eq 0 ]; then
+#         echo -e "${GREEN}🚀 サービスを起動しています...${NC}"
+#         docker compose up -d
+#     else
+#         echo -e "${RED}❌ ビルド中にエラーが発生しました${NC}"
+#         exit 1
+#     fi
+# }
 
 # メイン処理
 case $ENVIRONMENT in
@@ -241,9 +244,9 @@ case $ENVIRONMENT in
             "down")
                 prod_down
                 ;;
-            "nocache")
-                prod_nocache
-                ;;
+            # "nocache")
+            #     prod_nocache
+            #     ;;
             "help")
                 show_help
                 ;;

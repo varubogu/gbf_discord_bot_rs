@@ -1,0 +1,62 @@
+# Git関連
+.git/
+.gitignore
+.gitattributes
+
+# ビルド成果物（Dockerコンテナ内で生成されるため不要）
+target/
+*.o
+*.so
+*.dylib
+
+# 環境変数ファイル（セキュリティリスク）
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# 開発環境設定
+.devcontainer/
+.vscode/
+.cursor/
+.idea/
+
+# AI関連
+.claude/
+.junie/
+
+# ドキュメント（実行時不要）
+docs/
+plans/
+*.md
+!CLAUDE.md
+
+# 一時ファイル
+.tmp/
+tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# テスト関連
+tests/
+
+# CI/CD設定
+.github/
+
+# Docker関連
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# ローカルデータ（ボリュームマウント推奨）
+.local/
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# エディタ設定
+.editorconfig
+rustfmt.toml

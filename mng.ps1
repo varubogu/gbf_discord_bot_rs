@@ -14,10 +14,12 @@ param(
                 @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             'prod' {
-                @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
+                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
+                # @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             default {
-                @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
+                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
+                # @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
         }
     })]
@@ -38,12 +40,12 @@ function Show-Help
     Write-Host "Commands:" -ForegroundColor Yellow
     Write-Host "  up      - Start services (default)" -ForegroundColor White
     Write-Host "  down    - Stop services" -ForegroundColor White
-    Write-Host "  nocache - Build without cache and start (prod only)" -ForegroundColor White
+    # Write-Host "  nocache - Build without cache and start (prod only)" -ForegroundColor White
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\mng.ps1 dev up" -ForegroundColor White
     Write-Host "  .\mng.ps1 prod down" -ForegroundColor White
-    Write-Host "  .\mng.ps1 prod nocache" -ForegroundColor White
+    # Write-Host "  .\mng.ps1 prod nocache" -ForegroundColor White
 }
 
 function Start-DevDatabase
@@ -133,21 +135,21 @@ function Stop-ProdServices
     docker compose down
 }
 
-function Start-ProdServicesNoCache
-{
-    Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
-    docker compose build --no-cache
-    if ($LASTEXITCODE -eq 0)
-    {
-        Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
-        docker compose up -d
-    }
-    else
-    {
-        Write-Host "❌ ビルド中にエラーが発生しました" -ForegroundColor Red
-        exit 1
-    }
-}
+# function Start-ProdServicesNoCache (commented out - no longer needed as production pulls pre-built images)
+# {
+#     Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
+#     docker compose build --no-cache
+#     if ($LASTEXITCODE -eq 0)
+#     {
+#         Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
+#         docker compose up -d
+#     }
+#     else
+#     {
+#         Write-Host "❌ ビルド中にエラーが発生しました" -ForegroundColor Red
+#         exit 1
+#     }
+# }
 
 # ヘルプの表示
 if ($Environment -eq "help")
@@ -183,11 +185,13 @@ switch ($Environment)
         }
     }
     "prod" {
-        # prodで利用可能なコマンドの検証
-        if ($Command -notin @("up", "down", "nocache", "help"))
+        # prodで利用可能なコマンドの検証 (nocache is commented out)
+        if ($Command -notin @("up", "down", "help"))
+        # if ($Command -notin @("up", "down", "nocache", "help"))
         {
             Write-Host "❌ Invalid command for prod: $Command" -ForegroundColor Red
-            Write-Host "Available commands for prod: up, down, nocache" -ForegroundColor Yellow
+            Write-Host "Available commands for prod: up, down" -ForegroundColor Yellow  # nocache is commented out
+            # Write-Host "Available commands for prod: up, down, nocache" -ForegroundColor Yellow
             Show-Help
             exit 1
         }
@@ -200,9 +204,9 @@ switch ($Environment)
             "down" {
                 Stop-ProdServices
             }
-            "nocache" {
-                Start-ProdServicesNoCache
-            }
+            # "nocache" {
+            #     Start-ProdServicesNoCache
+            # }
             "help" {
                 Show-Help
             }

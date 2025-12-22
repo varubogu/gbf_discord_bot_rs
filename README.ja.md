@@ -84,6 +84,59 @@ cd migration
 sea-orm-cli migrate generate migration_name
 ```
 
+## 本番環境へのデプロイ
+
+このプロジェクトはGitHub Actionsを使用してDockerイメージをビルドし、GitHub Container Registry (GHCR)にプッシュします。本番サーバーではビルド済みイメージをpullするだけなので、リソースを大量に消費するビルド処理を本番サーバー上で実行する必要がありません。
+
+### セットアップ手順
+
+1. **GitHub Container Registryの有効化**
+   - リポジトリの Settings > Actions > General に移動
+   - GITHUB_TOKENの "Read and write permissions" を有効化
+
+2. **本番サーバーの設定**
+   ```bash
+   # リポジトリをクローン
+   git clone https://github.com/your-username/gbf_discord_bot_rs.git
+   cd gbf_discord_bot_rs
+
+   # GITHUB_REPOSITORY環境変数を設定
+   export GITHUB_REPOSITORY=your-username/gbf_discord_bot_rs
+
+   # GitHub Container Registryにログイン
+   echo $GITHUB_TOKEN | docker login ghcr.io -u your-username --password-stdin
+
+   # 環境変数ファイルを作成
+   cp .env.app.example .env.app
+   cp .env.db.example .env.db
+   # .env.appと.env.dbを編集して設定を行う
+
+   # Google Service Account Key用の.localディレクトリを作成
+   mkdir -p .local
+   # サービスアカウントキーファイルを.local/に配置
+
+   # サービスをpullして起動
+   docker-compose pull
+   docker-compose up -d
+   # または管理スクリプトを使用
+   ./mng.sh prod up
+   ```
+
+3. **自動デプロイ**
+   - `main`ブランチへのpushで自動的にビルド＆GHCRへプッシュ
+   - 本番サーバーでpullして再起動:
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   # または管理スクリプトを使用
+   ./mng.sh prod up
+   ```
+
+### 開発環境 vs 本番環境
+
+- **開発環境**: `./mng.sh dev up`でデータベースをローカルでDockerで実行
+- **本番環境** (`docker-compose.yml`): GHCRからビルド済みイメージをpull（ローカルビルド不要）
+
 ## ライセンス
 
 このプロジェクトのライセンス情報については、プロジェクトメンテナーにお問い合わせください。

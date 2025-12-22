@@ -93,6 +93,59 @@ cd migration
 sea-orm-cli migrate generate migration_name
 ```
 
+## Production Deployment
+
+This project uses GitHub Actions to build Docker images and push them to GitHub Container Registry (GHCR). The production server only pulls pre-built images, avoiding resource-intensive builds.
+
+### Setup Steps
+
+1. **Enable GitHub Container Registry**
+   - Go to your repository Settings > Actions > General
+   - Enable "Read and write permissions" for GITHUB_TOKEN
+
+2. **Configure Production Server**
+   ```bash
+   # Clone the repository
+   git clone https://github.com/your-username/gbf_discord_bot_rs.git
+   cd gbf_discord_bot_rs
+
+   # Set GITHUB_REPOSITORY environment variable
+   export GITHUB_REPOSITORY=your-username/gbf_discord_bot_rs
+
+   # Login to GitHub Container Registry
+   echo $GITHUB_TOKEN | docker login ghcr.io -u your-username --password-stdin
+
+   # Create environment files
+   cp .env.app.example .env.app
+   cp .env.db.example .env.db
+   # Edit .env.app and .env.db with your configuration
+
+   # Create .local directory for Google Service Account Key
+   mkdir -p .local
+   # Place your service account key file in .local/
+
+   # Pull and start services
+   docker-compose pull
+   docker-compose up -d
+   # or use the management script
+   ./mng.sh prod up
+   ```
+
+3. **Automatic Deployment**
+   - Push to `main` branch triggers automatic build and push to GHCR
+   - On production server, pull and restart:
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   # or use the management script
+   ./mng.sh prod up
+   ```
+
+### Development vs Production
+
+- **Development**: Use `./mng.sh dev up` to run database locally with Docker
+- **Production** (`docker-compose.yml`): Pulls pre-built images from GHCR (no local build)
+
 ## License
 
 Please contact the project maintainers for license information.
