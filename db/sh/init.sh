@@ -32,7 +32,9 @@ echo "  - ADMIN_DB_PASSWORD: $([ -n "$ADMIN_DB_PASSWORD" ] && echo '設定済み
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 最速だとpostgresの準備ができていないため待機
+echo "DB初期化まで30秒待機..."
 sleep 30
+echo "待機終了"
 
 psql -v ON_ERROR_STOP=1 \
      -U "$DB_USER" \
