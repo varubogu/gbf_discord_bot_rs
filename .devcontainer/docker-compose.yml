@@ -7,11 +7,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-        # Ensure that the variables in .env match the same variables in devcontainer.json
-        - .env
+    # env_file:
+    #     # Ensure that the variables in .env match the same variables in devcontainer.json
+    #     - .env
     environment:
-      - RUST_LOG: debug
+      RUST_LOG: debug
 
 #    volumes:
 #      - ../..:/workspaces:cached
@@ -33,13 +33,13 @@ services:
       - postgres-data:/var/lib/postgresql
       - /workspaces/${localWorkspaceFolderBasename}/db/sh/init.sh:/docker-entrypoint-initdb.d/init.sh
       - /workspaces/${localWorkspaceFolderBasename}/db/sql/init.sql:/sql/init.sql
-    env_file:
-      # Ensure that the variables in .env match the same variables in devcontainer.json
-      - .env
+    # env_file:
+    #   # Ensure that the variables in .env match the same variables in devcontainer.json
+    #   - .env
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     networks:
