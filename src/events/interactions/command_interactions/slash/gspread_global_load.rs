@@ -33,12 +33,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            ctx.send(
-                poise::CreateReply::default()
-                    .content("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
-                    .ephemeral(true),
-            )
-            .await?;
+            ctx.say("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
+                .await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
@@ -53,12 +49,7 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             Ok(f) => f,
             Err(e) => {
                 let error_msg = PresentationError::from(e).to_string();
-                ctx.send(
-                    poise::CreateReply::default()
-                        .content(format!("❌ {error_msg}"))
-                        .ephemeral(true),
-                )
-                .await?;
+                ctx.say(format!("❌ {error_msg}")).await?;
                 return Ok(());
             }
         };
@@ -117,14 +108,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             );
 
             let error_msg = PresentationError::from(e).to_string();
-            ctx.send(
-                poise::CreateReply::default()
-                    .content(format!(
-                        "❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"
-                    ))
-                    .ephemeral(true),
-            )
-            .await?;
+            ctx.say(format!("❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"))
+                .await?;
 
             Ok(())
         }
