@@ -7,9 +7,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # env_file:
-    #     # Ensure that the variables in .env match the same variables in devcontainer.json
-    #     - .env
     environment:
       RUST_LOG: debug
 
@@ -27,21 +24,19 @@ services:
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
   db:
-    image: postgres:18
+    build:
+      context: ../
+      dockerfile: Dockerfile.db
+    # image: postgres:18
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql
-      - /workspaces/${localWorkspaceFolderBasename}/db/sh/init.sh:/docker-entrypoint-initdb.d/init.sh
-      - /workspaces/${localWorkspaceFolderBasename}/db/sql/init.sql:/sql/init.sql
-    # env_file:
-    #   # Ensure that the variables in .env match the same variables in devcontainer.json
-    #   - .env
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     networks:
       - app-network
 
