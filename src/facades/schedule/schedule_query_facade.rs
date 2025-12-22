@@ -1,7 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
-use crate::services::schedule::{ScheduleListItem, ScheduleQueryService, ScheduleStats};
-use crate::services::timezone_service::TimezoneService;
+use crate::services::schedule::{ScheduleQueryService, ScheduleStats};
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
 use chrono::{Duration, Utc};

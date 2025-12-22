@@ -65,7 +65,6 @@ impl NotificationService {
         info!(count = notifications.len(), "通知を実行します");
 
         let mut success_count = 0;
-        let mut error_count = 0;
 
         for notification in notifications {
             // 通知を送信
@@ -88,7 +87,6 @@ impl NotificationService {
                         );
                     }
                     Err(e) => {
-                        error_count += 1;
                         error!(
                             error = %e,
                             notification_id = notification.id,
@@ -100,7 +98,6 @@ impl NotificationService {
                     }
                 }
             } else {
-                error_count += 1;
                 error!(
                     error = %send_result.unwrap_err(),
                     notification_id = notification.id,
@@ -117,7 +114,6 @@ impl NotificationService {
 
         info!(
             success = success_count,
-            error = error_count,
             "スケジュール通知の実行が完了しました"
         );
 

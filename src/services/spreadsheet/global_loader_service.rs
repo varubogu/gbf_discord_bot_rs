@@ -117,8 +117,8 @@ pub struct ConvertedGlobalData {
 pub struct GlobalLoaderServiceImpl {
     spreadsheet_id: String,
     google_auth_service: GoogleAuthService,
-    table_definition_service: TableDefinitionService,
-    data_converter_service: DataConverterService,
+    // table_definition_service: TableDefinitionService,
+    // data_converter_service: DataConverterService,
     reader_service: SpreadsheetReaderService<TableDefinitionService, DataConverterService>,
     schema_extractor: SchemaExtractorService,
 }
@@ -136,8 +136,8 @@ impl GlobalLoaderServiceImpl {
         Self {
             spreadsheet_id,
             google_auth_service: GoogleAuthService::new(service_account_key_file),
-            table_definition_service,
-            data_converter_service,
+            // table_definition_service,
+            // data_converter_service,
             reader_service,
             schema_extractor,
         }

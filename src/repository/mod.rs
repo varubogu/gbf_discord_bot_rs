@@ -1,6 +1,5 @@
 pub mod battle_recruitments_repository;
 pub(crate) mod database;
-pub mod environments_repository;
 pub mod guild_environments_repository;
 pub mod guild_spreadsheet_config_repository;
 pub mod message_texts_repository;
