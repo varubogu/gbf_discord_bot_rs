@@ -21,6 +21,9 @@ use tracing::{error, info};
     )
 )]
 pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
+    // 即座にdeferして処理時間を確保
+    ctx.defer_ephemeral().await?;
+
     info!(
         guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0),
         user_id = ctx.author().id.get(),
@@ -28,12 +31,7 @@ pub async fn schedule_generate(ctx: PoiseContext<'_>) -> Result<()> {
     );
 
     // 処理中メッセージを送信
-    ctx.send(
-        poise::CreateReply::default()
-            .content("スケジュールを生成しています...")
-            .ephemeral(true),
-    )
-    .await?;
+    ctx.say("スケジュールを生成しています...").await?;
 
     let app_state = Arc::new(ctx.data().app_state.clone());
     let scheduler_facade = SchedulerFacade::new(app_state);

@@ -57,7 +57,7 @@ pub async fn recruit_role_add(
     #[description_localized("ja", "ロール6")]
     role6: Option<Role>,
 ) -> Result<()> {
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     // ロールIDのリストを作成
     let mut role_ids = vec![role1.id.get()];

@@ -22,7 +22,7 @@ use tracing::{error, info};
 )]
 pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     info!(
         user_id = %ctx.author().id,
@@ -44,12 +44,7 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    ctx.send(
-        poise::CreateReply::default()
-            .content("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
-            .ephemeral(true),
-    )
-    .await?;
+    ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...").await?;
 
     // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
     let app_state = Arc::new(ctx.data().app_state.clone());

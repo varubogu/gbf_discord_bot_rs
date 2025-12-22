@@ -19,7 +19,7 @@ use tracing::{error, info};
 )]
 pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     // 即座にdeferして処理時間を確保
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     // ギルドIDを取得
     let guild_id = match ctx.guild_id() {

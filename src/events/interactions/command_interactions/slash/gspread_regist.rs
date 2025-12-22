@@ -32,7 +32,7 @@ pub async fn gspread_regist(
     push_spreadsheet_url: String,
 ) -> Result<()> {
     // 即座にdeferして処理時間を確保
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     // ギルドIDを取得
     let guild_id = match ctx.guild_id() {
@@ -54,12 +54,7 @@ pub async fn gspread_regist(
         "ギルドスプレッドシート登録を開始"
     );
 
-    ctx.send(
-        poise::CreateReply::default()
-            .content("🔄 ギルドスプレッドシートを登録しています...")
-            .ephemeral(true),
-    )
-    .await?;
+    ctx.say("🔄 ギルドスプレッドシートを登録しています...").await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
