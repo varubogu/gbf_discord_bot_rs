@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
 
     // Load environment variables
     let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
-    let dotenv_path = Path::new(&config_folder).join(".env");
+    let dotenv_path = Path::new(&config_folder).join(".env.app");
     dotenv::from_path(dotenv_path).ok();
 
     // Startup validation - check all required environment variables and files

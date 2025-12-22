@@ -10,7 +10,7 @@ services:
       # Rustマルチステージビルド: 最終ステージが自動的に使用される
     restart: always
     env_file:
-      - .env
+      - .env.app
     environment:
       DB_HOST: db
       TZ: UTC  # タイムゾーンを明示的にUTCに設定
@@ -38,19 +38,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
     env_file:
-      - .env  # .envから環境変数を読み込み
-    environment:
-      # PostgreSQL管理者設定
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
-      POSTGRES_PASSWORD: postgres
-      TZ: UTC  # タイムゾーンを明示的にUTCに設定
-      # 以下の変数は.envから読み込まれ、init.shで使用されます:
-      # - DB_NAME
-      # - SYSTEM_DB_PASSWORD
-      # - GUILD_DB_PASSWORD
-      # - GLOBAL_DB_PASSWORD
-      # - ADMIN_DB_PASSWORD
+      - .env.db  # .envから環境変数を読み込み
     networks:
       - app_network
     healthcheck:

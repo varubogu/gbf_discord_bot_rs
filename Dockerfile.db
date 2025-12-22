@@ -5,4 +5,5 @@ FROM postgres:18
 
 # 初期化スクリプトをコピー（実行権限付き）
 # docker-entrypoint-initdb.d 内の .sh ファイルは自動的に実行される
-COPY --chmod=755 ./db/init.sh /docker-entrypoint-initdb.d/init.sh
+COPY --chmod=755 ./db/sh/init.sh /docker-entrypoint-initdb.d/init.sh
+COPY --chmod=755 ./db/sql/init.sql /sql/init.sql

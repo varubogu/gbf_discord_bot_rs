@@ -14,64 +14,51 @@
 -- ロール作成（既存の場合はスキップ）
 
 -- 1. System ロール（スケジューラー、バックグラウンドタスク用）
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_system') THEN
-        CREATE ROLE gbf_bot_system WITH LOGIN PASSWORD :'system_password';
-    ELSE
-        ALTER ROLE gbf_bot_system WITH PASSWORD :'system_password';
-    END IF;
-END
-$$;
+-- エラーを一時的に無視してCREATE ROLE実行（既存の場合はエラー）
+\set ON_ERROR_STOP 0
+CREATE ROLE gbf_bot_system WITH LOGIN PASSWORD :'system_password';
+\set ON_ERROR_STOP 1
+
+-- ALTER ROLEでパスワードを確実に設定（既存/新規どちらも対応）
+ALTER ROLE gbf_bot_system WITH LOGIN PASSWORD :'system_password';
 
 -- System ロールはRLSをバイパス（全ギルドのデータにアクセス可能）
 ALTER ROLE gbf_bot_system WITH BYPASSRLS;
 
 -- 2. Guild ロール（通常のDiscordコマンド実行用）
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_guild') THEN
-        CREATE ROLE gbf_bot_guild WITH LOGIN PASSWORD :'guild_password';
-    ELSE
-        ALTER ROLE gbf_bot_guild WITH PASSWORD :'guild_password';
-    END IF;
-END
-$$;
+\set ON_ERROR_STOP 0
+CREATE ROLE gbf_bot_guild WITH LOGIN PASSWORD :'guild_password';
+\set ON_ERROR_STOP 1
+
+ALTER ROLE gbf_bot_guild WITH LOGIN PASSWORD :'guild_password';
 
 -- Guild ロールはRLSポリシーに従う（BYPASSRLSなし）
 -- app.current_guild_id でギルドごとにデータを分離
 
 -- 3. Global ロール（マスターデータ更新、スプレッドシート同期用）
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_global') THEN
-        CREATE ROLE gbf_bot_global WITH LOGIN PASSWORD :'global_password';
-    ELSE
-        ALTER ROLE gbf_bot_global WITH PASSWORD :'global_password';
-    END IF;
-END
-$$;
+\set ON_ERROR_STOP 0
+CREATE ROLE gbf_bot_global WITH LOGIN PASSWORD :'global_password';
+\set ON_ERROR_STOP 1
+
+ALTER ROLE gbf_bot_global WITH LOGIN PASSWORD :'global_password';
 
 -- Global ロールはRLSをバイパス（マスターデータ更新のため）
 ALTER ROLE gbf_bot_global WITH BYPASSRLS;
 
 -- 4. Admin ロール（マイグレーション実行、管理操作用）
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'gbf_bot_admin') THEN
-        CREATE ROLE gbf_bot_admin WITH LOGIN PASSWORD :'admin_password';
-    ELSE
-        ALTER ROLE gbf_bot_admin WITH PASSWORD :'admin_password';
-    END IF;
-END
-$$;
+\set ON_ERROR_STOP 0
+CREATE ROLE gbf_bot_admin WITH LOGIN PASSWORD :'admin_password';
+\set ON_ERROR_STOP 1
+
+ALTER ROLE gbf_bot_admin WITH LOGIN PASSWORD :'admin_password';
 
 -- Admin ロールはRLSをバイパス＋スキーマ作成権限
 ALTER ROLE gbf_bot_admin WITH BYPASSRLS CREATEDB;
 
 -- データベース作成（既存の場合はスキップ）
-SELECT format('CREATE DATABASE %I WITH OWNER gbf_bot_admin ENCODING ''UTF8''', :'db_name')
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db_name')\gexec
+\set ON_ERROR_STOP 0
+CREATE DATABASE :db_name WITH OWNER gbf_bot_admin ENCODING 'UTF8';
+\set ON_ERROR_STOP 1
 
 -- データベースへの接続権限付与
 \connect :db_name

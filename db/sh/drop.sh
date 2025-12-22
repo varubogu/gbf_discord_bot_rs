@@ -24,7 +24,7 @@ psql -v ON_ERROR_STOP=1 \
      -h "$DB_HOST" \
      -U "$DB_USER" \
      -d postgres \
-     -f "$SCRIPT_DIR/drop.sql"
+     -f "$SCRIPT_DIR/../sql/drop.sql"
 
 echo "=========================================="
 echo "データベース削除が完了しました"

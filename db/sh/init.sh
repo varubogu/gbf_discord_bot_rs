@@ -31,8 +31,10 @@ echo "  - ADMIN_DB_PASSWORD: $([ -n "$ADMIN_DB_PASSWORD" ] && echo '設定済み
 # init.sql を実行（psql変数で環境変数を渡す）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# 最速だとpostgresの準備ができていないため待機
+sleep 30
+
 psql -v ON_ERROR_STOP=1 \
-     -h "$DB_HOST" \
      -U "$DB_USER" \
      -d postgres \
      -v system_password="$SYSTEM_DB_PASSWORD" \
@@ -40,7 +42,7 @@ psql -v ON_ERROR_STOP=1 \
      -v global_password="$GLOBAL_DB_PASSWORD" \
      -v admin_password="$ADMIN_DB_PASSWORD" \
      -v db_name="$DB_NAME" \
-     -f "$SCRIPT_DIR/init.sql"
+     -f "$SCRIPT_DIR/../sql/init.sql"
 
 echo "=========================================="
 echo "データベース初期化が正常に完了しました"

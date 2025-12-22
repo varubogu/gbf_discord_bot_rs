@@ -29,7 +29,8 @@ services:
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql
-      - /workspaces/${localWorkspaceFolderBasename}/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /workspaces/${localWorkspaceFolderBasename}/db/sh/init.sh:/docker-entrypoint-initdb.d/init.sh
+      - /workspaces/${localWorkspaceFolderBasename}/db/sql/init.sql:/sql/init.sql
     env_file:
       # Ensure that the variables in .env match the same variables in devcontainer.json
       - .env

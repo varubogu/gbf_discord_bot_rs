@@ -50,7 +50,7 @@ fi
 # 環境変数から接続情報取得
 DB_HOST=${DB_HOST:-localhost}
 DB_NAME=${DB_NAME:-gbf_bot}
-DB_ADMIN_USER=${DB_ADMIN_USER:-postgres}
+POSTGRES_USER=${POSTGRES_USER:-postgres}
 
 # パスワード環境変数の存在確認
 if [ -z "${SYSTEM_DB_PASSWORD:-}" ]; then
@@ -76,9 +76,9 @@ fi
 echo "Creating database roles..."
 echo "DB_HOST: $DB_HOST"
 echo "DB_NAME: $DB_NAME"
-echo "DB_ADMIN_USER: $DB_ADMIN_USER"
+echo "POSTGRES_USER: $POSTGRES_USER"
 
-psql -h "$DB_HOST" -U "$DB_ADMIN_USER" -d "$DB_NAME" <<EOF
+psql -h "$DB_HOST" -U "$POSTGRES_USER" -d "$DB_NAME" <<EOF
 -- ロール作成（既に存在する場合はスキップ）
 DO \$\$
 BEGIN
@@ -119,21 +119,21 @@ END
 EOF
 
 # データベース接続権限（別のSQL文で実行）
-psql -h "$DB_HOST" -U "$DB_ADMIN_USER" -d "$DB_NAME" -c \
+psql -h "$DB_HOST" -U "$POSTGRES_USER" -d "$DB_NAME" -c \
     "GRANT CONNECT ON DATABASE $DB_NAME TO gbf_bot_system, gbf_bot_guild, gbf_bot_global, gbf_bot_admin;" || {
     echo "Warning: Failed to grant CONNECT privilege. Roles may already have it."
 }
 
 # データベースレベルのCREATE権限付与（スキーマ作成用）
 echo "Granting CREATE permission on database..."
-psql -h "$DB_HOST" -U "$DB_ADMIN_USER" -d "$DB_NAME" -c \
+psql -h "$DB_HOST" -U "$POSTGRES_USER" -d "$DB_NAME" -c \
     "GRANT CREATE ON DATABASE $DB_NAME TO gbf_bot_admin;" || {
     echo "Warning: Failed to grant CREATE privilege on database."
 }
 
 # publicスキーマへの権限付与（マイグレーション用）
 echo "Granting permissions on public schema..."
-psql -h "$DB_HOST" -U "$DB_ADMIN_USER" -d "$DB_NAME" <<EOF
+psql -h "$DB_HOST" -U "$POSTGRES_USER" -d "$DB_NAME" <<EOF
 -- publicスキーマへの権限付与
 GRANT USAGE, CREATE ON SCHEMA public TO gbf_bot_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO gbf_bot_admin;

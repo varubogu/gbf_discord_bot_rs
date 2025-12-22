@@ -124,7 +124,7 @@ function Stop-DevDatabase
 function Start-ProdServices
 {
     Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
-    docker compose --env-file config\.env up -d
+    docker compose up -d
 }
 
 function Stop-ProdServices
@@ -136,11 +136,11 @@ function Stop-ProdServices
 function Start-ProdServicesNoCache
 {
     Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
-    docker compose --env-file config\.env build --no-cache
+    docker compose build --no-cache
     if ($LASTEXITCODE -eq 0)
     {
         Write-Host "🚀 サービスを起動しています..." -ForegroundColor Green
-        docker compose --env-file config\.env up -d
+        docker compose up -d
     }
     else
     {

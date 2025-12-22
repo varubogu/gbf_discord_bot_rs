@@ -57,7 +57,7 @@ impl Environment {
     pub async fn load_from_env_file(&self) -> Result<(), Box<dyn std::error::Error>> {
         // Get config folder from environment or use default
         let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
-        let dotenv_path = Path::new(&config_folder).join(".env");
+        let dotenv_path = Path::new(&config_folder).join(".env.app");
 
         // Load .env file
         match dotenv::from_path(&dotenv_path) {
