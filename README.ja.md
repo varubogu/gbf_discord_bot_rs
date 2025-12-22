@@ -6,40 +6,100 @@
 
 ## 機能
 
-- 各属性のリアクション（またはボタン）を使ったマルチバトル募集システム（通知、定期募集機能つき）
+- 各属性のリアクション（またはボタン）を使ったマルチバトル募集システム
+  - クエストによって自動的にリアクション（ボタン）
+  - 時間になったら通知する
+  - 曜日と時間を決めることで自動的に募集する機能がある
 - 古戦場開始時などのイベント通知システム
 - スプレッドシートと連携してデータを注入＆可視化
 
 詳細については下記を参照ください ※日本語のみ
 [docs/user](利用者向けマニュアル)
 
-## 必要要件
+## Botコマンド説明
+
+- `/recruit quest:<クエスト名> [battle_type:<タイプ>] [event_date:<日付>]` - マルチバトル募集を作成
+
+※準備中
+
+## 環境構築（開発者向け）
+
+### 必要要件
 
 - Rust 1.70+
 - PostgreSQLデータベース
 - Discord Botトークン
+- Googleスプレッドシート（グローバル用、サーバーごとで計２つ以上）
+- Googleスプレッドシート読み書き用の Google Cloud サービスアカウント
 
-## セットアップ
+※RustとPostgreSQLについてはDocker/DevContainerを使うことで準備が不要になります。
+
+### GoogleCloudサービスアカウントとスプレッドシートのセットアップ
+
+1. Google Cloud > IAMと管理 > サービスアカウント からサービスアカウントを新規作成し、メールアドレスを控える
+  - 例: `<アカウント名>@<プロジェクトID>.iam.gserviceaccount.com`
+2. サービスアカウントの鍵を作成し、鍵ファイル（json）をダウンロードする
+  - 例: `<プロジェクトID>-<サービスアカウントキーID>.json`
+2. 下記スプレッドシートをコピーする
+  - グローバル: URL準備中
+  - サーバーごと: URL準備中
+3. コピーしたスプレッドシートに以下の設定を行う
+  - 「共有」からGoogle Cloud サービスアカウントのメールアドレスに「編集者」権限を付与
+  - その他必要に応じてデータの書き換え
+
+### 開発環境（通常）セットアップ
 
 1. リポジトリをクローン
-2. `.env.example`をコピーして`.env`ファイルを作成し、環境変数を設定する
-3. `cargo build --release`を実行
-4. `./target/release/gbf_discord_bot_rs`を実行
+2. 環境変数のexampleをコピーして環境変数を設定する
+  - `.env.app.example` -> `.env.app`
+  - `.env.db.example` -> `.env.db`
+3. Googleサービスアカウントキーファイルを `プロジェクトフォルダ/.local/` の下へ配置
+   例: `<プロジェクトフォルダ>/.local/<プロジェクトID>-<サービスアカウントキーID>.json`
+4. PostgreSQLを立ち上げてロール設定を行う
+  - ロール設定は `db/sh/init.sh` で行います。
+  - `mng.sh`や`mng.ps1`を`dev up`オプションで実行することで
+    Dockerコンテナとしてpostgresを動かすことができます。
+    例: `./mng.sh prod up`
+5. F5キーなどでデバッグ実行
 
-## コマンド
+### 開発環境（DevContainer）セットアップ
 
-- `/recruit quest:<クエスト名> [battle_type:<タイプ>] [event_date:<日付>]` - マルチバトル募集を作成
+1. リポジトリをクローン
+2. 環境変数のexampleをコピーして環境変数を設定する
+  - `.env.app.example` -> `.env.app`
+  - `.env.db.example` -> `.env.db`
+3. Googleサービスアカウントキーファイルを `プロジェクトフォルダ/.local/` の下へ配置
+   例: `<プロジェクトフォルダ>/.local/<プロジェクトID>-<サービスアカウントキーID>.json`
+4. F5キーなどでデバッグ実行
 
-## 主要技術
+※DevContainerの場合、起動したらPostgreSQLも自動的に起動します
 
-- **Discord Bot Framework**: poise 0.6.1
-- **非同期ランタイム**: tokio 1.47 (multi-thread)
-- **ORM**: SeaORM 1.1 (PostgreSQL)
-- **エラーハンドリング**: thiserror 1.0
-- **ロギング**: tracing 0.1 + tracing-subscriber 0.3
-- **テスティング**: tokio-test, mockall
+### 本番環境（通常）セットアップ
 
-## 開発
+1. リポジトリをクローン
+2. 環境変数のexampleをコピーして環境変数を設定する
+  - `.env.app.example` -> `.env.app`
+  - `.env.db.example` -> `.env.db`
+3. Googleサービスアカウントキーファイルを `プロジェクトフォルダ/.local/` の下へ配置
+   例: `<プロジェクトフォルダ>/.local/<プロジェクトID>-<サービスアカウントキーID>.json`
+4. PostgreSQLを立ち上げてロール設定を行う
+  - ロール設定は `db/sh/init.sh` で行います。
+  - `mng.sh`や`mng.ps1`を`dev up`オプションで実行することで
+    Dockerコンテナとしてpostgresを動かすことができます。
+    例: `./mng.sh prod up`
+5. `cargo build --release`を実行
+6. `./target/release/gbf_discord_bot_rs`を実行
+
+### 本番環境（Docker）セットアップ
+
+1. リポジトリをクローン
+2. 環境変数のexampleをコピーして環境変数を設定する
+  - `.env.app.example` -> `.env.app`
+  - `.env.db.example` -> `.env.db`
+3. Googleサービスアカウントキーファイルを `プロジェクトフォルダ/.local/` の下へ配置
+   例: `<プロジェクトフォルダ>/.local/<プロジェクトID>-<サービスアカウントキーID>.json`
+4. `mng.sh`や`mng.ps1`を`prod up`オプションで実行
+   例: `./mng.sh prod up`
 
 ### ビルドと実行
 
@@ -84,11 +144,11 @@ cd migration
 sea-orm-cli migrate generate migration_name
 ```
 
-## 本番環境へのデプロイ
+### 本番環境へのデプロイ補足
 
 このプロジェクトはGitHub Actionsを使用してDockerイメージをビルドし、GitHub Container Registry (GHCR)にプッシュします。本番サーバーではビルド済みイメージをpullするだけなので、リソースを大量に消費するビルド処理を本番サーバー上で実行する必要がありません。
 
-### セットアップ手順
+##### 本番環境へのデプロイセットアップ手順
 
 1. **GitHub Container Registryの有効化**
    - リポジトリの Settings > Actions > General に移動
@@ -132,10 +192,14 @@ sea-orm-cli migrate generate migration_name
    ./mng.sh prod up
    ```
 
-### 開発環境 vs 本番環境
+## 主要技術
 
-- **開発環境**: `./mng.sh dev up`でデータベースをローカルでDockerで実行
-- **本番環境** (`docker-compose.yml`): GHCRからビルド済みイメージをpull（ローカルビルド不要）
+- **Discord Bot Framework**: poise 0.6.1
+- **非同期ランタイム**: tokio 1.47 (multi-thread)
+- **ORM**: SeaORM 1.1 (PostgreSQL)
+- **エラーハンドリング**: thiserror 1.0
+- **ロギング**: tracing 0.1 + tracing-subscriber 0.3
+- **テスティング**: tokio-test, mockall
 
 ## ライセンス
 
