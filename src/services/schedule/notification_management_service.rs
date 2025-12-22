@@ -22,10 +22,14 @@ impl NotificationManagementService {
     }
 
     /// 募集の出発通知を作成し、募集とのリレーションを作成
+    ///
+    /// # 通知タイミング
+    /// - 出発5分前: 現在時刻より5分前の時刻が未来の場合のみ作成
+    /// - 出発時刻ちょうど: 必ず作成
     pub async fn create_recruitment_departure_notification(
         &self,
         txn: &DatabaseTransaction,
-        notify_time: DateTime<Utc>,
+        departure_time: DateTime<Utc>,
         guild_id: i64,
         channel_id: i64,
         recruitment_id: i32,
@@ -33,25 +37,46 @@ impl NotificationManagementService {
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelBattleRecruitmentRepository::new();
 
-        // 通知を作成
+        let now = Utc::now();
+        let five_minutes_before = departure_time - chrono::Duration::minutes(5);
+
+        // 5分前通知: 現在時刻より未来の場合のみ作成
+        if five_minutes_before > now {
+            let notification = notification_repo
+                .create_with_txn(
+                    txn,
+                    five_minutes_before,
+                    guild_id,
+                    channel_id,
+                    "MSG00035".to_string(),
+                )
+                .await?;
+
+            info!("募集の出発5分前通知を登録しました");
+
+            rel_repo
+                .create_with_txn(txn, recruitment_id, notification.id)
+                .await?;
+        } else {
+            info!("募集の出発5分前は過ぎているため、5分前通知をスキップしました");
+        }
+
+        // 出発時刻ちょうどの通知: 必ず作成
         let notification = notification_repo
             .create_with_txn(
                 txn,
-                notify_time,
+                departure_time,
                 guild_id,
                 channel_id,
-                "MSG00033".to_string(),
+                "MSG00033".to_string(), // 時間ちょうど用の新しいメッセージコード
             )
             .await?;
 
-        info!("募集の出発通知を登録しました");
+        info!("募集の出発時刻ちょうどの通知を登録しました");
 
-        // 通知と募集のリレーションを作成
         rel_repo
             .create_with_txn(txn, recruitment_id, notification.id)
             .await?;
-
-        info!("募集と通知のリレーションを登録しました");
 
         Ok(())
     }

@@ -11,7 +11,7 @@ use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
@@ -248,12 +248,11 @@ pub async fn change_recruitment_information_internal(
                 .delete_recruitment_notifications(&txn, existing_recruitment.id)
                 .await?;
 
-            // 新しい通知を登録（出発5分前）
-            let notify_time = new_expiry_date - Duration::minutes(5);
+            // 新しい通知を登録（5分前とちょうどの時刻）
             notification_service
                 .create_recruitment_departure_notification(
                     &txn,
-                    notify_time,
+                    new_expiry_date,
                     guild_id as i64,
                     channel_id as i64,
                     existing_recruitment.id,

@@ -9,7 +9,7 @@ use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, info, instrument};
@@ -91,12 +91,9 @@ pub async fn new_recruitment(
         // 3. データ保存
         let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
 
-        // 4. 出発時刻の通知を登録（出発5分前）
-        let notify_time = recruitment_data.expiry_date - Duration::minutes(5);
-
+        // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(
             expiry_date = %recruitment_data.expiry_date,
-            notify_time = %notify_time,
             "募集の出発通知を登録します"
         );
 
@@ -104,7 +101,7 @@ pub async fn new_recruitment(
         notification_management_service
             .create_recruitment_departure_notification(
                 &txn,
-                notify_time,
+                recruitment_data.expiry_date,
                 guild_id as i64,
                 channel_id as i64,
                 recruitment.id,

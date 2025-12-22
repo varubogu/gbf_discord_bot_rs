@@ -18,7 +18,6 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::Result;
-use chrono::Duration;
 use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
@@ -193,12 +192,9 @@ impl RecruitmentCreationService {
             "募集をデータベースに登録しました"
         );
 
-        // 8. 出発時刻の通知を登録（出発5分前）
-        let notify_time = calculated_time.quest_start_at - Duration::minutes(5);
-
+        // 8. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(
             quest_start_at = %calculated_time.quest_start_at,
-            notify_time = %notify_time,
             "募集の出発通知を登録します"
         );
 
@@ -206,7 +202,7 @@ impl RecruitmentCreationService {
         notification_management_service
             .create_recruitment_departure_notification(
                 txn,
-                notify_time,
+                calculated_time.quest_start_at,
                 calculated_time.guild_id,
                 recruitment_channel_id,
                 recruitment.id,
