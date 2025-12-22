@@ -5,6 +5,7 @@ rustc --version
 
 echo "### Updating package list..."
 sudo apt-get update
+sudo apt-get upgrade
 
 echo "### Installing PostgreSQL client..."
 sudo apt-get install -y postgresql-client

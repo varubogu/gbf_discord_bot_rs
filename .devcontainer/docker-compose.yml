@@ -10,6 +10,8 @@ services:
     env_file:
         # Ensure that the variables in .env match the same variables in devcontainer.json
         - .env
+    environment:
+      - RUST_LOG: debug
 
 #    volumes:
 #      - ../..:/workspaces:cached
@@ -21,7 +23,7 @@ services:
     networks:
       - app-network
 
-    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
   db:
@@ -34,6 +36,10 @@ services:
     env_file:
       # Ensure that the variables in .env match the same variables in devcontainer.json
       - .env
+    environment:
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     networks:
