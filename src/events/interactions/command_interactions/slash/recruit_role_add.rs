@@ -1,7 +1,9 @@
 use crate::facades::recruitment::role_management;
 use crate::services::permission::check_bot_control_role;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Role;
+use std::collections::HashMap;
 
 use super::autocomplete::quest_auto_complete;
 
@@ -82,9 +84,19 @@ pub async fn recruit_role_add(
         role_management::add_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
 
     // 結果をユーザーに通知
-    ctx.say(format!(
-        "{added_count}個のロールを募集通知ロールとして登録しました。"
-    ))
+    let mut params = HashMap::new();
+    params.insert("count".to_string(), added_count.to_string());
+
+    let message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "recruit_role.add_success",
+        params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("{added_count}個のロールを募集通知ロールとして登録しました。"));
+
+    ctx.say(&message)
     .await?;
 
     Ok(())

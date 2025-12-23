@@ -1,5 +1,7 @@
 use crate::facades::timezone::TimezoneFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[poise::command(
@@ -23,9 +25,19 @@ pub async fn timezone_show(ctx: PoiseContext<'_>) -> Result<()> {
     let timezone = facade.get_timezone(guild_id.get() as i64).await?;
 
     // 結果メッセージ（デフォルト判定はスコープ外のため省略）
-    let message = format!("現在のタイムゾーン: {}", timezone.name());
+    let mut params = HashMap::new();
+    params.insert("timezone".to_string(), timezone.name().to_string());
 
-    ctx.say(message).await?;
+    let message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "timezone.show_current",
+        params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("現在のタイムゾーン: {}", timezone.name()));
+
+    ctx.say(&message).await?;
 
     Ok(())
 }

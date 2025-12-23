@@ -39,6 +39,17 @@ en:
     load_success: "✅ Guild spreadsheet load completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
     load_partial_success: "⚠️ Guild spreadsheet load completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
     load_failed: "❌ Guild spreadsheet load failed\n\n{{error_msg}}"
+    registering: "🔄 Registering guild spreadsheet..."
+    register_success: "✅ Guild spreadsheet registered successfully\n\n📊 Registration details:\n- Load spreadsheet: <{{load_url}}>\n- Push spreadsheet: <{{push_url}}>\n\nYou can now use the `/gspread_load` and `/gspread_push` commands."
+    register_failed: "❌ Guild spreadsheet registration failed\n\n{{error_msg}}"
+    pushing: "🔄 Writing guild data to spreadsheet..."
+    push_success: "✅ Guild data write completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+    push_partial_success: "⚠️ Guild data write completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+    push_failed: "❌ Guild data write failed\n\n{{error_msg}}"
+    global_pushing: "🔄 Writing global data to spreadsheet..."
+    global_push_success: "✅ Global data write completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+    global_push_partial_success: "⚠️ Global data write completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+    global_push_failed: "❌ Global data write failed\n\n{{error_msg}}"
 
   kosenjo:
     before_3_days: "The Guild War will begin in 3 days."
@@ -78,6 +89,23 @@ en:
     member_full: "The party is full."
     before_5_minutes: "5 minutes until quest departure."
     start: "It's quest departure time."
+
+  timezone:
+    set_success: "Timezone has been set to {{timezone}}."
+    show_current: "Current timezone: {{timezone}}"
+
+  recruit_role:
+    add_success: "{{count}} role(s) registered as recruitment notification roles."
+    remove_success: "{{count}} role(s) removed from recruitment notification roles."
+
+  recruit:
+    cancel_already_cancelled: "The recruitment has already been cancelled."
+    cancel_message_deleted: "The recruitment message has been deleted."
+    cancel_invalid_message: "The specified message is not a recruitment message."
+    cancel_not_found: "The specified recruitment was not found."
+    cancel_error: "An error occurred. Please try the command again. If the issue persists, please contact the developer."
+    change_no_changes: "Please specify at least one item to change."
+    change_success: "Recruitment details have been updated."
 
   messages:
     welcome: "Welcome to the GBF Discord Bot!"

@@ -1,8 +1,10 @@
 use crate::facades::recruitment::change::change_recruitment_information;
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::datetime_parser;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
@@ -42,9 +44,16 @@ pub async fn recruit_change(
 
     // パラメータが何も指定されていない場合はエラー
     if quest.is_none() && event_date.is_none() && battle_style.is_none() {
-        return Err(crate::types::AppError::Business {
-            message: "変更する項目を少なくとも1つ指定してください。".to_string(),
-        });
+        let message = get_message_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            "recruit.change_no_changes",
+            HashMap::new(),
+        )
+        .await
+        .unwrap_or_else(|_| "変更する項目を少なくとも1つ指定してください。".to_string());
+
+        return Err(crate::types::AppError::Business { message });
     }
 
     // タイムゾーンを取得（日時が指定されている場合のみ）
@@ -72,9 +81,18 @@ pub async fn recruit_change(
         .await?;
 
     // 処理完了をユーザーに通知
+    let message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "recruit.change_success",
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "募集内容を更新しました。".to_string());
+
     ctx.send(
         poise::CreateReply::default()
-            .content("募集内容を更新しました。")
+            .content(message)
             .ephemeral(true),
     )
     .await?;

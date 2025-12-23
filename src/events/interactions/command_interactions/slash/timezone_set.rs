@@ -1,6 +1,8 @@
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::permission::check_bot_control_role;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::autocomplete::timezone_auto_complete;
@@ -38,10 +40,19 @@ pub async fn timezone_set(
         .await?;
 
     // 成功メッセージ
-    ctx.say(format!(
-        "タイムゾーンを {} に設定しました。",
-        result.timezone.name()
-    ))
+    let mut params = HashMap::new();
+    params.insert("timezone".to_string(), result.timezone.name().to_string());
+
+    let message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "timezone.set_success",
+        params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("タイムゾーンを {} に設定しました。", result.timezone.name()));
+
+    ctx.say(&message)
     .await?;
 
     Ok(())

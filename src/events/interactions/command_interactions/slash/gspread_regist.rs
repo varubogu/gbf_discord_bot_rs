@@ -4,8 +4,10 @@
 /// ギルド用の読み込み・書き込みスプレッドシートをデータベースに登録します
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use tracing::{error, info};
 
 #[poise::command(
@@ -38,7 +40,16 @@ pub async fn gspread_regist(
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です").await?;
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "errors.guild_only",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "❌ このコマンドはギルド内でのみ実行可能です".to_string());
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -49,7 +60,16 @@ pub async fn gspread_regist(
         "ギルドスプレッドシート登録を開始"
     );
 
-    ctx.say("🔄 ギルドスプレッドシートを登録しています...").await?;
+    let loading_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "spreadsheet.registering",
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "🔄 ギルドスプレッドシートを登録しています...".to_string());
+
+    ctx.say(&loading_message).await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
@@ -57,7 +77,19 @@ pub async fn gspread_regist(
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {error_msg}")).await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.register_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ {error_msg}"));
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -68,16 +100,29 @@ pub async fn gspread_regist(
         .await
     {
         Ok(result) => {
-            let message = format!(
-                "✅ ギルドスプレッドシートを登録しました\n\n\
-                 📊 登録内容:\n\
-                 - 読み込み用: <{}>\n\
-                 - 書き込み用: <{}>\n\n\
-                 これで `/gspread_load` と `/gspread_push` コマンドが使用可能になりました。",
-                result.load_spreadsheet_url, result.push_spreadsheet_url
-            );
+            let mut params = HashMap::new();
+            params.insert("load_url".to_string(), result.load_spreadsheet_url.clone());
+            params.insert("push_url".to_string(), result.push_spreadsheet_url.clone());
 
-            ctx.say(message).await?;
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.register_success",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| {
+                format!(
+                    "✅ ギルドスプレッドシートを登録しました\n\n\
+                     📊 登録内容:\n\
+                     - 読み込み用: <{}>\n\
+                     - 書き込み用: <{}>\n\n\
+                     これで `/gspread_load` と `/gspread_push` コマンドが使用可能になりました。",
+                    result.load_spreadsheet_url, result.push_spreadsheet_url
+                )
+            });
+
+            ctx.say(&message).await?;
 
             info!(
                 guild_id = %guild_id,
@@ -90,8 +135,20 @@ pub async fn gspread_regist(
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドスプレッドシート登録失敗\n\n{error_msg}"))
-                .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.register_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ ギルドスプレッドシート登録失敗\n\n{error_msg}"));
+
+            ctx.say(&message).await?;
+
             error!(
                 guild_id = %guild_id,
                 "ギルドスプレッドシート登録失敗"

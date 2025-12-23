@@ -4,8 +4,10 @@
 /// PostgreSQLからギルドデータをスプレッドシートに書き込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use tracing::{error, info};
 
 #[poise::command(
@@ -24,7 +26,16 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です").await?;
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "errors.guild_only",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "❌ このコマンドはギルド内でのみ実行可能です".to_string());
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -36,14 +47,36 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     );
 
     let app_state = &ctx.data().app_state;
-    ctx.say("🔄 ギルドデータをスプレッドシートに書き込んでいます...").await?;
+
+    let loading_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "spreadsheet.pushing",
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "🔄 ギルドデータをスプレッドシートに書き込んでいます...".to_string());
+
+    ctx.say(&loading_message).await?;
 
     // Facadeを作成
     let facade = match SpreadsheetExportFacade::new(app_state.guild_db().clone()) {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {error_msg}")).await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.push_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ {error_msg}"));
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -52,37 +85,64 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     match facade.export_for_guild_by_config(guild_id).await {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
-                format!(
-                    "✅ ギルドデータ書き込み完了\n\n\
-                     📊 書き込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 総行数: {}行",
-                    result.success_count, result.total_rows
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "spreadsheet.push_success",
+                    params,
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "✅ ギルドデータ書き込み完了\n\n\
+                         📊 書き込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 総行数: {}行",
+                        result.success_count, result.total_rows
+                    )
+                })
             } else {
-                format!(
-                    "⚠️ ギルドデータ書き込み完了（一部エラー）\n\n\
-                     📊 書き込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 失敗: {}テーブル\n\
-                     - 総行数: {}行\n\n\
-                     {}",
-                    result.success_count,
-                    result.failure_count,
-                    result.total_rows,
-                    if result.errors.len() <= 5 {
-                        format!("❌ エラー:\n{}", result.errors.join("\n"))
-                    } else {
-                        format!(
-                            "❌ エラー（最初の5件）:\n{}\n... 他{}件",
-                            result.errors[..5].join("\n"),
-                            result.errors.len() - 5
-                        )
-                    }
+                let error_details = if result.errors.len() <= 5 {
+                    format!("❌ エラー:\n{}", result.errors.join("\n"))
+                } else {
+                    format!(
+                        "❌ エラー（最初の5件）:\n{}\n... 他{}件",
+                        result.errors[..5].join("\n"),
+                        result.errors.len() - 5
+                    )
+                };
+
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("failure_count".to_string(), result.failure_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+                params.insert("error_details".to_string(), error_details.clone());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "spreadsheet.push_partial_success",
+                    params,
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "⚠️ ギルドデータ書き込み完了（一部エラー）\n\n\
+                         📊 書き込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 失敗: {}テーブル\n\
+                         - 総行数: {}行\n\n\
+                         {}",
+                        result.success_count, result.failure_count, result.total_rows, error_details
+                    )
+                })
             };
 
-            ctx.say(message).await?;
+            ctx.say(&message).await?;
 
             info!(
                 guild_id = %guild_id,
@@ -96,8 +156,19 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドデータ書き込み失敗\n\n{error_msg}"))
-                .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.push_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ ギルドデータ書き込み失敗\n\n{error_msg}"));
+
+            ctx.say(&message).await?;
 
             error!(
                 guild_id = %guild_id,

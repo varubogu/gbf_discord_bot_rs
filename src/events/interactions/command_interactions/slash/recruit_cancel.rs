@@ -1,8 +1,10 @@
 use crate::facades::recruitment::cancel as CancelFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::domain_interface_result::CanCancelResult;
 use poise::serenity_prelude::Message;
+use std::collections::HashMap;
 use tracing::error;
 
 #[poise::command(
@@ -28,36 +30,72 @@ pub async fn recruit_cancel(
             CancelFacade::confirm_cancel(ctx, &message).await
         }
         Ok(CanCancelResult::AlreadyCancelled) => {
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "recruit.cancel_already_cancelled",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "募集は既にキャンセルされています。".to_string());
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content("募集は既にキャンセルされています。")
+                    .content(message)
                     .ephemeral(true),
             )
             .await?;
             Ok(())
         }
         Ok(CanCancelResult::MessageDeleted) => {
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "recruit.cancel_message_deleted",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "募集メッセージが削除されています。".to_string());
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content("募集メッセージが削除されています。")
+                    .content(message)
                     .ephemeral(true),
             )
             .await?;
             Ok(())
         }
         Ok(CanCancelResult::NotRecruitMessage) => {
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "recruit.cancel_invalid_message",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "指定されたメッセージは募集メッセージではありません。".to_string());
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content("指定されたメッセージは募集メッセージではありません。")
+                    .content(message)
                     .ephemeral(true),
             )
             .await?;
             Ok(())
         }
         Ok(CanCancelResult::NotFound) => {
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "recruit.cancel_not_found",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "指定された募集が見つかりません。".to_string());
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content("指定された募集が見つかりません。")
+                    .content(message)
                     .ephemeral(true),
             )
             .await?;
@@ -66,9 +104,18 @@ pub async fn recruit_cancel(
         Err(e) => {
             // システムエラーを想定
             error!("{:?}", e);
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "recruit.cancel_error",
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。".to_string());
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content("エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。")
+                    .content(message)
                     .ephemeral(true),
             )
             .await?;

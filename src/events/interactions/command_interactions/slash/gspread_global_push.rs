@@ -4,8 +4,10 @@
 /// PostgreSQLからグローバルデータをスプレッドシートに書き込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_admin_server;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use std::env;
 use tracing::{error, info};
 
@@ -32,14 +34,34 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            ctx.say("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
-                .await?;
+            let mut params = HashMap::new();
+            params.insert("var_name".to_string(), "GLOBAL_SPREADSHEET_ID".to_string());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "errors.env_var_not_set",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| "❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string());
+
+            ctx.say(&message).await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }
     };
 
-    ctx.say("🔄 グローバルデータをスプレッドシートに書き込んでいます...").await?;
+    let loading_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "spreadsheet.global_pushing",
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "🔄 グローバルデータをスプレッドシートに書き込んでいます...".to_string());
+
+    ctx.say(&loading_message).await?;
 
     // Facadeを作成
     let app_state = &ctx.data().app_state;
@@ -47,7 +69,19 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ {error_msg}")).await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.global_push_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ {error_msg}"));
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -56,37 +90,64 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     match facade.export_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
-                format!(
-                    "✅ グローバルデータ書き込み完了\n\n\
-                     📊 書き込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 総行数: {}行",
-                    result.success_count, result.total_rows
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "spreadsheet.global_push_success",
+                    params,
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "✅ グローバルデータ書き込み完了\n\n\
+                         📊 書き込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 総行数: {}行",
+                        result.success_count, result.total_rows
+                    )
+                })
             } else {
-                format!(
-                    "⚠️ グローバルデータ書き込み完了（一部エラー）\n\n\
-                     📊 書き込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 失敗: {}テーブル\n\
-                     - 総行数: {}行\n\n\
-                     {}",
-                    result.success_count,
-                    result.failure_count,
-                    result.total_rows,
-                    if result.errors.len() <= 5 {
-                        format!("❌ エラー:\n{}", result.errors.join("\n"))
-                    } else {
-                        format!(
-                            "❌ エラー（最初の5件）:\n{}\n... 他{}件",
-                            result.errors[..5].join("\n"),
-                            result.errors.len() - 5
-                        )
-                    }
+                let error_details = if result.errors.len() <= 5 {
+                    format!("❌ エラー:\n{}", result.errors.join("\n"))
+                } else {
+                    format!(
+                        "❌ エラー（最初の5件）:\n{}\n... 他{}件",
+                        result.errors[..5].join("\n"),
+                        result.errors.len() - 5
+                    )
+                };
+
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("failure_count".to_string(), result.failure_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+                params.insert("error_details".to_string(), error_details.clone());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "spreadsheet.global_push_partial_success",
+                    params,
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "⚠️ グローバルデータ書き込み完了（一部エラー）\n\n\
+                         📊 書き込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 失敗: {}テーブル\n\
+                         - 総行数: {}行\n\n\
+                         {}",
+                        result.success_count, result.failure_count, result.total_rows, error_details
+                    )
+                })
             };
 
-            ctx.say(message).await?;
+            ctx.say(&message).await?;
 
             info!(
                 success = result.success_count,
@@ -99,8 +160,19 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ グローバルデータ書き込み失敗\n\n{error_msg}"))
-                .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet.global_push_failed",
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ グローバルデータ書き込み失敗\n\n{error_msg}"));
+
+            ctx.say(&message).await?;
 
             error!("グローバルデータ書き込み失敗");
 
