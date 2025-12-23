@@ -5,6 +5,7 @@
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
@@ -43,7 +44,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "errors.guild_only",
+                MessageId::ErrorsGuildOnly,
                 HashMap::new(),
             )
             .await
@@ -63,7 +64,7 @@ pub async fn gspread_regist(
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "spreadsheet.registering",
+        MessageId::SpreadsheetRegistering,
         HashMap::new(),
     )
     .await
@@ -83,7 +84,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.register_failed",
+                MessageId::SpreadsheetRegisterFailed,
                 params,
             )
             .await
@@ -107,7 +108,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.register_success",
+                MessageId::SpreadsheetRegisterSuccess,
                 params,
             )
             .await
@@ -141,7 +142,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.register_failed",
+                MessageId::SpreadsheetRegisterFailed,
                 params,
             )
             .await

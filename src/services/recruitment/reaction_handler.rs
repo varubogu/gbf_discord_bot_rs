@@ -4,6 +4,7 @@ use tracing::{error, info};
 
 use crate::models::battle_recruitment::BattleRecruitment;
 use crate::repository::database::Database;
+use crate::services::message::MessageId;
 use crate::utils::discord_helper::{
     get_reaction_users, get_unique_reaction_users, update_embed_with_participants,
 };
@@ -104,7 +105,7 @@ impl ReactionHandler {
             let message_text = match self
                 .db
                 .message_text
-                .get_by_guild_and_message(recruitment.guild_id, "MSG00032")
+                .get_by_guild_and_message(recruitment.guild_id, MessageId::RecruitmentMemberFull.as_str())
                 .await
             {
                 Ok(Some(msg)) => msg.message_jp,

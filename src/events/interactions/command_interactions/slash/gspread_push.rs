@@ -5,6 +5,7 @@
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "errors.guild_only",
+                MessageId::ErrorsGuildOnly,
                 HashMap::new(),
             )
             .await
@@ -51,7 +52,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "spreadsheet.pushing",
+        MessageId::SpreadsheetPushing,
         HashMap::new(),
     )
     .await
@@ -70,7 +71,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.push_failed",
+                MessageId::SpreadsheetPushFailed,
                 params,
             )
             .await
@@ -92,7 +93,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    "spreadsheet.push_success",
+                    MessageId::SpreadsheetPushSuccess,
                     params,
                 )
                 .await
@@ -125,7 +126,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    "spreadsheet.push_partial_success",
+                    MessageId::SpreadsheetPushPartialSuccess,
                     params,
                 )
                 .await
@@ -162,7 +163,7 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.push_failed",
+                MessageId::SpreadsheetPushFailed,
                 params,
             )
             .await

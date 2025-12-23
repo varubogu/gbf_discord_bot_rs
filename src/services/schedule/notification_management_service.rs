@@ -1,6 +1,7 @@
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
+use crate::services::message::MessageId;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
 use sea_orm::DatabaseTransaction;
@@ -48,7 +49,7 @@ impl NotificationManagementService {
                     five_minutes_before,
                     guild_id,
                     channel_id,
-                    "MSG00035".to_string(),
+                    MessageId::RecruitmentBefore5Minutes.as_str().to_string(),
                 )
                 .await?;
 
@@ -68,7 +69,7 @@ impl NotificationManagementService {
                 departure_time,
                 guild_id,
                 channel_id,
-                "MSG00033".to_string(), // 時間ちょうど用の新しいメッセージコード
+                MessageId::RecruitmentStart.as_str().to_string(),
             )
             .await?;
 

@@ -2,6 +2,7 @@ use crate::facades::recruitment::change::change_recruitment_information;
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::datetime_parser;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
 use std::collections::HashMap;
@@ -47,7 +48,7 @@ pub async fn recruit_change(
         let message = get_message_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
-            "recruit.change_no_changes",
+            MessageId::RecruitChangeNoChanges,
             HashMap::new(),
         )
         .await
@@ -84,7 +85,7 @@ pub async fn recruit_change(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "recruit.change_success",
+        MessageId::RecruitChangeSuccess,
         HashMap::new(),
     )
     .await

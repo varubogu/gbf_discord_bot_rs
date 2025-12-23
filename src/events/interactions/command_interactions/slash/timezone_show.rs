@@ -1,5 +1,6 @@
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -31,11 +32,11 @@ pub async fn timezone_show(ctx: PoiseContext<'_>) -> Result<()> {
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "timezone.show_current",
+        MessageId::TimezoneShowCurrent,
         params,
     )
     .await
-    .unwrap_or_else(|_| format!("現在のタイムゾーンwww: {}", timezone.name()));
+    .unwrap_or_else(|_| format!("現在のタイムゾーン: {}", timezone.name()));
 
     ctx.say(&message).await?;
 

@@ -1,6 +1,7 @@
 use crate::facades::timezone::TimezoneFacade;
 use crate::services::permission::check_bot_control_role;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -46,7 +47,7 @@ pub async fn timezone_set(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "timezone.set_success",
+        MessageId::TimezoneSetSuccess,
         params,
     )
     .await

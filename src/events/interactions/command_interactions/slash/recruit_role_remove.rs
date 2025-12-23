@@ -1,6 +1,7 @@
 use crate::facades::recruitment::role_management;
 use crate::services::permission::check_bot_control_role;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Role;
 use std::collections::HashMap;
@@ -90,7 +91,7 @@ pub async fn recruit_role_remove(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "recruit_role.remove_success",
+        MessageId::RecruitRoleRemoveSuccess,
         params,
     )
     .await

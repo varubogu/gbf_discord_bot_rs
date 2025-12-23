@@ -1,5 +1,6 @@
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::message::MessageId;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::domain_interface_result::CanCancelResult;
@@ -33,7 +34,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "recruit.cancel_already_cancelled",
+                MessageId::RecruitCancelAlreadyCancelled,
                 HashMap::new(),
             )
             .await
@@ -51,7 +52,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "recruit.cancel_message_deleted",
+                MessageId::RecruitCancelMessageDeleted,
                 HashMap::new(),
             )
             .await
@@ -69,7 +70,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "recruit.cancel_invalid_message",
+                MessageId::RecruitCancelInvalidMessage,
                 HashMap::new(),
             )
             .await
@@ -87,7 +88,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "recruit.cancel_not_found",
+                MessageId::RecruitCancelNotFound,
                 HashMap::new(),
             )
             .await
@@ -107,7 +108,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "recruit.cancel_error",
+                MessageId::RecruitCancelError,
                 HashMap::new(),
             )
             .await

@@ -1,7 +1,30 @@
 /// メッセージサービス用ヘルパー関数
-use crate::services::message::MessageService;
+use crate::services::message::{MessageId, MessageService};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
+
+/// メッセージIDとして使用できる型のトレイト
+pub trait IntoMessageId {
+    fn into_message_id(self) -> String;
+}
+
+impl IntoMessageId for MessageId {
+    fn into_message_id(self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl IntoMessageId for &str {
+    fn into_message_id(self) -> String {
+        self.to_string()
+    }
+}
+
+impl IntoMessageId for String {
+    fn into_message_id(self) -> String {
+        self
+    }
+}
 
 /// PoiseContextから最適なロケールを取得
 ///
@@ -22,21 +45,22 @@ pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
 /// # 引数
 /// * `ctx` - Poiseコンテキスト
 /// * `message_service` - メッセージサービス
-/// * `message_id` - メッセージID（DB検索キー兼YAMLキー）
+/// * `message_id` - メッセージID（MessageId enum または &str）
 /// * `params` - パラメータ
-pub async fn get_message_from_context(
+pub async fn get_message_from_context<T: IntoMessageId>(
     ctx: &PoiseContext<'_>,
     message_service: &MessageService,
-    message_id: &str,
+    message_id: T,
     params: HashMap<String, String>,
 ) -> Result<String, crate::errors::ServiceError> {
     let guild_id = get_guild_id_from_context(ctx);
     let locale = get_locale_from_context(ctx);
+    let message_id_str = message_id.into_message_id();
 
     message_service
         .get_message(
             ctx.data().app_state.guild_db(),
-            message_id,
+            &message_id_str,
             params,
             guild_id,
             locale.as_deref(),
