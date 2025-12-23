@@ -3,11 +3,12 @@ use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessa
 use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use regex::Regex;
-use rust_i18n::t;
 use sea_orm::DatabaseConnection;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 use tracing::{debug, warn};
+
+use super::yaml_loader;
 
 /// メッセージ取得サービス
 ///
@@ -69,6 +70,7 @@ impl MessageService {
                 debug!(
                     message_id = %message_id,
                     guild_id = %gid,
+                    locale = %locale,
                     "Guild固有メッセージを使用"
                 );
                 return Ok(self.replace_parameters(&message, &params));
@@ -79,16 +81,17 @@ impl MessageService {
         if let Some(message) = self.get_master_message(db, message_id, &locale).await? {
             debug!(
                 message_id = %message_id,
+                locale = %locale,
                 "グローバルマスターメッセージを使用"
             );
             return Ok(self.replace_parameters(&message, &params));
         }
 
-        // 3. YAMLメッセージを試行（message_idをそのままYAMLキーとして使用）
-        let yaml_message = t!(message_id, locale = locale).to_string();
-        if !yaml_message.is_empty() && yaml_message != message_id {
+        // 3. YAMLメッセージを試行（yaml_loaderを使用して動的にメッセージを取得）
+        if let Some(yaml_message) = yaml_loader::get_yaml_message(message_id, &locale) {
             debug!(
                 message_id = %message_id,
+                locale = %locale,
                 "YAMLメッセージを使用"
             );
             return Ok(self.replace_parameters(&yaml_message, &params));

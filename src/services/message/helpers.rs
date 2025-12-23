@@ -5,12 +5,11 @@ use std::collections::HashMap;
 
 /// PoiseContextから最適なロケールを取得
 ///
-/// 優先順位: ユーザーロケール → ギルドロケール → "en"
-pub fn get_locale_from_context(_ctx: &PoiseContext<'_>) -> Option<String> {
-    // Poiseの場合、ctx.locale()でロケールが取得できる可能性がある
-    // 取得できない場合はNoneを返す
-    // TODO: Poiseのバージョンによって異なる可能性があるため、実際の動作で確認が必要
-    None
+/// 優先順位: ユーザーロケール → ギルドロケール → None（デフォルトはmessage_serviceで"en"にフォールバック）
+pub fn get_locale_from_context(ctx: &PoiseContext<'_>) -> Option<String> {
+    // Poiseのコンテキストからユーザーまたはギルドのロケールを取得
+    // Discord APIから返される locale() を使用
+    ctx.locale().map(|s| s.to_string())
 }
 
 /// PoiseContextからギルドIDを取得

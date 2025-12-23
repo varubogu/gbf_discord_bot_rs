@@ -35,7 +35,7 @@ pub async fn timezone_show(ctx: PoiseContext<'_>) -> Result<()> {
         params,
     )
     .await
-    .unwrap_or_else(|_| format!("現在のタイムゾーン: {}", timezone.name()));
+    .unwrap_or_else(|_| format!("現在のタイムゾーンwww: {}", timezone.name()));
 
     ctx.say(&message).await?;
 
