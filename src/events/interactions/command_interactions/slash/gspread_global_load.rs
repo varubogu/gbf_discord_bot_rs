@@ -42,9 +42,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "env_var_not_set",
-                params,
                 "errors.env_var_not_set",
+                params,
             )
             .await
             .unwrap_or_else(|_| "❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string());

@@ -30,9 +30,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "guild_only",
-                HashMap::new(),
                 "errors.guild_only",
+                HashMap::new(),
             )
             .await
             .unwrap_or_else(|_| "❌ このコマンドはギルド内でのみ実行可能です".to_string());
@@ -69,9 +68,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet_not_registered",
-                HashMap::new(),
                 "errors.spreadsheet_not_registered",
+                HashMap::new(),
             )
             .await
             .unwrap_or_else(|_| {
@@ -95,9 +93,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet_config_fetch_failed",
-                params,
                 "errors.spreadsheet_config_fetch_failed",
+                params,
             )
             .await
             .unwrap_or_else(|_| {
@@ -116,9 +113,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "loading",
-        HashMap::new(),
         "spreadsheet.loading",
+        HashMap::new(),
     )
     .await
     .unwrap_or_else(|_| "🔄 ギルドスプレッドシートからデータを読み込んでいます...".to_string());
@@ -139,9 +135,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    "load_success",
-                    params,
                     "spreadsheet.load_success",
+                    params,
                 )
                 .await
                 .unwrap_or_else(|_| {
@@ -173,9 +168,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    "load_partial_success",
-                    params,
                     "spreadsheet.load_partial_success",
+                    params,
                 )
                 .await
                 .unwrap_or_else(|_| {
@@ -211,9 +205,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "load_failed",
-                params,
                 "spreadsheet.load_failed",
+                params,
             )
             .await
             .unwrap_or_else(|_| format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"));

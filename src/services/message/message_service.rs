@@ -35,14 +35,16 @@ impl MessageService {
     ///
     /// # 引数
     /// * `db` - データベース接続
-    /// * `message_id` - メッセージID
+    /// * `message_id` - メッセージID（DB検索キー兼YAMLキー）
     /// * `params` - テキスト埋め込み用パラメータ
     /// * `guild_id` - ギルドID (オプション)
     /// * `locale` - ユーザーロケール (オプション)
-    /// * `yaml_key` - YAMLキー (デフォルトメッセージ)
     ///
     /// # 戻り値
     /// パラメータ置換済みのメッセージ文字列
+    ///
+    /// # エラー
+    /// メッセージが見つからない場合（通常はYAMLに存在するため発生しないはず）
     pub async fn get_message(
         &self,
         db: &DatabaseConnection,
@@ -50,7 +52,6 @@ impl MessageService {
         params: HashMap<String, String>,
         guild_id: Option<i64>,
         locale: Option<&str>,
-        yaml_key: &str,
     ) -> Result<String, ServiceError> {
         // ロケールを決定 (ja or en)
         let locale = self.determine_locale(locale);
@@ -83,26 +84,24 @@ impl MessageService {
             return Ok(self.replace_parameters(&message, &params));
         }
 
-        // 3. YAMLメッセージを試行
-        let yaml_message = t!(yaml_key, locale = locale).to_string();
-        if !yaml_message.is_empty() && yaml_message != yaml_key {
+        // 3. YAMLメッセージを試行（message_idをそのままYAMLキーとして使用）
+        let yaml_message = t!(message_id, locale = locale).to_string();
+        if !yaml_message.is_empty() && yaml_message != message_id {
             debug!(
                 message_id = %message_id,
-                yaml_key = %yaml_key,
                 "YAMLメッセージを使用"
             );
             return Ok(self.replace_parameters(&yaml_message, &params));
         }
 
-        // 4. すべて失敗した場合はエラー
+        // 4. すべて失敗した場合はエラー（通常はYAMLに存在するため発生しないはず）
         warn!(
             message_id = %message_id,
-            yaml_key = %yaml_key,
-            "メッセージが見つかりませんでした"
+            "メッセージが見つかりませんでした（DB・YAML共に存在しません）"
         );
         Err(ServiceError::NotFound(format!(
-            "メッセージが見つかりません: message_id={}, yaml_key={}",
-            message_id, yaml_key
+            "メッセージが見つかりません: message_id={}",
+            message_id
         )))
     }
 

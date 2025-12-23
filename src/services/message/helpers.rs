@@ -23,15 +23,13 @@ pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
 /// # 引数
 /// * `ctx` - Poiseコンテキスト
 /// * `message_service` - メッセージサービス
-/// * `message_id` - メッセージID
+/// * `message_id` - メッセージID（DB検索キー兼YAMLキー）
 /// * `params` - パラメータ
-/// * `yaml_key` - YAMLキー
 pub async fn get_message_from_context(
     ctx: &PoiseContext<'_>,
     message_service: &MessageService,
     message_id: &str,
     params: HashMap<String, String>,
-    yaml_key: &str,
 ) -> Result<String, crate::errors::ServiceError> {
     let guild_id = get_guild_id_from_context(ctx);
     let locale = get_locale_from_context(ctx);
@@ -43,7 +41,6 @@ pub async fn get_message_from_context(
             params,
             guild_id,
             locale.as_deref(),
-            yaml_key,
         )
         .await
 }
