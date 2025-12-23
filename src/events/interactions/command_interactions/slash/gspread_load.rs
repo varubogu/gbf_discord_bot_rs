@@ -4,8 +4,10 @@
 /// スプレッドシートからギルドデータをPostgreSQLに読み込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -25,7 +27,17 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
-            ctx.say("❌ このコマンドはギルド内でのみ実行可能です").await?;
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "guild_only",
+                HashMap::new(),
+                "errors.guild_only",
+            )
+            .await
+            .unwrap_or_else(|_| "❌ このコマンドはギルド内でのみ実行可能です".to_string());
+
+            ctx.say(&message).await?;
             return Ok(());
         }
     };
@@ -54,11 +66,21 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match facade.get_guild_spreadsheet_id(guild_id).await {
         Ok(Some(id)) => id,
         Ok(None) => {
-            ctx.say(
-                "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
-                `/gspread_regist` コマンドでスプレッドシートを登録してください",
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet_not_registered",
+                HashMap::new(),
+                "errors.spreadsheet_not_registered",
             )
-            .await?;
+            .await
+            .unwrap_or_else(|_| {
+                "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
+                `/gspread_regist` コマンドでスプレッドシートを登録してください"
+                    .to_string()
+            });
+
+            ctx.say(&message).await?;
             error!(
                 guild_id = %guild_id,
                 "ギルド読み込み用スプレッドシートIDが設定されていません"
@@ -67,10 +89,22 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ エラー: スプレッドシート設定の取得に失敗しました\n{error_msg}"
-            ))
-            .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "spreadsheet_config_fetch_failed",
+                params,
+                "errors.spreadsheet_config_fetch_failed",
+            )
+            .await
+            .unwrap_or_else(|_| {
+                format!("❌ エラー: スプレッドシート設定の取得に失敗しました\n{error_msg}")
+            });
+
+            ctx.say(&message).await?;
             error!(
                 guild_id = %guild_id,
                 "スプレッドシート設定の取得に失敗"
@@ -79,8 +113,17 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    ctx.say("🔄 ギルドスプレッドシートからデータを読み込んでいます...")
-        .await?;
+    let loading_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        "loading",
+        HashMap::new(),
+        "spreadsheet.loading",
+    )
+    .await
+    .unwrap_or_else(|_| "🔄 ギルドスプレッドシートからデータを読み込んでいます...".to_string());
+
+    ctx.say(&loading_message).await?;
 
     // インポート実行（ギルド版のメソッドを呼び出す）
     match facade
@@ -89,37 +132,66 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
-                format!(
-                    "✅ ギルドスプレッドシート読み込み完了\n\n\
-                     📊 読み込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 総行数: {}行",
-                    result.success_count, result.total_rows
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "load_success",
+                    params,
+                    "spreadsheet.load_success",
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "✅ ギルドスプレッドシート読み込み完了\n\n\
+                         📊 読み込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 総行数: {}行",
+                        result.success_count, result.total_rows
+                    )
+                })
             } else {
-                format!(
-                    "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n\
-                     📊 読み込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 失敗: {}テーブル\n\
-                     - 総行数: {}行\n\n\
-                     {}",
-                    result.success_count,
-                    result.failure_count,
-                    result.total_rows,
-                    if result.errors.len() <= 5 {
-                        format!("❌ エラー:\n{}", result.errors.join("\n"))
-                    } else {
-                        format!(
-                            "❌ エラー（最初の5件）:\n{}\n... 他{}件",
-                            result.errors[..5].join("\n"),
-                            result.errors.len() - 5
-                        )
-                    }
+                let error_details = if result.errors.len() <= 5 {
+                    format!("❌ エラー:\n{}", result.errors.join("\n"))
+                } else {
+                    format!(
+                        "❌ エラー（最初の5件）:\n{}\n... 他{}件",
+                        result.errors[..5].join("\n"),
+                        result.errors.len() - 5
+                    )
+                };
+
+                let mut params = HashMap::new();
+                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert("failure_count".to_string(), result.failure_count.to_string());
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+                params.insert("error_details".to_string(), error_details.clone());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    "load_partial_success",
+                    params,
+                    "spreadsheet.load_partial_success",
                 )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n\
+                         📊 読み込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 失敗: {}テーブル\n\
+                         - 総行数: {}行\n\n\
+                         {}",
+                        result.success_count, result.failure_count, result.total_rows, error_details
+                    )
+                })
             };
 
-            ctx.say(message).await?;
+            ctx.say(&message).await?;
 
             info!(
                 guild_id = %guild_id,
@@ -133,8 +205,20 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
         Err(e) => {
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"))
-                .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "load_failed",
+                params,
+                "spreadsheet.load_failed",
+            )
+            .await
+            .unwrap_or_else(|_| format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}"));
+
+            ctx.say(&message).await?;
 
             error!(
                 guild_id = %guild_id,

@@ -10,7 +10,7 @@ en:
     confirm: "Confirm"
     loading: "Loading..."
     unknown: "Unknown"
-  
+
   battle_recruitment:
     title: "Battle Recruitment"
     new_recruitment: "New battle recruitment created"
@@ -22,7 +22,7 @@ en:
     not_found: "Battle recruitment not found"
     already_joined: "You have already joined this battle"
     not_joined: "You are not part of this battle"
-    
+
   errors:
     invalid_input: "Invalid input provided"
     permission_denied: "Permission denied"
@@ -30,7 +30,55 @@ en:
     user_not_found: "User not found"
     command_failed: "Command execution failed"
     env_var_not_set: "❌ Error: Environment variable {{var_name}} is not set"
-    
+    guild_only: "❌ This command can only be executed within a guild"
+    spreadsheet_not_registered: "❌ Error: No spreadsheet registered for this guild\nPlease register a spreadsheet using the `/gspread_regist` command"
+    spreadsheet_config_fetch_failed: "❌ Error: Failed to fetch spreadsheet configuration\n{{error_msg}}"
+
+  spreadsheet:
+    loading: "🔄 Loading data from guild spreadsheet..."
+    load_success: "✅ Guild spreadsheet load completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+    load_partial_success: "⚠️ Guild spreadsheet load completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+    load_failed: "❌ Guild spreadsheet load failed\n\n{{error_msg}}"
+
+  kosenjo:
+    before_3_days: "The Guild War will begin in 3 days."
+    before_1_day: "The Guild War will begin tomorrow.\nPlease review your Assault Time settings."
+    qualifying_start: "The Guild War preliminaries have started."
+    qualifying_end: "Good work on the preliminaries. Tomorrow is the interval day."
+    qualifying_end_no_interval: "Good work on the preliminaries. Tomorrow is not an interval - the finals start at 7:00. Get some rest for tomorrow."
+    main_tournament_before_1_day: "The finals will begin at 7:00. Get some rest for tomorrow."
+    main_tournament_day_start: "The Guild War finals have started."
+    main_tournament_half_day: "Half a day has passed in the Guild War finals."
+    main_tournament_day_end: "The Guild War finals day has ended. Get some rest for tomorrow."
+    main_tournament_end: "Good work on the finals. Tomorrow is the Special Battle."
+    sp_battle_end: "Good work on the Special Battle. Please check the schedule for the next Guild War."
+    team_ability_1: "@here It's time to activate the 1st crew buff."
+    team_ability_2: "Let's check if we forgot to activate the 2nd crew buff."
+
+  dorebara:
+    start: "Dread Barrage has started. Let's aim to get all the rewards."
+    end: "Good work on Dread Barrage."
+    reset: "Dread Barrage bosses have been reset."
+    variant: "Variant Battle has been added."
+    last_day: "This is the last day of Dread Barrage.\nMake sure not to miss any rewards."
+
+  bot:
+    mention: "{{user_mention}} Please use slash commands ( / )."
+    mention_six: "KIEEEEEEEEE!!"
+    mention_calling: "Woof!"
+
+  omikuji:
+    hihi: "A Gold Brick dropped!"
+    hakyoku: "Got hit by Paradise Lost!"
+    omega_unit: "Only Omega Unit dropped."
+
+  recruitment:
+    normal: "Recruiting participants for {{quest_name}}."
+    six_elements: "Recruiting participants for {{quest_name}}.\nPlease select your element."
+    member_full: "The party is full."
+    before_5_minutes: "5 minutes until quest departure."
+    start: "It's quest departure time."
+
   messages:
     welcome: "Welcome to the GBF Discord Bot!"
     help: "Use `/help` to see available commands"
