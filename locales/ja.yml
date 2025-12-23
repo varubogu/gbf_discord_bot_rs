@@ -29,6 +29,7 @@ ja:
     internal_error: "内部エラーが発生しました"
     user_not_found: "ユーザーが見つかりません"
     command_failed: "コマンドの実行に失敗しました"
+    env_var_not_set: "❌ エラー: 環境変数 {{var_name}} が設定されていません"
     
   messages:
     welcome: "GBF Discord Botへようこそ！"

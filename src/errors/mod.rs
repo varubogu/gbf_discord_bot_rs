@@ -10,4 +10,4 @@ pub mod service;
 pub use facade::FacadeError;
 pub use presentation::PresentationError;
 pub use repository::RepositoryError;
-pub use service::{BusinessRuleError, ExternalServiceError, ValidationError};
+pub use service::{BusinessRuleError, ExternalServiceError, ServiceError, ValidationError};

@@ -1,277 +1,319 @@
-// use rust_i18n::set_locale;
-// use std::collections::HashMap;
-// use std::sync::{OnceLock, RwLock};
-// use tokio::fs;
+use crate::errors::ServiceError;
+use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
+use regex::Regex;
+use rust_i18n::t;
+use sea_orm::DatabaseConnection;
+use std::collections::HashMap;
+use std::sync::OnceLock;
+use tracing::{debug, warn};
 
-// /// Supported languages for the message service
-// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// pub enum Language {
-//     English,
-//     Japanese,
-// }
+/// メッセージ取得サービス
+///
+/// 優先順位:
+/// 1. Guild固有メッセージ (guild_master.guild_message_texts)
+/// 2. グローバルマスターメッセージ (master.message_texts)
+/// 3. YAMLファイルから読み込んだデフォルトメッセージ
+/// 4. システムエラー
+#[derive(Debug)]
+pub struct MessageService {
+    guild_message_repo: SeaOrmGuildMessageTextRepository,
+    message_repo: SeaOrmMessageTextRepository,
+}
 
-// impl Language {
-//     fn to_locale(&self) -> &'static str {
-//         match self {
-//             Language::English => "en",
-//             Language::Japanese => "ja",
-//         }
-//     }
+impl MessageService {
+    /// 新しいメッセージサービスインスタンスを作成
+    pub fn new() -> Self {
+        Self {
+            guild_message_repo: SeaOrmGuildMessageTextRepository::new(),
+            message_repo: SeaOrmMessageTextRepository::new(),
+        }
+    }
 
-//     pub fn from_str(lang: &str) -> Option<Self> {
-//         match lang.to_lowercase().as_str() {
-//             "en" | "english" | "eng" => Some(Language::English),
-//             "ja" | "japanese" | "jpn" | "jp" => Some(Language::Japanese),
-//             _ => None,
-//         }
-//     }
-// }
+    /// メッセージを取得
+    ///
+    /// # 引数
+    /// * `db` - データベース接続
+    /// * `message_id` - メッセージID
+    /// * `params` - テキスト埋め込み用パラメータ
+    /// * `guild_id` - ギルドID (オプション)
+    /// * `locale` - ユーザーロケール (オプション)
+    /// * `yaml_key` - YAMLキー (デフォルトメッセージ)
+    ///
+    /// # 戻り値
+    /// パラメータ置換済みのメッセージ文字列
+    pub async fn get_message(
+        &self,
+        db: &DatabaseConnection,
+        message_id: &str,
+        params: HashMap<String, String>,
+        guild_id: Option<i64>,
+        locale: Option<&str>,
+        yaml_key: &str,
+    ) -> Result<String, ServiceError> {
+        // ロケールを決定 (ja or en)
+        let locale = self.determine_locale(locale);
 
-// impl Default for Language {
-//     fn default() -> Self {
-//         Language::English
-//     }
-// }
+        debug!(
+            message_id = %message_id,
+            guild_id = ?guild_id,
+            locale = %locale,
+            "メッセージ取得を開始"
+        );
 
-// /// Custom message store for server-specific overrides
-// struct CustomMessageStore {
-//     messages: RwLock<HashMap<String, HashMap<String, String>>>, // locale -> key -> message
-// }
+        // 1. Guild固有メッセージを試行
+        if let Some(gid) = guild_id {
+            if let Some(message) = self.get_guild_message(db, gid, message_id, &locale).await? {
+                debug!(
+                    message_id = %message_id,
+                    guild_id = %gid,
+                    "Guild固有メッセージを使用"
+                );
+                return Ok(self.replace_parameters(&message, &params));
+            }
+        }
 
-// impl CustomMessageStore {
-//     fn new() -> Self {
-//         Self {
-//             messages: RwLock::new(HashMap::new()),
-//         }
-//     }
+        // 2. グローバルマスターメッセージを試行
+        if let Some(message) = self.get_master_message(db, message_id, &locale).await? {
+            debug!(
+                message_id = %message_id,
+                "グローバルマスターメッセージを使用"
+            );
+            return Ok(self.replace_parameters(&message, &params));
+        }
 
-//     fn get(&self, key: &str, locale: &str) -> Option<String> {
-//         let messages = self.messages.read().unwrap();
-//         messages.get(locale)?.get(key).cloned()
-//     }
+        // 3. YAMLメッセージを試行
+        let yaml_message = t!(yaml_key, locale = locale).to_string();
+        if !yaml_message.is_empty() && yaml_message != yaml_key {
+            debug!(
+                message_id = %message_id,
+                yaml_key = %yaml_key,
+                "YAMLメッセージを使用"
+            );
+            return Ok(self.replace_parameters(&yaml_message, &params));
+        }
 
-//     async fn load_from_directory(
-//         &self,
-//         dir_path: &str,
-//     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-//         let mut entries = fs::read_dir(dir_path).await?;
-//         let mut new_messages = HashMap::new();
+        // 4. すべて失敗した場合はエラー
+        warn!(
+            message_id = %message_id,
+            yaml_key = %yaml_key,
+            "メッセージが見つかりませんでした"
+        );
+        Err(ServiceError::NotFound(format!(
+            "メッセージが見つかりません: message_id={}, yaml_key={}",
+            message_id, yaml_key
+        )))
+    }
 
-//         while let Some(entry) = entries.next_entry().await? {
-//             let path = entry.path();
-//             if path.extension().and_then(|s| s.to_str()) == Some("json") {
-//                 if let Some(locale) = path.file_stem().and_then(|s| s.to_str()) {
-//                     let content = fs::read_to_string(&path).await?;
-//                     let json: HashMap<String, String> = serde_json::from_str(&content)?;
-//                     new_messages.insert(locale.to_string(), json);
-//                 }
-//             }
-//         }
+    /// Guild固有メッセージを取得
+    async fn get_guild_message(
+        &self,
+        db: &DatabaseConnection,
+        guild_id: i64,
+        message_id: &str,
+        locale: &str,
+    ) -> Result<Option<String>, ServiceError> {
+        match self
+            .guild_message_repo
+            .get_by_guild_and_id(db, guild_id, message_id)
+            .await
+        {
+            Ok(Some(model)) => {
+                let message = if locale == "ja" {
+                    model.message_jp
+                } else if let Some(en_msg) = model.message_en {
+                    en_msg
+                } else {
+                    model.message_jp
+                };
+                Ok(Some(message))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    guild_id = %guild_id,
+                    message_id = %message_id,
+                    "Guild固有メッセージ取得中にエラーが発生"
+                );
+                Ok(None) // エラーが発生してもフォールバックを続行
+            }
+        }
+    }
 
-//         let mut messages = self.messages.write().unwrap();
-//         *messages = new_messages;
-//         Ok(())
-//     }
+    /// グローバルマスターメッセージを取得
+    async fn get_master_message(
+        &self,
+        db: &DatabaseConnection,
+        message_id: &str,
+        locale: &str,
+    ) -> Result<Option<String>, ServiceError> {
+        match self.message_repo.get_by_id(db, message_id).await {
+            Ok(Some(model)) => {
+                let message = if locale == "ja" {
+                    model.message_jp
+                } else if let Some(en_msg) = model.message_en {
+                    en_msg
+                } else {
+                    model.message_jp
+                };
+                Ok(Some(message))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    message_id = %message_id,
+                    "グローバルマスターメッセージ取得中にエラーが発生"
+                );
+                Ok(None) // エラーが発生してもフォールバックを続行
+            }
+        }
+    }
 
-//     fn clear(&self) {
-//         let mut messages = self.messages.write().unwrap();
-//         messages.clear();
-//     }
-// }
+    /// ロケールを決定
+    ///
+    /// ユーザーロケールから ja または en を決定
+    /// jaでない場合は全てenにフォールバック
+    fn determine_locale(&self, locale: Option<&str>) -> String {
+        match locale {
+            Some(l) if l.starts_with("ja") => "ja".to_string(),
+            _ => "en".to_string(),
+        }
+    }
 
-// /// Enhanced message service with two-tier message management
-// pub struct MessageService {
-//     current_language: RwLock<Language>,
-//     custom_store: CustomMessageStore,
-// }
+    /// パラメータを置換
+    ///
+    /// `{{variable}}` 形式の文字列を置換
+    /// エスケープシーケンス対応:
+    /// - `\{{variable}}` -> `{{variable}}` (置換されない)
+    /// - `\\{{variable}}` -> `\xyz` (置換される)
+    fn replace_parameters(&self, template: &str, params: &HashMap<String, String>) -> String {
+        static PARAM_REGEX: OnceLock<Regex> = OnceLock::new();
+        let regex = PARAM_REGEX.get_or_init(|| {
+            // `(?<!\\)((?:\\\\)*)\\?\{\{(\w+)\}\}` のようなパターンで
+            // エスケープを考慮した置換を行う
+            // 簡易実装として、まずエスケープ処理を先に行う
+            Regex::new(r"\{\{(\w+)\}\}").unwrap()
+        });
 
-// static MESSAGE_SERVICE: OnceLock<MessageService> = OnceLock::new();
+        // エスケープシーケンス処理
+        // 1. まず \\ を一時プレースホルダーに置換
+        let temp_backslash = "\x00BACKSLASH\x00";
+        let temp_open_brace = "\x00OPEN_BRACE\x00";
+        let temp_close_brace = "\x00CLOSE_BRACE\x00";
 
-// impl MessageService {
-//     fn new() -> Self {
-//         Self {
-//             current_language: RwLock::new(Language::default()),
-//             custom_store: CustomMessageStore::new(),
-//         }
-//     }
+        let mut result = template.to_string();
 
-//     pub fn instance() -> &'static MessageService {
-//         MESSAGE_SERVICE.get_or_init(|| MessageService::new())
-//     }
+        // \\ -> 一時プレースホルダー
+        result = result.replace("\\\\", temp_backslash);
+        // \{ -> 一時プレースホルダー
+        result = result.replace("\\{", temp_open_brace);
+        // \} -> 一時プレースホルダー
+        result = result.replace("\\}", temp_close_brace);
 
-//     /// Set the current language for messages
-//     pub fn set_language(&self, language: Language) {
-//         *self.current_language.write().unwrap() = language;
-//         set_locale(language.to_locale());
-//     }
+        // パラメータ置換
+        result = regex
+            .replace_all(&result, |caps: &regex::Captures| {
+                let var_name = &caps[1];
+                params
+                    .get(var_name)
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| caps[0].to_string())
+            })
+            .to_string();
 
-//     pub fn current_language(&self) -> Language {
-//         *self.current_language.read().unwrap()
-//     }
+        // 一時プレースホルダーを元に戻す
+        result = result.replace(temp_backslash, "\\");
+        result = result.replace(temp_open_brace, "{");
+        result = result.replace(temp_close_brace, "}");
 
-//     /// Load custom messages from directory (async)
-//     pub async fn load_custom_messages(
-//         &self,
-//         dir_path: &str,
-//     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-//         self.custom_store.load_from_directory(dir_path).await
-//     }
+        result
+    }
+}
 
-//     /// Clear custom messages (fallback to standard messages only)
-//     pub fn clear_custom_messages(&self) {
-//         self.custom_store.clear();
-//     }
+impl Default for MessageService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-//     /// Get a localized message by key
-//     /// First checks custom messages, then falls back to standard rust-i18n messages
-//     pub fn get(&self, key: &str) -> String {
-//         let current_lang = self.current_language();
-//         self.get_with_language(key, current_lang)
-//     }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     /// Get a localized message with specific language
-//     pub fn get_with_language(&self, key: &str, language: Language) -> String {
-//         let locale = language.to_locale();
+    #[test]
+    fn test_determine_locale() {
+        let service = MessageService::new();
 
-//         // First try custom messages
-//         if let Some(custom_message) = self.custom_store.get(key, locale) {
-//             return custom_message;
-//         }
+        assert_eq!(service.determine_locale(Some("ja")), "ja");
+        assert_eq!(service.determine_locale(Some("ja-JP")), "ja");
+        assert_eq!(service.determine_locale(Some("en")), "en");
+        assert_eq!(service.determine_locale(Some("en-US")), "en");
+        assert_eq!(service.determine_locale(Some("fr")), "en");
+        assert_eq!(service.determine_locale(None), "en");
+    }
 
-//         // Fallback to standard rust-i18n messages
-//         // t!(key, locale = locale).to_string()
-//         "".to_string()
-//     }
+    #[test]
+    fn test_replace_parameters_basic() {
+        let service = MessageService::new();
+        let mut params = HashMap::new();
+        params.insert("name".to_string(), "テスト".to_string());
+        params.insert("value".to_string(), "123".to_string());
 
-//     /// Get a localized message with parameters
-//     /// Supports both {{param}} and {param} parameter formats
-//     pub fn get_with_params(&self, key: &str, params: &[(&str, &str)]) -> String {
-//         self.get_with_params_and_language(key, params, self.current_language())
-//     }
+        let template = "こんにちは、{{name}}さん！値: {{value}}";
+        let result = service.replace_parameters(template, &params);
+        assert_eq!(result, "こんにちは、テストさん！値: 123");
+    }
 
-//     /// Get a localized message with parameters and specific language
-//     pub fn get_with_params_and_language(
-//         &self,
-//         key: &str,
-//         params: &[(&str, &str)],
-//         language: Language,
-//     ) -> String {
-//         let mut result = self.get_with_language(key, language);
+    #[test]
+    fn test_replace_parameters_missing() {
+        let service = MessageService::new();
+        let params = HashMap::new();
 
-//         for (param_key, param_value) in params {
-//             // Support both {{param}} and {param} formats
-//             result = result.replace(&format!("{{{{{}}}}}", param_key), param_value);
-//             result = result.replace(&format!("{{{}}}", param_key), param_value);
-//         }
+        let template = "値: {{missing}}";
+        let result = service.replace_parameters(template, &params);
+        // パラメータが存在しない場合はそのまま
+        assert_eq!(result, "値: {{missing}}");
+    }
 
-//         result
-//     }
+    #[test]
+    fn test_replace_parameters_escaped() {
+        let service = MessageService::new();
+        let mut params = HashMap::new();
+        params.insert("var".to_string(), "置換".to_string());
 
-//     /// Check if a custom message override exists for the key
-//     pub fn has_custom_message(&self, key: &str, language: Language) -> bool {
-//         let locale = language.to_locale();
-//         self.custom_store.get(key, locale).is_some()
-//     }
+        // エスケープされた場合
+        let template = r"エスケープ: \{{var}}、通常: {{var}}";
+        let result = service.replace_parameters(template, &params);
+        assert_eq!(result, "エスケープ: {{var}}、通常: 置換");
+    }
 
-//     /// Get available languages
-//     pub fn available_languages() -> Vec<Language> {
-//         vec![Language::English, Language::Japanese]
-//     }
-// }
+    #[test]
+    fn test_replace_parameters_double_backslash() {
+        let service = MessageService::new();
+        let mut params = HashMap::new();
+        params.insert("var".to_string(), "値".to_string());
 
-// impl Default for MessageService {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
+        // \\ の場合
+        let template = r"バックスラッシュ: \\{{var}}";
+        let result = service.replace_parameters(template, &params);
+        assert_eq!(result, r"バックスラッシュ: \値");
+    }
 
-// /// Convenience functions for easy access to messages
-// pub mod messages {
-//     use super::*;
+    #[test]
+    fn test_replace_parameters_complex() {
+        let service = MessageService::new();
+        let mut params = HashMap::new();
+        params.insert("quest".to_string(), "ドラゴンクエスト".to_string());
+        params.insert("count".to_string(), "5".to_string());
 
-//     /// Get a message using the global instance
-//     pub fn get(key: &str) -> String {
-//         MessageService::instance().get(key)
-//     }
-
-//     /// Get a message with specific language
-//     pub fn get_with_language(key: &str, language: Language) -> String {
-//         MessageService::instance().get_with_language(key, language)
-//     }
-
-//     /// Get a message with parameters
-//     pub fn get_with_params(key: &str, params: &[(&str, &str)]) -> String {
-//         MessageService::instance().get_with_params(key, params)
-//     }
-
-//     /// Get a message with parameters and specific language
-//     pub fn get_with_params_and_language(
-//         key: &str,
-//         params: &[(&str, &str)],
-//         language: Language,
-//     ) -> String {
-//         MessageService::instance().get_with_params_and_language(key, params, language)
-//     }
-
-//     /// Set the global language
-//     pub fn set_global_language(language: Language) {
-//         MessageService::instance().set_language(language);
-//     }
-
-//     /// Load custom messages from directory
-//     pub async fn load_custom_messages(
-//         dir_path: &str,
-//     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-//         MessageService::instance()
-//             .load_custom_messages(dir_path)
-//             .await
-//     }
-
-//     /// Clear custom messages
-//     pub fn clear_custom_messages() {
-//         MessageService::instance().clear_custom_messages();
-//     }
-
-//     /// Check if custom message exists
-//     pub fn has_custom_message(key: &str, language: Language) -> bool {
-//         MessageService::instance().has_custom_message(key, language)
-//     }
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use tokio_test;
-
-//     #[test]
-//     fn test_language_conversion() {
-//         assert_eq!(Language::English.to_locale(), "en");
-//         assert_eq!(Language::Japanese.to_locale(), "ja");
-//     }
-
-//     #[test]
-//     fn test_message_service_basic() {
-//         let service = MessageService::new();
-//         let success_msg = service.get("common.success");
-//         assert!(!success_msg.is_empty());
-//     }
-
-//     #[tokio::test]
-//     async fn test_custom_message_override() {
-//         // This would require setting up test JSON files
-//         // Left as a placeholder for integration tests
-//     }
-
-//     #[test]
-//     fn test_parameter_substitution() {
-//         let service = MessageService::new();
-//         let params = &[
-//             ("quest_name", "ドラゴンクエスト"),
-//             ("battle_type", "全属性"),
-//         ];
-
-//         // Assuming we have a message key that uses parameters
-//         let result = service.get_with_params("recruitment.message", params);
-//         assert!(!result.is_empty());
-//     }
-// }
+        let template = r"クエスト「{{quest}}」に{{count}}人参加しています。\{{escaped}}は置換されません。";
+        let result = service.replace_parameters(template, &params);
+        assert_eq!(
+            result,
+            "クエスト「ドラゴンクエスト」に5人参加しています。{{escaped}}は置換されません。"
+        );
+    }
+}

@@ -1,3 +1,4 @@
+use crate::services::message::MessageService;
 use crate::types::AppConfig;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -12,6 +13,8 @@ pub struct AppState {
     /// Global ロール用DB接続（マスターデータ更新用、RLS適用なし）
     pub global_db: Arc<DatabaseConnection>,
     pub config: AppConfig,
+    /// メッセージサービス
+    pub message_service: Arc<MessageService>,
 }
 
 impl AppState {
@@ -26,6 +29,7 @@ impl AppState {
             system_db: Arc::new(system_db),
             global_db: Arc::new(global_db),
             config,
+            message_service: Arc::new(MessageService::new()),
         }
     }
 
@@ -42,5 +46,10 @@ impl AppState {
     /// Global ロール用DB接続を取得（マスターデータ更新用）
     pub fn global_db(&self) -> &DatabaseConnection {
         &self.global_db
+    }
+
+    /// メッセージサービスを取得
+    pub fn message_service(&self) -> &MessageService {
+        &self.message_service
     }
 }

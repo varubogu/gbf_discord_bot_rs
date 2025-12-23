@@ -4,8 +4,10 @@
 /// スプレッドシートからグローバルデータをPostgreSQLに読み込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_admin_server;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -33,8 +35,21 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            ctx.say("❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません")
-                .await?;
+            // 新しいメッセージサービスを使用
+            let mut params = HashMap::new();
+            params.insert("var_name".to_string(), "GLOBAL_SPREADSHEET_ID".to_string());
+
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                "env_var_not_set",
+                params,
+                "errors.env_var_not_set",
+            )
+            .await
+            .unwrap_or_else(|_| "❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string());
+
+            ctx.say(&message).await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
             return Ok(());
         }

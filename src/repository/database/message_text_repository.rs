@@ -4,6 +4,7 @@ use crate::repository::MessageTextRepository;
 use async_trait::async_trait;
 use sea_orm::{DbErr, EntityTrait};
 
+#[derive(Debug)]
 pub struct SeaOrmMessageTextRepository;
 
 impl SeaOrmMessageTextRepository {
@@ -33,7 +34,7 @@ impl MessageTextRepository for SeaOrmMessageTextRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::database::connection::is_database_available;
+    use crate::infrastructure::database::connection::connection_manager::is_database_available;
 
     async fn setup_test_repo() -> Result<(SeaOrmMessageTextRepository, sea_orm::DatabaseConnection), String> {
         let (available, missing) = is_database_available();

@@ -102,6 +102,28 @@ pub enum ExternalServiceError {
     NetworkError { message: String },
 }
 
+/// Service層統合エラー
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("バリデーションエラー: {0}")]
+    Validation(#[from] ValidationError),
+
+    #[error("ビジネスルールエラー: {0}")]
+    BusinessRule(#[from] BusinessRuleError),
+
+    #[error("外部サービスエラー: {0}")]
+    ExternalService(#[from] ExternalServiceError),
+
+    #[error("データが見つかりません: {0}")]
+    NotFound(String),
+
+    #[error("データベースエラー: {0}")]
+    Database(String),
+
+    #[error("内部エラー: {0}")]
+    Internal(String),
+}
+
 // Repository層エラーからビジネスルールエラーへの変換
 impl From<crate::errors::RepositoryError> for BusinessRuleError {
     fn from(err: crate::errors::RepositoryError) -> Self {
@@ -122,5 +144,12 @@ impl From<crate::errors::RepositoryError> for BusinessRuleError {
                 current_state: "データアクセスエラー".to_string(),
             },
         }
+    }
+}
+
+// SeaORM DbErrからServiceErrorへの変換
+impl From<sea_orm::DbErr> for ServiceError {
+    fn from(err: sea_orm::DbErr) -> Self {
+        ServiceError::Database(err.to_string())
     }
 }

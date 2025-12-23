@@ -29,6 +29,7 @@ en:
     internal_error: "An internal error occurred"
     user_not_found: "User not found"
     command_failed: "Command execution failed"
+    env_var_not_set: "❌ Error: Environment variable {{var_name}} is not set"
     
   messages:
     welcome: "Welcome to the GBF Discord Bot!"

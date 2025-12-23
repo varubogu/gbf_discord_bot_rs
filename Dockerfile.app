@@ -43,6 +43,9 @@ WORKDIR /app
 # ビルド済みバイナリをコピー
 COPY --from=builder /build/target/release/gbf_discord_bot_rs .
 
+# ロケールファイルをコピー
+COPY locales ./locales
+
 # 権限設定
 RUN chown -R botuser:botuser /app
 USER botuser
