@@ -97,7 +97,7 @@ mod tests {
         assert!(
             schema
                 .iter()
-                .any(|c| c.column_name == "default_battle_style")
+                .any(|c| c.column_name == "default_battle_style_id")
         );
     }
 

@@ -22,6 +22,8 @@ impl TimeParserService {
     ///
     /// # 例
     /// ```
+    /// use gbf_discord_bot_rs::services::recruitment::schedule::TimeParserService;
+    /// use chrono::Timelike;
     /// let service = TimeParserService::new();
     /// let time = service.parse_time_string("22:00").unwrap();
     /// assert_eq!(time.hour(), 22);
