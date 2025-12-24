@@ -2,12 +2,14 @@ use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ButtonStyle;
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed};
+use std::collections::HashMap;
 use tracing::info;
 
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
+use crate::services::message::{MessageId, MessageService};
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
@@ -98,14 +100,17 @@ where
 
     // メッセージ内容を作成
     let message_content = create_message_content(
+        db,
         &quest.name,
         &battle_style.display_name,
         &expiry_date,
         timezone,
-    );
+        Some(guild_id as i64),
+    )
+    .await?;
 
     // 初期参加者一覧を作成
-    let initial_participants_text = create_initial_participants_text(&reactions);
+    let initial_participants_text = create_initial_participants_text(db, &reactions, Some(guild_id as i64)).await?;
 
     Ok(RecruitmentData {
         quest,
@@ -179,28 +184,67 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     Ok(recruitment)
 }
 
-/// メッセージ内容を作成する（純粋関数）
-pub fn create_message_content(
+/// メッセージ内容を作成する（メッセージサービス使用版）
+pub async fn create_message_content<C>(
+    db: &C,
     quest_name: &str,
     battle_style_name: &str,
     expiry_date: &DateTime<chrono::Utc>,
     timezone: chrono_tz::Tz,
-) -> String {
-    let mut message_text = format!("{quest_name}の参加者を募集します。");
+    guild_id: Option<i64>,
+) -> types::Result<String>
+where
+    C: sea_orm::ConnectionTrait,
+{
+    let message_service = MessageService::new();
 
-    // 攻略方法が「6属性」の場合は追加メッセージを表示
-    if battle_style_name == "6属性" {
-        message_text.push_str("\n参加属性を選んでください");
-    }
+    // メッセージIDを決定
+    let message_id = if battle_style_name == "6属性" {
+        MessageId::RecruitmentSixElements
+    } else {
+        MessageId::RecruitmentNormal
+    };
 
-    // 表示用にサーバー設定のタイムゾーンに変換
+    // パラメータを準備
+    let mut params = HashMap::new();
+    params.insert("quest_name".to_string(), quest_name.to_string());
+
+    // 基本メッセージを取得
+    let mut message_text = message_service
+        .get_message(db, message_id.as_str(), params, guild_id, Some("ja"))
+        .await?;
+
+    // 開催日時を追加
     let local_date = expiry_date.with_timezone(&timezone);
+
+    // 日時ラベルとフォーマットを取得
+    let date_label = message_service
+        .get_message(
+            db,
+            MessageId::RecruitmentEventDateLabel.as_str(),
+            HashMap::new(),
+            guild_id,
+            Some("ja"),
+        )
+        .await?;
+
+    let date_format = message_service
+        .get_message(
+            db,
+            MessageId::RecruitmentDateFormat.as_str(),
+            HashMap::new(),
+            guild_id,
+            Some("ja"),
+        )
+        .await?;
+
     message_text.push_str(&format!(
-        "\n開催日時：{}",
-        local_date.format("%m/%d %H:%M %Z")
+        "\n{}{}",
+        date_label,
+        local_date.format(&date_format)
     ));
 
-    message_text
+    Ok(message_text)
 }
 
 /// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）
@@ -214,9 +258,28 @@ fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
 }
 
 /// 初期参加者一覧テキストを作成
-/// すべてのリアクション絵文字を「なし」で表示
-fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
+/// すべてのリアクション絵文字を「なし」で表示（メッセージサービス使用版）
+async fn create_initial_participants_text<C>(
+    db: &C,
+    reactions: &[ReactionType],
+    guild_id: Option<i64>,
+) -> types::Result<String>
+where
+    C: sea_orm::ConnectionTrait,
+{
+    let message_service = MessageService::new();
     let mut text = String::new();
+
+    // 「なし」テキストを取得
+    let no_participants = message_service
+        .get_message(
+            db,
+            MessageId::RecruitmentNoParticipants.as_str(),
+            HashMap::new(),
+            guild_id,
+            Some("ja"),
+        )
+        .await?;
 
     for reaction in reactions {
         // ReactionTypeから絵文字文字列を取得
@@ -224,13 +287,13 @@ fn create_initial_participants_text(reactions: &[ReactionType]) -> String {
             ReactionType::Unicode(emoji_str) => emoji_str,
             _ => continue,
         };
-        text.push_str(&format!("{emoji} なし\n"));
+        text.push_str(&format!("{emoji} {no_participants}\n"));
     }
 
     if text.is_empty() {
-        "現在参加者はいません。".to_string()
+        Ok("現在参加者はいません。".to_string())
     } else {
-        text
+        Ok(text)
     }
 }
 

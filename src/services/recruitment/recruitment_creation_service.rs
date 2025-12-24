@@ -112,11 +112,14 @@ impl RecruitmentCreationService {
 
         // 3. メッセージ内容を作成
         let mut message_content = create_message_content(
+            txn,
             &quest.name,
             &battle_style.display_name,
             &calculated_time.quest_start_at,
             timezone,
-        );
+            Some(calculated_time.guild_id),
+        )
+        .await?;
 
         // 備考がある場合は追加
         if let Some(note) = &calculated_time.note {

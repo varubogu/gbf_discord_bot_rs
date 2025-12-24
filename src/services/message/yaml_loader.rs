@@ -104,6 +104,17 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         "recruitment.member_full" => Some(t!("recruitment.member_full", locale = locale).to_string()),
         "recruitment.before_5_minutes" => Some(t!("recruitment.before_5_minutes", locale = locale).to_string()),
         "recruitment.start" => Some(t!("recruitment.start", locale = locale).to_string()),
+        "recruitment.event_date_label" => Some(t!("recruitment.event_date_label", locale = locale).to_string()),
+        "recruitment.date_format" => Some(t!("recruitment.date_format", locale = locale).to_string()),
+        "recruitment.element_fire" => Some(t!("recruitment.element_fire", locale = locale).to_string()),
+        "recruitment.element_water" => Some(t!("recruitment.element_water", locale = locale).to_string()),
+        "recruitment.element_earth" => Some(t!("recruitment.element_earth", locale = locale).to_string()),
+        "recruitment.element_wind" => Some(t!("recruitment.element_wind", locale = locale).to_string()),
+        "recruitment.element_light" => Some(t!("recruitment.element_light", locale = locale).to_string()),
+        "recruitment.element_dark" => Some(t!("recruitment.element_dark", locale = locale).to_string()),
+        "recruitment.all_elements" => Some(t!("recruitment.all_elements", locale = locale).to_string()),
+        "recruitment.no_participants" => Some(t!("recruitment.no_participants", locale = locale).to_string()),
+        "recruitment.leave_all_button" => Some(t!("recruitment.leave_all_button", locale = locale).to_string()),
 
         // Timezone messages
         "timezone.set_success" => Some(t!("timezone.set_success", locale = locale).to_string()),

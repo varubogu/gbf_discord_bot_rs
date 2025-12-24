@@ -227,6 +227,39 @@ recruitment.before_5_minutes:
 recruitment.start:
   ja: "クエスト出発時刻です。"
   en: "It's quest departure time."
+recruitment.event_date_label:
+  ja: "開催日時："
+  en: "Event Date: "
+recruitment.date_format:
+  ja: "%m/%d %H:%M %Z"
+  en: "%m/%d %I:%M %p %Z"
+recruitment.element_fire:
+  ja: "火"
+  en: "Fire"
+recruitment.element_water:
+  ja: "水"
+  en: "Water"
+recruitment.element_earth:
+  ja: "土"
+  en: "Earth"
+recruitment.element_wind:
+  ja: "風"
+  en: "Wind"
+recruitment.element_light:
+  ja: "光"
+  en: "Light"
+recruitment.element_dark:
+  ja: "闇"
+  en: "Dark"
+recruitment.all_elements:
+  ja: "全属性可能"
+  en: "All Elements"
+recruitment.no_participants:
+  ja: "なし"
+  en: "None"
+recruitment.leave_all_button:
+  ja: "❌ 全て取り消し"
+  en: "❌ Cancel All"
 
 timezone.set_success:
   ja: "タイムゾーンを {{timezone}} に設定しました。"
