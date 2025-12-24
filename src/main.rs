@@ -1,5 +1,8 @@
 use gbf_discord_bot_rs::events::handlers::schedule_handler::ScheduleNotificationTimer;
-use gbf_discord_bot_rs::events::{command::commands, handler::event_handler};
+use gbf_discord_bot_rs::events::{
+    command::{admin_commands, commands, global_commands},
+    handler::event_handler,
+};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
@@ -185,9 +188,43 @@ async fn main() -> Result<()> {
             on_error: |error| Box::pin(error_handler(error)),
             ..Default::default()
         })
-        .setup(move |ctx, _ready, framework| {
+        .setup(move |ctx, _ready, _framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                // グローバルコマンドを全サーバーに登録
+                let global_cmds = global_commands();
+                poise::builtins::register_globally(ctx, &global_cmds).await?;
+                info!("Registered {} global commands", global_cmds.len());
+
+                // 管理サーバー専用コマンドを特定ギルドにのみ登録
+                match env::var("BOT_ADMIN_SERVER_ID") {
+                    Ok(admin_server_id) => {
+                        match admin_server_id.parse::<u64>() {
+                            Ok(guild_id_u64) => {
+                                let guild_id = serenity::GuildId::new(guild_id_u64);
+                                let admin_cmds = admin_commands();
+                                poise::builtins::register_in_guild(ctx, &admin_cmds, guild_id)
+                                    .await?;
+                                info!(
+                                    "Registered {} admin commands in guild {} ({})",
+                                    admin_cmds.len(),
+                                    guild_id,
+                                    admin_server_id
+                                );
+                            }
+                            Err(e) => {
+                                error!(
+                                    "BOT_ADMIN_SERVER_ID '{}' is not a valid number: {}",
+                                    admin_server_id, e
+                                );
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        error!(
+                            "⚠️ BOT_ADMIN_SERVER_ID not set - admin commands will not be registered"
+                        );
+                    }
+                }
 
                 // PoiseDataにAppStateを設定
                 let data = PoiseData {

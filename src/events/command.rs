@@ -1,7 +1,15 @@
 use crate::types::{AppError, PoiseData};
 
+/// 全コマンド（グローバル + 管理サーバー専用）
 #[allow(dead_code)]
 pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
+    let mut all_commands = global_commands();
+    all_commands.extend(admin_commands());
+    all_commands
+}
+
+/// 全サーバーに登録するグローバルコマンド
+pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
     use crate::events::interactions::command_interactions::{message, slash};
     vec![
         slash::channel_register::channel_register(),
@@ -23,8 +31,6 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::gspread_load::gspread_load(),
         slash::gspread_push::gspread_push(),
         slash::gspread_regist::gspread_regist(),
-        slash::gspread_global_load::gspread_global_load(),
-        slash::gspread_global_push::gspread_global_push(),
         slash::schedule_generate::schedule_generate(),
         slash::schedule_list::schedule_list(),
         slash::schedule_history::schedule_history(),
@@ -33,5 +39,14 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::guild_settings_show::show_guild_settings(),
         // メッセージコンテキストメニューコマンド
         message::recruit_change::recruit_change_context_menu(),
+    ]
+}
+
+/// 管理サーバー専用コマンド（特定ギルドにのみ登録）
+pub fn admin_commands() -> Vec<poise::Command<PoiseData, AppError>> {
+    use crate::events::interactions::command_interactions::slash;
+    vec![
+        slash::gspread_global_load::gspread_global_load(),
+        slash::gspread_global_push::gspread_global_push(),
     ]
 }
