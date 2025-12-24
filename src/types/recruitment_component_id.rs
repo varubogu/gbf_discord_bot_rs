@@ -26,7 +26,7 @@ impl RecruitmentComponentId {
     ///
     /// # 例
     /// ```
-    /// use gbf_discord_bot_rs::types::recruitment_component_id::RecruitmentComponentId;
+    /// use gbf_discord_bot_rs::types::RecruitmentComponentId;
     ///
     /// let id = RecruitmentComponentId::parse("recruit_join").unwrap();
     /// assert_eq!(id, RecruitmentComponentId::Join);
@@ -75,7 +75,7 @@ impl RecruitmentComponentId {
     ///
     /// # 例
     /// ```
-    /// use gbf_discord_bot_rs::types::recruitment_component_id::RecruitmentComponentId;
+    /// use gbf_discord_bot_rs::types::RecruitmentComponentId;
     ///
     /// assert_eq!(RecruitmentComponentId::Join.to_custom_id(), "recruit_join");
     /// assert_eq!(RecruitmentComponentId::JoinElement(1).to_custom_id(), "recruit_join_1");

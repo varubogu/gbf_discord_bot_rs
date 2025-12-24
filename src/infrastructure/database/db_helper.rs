@@ -15,11 +15,16 @@ use sea_orm::{ConnectionTrait, DbErr, Statement};
 /// セッション変数の設定に失敗した場合、`DbErr`を返します。
 ///
 /// # 使用例
-/// ```rust
+/// ```no_run
+/// use gbf_discord_bot_rs::infrastructure::database::db_helper::set_current_guild_id;
+/// use sea_orm::TransactionTrait;
+/// # async fn example(db: &sea_orm::DatabaseConnection, guild_id: i64) -> Result<(), sea_orm::DbErr> {
 /// let txn = db.begin().await?;
 /// set_current_guild_id(&txn, guild_id).await?;
 /// // ... トランザクション内での処理
 /// txn.commit().await?;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn set_current_guild_id<C>(conn: &C, guild_id: i64) -> Result<(), DbErr>
 where

@@ -268,6 +268,6 @@ mod tests {
 
         // それ以外のカラムは含まれていること
         assert!(columns.iter().any(|col| col.column_name == "id"));
-        assert!(columns.iter().any(|col| col.column_name == "name"));
+        assert!(columns.iter().any(|col| col.column_name == "display_name"));
     }
 }

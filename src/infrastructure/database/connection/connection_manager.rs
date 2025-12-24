@@ -80,6 +80,7 @@ pub fn is_database_available() -> (bool, Vec<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
 
     /// テスト用にクリーンな環境を作る
@@ -130,6 +131,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_all_present() {
         setup_complete_env();
         let (available, missing) = is_database_available();
@@ -138,6 +140,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_all_missing() {
         setup_clean_env();
         let (available, missing) = is_database_available();
@@ -154,6 +157,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_single_missing_db_host() {
         setup_complete_env();
         unsafe {
@@ -166,6 +170,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_single_missing_db_user() {
         setup_complete_env();
         unsafe {
@@ -178,6 +183,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_single_missing_db_password() {
         setup_complete_env();
         unsafe {
@@ -193,6 +199,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_single_missing_db_name() {
         setup_complete_env();
         unsafe {
@@ -205,6 +212,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_multiple_missing_host_user() {
         setup_complete_env();
         unsafe {
@@ -219,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_multiple_missing_password_name() {
         setup_complete_env();
         unsafe {
@@ -233,6 +242,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_three_missing() {
         setup_complete_env();
         unsafe {
@@ -250,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available_db_port_optional() {
         setup_complete_env();
         unsafe {

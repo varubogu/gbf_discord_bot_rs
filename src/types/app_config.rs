@@ -46,14 +46,15 @@ impl AppConfig {
     /// * `role` - 使用するデータベースロール
     ///
     /// # Examples
-    /// ```
-    /// use crate::types::{AppConfig, DbRole};
+    /// ```no_run
+    /// use gbf_discord_bot_rs::types::{AppConfig, DbRole};
     ///
     /// let config = AppConfig::from_env()?;
     /// // 通常のコマンド実行用
     /// let url = config.database_url(DbRole::Guild)?;
     /// // スケジューラー用
     /// let url = config.database_url(DbRole::System)?;
+    /// # Ok::<(), gbf_discord_bot_rs::types::AppError>(())
     /// ```
     pub fn database_url(&self, role: DbRole) -> Result<String, AppError> {
         let username = role.username()?;

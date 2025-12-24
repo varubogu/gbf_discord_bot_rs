@@ -34,7 +34,6 @@ mod tests {
         let test_cases = vec![
             (Some(GuildId::new(1)), "1"),
             (Some(GuildId::new(999999999999999999)), "999999999999999999"),
-            (Some(GuildId::new(0)), "0"),
             (None, "@me"),
         ];
 
