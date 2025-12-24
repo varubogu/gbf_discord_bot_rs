@@ -56,8 +56,13 @@ mod tests {
     use super::*;
     use crate::infrastructure::database::connection::connection_manager::is_database_available;
 
-    async fn setup_test_repo(
-    ) -> Result<(SeaOrmGuildMessageTextRepository, sea_orm::DatabaseConnection), String> {
+    async fn setup_test_repo() -> Result<
+        (
+            SeaOrmGuildMessageTextRepository,
+            sea_orm::DatabaseConnection,
+        ),
+        String,
+    > {
         let (available, missing) = is_database_available();
         if !available {
             return Err(format!(

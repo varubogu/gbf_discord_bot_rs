@@ -1,6 +1,6 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
-use crate::services::message::helpers::get_message_from_context;
 use crate::services::message::MessageId;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -39,18 +39,21 @@ pub async fn show_guild_settings(ctx: PoiseContext<'_>) -> Result<()> {
                 params,
             )
             .await
-            .unwrap_or_else(|_| format!("現在のサーバー設定:\nタイムゾーン: {}\n言語: {}", s.timezone, s.locale))
+            .unwrap_or_else(|_| {
+                format!(
+                    "現在のサーバー設定:\nタイムゾーン: {}\n言語: {}",
+                    s.timezone, s.locale
+                )
+            })
         }
-        None => {
-            get_message_from_context(
-                &ctx,
-                ctx.data().app_state.message_service(),
-                MessageId::GuildSettingsNotSet,
-                HashMap::new(),
-            )
-            .await
-            .unwrap_or_else(|_| "サーバー設定がされていません。".to_string())
-        }
+        None => get_message_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageId::GuildSettingsNotSet,
+            HashMap::new(),
+        )
+        .await
+        .unwrap_or_else(|_| "サーバー設定がされていません。".to_string()),
     };
 
     ctx.say(&message).await?;

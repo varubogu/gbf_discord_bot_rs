@@ -1,7 +1,7 @@
+use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::battle_style_list;
 use crate::facades::recruitment::quest_list;
 use crate::facades::recruitment::recruitment_schedule_list;
-use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::AutocompleteChoice;
 use std::sync::Arc;
@@ -44,8 +44,7 @@ pub async fn locale_auto_complete(
     _ctx: PoiseContext<'_>,
     partial: &str,
 ) -> Vec<AutocompleteChoice> {
-    let locales = [("ja", "日本語"),
-        ("en", "English")];
+    let locales = [("ja", "日本語"), ("en", "English")];
 
     locales
         .iter()

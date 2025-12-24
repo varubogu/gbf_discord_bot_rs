@@ -1,4 +1,4 @@
-use crate::models::entities::message_texts::{Entity as MessageTextEntity};
+use crate::models::entities::message_texts::Entity as MessageTextEntity;
 use crate::models::message_texts::MessageTexts;
 use crate::repository::MessageTextRepository;
 use async_trait::async_trait;
@@ -15,11 +15,7 @@ impl SeaOrmMessageTextRepository {
 
 #[async_trait]
 impl MessageTextRepository for SeaOrmMessageTextRepository {
-    async fn get_by_id<'c, C>(
-        &self,
-        db: &'c C,
-        id: &str,
-    ) -> Result<Option<MessageTexts>, DbErr>
+    async fn get_by_id<'c, C>(&self, db: &'c C, id: &str) -> Result<Option<MessageTexts>, DbErr>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -36,7 +32,8 @@ mod tests {
     use super::*;
     use crate::infrastructure::database::connection::connection_manager::is_database_available;
 
-    async fn setup_test_repo() -> Result<(SeaOrmMessageTextRepository, sea_orm::DatabaseConnection), String> {
+    async fn setup_test_repo()
+    -> Result<(SeaOrmMessageTextRepository, sea_orm::DatabaseConnection), String> {
         let (available, missing) = is_database_available();
         if !available {
             return Err(format!(
@@ -63,9 +60,7 @@ mod tests {
         };
 
         // Test getting a non-existent message text
-        let result = repo
-            .get_by_id(&conn, "non_existent_message")
-            .await;
+        let result = repo.get_by_id(&conn, "non_existent_message").await;
         match result {
             Ok(None) => {
                 // Expected result for a non-existent message
@@ -80,7 +75,10 @@ mod tests {
                     !message_text.message_jp.is_empty(),
                     "Message text should not be empty"
                 );
-                assert_eq!(message_text.id, "non_existent_message", "Message ID should match");
+                assert_eq!(
+                    message_text.id, "non_existent_message",
+                    "Message ID should match"
+                );
             }
             Err(e) => {
                 println!("Get message text returned error: {e}");

@@ -18,7 +18,9 @@ async fn test_date_parser_integration() {
     assert_eq!(default_date.second(), 0);
 
     // Test parsing a date string using ISO 8601 format (supported by dateparser)
-    let parsed_date = test_utils::parse_event_date("2025-12-25 15:30").await.unwrap();
+    let parsed_date = test_utils::parse_event_date("2025-12-25 15:30")
+        .await
+        .unwrap();
 
     // Check that the parsed date is correct
     assert_eq!(parsed_date.year(), 2025);

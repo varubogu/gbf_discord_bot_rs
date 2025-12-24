@@ -1,5 +1,5 @@
-use crate::facades::recruitment;
 use crate::facades::guild_settings::GuildSettingsFacade;
+use crate::facades::recruitment;
 use crate::services::datetime_parser;
 use crate::types::{PoiseContext, Result};
 use crate::utils::discord_helper;

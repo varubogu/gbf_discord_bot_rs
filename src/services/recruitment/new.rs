@@ -110,7 +110,8 @@ where
     .await?;
 
     // 初期参加者一覧を作成
-    let initial_participants_text = create_initial_participants_text(db, &reactions, Some(guild_id as i64)).await?;
+    let initial_participants_text =
+        create_initial_participants_text(db, &reactions, Some(guild_id as i64)).await?;
 
     Ok(RecruitmentData {
         quest,

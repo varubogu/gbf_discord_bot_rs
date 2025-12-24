@@ -196,6 +196,4 @@ impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
 }
 
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}

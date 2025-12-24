@@ -155,8 +155,12 @@ impl MessageId {
             // Battle recruitment
             MessageId::BattleRecruitmentTitle => "battle_recruitment.title",
             MessageId::BattleRecruitmentNewRecruitment => "battle_recruitment.new_recruitment",
-            MessageId::BattleRecruitmentRecruitmentCancelled => "battle_recruitment.recruitment_cancelled",
-            MessageId::BattleRecruitmentRecruitmentClosed => "battle_recruitment.recruitment_closed",
+            MessageId::BattleRecruitmentRecruitmentCancelled => {
+                "battle_recruitment.recruitment_cancelled"
+            }
+            MessageId::BattleRecruitmentRecruitmentClosed => {
+                "battle_recruitment.recruitment_closed"
+            }
             MessageId::BattleRecruitmentRecruitmentFull => "battle_recruitment.recruitment_full",
             MessageId::BattleRecruitmentJoinSuccess => "battle_recruitment.join_success",
             MessageId::BattleRecruitmentLeaveSuccess => "battle_recruitment.leave_success",
@@ -173,7 +177,9 @@ impl MessageId {
             MessageId::ErrorsEnvVarNotSet => "errors.env_var_not_set",
             MessageId::ErrorsGuildOnly => "errors.guild_only",
             MessageId::ErrorsSpreadsheetNotRegistered => "errors.spreadsheet_not_registered",
-            MessageId::ErrorsSpreadsheetConfigFetchFailed => "errors.spreadsheet_config_fetch_failed",
+            MessageId::ErrorsSpreadsheetConfigFetchFailed => {
+                "errors.spreadsheet_config_fetch_failed"
+            }
 
             // Spreadsheet
             MessageId::SpreadsheetLoading => "spreadsheet.loading",
@@ -189,7 +195,9 @@ impl MessageId {
             MessageId::SpreadsheetPushFailed => "spreadsheet.push_failed",
             MessageId::SpreadsheetGlobalPushing => "spreadsheet.global_pushing",
             MessageId::SpreadsheetGlobalPushSuccess => "spreadsheet.global_push_success",
-            MessageId::SpreadsheetGlobalPushPartialSuccess => "spreadsheet.global_push_partial_success",
+            MessageId::SpreadsheetGlobalPushPartialSuccess => {
+                "spreadsheet.global_push_partial_success"
+            }
             MessageId::SpreadsheetGlobalPushFailed => "spreadsheet.global_push_failed",
 
             // Kosenjo
@@ -283,13 +291,22 @@ mod tests {
 
     #[test]
     fn test_message_id_as_str() {
-        assert_eq!(MessageId::TimezoneShowCurrent.as_str(), "timezone.show_current");
-        assert_eq!(MessageId::TimezoneSetSuccess.as_str(), "timezone.set_success");
+        assert_eq!(
+            MessageId::TimezoneShowCurrent.as_str(),
+            "timezone.show_current"
+        );
+        assert_eq!(
+            MessageId::TimezoneSetSuccess.as_str(),
+            "timezone.set_success"
+        );
         assert_eq!(MessageId::ErrorsGuildOnly.as_str(), "errors.guild_only");
     }
 
     #[test]
     fn test_message_id_display() {
-        assert_eq!(MessageId::TimezoneShowCurrent.to_string(), "timezone.show_current");
+        assert_eq!(
+            MessageId::TimezoneShowCurrent.to_string(),
+            "timezone.show_current"
+        );
     }
 }

@@ -111,9 +111,7 @@ mod tests {
         // 環境変数が設定されていない場合はスキップ
         let (available, missing) = is_database_available();
         if !available {
-            println!(
-                "Skipping database URL build test: missing variables: {missing:?}"
-            );
+            println!("Skipping database URL build test: missing variables: {missing:?}");
             return;
         }
 

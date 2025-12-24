@@ -1,10 +1,10 @@
 use crate::models::entities::{battle_recruitments, notifications};
+use crate::repository::RecruitmentParticipantsRepository;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
-use crate::repository::RecruitmentParticipantsRepository;
 use crate::services::message::MessageService;
 use crate::types::Result;
 use chrono::Utc;
@@ -133,11 +133,7 @@ impl NotificationService {
 
     /// ギルドのロケールを取得
     /// 未設定の場合はデフォルト（ja）を返す
-    async fn get_guild_locale(
-        &self,
-        txn: &DatabaseTransaction,
-        guild_id: i64,
-    ) -> Result<String> {
+    async fn get_guild_locale(&self, txn: &DatabaseTransaction, guild_id: i64) -> Result<String> {
         match self
             .guild_timezone_repo
             .find_by_guild_id_with_txn(txn, guild_id)

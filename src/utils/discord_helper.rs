@@ -212,9 +212,8 @@ mod tests {
 
         // Note: Creating a full Message struct is complex in tests due to many required fields
         // For now, we'll test the URL format logic by constructing the expected URL manually
-        let expected_url = format!(
-            "https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
-        );
+        let expected_url =
+            format!("https://discord.com/channels/{guild_id}/{channel_id}/{message_id}");
 
         // Test the URL pattern
         assert!(expected_url.contains("https://discord.com/channels/"));
@@ -229,9 +228,7 @@ mod tests {
         let channel_id = ChannelId::new(987654321);
         let message_id = MessageId::new(555666777);
 
-        let expected_url = format!(
-            "https://discord.com/channels/@me/{channel_id}/{message_id}"
-        );
+        let expected_url = format!("https://discord.com/channels/@me/{channel_id}/{message_id}");
 
         // Test the URL pattern for DM
         assert!(expected_url.contains("https://discord.com/channels/@me/"));

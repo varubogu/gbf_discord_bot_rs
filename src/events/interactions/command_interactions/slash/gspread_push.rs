@@ -4,8 +4,8 @@
 /// PostgreSQLからギルドデータをスプレッドシートに書き込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
-use crate::services::message::helpers::get_message_from_context;
 use crate::services::message::MessageId;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
@@ -87,7 +87,10 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
         Ok(result) => {
             let message = if result.failure_count == 0 && result.errors.is_empty() {
                 let mut params = HashMap::new();
-                params.insert("success_count".to_string(), result.success_count.to_string());
+                params.insert(
+                    "success_count".to_string(),
+                    result.success_count.to_string(),
+                );
                 params.insert("total_rows".to_string(), result.total_rows.to_string());
 
                 get_message_from_context(
@@ -118,8 +121,14 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
                 };
 
                 let mut params = HashMap::new();
-                params.insert("success_count".to_string(), result.success_count.to_string());
-                params.insert("failure_count".to_string(), result.failure_count.to_string());
+                params.insert(
+                    "success_count".to_string(),
+                    result.success_count.to_string(),
+                );
+                params.insert(
+                    "failure_count".to_string(),
+                    result.failure_count.to_string(),
+                );
                 params.insert("total_rows".to_string(), result.total_rows.to_string());
                 params.insert("error_details".to_string(), error_details.clone());
 
@@ -138,7 +147,10 @@ pub async fn gspread_push(ctx: PoiseContext<'_>) -> Result<()> {
                          - 失敗: {}テーブル\n\
                          - 総行数: {}行\n\n\
                          {}",
-                        result.success_count, result.failure_count, result.total_rows, error_details
+                        result.success_count,
+                        result.failure_count,
+                        result.total_rows,
+                        error_details
                     )
                 })
             };

@@ -4,8 +4,8 @@
 /// スプレッドシートからグローバルデータをPostgreSQLに読み込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
-use crate::services::message::helpers::get_message_from_context;
 use crate::services::message::MessageId;
+use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_admin_server;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
@@ -47,7 +47,9 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
                 params,
             )
             .await
-            .unwrap_or_else(|_| "❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string());
+            .unwrap_or_else(|_| {
+                "❌ エラー: 環境変数 GLOBAL_SPREADSHEET_ID が設定されていません".to_string()
+            });
 
             ctx.say(&message).await?;
             error!("環境変数 GLOBAL_SPREADSHEET_ID が設定されていません");
@@ -55,7 +57,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...").await?;
+    ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
+        .await?;
 
     // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
     let app_state = Arc::new(ctx.data().app_state.clone());
@@ -123,8 +126,10 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             );
 
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!("❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"))
-                .await?;
+            ctx.say(format!(
+                "❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"
+            ))
+            .await?;
 
             Ok(())
         }

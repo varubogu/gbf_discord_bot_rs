@@ -1,6 +1,6 @@
 use crate::facades::recruitment::cancel as CancelFacade;
-use crate::services::message::helpers::get_message_from_context;
 use crate::services::message::MessageId;
+use crate::services::message::helpers::get_message_from_context;
 use crate::types;
 use crate::types::PoiseContext;
 use crate::types::domain_interface_result::CanCancelResult;

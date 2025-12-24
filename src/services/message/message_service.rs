@@ -319,7 +319,8 @@ mod tests {
         params.insert("quest".to_string(), "ドラゴンクエスト".to_string());
         params.insert("count".to_string(), "5".to_string());
 
-        let template = r"クエスト「{{quest}}」に{{count}}人参加しています。\{{escaped}}は置換されません。";
+        let template =
+            r"クエスト「{{quest}}」に{{count}}人参加しています。\{{escaped}}は置換されません。";
         let result = service.replace_parameters(template, &params);
         assert_eq!(
             result,

@@ -466,21 +466,11 @@ mod tests {
 
     #[test]
     fn test_parse_boolean() {
-        assert!(
-            DataConverterService::parse_boolean("true", "test_field").unwrap()
-        );
-        assert!(
-            DataConverterService::parse_boolean("TRUE", "test_field").unwrap()
-        );
-        assert!(
-            DataConverterService::parse_boolean("1", "test_field").unwrap()
-        );
-        assert!(
-            !DataConverterService::parse_boolean("false", "test_field").unwrap()
-        );
-        assert!(
-            !DataConverterService::parse_boolean("0", "test_field").unwrap()
-        );
+        assert!(DataConverterService::parse_boolean("true", "test_field").unwrap());
+        assert!(DataConverterService::parse_boolean("TRUE", "test_field").unwrap());
+        assert!(DataConverterService::parse_boolean("1", "test_field").unwrap());
+        assert!(!DataConverterService::parse_boolean("false", "test_field").unwrap());
+        assert!(!DataConverterService::parse_boolean("0", "test_field").unwrap());
         assert!(DataConverterService::parse_boolean("maybe", "test_field").is_err());
     }
 
