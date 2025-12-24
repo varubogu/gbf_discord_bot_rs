@@ -1,7 +1,7 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::change_recruitment_information;
 use crate::services::datetime_parser;
-use crate::services::message::MessageId;
+use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
@@ -48,7 +48,7 @@ pub async fn recruit_change(
         let message = get_message_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
-            MessageId::RecruitChangeNoChanges,
+            MessageTextId::RecruitChangeNoChanges,
             HashMap::new(),
         )
         .await
@@ -85,7 +85,7 @@ pub async fn recruit_change(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageId::RecruitChangeSuccess,
+        MessageTextId::RecruitChangeSuccess,
         HashMap::new(),
     )
     .await

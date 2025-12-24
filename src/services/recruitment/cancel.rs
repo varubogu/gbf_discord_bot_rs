@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::services::message::MessageId as MsgId;
+use crate::services::message::MessageTextId;
 use crate::services::message::MessageService;
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
@@ -230,7 +230,7 @@ where
     let cancelled_suffix = message_service
         .get_message(
             db,
-            MsgId::RecruitCancelledMessageSuffix.as_str(),
+            MessageTextId::RecruitCancelledMessageSuffix.as_str(),
             HashMap::new(),
             guild_id,
             locale,
@@ -260,7 +260,7 @@ where
         let message = message_service
             .get_message(
                 db,
-                MsgId::RecruitCancelNotificationNoParticipants.as_str(),
+                MessageTextId::RecruitCancelNotificationNoParticipants.as_str(),
                 HashMap::new(),
                 guild_id,
                 locale,
@@ -273,7 +273,7 @@ where
         let base_message = message_service
             .get_message(
                 db,
-                MsgId::RecruitCancelNotificationWithParticipants.as_str(),
+                MessageTextId::RecruitCancelNotificationWithParticipants.as_str(),
                 HashMap::new(),
                 guild_id,
                 locale,
@@ -339,7 +339,7 @@ where
     let cancelling_message = message_service
         .get_message(
             db,
-            MsgId::RecruitCancellingProgress.as_str(),
+            MessageTextId::RecruitCancellingProgress.as_str(),
             HashMap::new(),
             guild_id,
             locale,

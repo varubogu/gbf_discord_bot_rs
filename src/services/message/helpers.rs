@@ -1,5 +1,5 @@
 /// メッセージサービス用ヘルパー関数
-use crate::services::message::{MessageId, MessageService};
+use crate::services::message::{MessageTextId, MessageService};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
 
@@ -8,7 +8,7 @@ pub trait IntoMessageId {
     fn into_message_id(self) -> String;
 }
 
-impl IntoMessageId for MessageId {
+impl IntoMessageId for MessageTextId {
     fn into_message_id(self) -> String {
         self.as_str().to_string()
     }

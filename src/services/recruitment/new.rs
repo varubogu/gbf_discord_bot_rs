@@ -9,7 +9,7 @@ use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
-use crate::services::message::{MessageId, MessageService};
+use crate::services::message::{MessageTextId, MessageService};
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
@@ -201,9 +201,9 @@ where
 
     // メッセージIDを決定
     let message_id = if battle_style_name == "6属性" {
-        MessageId::RecruitmentSixElements
+        MessageTextId::RecruitmentSixElements
     } else {
-        MessageId::RecruitmentNormal
+        MessageTextId::RecruitmentNormal
     };
 
     // パラメータを準備
@@ -222,7 +222,7 @@ where
     let date_label = message_service
         .get_message(
             db,
-            MessageId::RecruitmentEventDateLabel.as_str(),
+            MessageTextId::RecruitmentEventDateLabel.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),
@@ -232,7 +232,7 @@ where
     let date_format = message_service
         .get_message(
             db,
-            MessageId::RecruitmentDateFormat.as_str(),
+            MessageTextId::RecruitmentDateFormat.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),
@@ -275,7 +275,7 @@ where
     let no_participants = message_service
         .get_message(
             db,
-            MessageId::RecruitmentNoParticipants.as_str(),
+            MessageTextId::RecruitmentNoParticipants.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),

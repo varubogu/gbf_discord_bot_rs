@@ -4,7 +4,7 @@
 /// ギルド用の読み込み・書き込みスプレッドシートをデータベースに登録します
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
-use crate::services::message::MessageId;
+use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
@@ -44,7 +44,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::ErrorsGuildOnly,
+                MessageTextId::ErrorsGuildOnly,
                 HashMap::new(),
             )
             .await
@@ -64,7 +64,7 @@ pub async fn gspread_regist(
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageId::SpreadsheetRegistering,
+        MessageTextId::SpreadsheetRegistering,
         HashMap::new(),
     )
     .await
@@ -84,7 +84,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::SpreadsheetRegisterFailed,
+                MessageTextId::SpreadsheetRegisterFailed,
                 params,
             )
             .await
@@ -108,7 +108,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::SpreadsheetRegisterSuccess,
+                MessageTextId::SpreadsheetRegisterSuccess,
                 params,
             )
             .await
@@ -142,7 +142,7 @@ pub async fn gspread_regist(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::SpreadsheetRegisterFailed,
+                MessageTextId::SpreadsheetRegisterFailed,
                 params,
             )
             .await

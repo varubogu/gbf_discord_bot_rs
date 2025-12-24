@@ -1,5 +1,5 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
-use crate::services::message::MessageId;
+use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
@@ -35,7 +35,7 @@ pub async fn show_guild_settings(ctx: PoiseContext<'_>) -> Result<()> {
             get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::GuildSettingsShowSuccess,
+                MessageTextId::GuildSettingsShowSuccess,
                 params,
             )
             .await
@@ -49,7 +49,7 @@ pub async fn show_guild_settings(ctx: PoiseContext<'_>) -> Result<()> {
         None => get_message_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
-            MessageId::GuildSettingsNotSet,
+            MessageTextId::GuildSettingsNotSet,
             HashMap::new(),
         )
         .await

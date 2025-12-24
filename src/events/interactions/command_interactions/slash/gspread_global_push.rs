@@ -4,7 +4,7 @@
 /// PostgreSQLからグローバルデータをスプレッドシートに書き込みます
 use crate::errors::PresentationError;
 use crate::facades::spreadsheet::SpreadsheetExportFacade;
-use crate::services::message::MessageId;
+use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::services::permission::check_bot_admin_server;
 use crate::types::{PoiseContext, Result};
@@ -41,7 +41,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::ErrorsEnvVarNotSet,
+                MessageTextId::ErrorsEnvVarNotSet,
                 params,
             )
             .await
@@ -58,7 +58,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageId::SpreadsheetGlobalPushing,
+        MessageTextId::SpreadsheetGlobalPushing,
         HashMap::new(),
     )
     .await
@@ -78,7 +78,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::SpreadsheetGlobalPushFailed,
+                MessageTextId::SpreadsheetGlobalPushFailed,
                 params,
             )
             .await
@@ -103,7 +103,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    MessageId::SpreadsheetGlobalPushSuccess,
+                    MessageTextId::SpreadsheetGlobalPushSuccess,
                     params,
                 )
                 .await
@@ -142,7 +142,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
                 get_message_from_context(
                     &ctx,
                     ctx.data().app_state.message_service(),
-                    MessageId::SpreadsheetGlobalPushPartialSuccess,
+                    MessageTextId::SpreadsheetGlobalPushPartialSuccess,
                     params,
                 )
                 .await
@@ -181,7 +181,7 @@ pub async fn gspread_global_push(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::SpreadsheetGlobalPushFailed,
+                MessageTextId::SpreadsheetGlobalPushFailed,
                 params,
             )
             .await

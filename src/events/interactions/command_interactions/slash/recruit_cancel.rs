@@ -1,5 +1,5 @@
 use crate::facades::recruitment::cancel as CancelFacade;
-use crate::services::message::MessageId;
+use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::types;
 use crate::types::PoiseContext;
@@ -34,7 +34,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::RecruitCancelAlreadyCancelled,
+                MessageTextId::RecruitCancelAlreadyCancelled,
                 HashMap::new(),
             )
             .await
@@ -52,7 +52,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::RecruitCancelMessageDeleted,
+                MessageTextId::RecruitCancelMessageDeleted,
                 HashMap::new(),
             )
             .await
@@ -70,7 +70,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::RecruitCancelInvalidMessage,
+                MessageTextId::RecruitCancelInvalidMessage,
                 HashMap::new(),
             )
             .await
@@ -88,7 +88,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::RecruitCancelNotFound,
+                MessageTextId::RecruitCancelNotFound,
                 HashMap::new(),
             )
             .await
@@ -108,7 +108,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageId::RecruitCancelError,
+                MessageTextId::RecruitCancelError,
                 HashMap::new(),
             )
             .await
