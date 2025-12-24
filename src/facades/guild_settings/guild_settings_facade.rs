@@ -1,5 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
@@ -15,15 +15,22 @@ pub struct TimezoneSetResult {
     pub timezone: Tz,
 }
 
-/// タイムゾーンファサード
+/// ギルド設定取得結果
+#[derive(Debug, Clone)]
+pub struct GuildSettingsResult {
+    pub timezone: String,
+    pub locale: String,
+}
+
+/// ギルド設定ファサード
 ///
-/// タイムゾーン設定のユースケースを管理するファサード。
+/// ギルド設定（タイムゾーン・ロケール）のユースケースを管理するファサード。
 /// トランザクション境界の管理を担当。
-pub struct TimezoneFacade {
+pub struct GuildSettingsFacade {
     app_state: Arc<AppState>,
 }
 
-impl TimezoneFacade {
+impl GuildSettingsFacade {
     pub fn new(app_state: Arc<AppState>) -> Self {
         Self { app_state }
     }
@@ -47,7 +54,7 @@ impl TimezoneFacade {
         info!(guild_id = guild_id, "タイムゾーン取得を開始します");
 
         let conn = self.app_state.guild_db();
-        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_repo = Arc::new(GuildSettingsRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
 
         let timezone = timezone_service.get_guild_timezone(conn, guild_id).await?;
@@ -61,11 +68,39 @@ impl TimezoneFacade {
         Ok(timezone)
     }
 
-    /// タイムゾーンを設定
+    /// ギルド設定を取得
+    ///
+    /// # 引数
+    /// - `guild_id`: ギルドID
+    ///
+    /// # 戻り値
+    /// ギルド設定（未設定の場合はNone）
+    pub async fn get_guild_settings(&self, guild_id: i64) -> Result<Option<GuildSettingsResult>> {
+        info!(guild_id = guild_id, "ギルド設定取得を開始します");
+
+        let conn = self.app_state.guild_db();
+        let settings_repo = Arc::new(GuildSettingsRepository::new());
+
+        let settings = settings_repo.find_by_guild_id(conn, guild_id).await?;
+
+        info!(
+            guild_id = guild_id,
+            has_settings = settings.is_some(),
+            "ギルド設定取得に成功しました"
+        );
+
+        Ok(settings.map(|s| GuildSettingsResult {
+            timezone: s.timezone,
+            locale: s.locale,
+        }))
+    }
+
+    /// タイムゾーンとロケールを設定
     ///
     /// # 引数
     /// - `guild_id`: ギルドID
     /// - `timezone_str`: タイムゾーン文字列（IANA形式）
+    /// - `locale`: ロケール（ja または en）
     ///
     /// # 戻り値
     /// タイムゾーン設定結果
@@ -76,11 +111,13 @@ impl TimezoneFacade {
         &self,
         guild_id: i64,
         timezone_str: &str,
+        locale: &str,
     ) -> Result<TimezoneSetResult> {
         info!(
             guild_id = guild_id,
             timezone = timezone_str,
-            "タイムゾーン設定を開始します"
+            locale = locale,
+            "タイムゾーンとロケール設定を開始します"
         );
 
         // タイムゾーンバリデーション
@@ -94,18 +131,19 @@ impl TimezoneFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+            let timezone_repo = Arc::new(GuildSettingsRepository::new());
             let timezone_service = TimezoneService::new(timezone_repo);
 
-            // タイムゾーンをupsert
+            // タイムゾーンとロケールをupsert
             timezone_service
-                .set_guild_timezone(&txn, guild_id, timezone.name())
+                .set_guild_timezone(&txn, guild_id, timezone.name(), locale)
                 .await?;
 
             info!(
                 guild_id = guild_id,
                 timezone = %timezone,
-                "タイムゾーン設定が完了しました"
+                locale = locale,
+                "タイムゾーンとロケール設定が完了しました"
             );
 
             Ok::<_, AppError>(TimezoneSetResult { timezone })
@@ -119,7 +157,8 @@ impl TimezoneFacade {
                 info!(
                     guild_id = guild_id,
                     timezone = %set_result.timezone,
-                    "タイムゾーン設定に成功しました"
+                    locale = locale,
+                    "タイムゾーンとロケール設定に成功しました"
                 );
                 Ok(set_result)
             }
@@ -129,7 +168,8 @@ impl TimezoneFacade {
                     error = %e,
                     guild_id = guild_id,
                     timezone = timezone_str,
-                    "タイムゾーン設定に失敗しました"
+                    locale = locale,
+                    "タイムゾーンとロケール設定に失敗しました"
                 );
                 Err(e)
             }

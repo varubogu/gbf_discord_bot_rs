@@ -1,5 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
 };
@@ -73,7 +73,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 1. タイムゾーン取得Service
-            let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+            let timezone_repo = Arc::new(GuildSettingsRepository::new());
             let timezone_service = TimezoneService::new(timezone_repo);
             let timezone = timezone_service
                 .get_guild_timezone(conn, guild_id as i64)
@@ -146,7 +146,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // タイムゾーン取得
-            let timezone_service = TimezoneService::new(Arc::new(GuildTimezoneRepository::new()));
+            let timezone_service = TimezoneService::new(Arc::new(GuildSettingsRepository::new()));
             let tz = timezone_service.get_guild_timezone(conn, guild_id).await?;
 
             // 一覧取得

@@ -1,4 +1,4 @@
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::types::{AppError, Result};
 use chrono::{Offset, TimeZone, Utc};
 use chrono_tz::Tz;
@@ -100,11 +100,11 @@ lazy_static! {
 
 /// タイムゾーン取得・設定サービス
 pub struct TimezoneService {
-    repository: Arc<GuildTimezoneRepository>,
+    repository: Arc<GuildSettingsRepository>,
 }
 
 impl TimezoneService {
-    pub fn new(repository: Arc<GuildTimezoneRepository>) -> Self {
+    pub fn new(repository: Arc<GuildSettingsRepository>) -> Self {
         Self { repository }
     }
 
@@ -146,21 +146,23 @@ impl TimezoneService {
         }
     }
 
-    /// ギルドのタイムゾーンを設定（upsert）
+    /// ギルドのタイムゾーンとロケールを設定（upsert）
     pub async fn set_guild_timezone(
         &self,
         txn: &sea_orm::DatabaseTransaction,
         guild_id: i64,
         timezone_name: &str,
+        locale: &str,
     ) -> Result<()> {
         self.repository
-            .upsert_with_txn(txn, guild_id, timezone_name)
+            .upsert_with_txn(txn, guild_id, timezone_name, locale)
             .await?;
 
         info!(
             guild_id = guild_id,
             timezone = timezone_name,
-            "ギルドのタイムゾーンを設定しました"
+            locale = locale,
+            "ギルドのタイムゾーンとロケールを設定しました"
         );
 
         Ok(())

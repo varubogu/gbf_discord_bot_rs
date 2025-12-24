@@ -1,4 +1,4 @@
-use crate::facades::timezone::TimezoneFacade;
+use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::services::permission::check_bot_control_role;
 use crate::services::message::helpers::get_message_from_context;
 use crate::services::message::MessageId;
@@ -6,17 +6,17 @@ use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::autocomplete::timezone_auto_complete;
+use super::autocomplete::{timezone_auto_complete, locale_auto_complete};
 
 #[poise::command(
     slash_command,
     guild_only,
     check = "check_bot_control_role",
     ephemeral = true,
-    name_localized("ja", "タイムゾーン設定"),
-    description_localized("ja", "サーバーのタイムゾーンを設定します")
+    name_localized("ja", "サーバー設定"),
+    description_localized("ja", "サーバーのタイムゾーンと言語を設定します")
 )]
-pub async fn timezone_set(
+pub async fn set_guild_settings(
     ctx: PoiseContext<'_>,
 
     #[autocomplete = "timezone_auto_complete"]
@@ -24,6 +24,12 @@ pub async fn timezone_set(
     #[description = "timezone"]
     #[description_localized("ja", "タイムゾーン（選択式）")]
     timezone: String,
+
+    #[autocomplete = "locale_auto_complete"]
+    #[name_localized("ja", "言語")]
+    #[description = "locale (ja or en)"]
+    #[description_localized("ja", "言語（ja: 日本語、en: 英語）")]
+    locale: String,
 ) -> Result<()> {
     ctx.defer_ephemeral().await?;
 
@@ -35,23 +41,24 @@ pub async fn timezone_set(
     let app_state = &ctx.data().app_state;
 
     // Facadeを呼び出し
-    let facade = TimezoneFacade::new(Arc::new(app_state.clone()));
+    let facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
     let result = facade
-        .set_timezone(guild_id.get() as i64, &timezone)
+        .set_timezone(guild_id.get() as i64, &timezone, &locale)
         .await?;
 
     // 成功メッセージ
     let mut params = HashMap::new();
     params.insert("timezone".to_string(), result.timezone.name().to_string());
+    params.insert("locale".to_string(), locale.to_string());
 
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageId::TimezoneSetSuccess,
+        MessageId::GuildSettingsSetSuccess,
         params,
     )
     .await
-    .unwrap_or_else(|_| format!("タイムゾーンを {} に設定しました。", result.timezone.name()));
+    .unwrap_or_else(|_| format!("サーバー設定を更新しました。\nタイムゾーン: {}\n言語: {}", result.timezone.name(), locale));
 
     ctx.say(&message)
     .await?;

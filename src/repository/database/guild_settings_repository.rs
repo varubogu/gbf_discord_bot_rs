@@ -1,53 +1,57 @@
-use crate::models::entities::guild_timezones;
+use crate::models::entities::guild_settings;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
-/// guild_timezonesテーブルのRepository
-pub struct GuildTimezoneRepository;
+/// guild_settingsテーブルのRepository
+pub struct GuildSettingsRepository;
 
-impl Default for GuildTimezoneRepository {
+impl Default for GuildSettingsRepository {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GuildTimezoneRepository {
+impl GuildSettingsRepository {
     pub fn new() -> Self {
         Self
     }
 
-    /// ギルドタイムゾーンを登録または更新（トランザクション内）
+    /// ギルド設定（タイムゾーンとロケール）を登録または更新（トランザクション内）
     pub async fn upsert_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
         timezone: &str,
-    ) -> Result<guild_timezones::Model> {
+        locale: &str,
+    ) -> Result<guild_settings::Model> {
         debug!(
             guild_id = guild_id,
             timezone = timezone,
-            "ギルドタイムゾーンを登録または更新します"
+            locale = locale,
+            "ギルド設定を登録または更新します"
         );
 
         let now = chrono::Utc::now();
 
         // INSERT ... ON CONFLICT DO UPDATE を使用
-        let active_model = guild_timezones::ActiveModel {
+        let active_model = guild_settings::ActiveModel {
             guild_id: Set(guild_id),
             timezone: Set(timezone.to_string()),
+            locale: Set(locale.to_string()),
             created_at: Set(now),
             updated_at: Set(now),
         };
 
         // UPSERTを実行（主キーが重複する場合は更新）
-        guild_timezones::Entity::insert(active_model)
+        guild_settings::Entity::insert(active_model)
             .on_conflict(
-                OnConflict::column(guild_timezones::Column::GuildId)
+                OnConflict::column(guild_settings::Column::GuildId)
                     .update_columns([
-                        guild_timezones::Column::Timezone,
-                        guild_timezones::Column::UpdatedAt,
+                        guild_settings::Column::Timezone,
+                        guild_settings::Column::Locale,
+                        guild_settings::Column::UpdatedAt,
                     ])
                     .to_owned(),
             )
@@ -57,46 +61,47 @@ impl GuildTimezoneRepository {
                 error!(
                     error = %e,
                     guild_id = guild_id,
-                    "ギルドタイムゾーンのUPSERTに失敗しました"
+                    "ギルド設定のUPSERTに失敗しました"
                 );
                 e
             })?;
 
         // UPSERT後のデータを取得
-        let model = guild_timezones::Entity::find_by_id(guild_id)
+        let model = guild_settings::Entity::find_by_id(guild_id)
             .one(txn)
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!(
-                    "ギルドタイムゾーンの取得に失敗しました: guild_id={guild_id}"
+                    "ギルド設定の取得に失敗しました: guild_id={guild_id}"
                 ))
             })?;
 
         info!(
             guild_id = guild_id,
             timezone = timezone,
-            "ギルドタイムゾーンを登録または更新しました"
+            locale = locale,
+            "ギルド設定を登録または更新しました"
         );
 
         Ok(model)
     }
 
-    /// ギルドIDでタイムゾーン設定を取得（トランザクションなし）
+    /// ギルドIDで設定を取得（トランザクションなし）
     pub async fn find_by_guild_id(
         &self,
         db: &DatabaseConnection,
         guild_id: i64,
-    ) -> Result<Option<guild_timezones::Model>> {
-        debug!(guild_id = guild_id, "ギルドタイムゾーンを取得します");
+    ) -> Result<Option<guild_settings::Model>> {
+        debug!(guild_id = guild_id, "ギルド設定を取得します");
 
-        let model = guild_timezones::Entity::find_by_id(guild_id)
+        let model = guild_settings::Entity::find_by_id(guild_id)
             .one(db)
             .await
             .map_err(|e| {
                 error!(
                     error = %e,
                     guild_id = guild_id,
-                    "ギルドタイムゾーンの取得に失敗しました"
+                    "ギルド設定の取得に失敗しました"
                 );
                 e
             })?;
@@ -104,25 +109,25 @@ impl GuildTimezoneRepository {
         Ok(model)
     }
 
-    /// ギルドIDでタイムゾーン設定を取得（トランザクション内）
+    /// ギルドIDで設定を取得（トランザクション内）
     pub async fn find_by_guild_id_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
-    ) -> Result<Option<guild_timezones::Model>> {
+    ) -> Result<Option<guild_settings::Model>> {
         debug!(
             guild_id = guild_id,
-            "ギルドタイムゾーンを取得します（トランザクション内）"
+            "ギルド設定を取得します（トランザクション内）"
         );
 
-        let model = guild_timezones::Entity::find_by_id(guild_id)
+        let model = guild_settings::Entity::find_by_id(guild_id)
             .one(txn)
             .await
             .map_err(|e| {
                 error!(
                     error = %e,
                     guild_id = guild_id,
-                    "ギルドタイムゾーンの取得に失敗しました"
+                    "ギルド設定の取得に失敗しました"
                 );
                 e
             })?;

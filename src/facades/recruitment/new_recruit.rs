@@ -1,7 +1,7 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
@@ -47,7 +47,7 @@ pub async fn new_recruitment(
         let battle_recruitment_repo = repos.battle_recruitment();
 
         // タイムゾーンを取得
-        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_repo = Arc::new(GuildSettingsRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service.get_guild_timezone(conn, guild_id as i64).await?;
 

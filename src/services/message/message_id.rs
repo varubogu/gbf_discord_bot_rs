@@ -95,9 +95,14 @@ pub enum MessageId {
     RecruitmentBefore5Minutes,
     RecruitmentStart,
 
-    // Timezone messages
+    // Timezone messages (deprecated - use GuildSettings instead)
     TimezoneSetSuccess,
     TimezoneShowCurrent,
+
+    // Guild settings messages
+    GuildSettingsSetSuccess,
+    GuildSettingsShowSuccess,
+    GuildSettingsNotSet,
 
     // Recruit role messages
     RecruitRoleAddSuccess,
@@ -218,6 +223,11 @@ impl MessageId {
             // Timezone
             MessageId::TimezoneSetSuccess => "timezone.set_success",
             MessageId::TimezoneShowCurrent => "timezone.show_current",
+
+            // Guild settings
+            MessageId::GuildSettingsSetSuccess => "guild_settings.set_success",
+            MessageId::GuildSettingsShowSuccess => "guild_settings.show_success",
+            MessageId::GuildSettingsNotSet => "guild_settings.not_set",
 
             // Recruit role
             MessageId::RecruitRoleAddSuccess => "recruit_role.add_success",

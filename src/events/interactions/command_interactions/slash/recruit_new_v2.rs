@@ -1,5 +1,5 @@
 use crate::facades::recruitment;
-use crate::facades::timezone::TimezoneFacade;
+use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::services::datetime_parser;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
@@ -40,7 +40,7 @@ pub async fn recruit_new_v2(
 
     // タイムゾーンを取得（Facade経由）
     let app_state = &ctx.data().app_state;
-    let timezone_facade = TimezoneFacade::new(Arc::new(app_state.clone()));
+    let timezone_facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
     let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
 
     // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）

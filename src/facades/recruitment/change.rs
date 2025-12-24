@@ -1,6 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
@@ -128,7 +128,7 @@ pub async fn change_recruitment_information_internal(
         let new_expiry_date = event_date.unwrap_or(existing_recruitment.quest_start_at);
 
         // タイムゾーンを取得
-        let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+        let timezone_repo = Arc::new(GuildSettingsRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service
             .get_guild_timezone(db, guild_id as i64)

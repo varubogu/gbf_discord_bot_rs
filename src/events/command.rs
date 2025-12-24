@@ -28,8 +28,8 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::schedule_list::schedule_list(),
         slash::schedule_history::schedule_history(),
         slash::schedule_stats::schedule_stats(),
-        slash::timezone_set::timezone_set(),
-        slash::timezone_show::timezone_show(),
+        slash::guild_settings_set::set_guild_settings(),
+        slash::guild_settings_show::show_guild_settings(),
         // メッセージコンテキストメニューコマンド
         message::recruit_change::recruit_change_context_menu(),
     ]

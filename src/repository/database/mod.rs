@@ -7,7 +7,7 @@ pub mod guild_channel_repository;
 pub mod guild_environment_repository;
 pub mod guild_message_text_repository;
 pub mod guild_repository;
-pub mod guild_timezone_repository;
+pub mod guild_settings_repository;
 pub mod last_process_time_repository;
 pub mod message_text_repository;
 pub mod models_database;

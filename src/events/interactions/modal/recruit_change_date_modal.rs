@@ -1,5 +1,5 @@
 use crate::events::interactions::components::recruit_change_handler;
-use crate::repository::database::guild_timezone_repository::GuildTimezoneRepository;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::datetime_parser;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::{AppError, PoiseData, Result};
@@ -63,7 +63,7 @@ pub async fn handle_recruit_change_date_modal(
         .await?;
 
     // タイムゾーンを取得
-    let timezone_repo = Arc::new(GuildTimezoneRepository::new());
+    let timezone_repo = Arc::new(GuildSettingsRepository::new());
     let timezone_service = TimezoneService::new(timezone_repo);
     let timezone = timezone_service
         .get_guild_timezone(data.app_state.guild_db(), guild_id as i64)

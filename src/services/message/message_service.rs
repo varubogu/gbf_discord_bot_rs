@@ -3,7 +3,7 @@ use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessa
 use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use regex::Regex;
-use sea_orm::DatabaseConnection;
+use sea_orm::ConnectionTrait;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 use tracing::{debug, warn};
@@ -35,7 +35,7 @@ impl MessageService {
     /// メッセージを取得
     ///
     /// # 引数
-    /// * `db` - データベース接続
+    /// * `db` - データベース接続（DatabaseConnection または DatabaseTransaction）
     /// * `message_id` - メッセージID（DB検索キー兼YAMLキー）
     /// * `params` - テキスト埋め込み用パラメータ
     /// * `guild_id` - ギルドID (オプション)
@@ -46,14 +46,17 @@ impl MessageService {
     ///
     /// # エラー
     /// メッセージが見つからない場合（通常はYAMLに存在するため発生しないはず）
-    pub async fn get_message(
+    pub async fn get_message<C>(
         &self,
-        db: &DatabaseConnection,
+        db: &C,
         message_id: &str,
         params: HashMap<String, String>,
         guild_id: Option<i64>,
         locale: Option<&str>,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, ServiceError>
+    where
+        C: ConnectionTrait,
+    {
         // ロケールを決定 (ja or en)
         let locale = self.determine_locale(locale);
 
@@ -109,13 +112,16 @@ impl MessageService {
     }
 
     /// Guild固有メッセージを取得
-    async fn get_guild_message(
+    async fn get_guild_message<C>(
         &self,
-        db: &DatabaseConnection,
+        db: &C,
         guild_id: i64,
         message_id: &str,
         locale: &str,
-    ) -> Result<Option<String>, ServiceError> {
+    ) -> Result<Option<String>, ServiceError>
+    where
+        C: ConnectionTrait,
+    {
         match self
             .guild_message_repo
             .get_by_guild_and_id(db, guild_id, message_id)
@@ -145,12 +151,15 @@ impl MessageService {
     }
 
     /// グローバルマスターメッセージを取得
-    async fn get_master_message(
+    async fn get_master_message<C>(
         &self,
-        db: &DatabaseConnection,
+        db: &C,
         message_id: &str,
         locale: &str,
-    ) -> Result<Option<String>, ServiceError> {
+    ) -> Result<Option<String>, ServiceError>
+    where
+        C: ConnectionTrait,
+    {
         match self.message_repo.get_by_id(db, message_id).await {
             Ok(Some(model)) => {
                 let message = if locale == "ja" {

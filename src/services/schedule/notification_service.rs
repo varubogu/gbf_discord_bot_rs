@@ -1,15 +1,18 @@
-use crate::models::entities::{battle_recruitments, message_texts, notifications};
+use crate::models::entities::{battle_recruitments, notifications};
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
 use crate::repository::RecruitmentParticipantsRepository;
+use crate::services::message::MessageService;
 use crate::types::Result;
 use chrono::Utc;
 use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
+use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// 通知実行サービス
 /// - DatabaseConnection を保持しない
@@ -17,6 +20,8 @@ use tracing::{debug, error, info, warn};
 pub struct NotificationService {
     notification_repo: NotificationRepository,
     rel_repo: NotificationRelBattleRecruitmentRepository,
+    guild_timezone_repo: GuildSettingsRepository,
+    message_service: MessageService,
     http: Arc<Http>,
 }
 
@@ -24,9 +29,13 @@ impl NotificationService {
     pub fn new(http: Arc<Http>) -> Self {
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelBattleRecruitmentRepository::new();
+        let guild_timezone_repo = GuildSettingsRepository::new();
+        let message_service = MessageService::new();
         Self {
             notification_repo,
             rel_repo,
+            guild_timezone_repo,
+            message_service,
             http,
         }
     }
@@ -122,6 +131,30 @@ impl NotificationService {
         Ok(())
     }
 
+    /// ギルドのロケールを取得
+    /// 未設定の場合はデフォルト（ja）を返す
+    async fn get_guild_locale(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<String> {
+        match self
+            .guild_timezone_repo
+            .find_by_guild_id_with_txn(txn, guild_id)
+            .await?
+        {
+            Some(settings) => Ok(settings.locale),
+            None => {
+                // 未設定の場合はデフォルト（ja）を返す
+                debug!(
+                    guild_id = guild_id,
+                    "ロケール未設定のため、デフォルト（ja）を使用します"
+                );
+                Ok("ja".to_string())
+            }
+        }
+    }
+
     /// 個別通知を送信
     async fn send_notification(
         &self,
@@ -164,16 +197,28 @@ impl NotificationService {
         recruit_id: i32,
     ) -> Result<()> {
         // 募集情報を取得
-        let recruitment = battle_recruitments::Entity::find_by_id(recruit_id)
+        let recruitment = battle_recruitments::Entity::find()
+            .filter(battle_recruitments::Column::Id.eq(recruit_id))
             .one(txn)
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!("募集ID {recruit_id} が見つかりません"))
             })?;
 
-        // メッセージテキストを取得
+        // ギルドのロケールを取得
+        let locale = self.get_guild_locale(txn, notification.guild_id).await?;
+
+        // メッセージテキストを新しいメッセージサービスで取得
+        // DatabaseTransactionはConnectionTraitを実装しているので直接渡せる
         let message_text = self
-            .get_message_text(txn, &notification.message_text_id)
+            .message_service
+            .get_message(
+                txn,
+                &notification.message_text_id,
+                HashMap::new(),
+                Some(notification.guild_id),
+                Some(&locale),
+            )
             .await?;
 
         // チャンネルとメッセージIDを取得（i64 → u64にキャスト）
@@ -197,9 +242,9 @@ impl NotificationService {
 
         // 通知メッセージを作成（募集メッセージへの返信）
         let content = if mentions.is_empty() {
-            message_text.message_jp.clone()
+            message_text.clone()
         } else {
-            format!("{}\n{}", mentions, message_text.message_jp)
+            format!("{}\n{}", mentions, message_text)
         };
 
         let message = CreateMessage::new()
@@ -236,15 +281,26 @@ impl NotificationService {
         txn: &DatabaseTransaction,
         notification: &notifications::Model,
     ) -> Result<()> {
-        // メッセージテキストを取得
+        // ギルドのロケールを取得
+        let locale = self.get_guild_locale(txn, notification.guild_id).await?;
+
+        // メッセージテキストを新しいメッセージサービスで取得
+        // DatabaseTransactionはConnectionTraitを実装しているので直接渡せる
         let message_text = self
-            .get_message_text(txn, &notification.message_text_id)
+            .message_service
+            .get_message(
+                txn,
+                &notification.message_text_id,
+                HashMap::new(),
+                Some(notification.guild_id),
+                Some(&locale),
+            )
             .await?;
 
         // チャンネルにメッセージを送信
         let channel_id = ChannelId::new(notification.channel_id as u64);
 
-        let message = CreateMessage::new().content(&message_text.message_jp);
+        let message = CreateMessage::new().content(&message_text);
 
         match channel_id.send_message(&self.http, message).await {
             Ok(sent_message) => {
@@ -267,35 +323,5 @@ impl NotificationService {
                 Err(e.into())
             }
         }
-    }
-
-    /// メッセージテキストを取得
-    async fn get_message_text(
-        &self,
-        txn: &DatabaseTransaction,
-        message_text_id: &str,
-    ) -> Result<message_texts::Model> {
-        let message_text = message_texts::Entity::find()
-            .filter(message_texts::Column::Id.eq(message_text_id))
-            .one(txn)
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    message_text_id = %message_text_id,
-                    "メッセージテキストの取得に失敗しました"
-                );
-                e
-            })?;
-
-        message_text.ok_or_else(|| {
-            warn!(
-                message_text_id = %message_text_id,
-                "メッセージテキストが見つかりません"
-            );
-            crate::types::AppError::NotFound(format!(
-                "メッセージテキストが見つかりません: {message_text_id}"
-            ))
-        })
     }
 }

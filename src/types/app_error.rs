@@ -38,6 +38,23 @@ impl From<String> for AppError {
     }
 }
 
+impl From<crate::errors::ServiceError> for AppError {
+    fn from(err: crate::errors::ServiceError) -> Self {
+        match err {
+            crate::errors::ServiceError::NotFound(msg) => AppError::NotFound(msg),
+            crate::errors::ServiceError::Validation(e) => AppError::Business {
+                message: e.to_string(),
+            },
+            crate::errors::ServiceError::BusinessRule(e) => AppError::Business {
+                message: e.to_string(),
+            },
+            crate::errors::ServiceError::Database(msg) => AppError::Generic(msg),
+            crate::errors::ServiceError::Internal(msg) => AppError::Generic(msg),
+            crate::errors::ServiceError::ExternalService(e) => AppError::Generic(e.to_string()),
+        }
+    }
+}
+
 impl AppError {
     /// Discord上でユーザーに表示するメッセージを取得
     /// 技術的な詳細は含めず、ユーザーフレンドリーなメッセージのみ返す
