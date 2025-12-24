@@ -44,16 +44,14 @@ pub async fn locale_auto_complete(
     _ctx: PoiseContext<'_>,
     partial: &str,
 ) -> Vec<AutocompleteChoice> {
-    let locales = vec![
-        ("ja", "日本語"),
-        ("en", "English"),
-    ];
+    let locales = [("ja", "日本語"),
+        ("en", "English")];
 
     locales
         .iter()
         .filter(|(code, name)| {
             code.contains(partial) || name.to_lowercase().contains(&partial.to_lowercase())
         })
-        .map(|(code, name)| AutocompleteChoice::new(format!("{} ({})", name, code), *code))
+        .map(|(code, name)| AutocompleteChoice::new(format!("{name} ({code})"), *code))
         .collect()
 }

@@ -244,7 +244,7 @@ impl NotificationService {
         let content = if mentions.is_empty() {
             message_text.clone()
         } else {
-            format!("{}\n{}", mentions, message_text)
+            format!("{mentions}\n{message_text}")
         };
 
         let message = CreateMessage::new()

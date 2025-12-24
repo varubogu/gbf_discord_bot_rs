@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_db_role_username_env_var() {
-        assert_eq!(DbRole::System.username().is_err(), true);
+        assert!(DbRole::System.username().is_err());
 
         unsafe {
             env::set_var("SYSTEM_DB_USER", "gbf_bot_system");
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_db_role_password_env_var() {
-        assert_eq!(DbRole::Guild.password().is_err(), true);
+        assert!(DbRole::Guild.password().is_err());
 
         unsafe {
             env::set_var("GUILD_DB_PASSWORD", "test_password");

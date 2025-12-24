@@ -246,13 +246,11 @@ mod tests {
         for (table_name, schema) in schemas.iter() {
             assert!(
                 !schema.iter().any(|col| col.column_name == "created_at"),
-                "テーブル「{}」でcreated_atが除外されていません",
-                table_name
+                "テーブル「{table_name}」でcreated_atが除外されていません"
             );
             assert!(
                 !schema.iter().any(|col| col.column_name == "updated_at"),
-                "テーブル「{}」でupdated_atが除外されていません",
-                table_name
+                "テーブル「{table_name}」でupdated_atが除外されていません"
             );
         }
     }

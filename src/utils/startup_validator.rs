@@ -834,7 +834,7 @@ mod tests {
             ],
         };
 
-        let error_str = format!("{}", error);
+        let error_str = format!("{error}");
         assert!(error_str.contains("複数のバリデーションエラーが発生しました"));
     }
 }

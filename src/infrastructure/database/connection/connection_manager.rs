@@ -112,8 +112,7 @@ mod tests {
         let (available, missing) = is_database_available();
         if !available {
             println!(
-                "Skipping database URL build test: missing variables: {:?}",
-                missing
+                "Skipping database URL build test: missing variables: {missing:?}"
             );
             return;
         }

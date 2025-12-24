@@ -106,8 +106,7 @@ impl MessageService {
             "メッセージが見つかりませんでした（DB・YAML共に存在しません）"
         );
         Err(ServiceError::NotFound(format!(
-            "メッセージが見つかりません: message_id={}",
-            message_id
+            "メッセージが見つかりません: message_id={message_id}"
         )))
     }
 

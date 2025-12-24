@@ -61,14 +61,13 @@ mod tests {
         let (available, missing) = is_database_available();
         if !available {
             return Err(format!(
-                "Database connection info not set - missing: {:?}",
-                missing
+                "Database connection info not set - missing: {missing:?}"
             ));
         }
 
         let conn = match crate::repository::database::models_database::Database::new().await {
             Ok(db) => db.conn,
-            Err(e) => return Err(format!("Failed to connect to a database: {}", e)),
+            Err(e) => return Err(format!("Failed to connect to a database: {e}")),
         };
 
         Ok((SeaOrmGuildMessageTextRepository::new(), conn))
@@ -79,7 +78,7 @@ mod tests {
         let (repo, conn) = match setup_test_repo().await {
             Ok(result) => result,
             Err(e) => {
-                println!("Skipping database test: {}", e);
+                println!("Skipping database test: {e}");
                 return;
             }
         };
@@ -99,7 +98,7 @@ mod tests {
                 assert!(!message.message_jp.is_empty());
             }
             Err(e) => {
-                println!("Query returned error: {}", e);
+                println!("Query returned error: {e}");
             }
         }
     }

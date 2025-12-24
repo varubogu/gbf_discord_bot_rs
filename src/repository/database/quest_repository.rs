@@ -139,7 +139,7 @@ mod tests {
     -> std::result::Result<(SeaOrmQuestRepository, sea_orm::DatabaseConnection), String> {
         let conn = match crate::repository::database::db_compat::Database::new().await {
             Ok(db) => db.conn,
-            Err(e) => return Err(format!("Failed to connect to database: {}", e)),
+            Err(e) => return Err(format!("Failed to connect to database: {e}")),
         };
 
         Ok((SeaOrmQuestRepository::new(), conn))
@@ -150,7 +150,7 @@ mod tests {
         let (repo, conn) = match setup_test_db().await {
             Ok(result) => result,
             Err(e) => {
-                println!("Skipping database test: {}", e);
+                println!("Skipping database test: {e}");
                 return;
             }
         };
@@ -166,7 +166,7 @@ mod tests {
                 }
             }
             Err(e) => {
-                println!("Get quests returned error (maybe expected): {}", e);
+                println!("Get quests returned error (maybe expected): {e}");
             }
         }
     }
@@ -176,7 +176,7 @@ mod tests {
         let (repo, conn) = match setup_test_db().await {
             Ok(result) => result,
             Err(e) => {
-                println!("Skipping database test: {}", e);
+                println!("Skipping database test: {e}");
                 return;
             }
         };
@@ -194,7 +194,7 @@ mod tests {
                 }
             }
             Err(e) => {
-                println!("Search returned error (maybe expected): {}", e);
+                println!("Search returned error (maybe expected): {e}");
             }
         }
     }
@@ -204,7 +204,7 @@ mod tests {
         let (repo, conn) = match setup_test_db().await {
             Ok(result) => result,
             Err(e) => {
-                println!("Skipping database test: {}", e);
+                println!("Skipping database test: {e}");
                 return;
             }
         };
@@ -219,7 +219,7 @@ mod tests {
                 assert_eq!(quest.id, 999999, "Quest ID should match");
             }
             Err(e) => {
-                println!("Get quest by ID returned error: {}", e);
+                println!("Get quest by ID returned error: {e}");
             }
         }
     }

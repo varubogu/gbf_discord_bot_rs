@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_parse_join_element() {
         for element_id in 1..=6 {
-            let custom_id = format!("recruit_join_{}", element_id);
+            let custom_id = format!("recruit_join_{element_id}");
             let id = RecruitmentComponentId::parse(&custom_id).unwrap();
             assert_eq!(id, RecruitmentComponentId::JoinElement(element_id));
             assert!(id.is_join());
