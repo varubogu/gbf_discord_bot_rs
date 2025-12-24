@@ -144,6 +144,41 @@ impl QuestRecruitmentNotificationRolesRepository {
         Ok(models)
     }
 
+    /// ギルドIDで全クエストの募集通知ロール一覧を取得（トランザクション内、quest_id・seq昇順）
+    pub async fn find_by_guild_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<quest_recruitment_notification_roles::Model>> {
+        debug!(
+            guild_id = guild_id,
+            "ギルドの全クエスト別募集通知ロール一覧を取得します（トランザクション内）"
+        );
+
+        let models = quest_recruitment_notification_roles::Entity::find()
+            .filter(quest_recruitment_notification_roles::Column::GuildId.eq(guild_id))
+            .order_by_asc(quest_recruitment_notification_roles::Column::QuestId)
+            .order_by_asc(quest_recruitment_notification_roles::Column::Seq)
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    guild_id = guild_id,
+                    "ギルドの全クエスト別募集通知ロール一覧の取得に失敗しました"
+                );
+                e
+            })?;
+
+        debug!(
+            guild_id = guild_id,
+            count = models.len(),
+            "ギルドの全クエスト別募集通知ロール一覧を取得しました"
+        );
+
+        Ok(models)
+    }
+
     /// クエスト別募集通知ロールが存在するかチェック（トランザクション内）
     pub async fn exists_with_txn(
         &self,

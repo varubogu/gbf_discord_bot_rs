@@ -202,4 +202,40 @@ impl RoleNotificationService {
             .delete_with_txn(txn, guild_id, quest_id, role_id)
             .await
     }
+
+    /// 全募集通知ロール一覧を取得
+    ///
+    /// # 引数
+    /// * `txn` - データベーストランザクション
+    /// * `guild_id` - ギルドID
+    ///
+    /// # 戻り値
+    /// 全募集通知ロールのリスト（seq昇順）
+    pub async fn get_all_recruitment_roles(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<crate::models::entities::all_recruitment_notification_roles::Model>> {
+        self.all_roles_repo
+            .find_by_guild_with_txn(txn, guild_id)
+            .await
+    }
+
+    /// クエスト別募集通知ロール一覧を取得
+    ///
+    /// # 引数
+    /// * `txn` - データベーストランザクション
+    /// * `guild_id` - ギルドID
+    ///
+    /// # 戻り値
+    /// クエスト別募集通知ロールのリスト（quest_id・seq昇順）
+    pub async fn get_quest_recruitment_roles(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<crate::models::entities::quest_recruitment_notification_roles::Model>> {
+        self.quest_roles_repo
+            .find_by_guild_with_txn(txn, guild_id)
+            .await
+    }
 }

@@ -1,10 +1,24 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::quests_repository::QuestRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::TransactionTrait;
+use std::collections::HashMap;
 use tracing::{info, instrument, warn};
+
+/// 募集通知ロール設定情報
+#[derive(Debug, Clone)]
+pub struct RecruitmentRoleSettings {
+    /// 全募集通知ロール
+    pub all_recruitment_roles: Vec<i64>,
+    /// クエスト別募集通知ロール（クエストID → ロールIDリスト）
+    pub quest_recruitment_roles: HashMap<i32, Vec<i64>>,
+    /// クエスト情報（クエストID → クエスト名）
+    pub quest_names: HashMap<i32, String>,
+}
 
 /// 募集通知ロールを追加するFacade
 ///
@@ -174,6 +188,81 @@ pub async fn remove_recruitment_notification_roles(
         }
         Err(e) => {
             warn!(error = %e, "募集通知ロールの削除に失敗しました");
+            txn.rollback().await?;
+            Err(e)
+        }
+    }
+}
+
+/// 募集通知ロール設定を取得するFacade
+///
+/// # 引数
+/// * `ctx` - Poiseコンテキスト
+///
+/// # 戻り値
+/// 募集通知ロール設定情報
+#[instrument(level = "debug", skip(ctx))]
+pub async fn show_recruitment_notification_roles(
+    ctx: &PoiseContext<'_>,
+) -> types::Result<RecruitmentRoleSettings> {
+    info!("募集通知ロール設定を取得します");
+
+    let app_state = &ctx.data().app_state;
+    let conn = app_state.guild_db();
+    let txn = conn.begin().await?;
+
+    // Discord固有情報を取得
+    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let result = async {
+        let role_service = RoleNotificationService::new();
+        let quest_repo = SeaOrmQuestRepository::new();
+
+        // 全募集通知ロール取得
+        let all_roles = role_service
+            .get_all_recruitment_roles(&txn, guild_id as i64)
+            .await?;
+
+        // クエスト別募集通知ロール取得
+        let quest_roles = role_service
+            .get_quest_recruitment_roles(&txn, guild_id as i64)
+            .await?;
+
+        // クエスト情報取得
+        let all_quests = quest_repo.get_all(conn).await?;
+        let quest_names: HashMap<i32, String> = all_quests
+            .into_iter()
+            .map(|q| (q.id, q.name.clone()))
+            .collect();
+
+        // クエストID別にロールをグループ化
+        let mut quest_role_map: HashMap<i32, Vec<i64>> = HashMap::new();
+        for role in quest_roles {
+            quest_role_map
+                .entry(role.quest_id)
+                .or_default()
+                .push(role.role_id);
+        }
+
+        Ok(RecruitmentRoleSettings {
+            all_recruitment_roles: all_roles.into_iter().map(|r| r.role_id).collect(),
+            quest_recruitment_roles: quest_role_map,
+            quest_names,
+        })
+    }
+    .await;
+
+    match result {
+        Ok(settings) => {
+            txn.commit().await?;
+            info!("募集通知ロール設定を取得しました");
+            Ok(settings)
+        }
+        Err(e) => {
+            warn!(error = %e, "募集通知ロール設定の取得に失敗しました");
             txn.rollback().await?;
             Err(e)
         }

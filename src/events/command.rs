@@ -13,6 +13,7 @@ pub fn commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::recruit_change::recruit_change(),
         slash::recruit_role_add::recruit_role_add(),
         slash::recruit_role_remove::recruit_role_remove(),
+        slash::recruit_role_show::recruit_role_show(),
         slash::recruitment_schedule_create::recruitment_schedule_create(),
         slash::recruitment_schedule_list::recruitment_schedule_list(),
         slash::recruitment_schedule_delete::recruitment_schedule_delete(),
