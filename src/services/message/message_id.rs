@@ -125,6 +125,10 @@ pub enum MessageId {
     RecruitCancelInvalidMessage,
     RecruitCancelNotFound,
     RecruitCancelError,
+    RecruitCancelledMessageSuffix,
+    RecruitCancelNotificationNoParticipants,
+    RecruitCancelNotificationWithParticipants,
+    RecruitCancellingProgress,
     RecruitChangeNoChanges,
     RecruitChangeSuccess,
 
@@ -269,6 +273,14 @@ impl MessageId {
             MessageId::RecruitCancelInvalidMessage => "recruit.cancel_invalid_message",
             MessageId::RecruitCancelNotFound => "recruit.cancel_not_found",
             MessageId::RecruitCancelError => "recruit.cancel_error",
+            MessageId::RecruitCancelledMessageSuffix => "recruit.cancelled_message_suffix",
+            MessageId::RecruitCancelNotificationNoParticipants => {
+                "recruit.cancel_notification_no_participants"
+            }
+            MessageId::RecruitCancelNotificationWithParticipants => {
+                "recruit.cancel_notification_with_participants"
+            }
+            MessageId::RecruitCancellingProgress => "recruit.cancelling_progress",
             MessageId::RecruitChangeNoChanges => "recruit.change_no_changes",
             MessageId::RecruitChangeSuccess => "recruit.change_success",
 

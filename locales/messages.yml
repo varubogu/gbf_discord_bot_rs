@@ -296,6 +296,18 @@ recruit.change_no_changes:
 recruit.change_success:
   ja: "募集内容を更新しました。"
   en: "Recruitment details have been updated."
+recruit.cancelled_message_suffix:
+  ja: "この募集はキャンセルされました"
+  en: "This recruitment has been cancelled"
+recruit.cancel_notification_no_participants:
+  ja: "募集がキャンセルされました。"
+  en: "The recruitment has been cancelled."
+recruit.cancel_notification_with_participants:
+  ja: "募集がキャンセルされました。\n参加予定だった皆さん"
+  en: "The recruitment has been cancelled.\nFor those who were planning to participate"
+recruit.cancelling_progress:
+  ja: "キャンセル中..."
+  en: "Cancelling..."
 
 messages.welcome:
   ja: "GBF Discord Botへようこそ！"

@@ -2,8 +2,8 @@ use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
-    delete_cancelling_message, delete_confirmation_message, edit_original_message_as_cancelled,
-    get_participants_from_reactions, send_cancel_reply_message, show_cancelling_message,
+    delete_cancelling_message, delete_confirmation_message, get_participants_from_reactions,
+    send_cancel_reply_message, show_cancelling_message,
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
@@ -145,11 +145,35 @@ async fn cancel_recruitment_internal(
         // 2. リアクションから参加者一覧を取得
         let participants = get_participants_from_reactions(ctx, channel_id, message_id).await?;
 
-        // 3. 募集メッセージを編集してキャンセル状態を明記
-        edit_original_message_as_cancelled(ctx, channel_id, message_id, &original_content).await?;
+        // 3. ロケール情報とguild_id取得
+        let locale = ctx.locale();
+        let guild_id_i64 = Some(guild_id as i64);
+        let message_service = app_state.message_service();
 
-        // 4. キャンセル通知メッセージを作成
-        let cancel_notification = create_cancel_notification_text(&participants).await?;
+        // 4. 募集メッセージを編集してキャンセル状態を明記
+        let cancelled_content = crate::services::recruitment::cancel::create_cancelled_message_content(
+            &txn,
+            message_service,
+            guild_id_i64,
+            locale,
+            &original_content,
+        )
+        .await?;
+        let channel = ChannelId::from(channel_id);
+        let edit_message = poise::serenity_prelude::EditMessage::new().content(cancelled_content);
+        channel
+            .edit_message(&ctx.http(), MessageId::from(message_id), edit_message)
+            .await?;
+
+        // 5. キャンセル通知メッセージを作成
+        let cancel_notification = create_cancel_notification_text(
+            &txn,
+            message_service,
+            guild_id_i64,
+            locale,
+            &participants,
+        )
+        .await?;
 
         // 5. キャンセル通知メッセージを送信
         let cancel_message_id =
@@ -285,9 +309,6 @@ async fn handle_confirm_cancel(
     interaction: ComponentInteraction,
     message: &Message,
 ) -> types::Result<()> {
-    // 「キャンセル中...」に変更
-    show_cancelling_message(ctx, &interaction).await?;
-
     let guild_id = if let Some(guild_id) = ctx.guild_id() {
         guild_id.get()
     } else {
@@ -296,6 +317,23 @@ async fn handle_confirm_cancel(
             message: "ギルド情報を取得できませんでした".to_string(),
         });
     };
+
+    // 「キャンセル中...」に変更
+    let app_state = &ctx.data().app_state;
+    let conn = app_state.guild_db();
+    let locale = ctx.locale();
+    let guild_id_i64 = Some(guild_id as i64);
+    let message_service = app_state.message_service();
+
+    show_cancelling_message(
+        ctx,
+        &interaction,
+        conn,
+        message_service,
+        guild_id_i64,
+        locale,
+    )
+    .await?;
 
     let channel_id = message.channel_id.get();
     let message_id = message.id.get();

@@ -1,10 +1,13 @@
 use poise::serenity_prelude::all::{
-    ChannelId, ComponentInteraction, EditInteractionResponse, EditMessage, Message, MessageId,
+    ChannelId, ComponentInteraction, EditInteractionResponse, Message, MessageId,
 };
-use sea_orm::DatabaseTransaction;
+use sea_orm::{ConnectionTrait, DatabaseTransaction};
+use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
+use crate::services::message::MessageId as MsgId;
+use crate::services::message::MessageService;
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
 
@@ -213,48 +216,74 @@ pub async fn get_participants_from_reactions(
 }
 
 /// キャンセル済みメッセージ作成
-pub async fn create_cancelled_message_content(original_content: &str) -> Result<String> {
+pub async fn create_cancelled_message_content<C>(
+    db: &C,
+    message_service: &MessageService,
+    guild_id: Option<i64>,
+    locale: Option<&str>,
+    original_content: &str,
+) -> Result<String>
+where
+    C: ConnectionTrait,
+{
+    // メッセージサービスからキャンセル済みサフィックスを取得
+    let cancelled_suffix = message_service
+        .get_message(
+            db,
+            MsgId::RecruitCancelledMessageSuffix.as_str(),
+            HashMap::new(),
+            guild_id,
+            locale,
+        )
+        .await
+        .unwrap_or_else(|_| "この募集はキャンセルされました".to_string());
+
     // 元のメッセージに打ち消し線と「キャンセル済み」を追加
     Ok(format!(
-        "~~{original_content}~~\n\n**この募集はキャンセルされました**"
+        "~~{original_content}~~\n\n**{cancelled_suffix}**"
     ))
 }
 
 /// キャンセル通知メッセージ作成
-pub async fn create_cancel_notification_text(participants: &[String]) -> Result<String> {
+pub async fn create_cancel_notification_text<C>(
+    db: &C,
+    message_service: &MessageService,
+    guild_id: Option<i64>,
+    locale: Option<&str>,
+    participants: &[String],
+) -> Result<String>
+where
+    C: ConnectionTrait,
+{
     if participants.is_empty() {
-        Ok("募集がキャンセルされました。".to_string())
+        // 参加者なしの場合
+        let message = message_service
+            .get_message(
+                db,
+                MsgId::RecruitCancelNotificationNoParticipants.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale,
+            )
+            .await
+            .unwrap_or_else(|_| "募集がキャンセルされました。".to_string());
+        Ok(message)
     } else {
+        // 参加者ありの場合
+        let base_message = message_service
+            .get_message(
+                db,
+                MsgId::RecruitCancelNotificationWithParticipants.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale,
+            )
+            .await
+            .unwrap_or_else(|_| "募集がキャンセルされました。\n参加予定だった皆さん".to_string());
+
         let participants_str = participants.join(" ");
-        Ok(format!(
-            "募集がキャンセルされました。\n参加予定だった皆さん: {participants_str}"
-        ))
+        Ok(format!("{base_message}: {participants_str}"))
     }
-}
-
-/// 元のメッセージをキャンセル済みに編集
-pub async fn edit_original_message_as_cancelled(
-    ctx: PoiseContext<'_>,
-    channel_id: u64,
-    message_id: u64,
-    original_content: &str,
-) -> Result<()> {
-    info!(
-        "元メッセージをキャンセル済みに編集: channel_id={}, message_id={}",
-        channel_id, message_id
-    );
-
-    let channel = ChannelId::from(channel_id);
-    let cancelled_content = create_cancelled_message_content(original_content).await?;
-
-    let edit_message = EditMessage::new().content(cancelled_content);
-
-    channel
-        .edit_message(&ctx.http(), MessageId::from(message_id), edit_message)
-        .await?;
-
-    info!("元メッセージのキャンセル済み編集完了");
-    Ok(())
 }
 
 /// キャンセル返信送信
@@ -293,17 +322,36 @@ pub async fn delete_confirmation_message(
 }
 
 /// キャンセル中表示に変更する
-pub async fn show_cancelling_message(
+pub async fn show_cancelling_message<C>(
     ctx: PoiseContext<'_>,
     interaction: &ComponentInteraction,
-) -> Result<()> {
+    db: &C,
+    message_service: &MessageService,
+    guild_id: Option<i64>,
+    locale: Option<&str>,
+) -> Result<()>
+where
+    C: ConnectionTrait,
+{
     info!("キャンセル中表示に変更します");
+
+    // メッセージサービスからキャンセル中メッセージを取得
+    let cancelling_message = message_service
+        .get_message(
+            db,
+            MsgId::RecruitCancellingProgress.as_str(),
+            HashMap::new(),
+            guild_id,
+            locale,
+        )
+        .await
+        .unwrap_or_else(|_| "キャンセル中...".to_string());
 
     interaction
         .edit_response(
             &ctx.serenity_context().http,
             EditInteractionResponse::new()
-                .content("キャンセル中...")
+                .content(cancelling_message)
                 .components(vec![]),
         )
         .await?;
