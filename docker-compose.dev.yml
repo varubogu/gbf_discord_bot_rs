@@ -4,16 +4,16 @@ networks:
 
 services:
   app:
-    # 本番用：ビルド済みイメージをGHCRからpull
-    # イメージ名は自動的に ghcr.io/<OWNER>/<REPO>:latest になります
-    # 例: ghcr.io/your-username/gbf_discord_bot_rs:latest
-    # 「GITHUB_REPOSITORY」は「username/repositoryname」形式
-    image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}:latest
+    # # 本番用：ビルド済みイメージをGHCRからpull
+    # # イメージ名は自動的に ghcr.io/<OWNER>/<REPO>:latest になります
+    # # 例: ghcr.io/your-username/gbf_discord_bot_rs:latest
+    # # 「GITHUB_REPOSITORY」は「username/repositoryname」形式
+    # image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}:latest
 
-    # # 検証用：ビルドする
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.app
+    # 検証用：ビルドする
+    build:
+      context: .
+      dockerfile: Dockerfile.app
     restart: always
     env_file:
       - .env.app
@@ -37,12 +37,12 @@ services:
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
   db:
-    # DBイメージもGHCRからpull ※説明はappの方を参照
-    image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}-db:latest
-    # # 検証用：ビルドする
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.db
+    # # DBイメージもGHCRからpull ※説明はappの方を参照
+    # image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}-db:latest
+    # 検証用：ビルドする
+    build:
+      context: .
+      dockerfile: Dockerfile.db
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql

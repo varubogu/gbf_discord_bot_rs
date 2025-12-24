@@ -9,6 +9,9 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY migration ./migration
 
+# ロケールファイルをコピー（ビルド時最適化のため必要
+COPY locales ./locales
+
 # ダミーソースで依存関係をビルド（キャッシュ層として機能）
 # 次回以降、ソースコード変更時は依存関係のビルドをスキップできる
 RUN mkdir src && \
