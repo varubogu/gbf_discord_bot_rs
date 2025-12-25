@@ -48,6 +48,7 @@ impl ScheduledTaskType {
         *self as i32
     }
 
+    #[warn(dead_code)]
     pub fn from_i32(value: i32) -> Option<Self> {
         match value {
             1 => Some(Self::Notification),
@@ -58,6 +59,7 @@ impl ScheduledTaskType {
         }
     }
 
+    #[warn(dead_code)]
     pub fn description(&self) -> &'static str {
         match self {
             Self::Notification => "通知",
