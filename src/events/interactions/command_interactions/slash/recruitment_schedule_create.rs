@@ -1,5 +1,7 @@
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
-use crate::services::recruitment::schedule::ScheduleDisplayService;
+use crate::services::recruitment::schedule::{
+    OffsetCalculatorService, ScheduleDisplayService, TimeParserService,
+};
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::CreateEmbed;
 use std::sync::Arc;
@@ -53,10 +55,10 @@ pub async fn recruitment_schedule_create(
     #[description_localized("ja", "マルチ攻略方法（省略時はクエストのデフォルト値を使用）")]
     battle_style: Option<i32>,
     #[name_localized("ja", "募集開始日オフセット")]
-    #[description = "Recruitment start day offset (0=same day, 1=day before, default: 1)"]
+    #[description = "Recruitment start day offset (0=same day, 1=day before, default: auto)"]
     #[description_localized(
         "ja",
-        "募集開始日オフセット（0=当日、1=前日、2=二日前、デフォルト: 1）"
+        "募集開始日オフセット（0=当日、1=前日、2=二日前、省略時は自動判定）"
     )]
     #[min = 0]
     #[max = 7]
@@ -84,6 +86,17 @@ pub async fn recruitment_schedule_create(
 
     let app_state = ctx.data().app_state.clone();
 
+    // オフセットのデフォルト値を決定
+    let default_offset = if let Some(offset) = recruit_start_day_offset {
+        offset as i32
+    } else {
+        // オフセット指定なしの場合、時刻から自動判定
+        let time_parser = TimeParserService::new();
+        let recruit_time = time_parser.parse_time_string(&recruit_start_time)?;
+        let quest_time = time_parser.parse_time_string(&quest_start_time)?;
+        OffsetCalculatorService::determine_default_offset(recruit_time, quest_time)
+    };
+
     // Facade層を呼び出し
     let facade = RecruitmentScheduleFacade::new(Arc::new(app_state));
     let result = facade
@@ -96,7 +109,7 @@ pub async fn recruitment_schedule_create(
             &days,
             &recruit_start_time,
             battle_style,
-            recruit_start_day_offset.unwrap_or(1) as i32,
+            default_offset,
             note,
         )
         .await;
