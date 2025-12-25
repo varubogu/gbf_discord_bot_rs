@@ -55,6 +55,7 @@ See `.claude/skills/` for detailed guidelines:
 
 ## Important Rules
 
-- **All comments, docs, and error messages must be in Japanese**
+- **All comments, docs, and error messages in code must be in Japanese**
+- **All chat responses to users must be in Japanese**
 - Detailed design documents in `docs/develop/` (see documentation skill)
 - Skills auto-trigger based on context - no need to explicitly call them
