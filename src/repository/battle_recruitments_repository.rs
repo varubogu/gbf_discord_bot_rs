@@ -40,6 +40,13 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         message_id: u64,
     ) -> Result<Option<BattleRecruitments>>;
 
+    /// IDで募集を取得（トランザクション対応）
+    async fn get_by_id_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<Option<BattleRecruitments>>;
+
     /// 募集終了メッセージを更新
     async fn set_end_message<'c, C>(
         &self,

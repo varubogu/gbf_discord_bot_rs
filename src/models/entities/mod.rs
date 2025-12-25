@@ -27,6 +27,11 @@ pub mod quest_aliases;
 pub mod quest_recruitment_notification_roles;
 pub mod quests;
 pub mod recruitment_participants;
+pub mod scheduled_task_cleanups;
+pub mod scheduled_task_dissolutions;
+pub mod scheduled_task_notifications;
+pub mod scheduled_task_recurring_recruitments;
+pub mod scheduled_tasks;
 
 // pub use channel_types::Entity as ChannelType;
 // pub use elements::Entity as Element;

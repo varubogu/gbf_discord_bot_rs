@@ -4,7 +4,7 @@ pub mod events;
 pub mod facades;
 pub mod infrastructure;
 mod models;
-mod repository;
+pub mod repository;
 pub mod services;
 pub mod types;
 pub mod utils;

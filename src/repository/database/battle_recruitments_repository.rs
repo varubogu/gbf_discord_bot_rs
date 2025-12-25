@@ -91,6 +91,19 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
         Ok(result.map(BattleRecruitments::from))
     }
 
+    async fn get_by_id_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<Option<BattleRecruitments>> {
+        let result = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(txn)
+            .await
+            .map_err(AppError::Database)?;
+
+        Ok(result.map(BattleRecruitments::from))
+    }
+
     async fn set_end_message<'c, C>(
         &self,
         db: &'c C,
