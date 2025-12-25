@@ -7,7 +7,7 @@ use std::{collections::HashMap, env};
 use chrono::Utc;
 use sea_orm::DbErr;
 use sea_orm::sea_query::{
-    Alias, ArrayType, Expr, IntoIden, PostgresQueryBuilder, Query, TableRef, Value as SeaValue,
+    Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue,
 };
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseConnection, DatabaseTransaction, Statement,
@@ -24,6 +24,7 @@ use crate::services::spreadsheet::{
     PostgresValue, RegisteredTableSchema, RowData, SchemaExtractorService,
     SchemaExtractorServiceTrait, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
     TableDefinition, TableDefinitionService, TableIO,
+    get_entity_table_ref, get_schema_name,
 };
 use crate::types::AppState;
 
@@ -826,58 +827,6 @@ fn column_index_to_letter(index: usize) -> String {
     }
 
     result
-}
-
-/// テーブル名からスキーマ名を取得
-///
-/// テーブル名から適切なスキーマ名を返します。
-fn get_schema_name(table_name: &str) -> &str {
-    match table_name {
-        // master スキーマ
-        "quests"
-        | "quest_aliases"
-        | "battle_styles"
-        | "elements"
-        | "channel_types"
-        | "event_schedules"
-        | "event_schedule_details"
-        | "message_texts"
-        | "environments" => "master",
-        // guild_master スキーマ
-        "guilds"
-        | "guild_channels"
-        | "guild_spreadsheet_exports"
-        | "guild_spreadsheet_imports"
-        | "guild_environments"
-        | "guild_event_schedules"
-        | "guild_event_schedule_details"
-        | "guild_message_texts"
-        | "guild_last_process_times" => "guild_master",
-        // worker スキーマ
-        "battle_recruitments"
-        | "notifications"
-        | "notification_rel_battle_recruitments"
-        | "notification_rel_event_schedules"
-        | "last_process_times" => "worker",
-        // デフォルトはpublicスキーマ（後方互換性のため）
-        _ => "public",
-    }
-}
-
-/// テーブル名からスキーマ修飾されたTableRefを取得
-///
-/// スキーマ名とテーブル名を使用して、適切なTableRefを返します。
-fn get_entity_table_ref(table_name: &str) -> TableRef {
-    let schema = get_schema_name(table_name);
-    // スキーマがpublicでない場合は、スキーマ修飾したTableRefを返す
-    if schema != "public" {
-        TableRef::SchemaTable(
-            Alias::new(schema).into_iden(),
-            Alias::new(table_name).into_iden(),
-        )
-    } else {
-        TableRef::Table(Alias::new(table_name).into_iden())
-    }
 }
 
 /// テーブルがUPSERT方式で保存すべきかを判定
