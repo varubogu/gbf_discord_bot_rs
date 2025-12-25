@@ -8,4 +8,4 @@
 
 
 # AI ignore
-.claude/
+.claude/settings.local.json
