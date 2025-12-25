@@ -22,7 +22,9 @@
 		"vscode": {
 			"extensions": [
 				"Anthropic.claude-code",
-				"openai.chatgpt"
+				"openai.chatgpt",
+				"Swellaby.vscode-rust-test-adapter",
+				"fill-labs.dependi"
 			]
 		}
 	}
