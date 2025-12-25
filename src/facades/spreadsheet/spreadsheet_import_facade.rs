@@ -899,7 +899,7 @@ async fn delete_unreferenced_records(
                     "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (
                         SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
                         UNION SELECT DISTINCT default_battle_style_id FROM master.quests
-                        UNION SELECT DISTINCT battle_style_id FROM worker.battle_recruitment_schedules
+                        UNION SELECT DISTINCT battle_style_id FROM guild_master.battle_recruitment_schedules
                     )"
                 )
             } else {
@@ -909,7 +909,7 @@ async fn delete_unreferenced_records(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
                         SELECT DISTINCT battle_style_id FROM worker.battle_recruitments
                         UNION SELECT DISTINCT default_battle_style_id FROM master.quests
-                        UNION SELECT DISTINCT battle_style_id FROM worker.battle_recruitment_schedules
+                        UNION SELECT DISTINCT battle_style_id FROM guild_master.battle_recruitment_schedules
                     )",
                     schema_name, table_name, placeholders.join(", ")
                 )
@@ -943,7 +943,7 @@ async fn delete_unreferenced_records(
                     "DELETE FROM {schema_name}.{table_name} WHERE id NOT IN (
                         SELECT DISTINCT quest_id FROM master.quest_aliases
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
-                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
+                        UNION SELECT DISTINCT quest_id FROM guild_master.battle_recruitment_schedules
                     )"
                 )
             } else {
@@ -953,7 +953,7 @@ async fn delete_unreferenced_records(
                     "DELETE FROM {}.{} WHERE id NOT IN ({}) AND id NOT IN (
                         SELECT DISTINCT quest_id FROM master.quest_aliases
                         UNION SELECT DISTINCT quest_id FROM worker.battle_recruitments
-                        UNION SELECT DISTINCT quest_id FROM worker.battle_recruitment_schedules
+                        UNION SELECT DISTINCT quest_id FROM guild_master.battle_recruitment_schedules
                     )",
                     schema_name,
                     table_name,
