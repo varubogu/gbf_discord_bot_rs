@@ -7,6 +7,14 @@ use tracing::{debug, error, info};
 
 /// スケジュール通知タイマー
 /// 10秒間隔で通知を実行
+///
+/// # 廃止予定
+/// このタイマーは廃止予定です。新しいSchedulerManagerを使用してください。
+/// SchedulerManagerは自動的に10秒間隔で通知を実行します。
+#[deprecated(
+    since = "0.1.0",
+    note = "Use SchedulerManager instead. This timer will be removed in the future."
+)]
 pub struct ScheduleNotificationTimer {
     scheduler_facade: Arc<SchedulerFacade>,
     http: Arc<Http>,

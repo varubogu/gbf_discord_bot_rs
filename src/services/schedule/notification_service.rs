@@ -78,48 +78,22 @@ impl NotificationService {
         let mut success_count = 0;
 
         for notification in notifications {
-            // 通知を送信
-            let send_result = self.send_notification(txn, &notification).await;
-
-            // 送信結果に関わらず、トランザクションでis_sentフラグを更新
-            // 送信成功した場合のみフラグを立てる
-            if send_result.is_ok() {
-                match self
-                    .notification_repo
-                    .mark_as_sent_with_txn(txn, notification.id)
-                    .await
-                {
-                    Ok(_) => {
-                        success_count += 1;
-                        debug!(
-                            notification_id = notification.id,
-                            guild_id = notification.guild_id,
-                            "通知を送信し、送信済みとしてマークしました"
-                        );
-                    }
-                    Err(e) => {
-                        error!(
-                            error = %e,
-                            notification_id = notification.id,
-                            "is_sentフラグの更新に失敗しました（次回再送されます）"
-                        );
-                        // markに失敗した場合はエラーとして扱う
-                        // Facade側でロールバックされる
-                        return Err(e);
-                    }
+            // 通知を送信してis_sentフラグを更新
+            match self.send_single_notification(txn, &notification).await {
+                Ok(_) => {
+                    success_count += 1;
                 }
-            } else {
-                error!(
-                    error = %send_result.unwrap_err(),
-                    notification_id = notification.id,
-                    guild_id = notification.guild_id,
-                    channel_id = notification.channel_id,
-                    "通知の送信に失敗しました（次回リトライされます）"
-                );
-                // 送信失敗はロールバック対象にする（再送のため）
-                return Err(crate::types::AppError::Business {
-                    message: "通知の送信に失敗しました".to_string(),
-                });
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        notification_id = notification.id,
+                        guild_id = notification.guild_id,
+                        channel_id = notification.channel_id,
+                        "通知の送信に失敗しました（次回リトライされます）"
+                    );
+                    // 送信失敗はロールバック対象にする（再送のため）
+                    return Err(e);
+                }
             }
         }
 
@@ -151,8 +125,32 @@ impl NotificationService {
         }
     }
 
-    /// 個別通知を送信
-    async fn send_notification(
+    /// 個別通知を送信してis_sentフラグを更新
+    /// SchedulerManager用の公開メソッド
+    pub async fn send_single_notification(
+        &self,
+        txn: &DatabaseTransaction,
+        notification: &notifications::Model,
+    ) -> Result<()> {
+        // 通知を送信
+        self.send_notification_internal(txn, notification).await?;
+
+        // is_sentフラグを更新
+        self.notification_repo
+            .mark_as_sent_with_txn(txn, notification.id)
+            .await?;
+
+        debug!(
+            notification_id = notification.id,
+            guild_id = notification.guild_id,
+            "通知を送信し、送信済みとしてマークしました"
+        );
+
+        Ok(())
+    }
+
+    /// 個別通知を送信（内部用）
+    async fn send_notification_internal(
         &self,
         txn: &DatabaseTransaction,
         notification: &notifications::Model,

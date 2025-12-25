@@ -55,6 +55,14 @@ impl SchedulerFacade {
     /// 通知を実行
     /// last_process_timesから前回実行時刻を取得し、その時刻から現在までの通知を実行
     /// 各通知はis_sentフラグで管理されるため、last_process_timesの更新は不要
+    ///
+    /// # 廃止予定
+    /// このメソッドは廃止予定です。新しいSchedulerManagerを使用してください。
+    /// SchedulerManagerは起動時に自動的に通知を実行します。
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use SchedulerManager instead. This method will be removed in the future."
+    )]
     pub async fn execute_notifications(&self, http: Arc<Http>) -> Result<()> {
         debug!("通知実行を開始します");
 

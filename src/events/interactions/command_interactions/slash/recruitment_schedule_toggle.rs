@@ -46,7 +46,11 @@ pub async fn recruitment_schedule_toggle(
     let facade = RecruitmentScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
     // Facade内で現在値を取得・反転・権限チェック（後続導入）・Tx管理を行う
     facade
-        .toggle_recruitment_schedule(schedule_id as i32, user_id.get() as i64)
+        .toggle_recruitment_schedule(
+            guild_id.get() as i64,
+            schedule_id as i32,
+            user_id.get() as i64,
+        )
         .await?;
 
     // 表示のみ（UI責務）

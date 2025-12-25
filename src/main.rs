@@ -1,8 +1,15 @@
-use gbf_discord_bot_rs::events::handlers::schedule_handler::ScheduleNotificationTimer;
 use gbf_discord_bot_rs::events::{
     command::{admin_commands, commands, global_commands},
     handler::event_handler,
 };
+use gbf_discord_bot_rs::repository::database::{
+    battle_recruitments_repository::BattleRecruitmentsRepositoryImpl,
+    recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl,
+    schedule::{
+        ScheduledTaskDissolutionRepository, ScheduledTaskRepository,
+    },
+};
+use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
@@ -12,6 +19,7 @@ use sea_orm::{ConnectOptions, Database};
 use sea_orm_migration::prelude::*;
 use std::env;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
@@ -242,17 +250,35 @@ async fn main() -> Result<()> {
 
     info!("Discord client created, starting bot...");
 
-    // スケジュール通知タイマーをバックグラウンドで起動
-    let app_state_for_scheduler = std::sync::Arc::new(app_state.clone());
-    let http = client.http.clone();
+    // SchedulerManagerの初期化と起動
+    let task_repo = Arc::new(ScheduledTaskRepository::new());
+    let dissolution_repo = Arc::new(ScheduledTaskDissolutionRepository::new());
+    let recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new());
+    let participants_repo = Arc::new(RecruitmentParticipantsRepositoryImpl::new());
+    let message_service = Arc::new(MessageService::new());
+
+    let mut scheduler_manager = SchedulerManager::new(
+        Arc::new(app_state.system_db().clone()),
+        client.http.clone(),
+        task_repo,
+        dissolution_repo,
+        recruitment_repo,
+        participants_repo,
+        message_service,
+    )
+    .await
+    .map_err(|e| {
+        error!(error = %e, "SchedulerManagerの初期化に失敗しました");
+        e
+    })?;
+
+    // SchedulerManagerをバックグラウンドで起動
     tokio::spawn(async move {
-        let timer = std::sync::Arc::new(ScheduleNotificationTimer::new(
-            app_state_for_scheduler,
-            http,
-        ));
-        timer.start().await;
+        if let Err(e) = scheduler_manager.start().await {
+            error!(error = %e, "SchedulerManagerの起動に失敗しました");
+        }
     });
-    info!("スケジュール通知タイマーを起動しました");
+    info!("SchedulerManagerを起動しました");
 
     // Start the bot
     if let Err(e) = client.start().await {

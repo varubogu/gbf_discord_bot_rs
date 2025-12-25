@@ -127,8 +127,15 @@ impl SchedulerService {
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
         use chrono::Utc;
+        use crate::models::entities::scheduled_tasks::ScheduledTaskType;
+        use crate::repository::database::schedule::{
+            ScheduledTaskNotificationRepository, ScheduledTaskRepository,
+        };
+
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelEventScheduleRepository::new();
+        let scheduled_task_repo = ScheduledTaskRepository::new();
+        let scheduled_task_notification_repo = ScheduledTaskNotificationRepository::new();
         let now = Utc::now();
 
         let mut created_count = 0;
@@ -140,6 +147,7 @@ impl SchedulerService {
                 continue;
             }
 
+            // 1. notificationを作成
             let notification = notification_repo
                 .create_with_txn(
                     txn,
@@ -150,6 +158,7 @@ impl SchedulerService {
                 )
                 .await?;
 
+            // 2. notification_relを作成
             rel_repo
                 .create_with_txn(
                     txn,
@@ -157,6 +166,22 @@ impl SchedulerService {
                     schedule.event_schedule_detail_id,
                     notification.id,
                 )
+                .await?;
+
+            // 3. scheduled_taskを作成（task_type=1: Notification）
+            let scheduled_task = scheduled_task_repo
+                .create(
+                    txn,
+                    schedule.schedule_datetime,
+                    ScheduledTaskType::Notification.as_i32(),
+                    Some(schedule.guild_id),
+                    Some(schedule.channel_id),
+                )
+                .await?;
+
+            // 4. scheduled_task_notificationを作成（紐付け）
+            scheduled_task_notification_repo
+                .create(txn, scheduled_task.id, notification.id)
                 .await?;
 
             created_count += 1;
@@ -171,6 +196,11 @@ impl SchedulerService {
     }
 
     /// 前回の処理時刻を取得
+    ///
+    /// # 注意
+    /// 通知処理用のlast_process_timesは廃止予定です。
+    /// SchedulerManagerを使用してください。
+    /// 定期募集処理では引き続き使用されます。
     pub async fn get_last_process_time(
         &self,
         db: &DatabaseConnection,
@@ -188,6 +218,11 @@ impl SchedulerService {
     }
 
     /// 処理時刻を更新
+    ///
+    /// # 注意
+    /// 通知処理用のlast_process_timesは廃止予定です。
+    /// SchedulerManagerを使用してください。
+    /// 定期募集処理では引き続き使用されます。
     pub async fn update_last_process_time(
         &self,
         txn: &DatabaseTransaction,
