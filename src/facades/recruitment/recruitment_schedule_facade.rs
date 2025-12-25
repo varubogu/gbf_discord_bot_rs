@@ -171,18 +171,24 @@ impl RecruitmentScheduleFacade {
     }
 
     /// スケジュール削除（権限チェックは後続でPermissionServiceへ委譲）
-    pub async fn delete_recruitment_schedule(&self, schedule_id: i32, user_id: i64) -> Result<()> {
+    pub async fn delete_recruitment_schedule(
+        &self,
+        guild_id: i64,
+        schedule_id: i32,
+        user_id: i64,
+    ) -> Result<()> {
         let conn = self.app_state.guild_db();
         let txn = conn.begin().await?;
 
-        // RLS適用のため、対象スケジュールのギルドIDを先に取得して設定したいが、
-        // 現時点では user_id は未使用。今後の拡張で権限チェックを追加予定。
-        let _ = user_id;
+        // RLSのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
+
+        let _ = user_id; // TODO: 権限チェック追加
 
         let result = async {
             // Service層に委譲
             let service = ScheduleCommandService::new();
-            service.delete_schedule(&txn, conn, schedule_id).await?;
+            service.delete_schedule(&txn, schedule_id).await?;
             Ok::<_, AppError>(())
         }
         .await;
@@ -190,11 +196,11 @@ impl RecruitmentScheduleFacade {
         match result {
             Ok(_) => {
                 txn.commit().await?;
-                info!(schedule_id, "募集スケジュールを削除しました");
+                info!(schedule_id, guild_id, "募集スケジュールを削除しました");
                 Ok(())
             }
             Err(e) => {
-                error!(error = %e, schedule_id, "募集スケジュールの削除に失敗しました");
+                error!(error = %e, schedule_id, guild_id, "募集スケジュールの削除に失敗しました");
                 txn.rollback().await?;
                 Err(e)
             }
@@ -202,18 +208,24 @@ impl RecruitmentScheduleFacade {
     }
 
     /// スケジュールの有効/無効切替（現在値を読み取り反転）
-    pub async fn toggle_recruitment_schedule(&self, schedule_id: i32, user_id: i64) -> Result<()> {
+    pub async fn toggle_recruitment_schedule(
+        &self,
+        guild_id: i64,
+        schedule_id: i32,
+        user_id: i64,
+    ) -> Result<()> {
         let conn = self.app_state.guild_db();
         let txn = conn.begin().await?;
+
+        // RLSのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
 
         let _ = user_id; // TODO: 権限チェック追加
 
         let result = async {
             // Service層に委譲
             let service = ScheduleCommandService::new();
-            service
-                .toggle_schedule_enabled(&txn, conn, schedule_id)
-                .await?;
+            service.toggle_schedule_enabled(&txn, schedule_id).await?;
             Ok::<_, AppError>(())
         }
         .await;
@@ -221,11 +233,11 @@ impl RecruitmentScheduleFacade {
         match result {
             Ok(_) => {
                 txn.commit().await?;
-                info!(schedule_id, "募集スケジュールの有効/無効を切り替えました");
+                info!(schedule_id, guild_id, "募集スケジュールの有効/無効を切り替えました");
                 Ok(())
             }
             Err(e) => {
-                error!(error = %e, schedule_id, "募集スケジュールの切替に失敗しました");
+                error!(error = %e, schedule_id, guild_id, "募集スケジュールの切替に失敗しました");
                 txn.rollback().await?;
                 Err(e)
             }

@@ -45,7 +45,11 @@ pub async fn recruitment_schedule_delete(
     let app_state = &ctx.data().app_state;
     let facade = RecruitmentScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
     facade
-        .delete_recruitment_schedule(schedule_id as i32, user_id.get() as i64)
+        .delete_recruitment_schedule(
+            guild_id.get() as i64,
+            schedule_id as i32,
+            user_id.get() as i64,
+        )
         .await?;
 
     info!(
