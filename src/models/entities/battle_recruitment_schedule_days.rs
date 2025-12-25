@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(
-    schema_name = "worker",
+    schema_name = "guild_master",
     table_name = "battle_recruitment_schedule_days"
 )]
 pub struct Model {

@@ -18,8 +18,8 @@ use tracing::info;
 pub async fn recruitment_schedule_list(
     ctx: PoiseContext<'_>,
     #[name_localized("ja", "全員表示")]
-    #[description = "Show all schedules (default: false, only yours)"]
-    #[description_localized("ja", "全員のスケジュールを表示（デフォルト: false、自分のみ）")]
+    #[description = "Show all schedules in this server (default: true)"]
+    #[description_localized("ja", "このサーバーの全員のスケジュールを表示（デフォルト: true）")]
     show_all: Option<bool>,
 ) -> Result<()> {
     let guild_id = ctx
@@ -29,7 +29,7 @@ pub async fn recruitment_schedule_list(
         })?;
 
     let user_id = ctx.author().id;
-    let show_all = show_all.unwrap_or(false);
+    let show_all = show_all.unwrap_or(true);
 
     info!(
         guild_id = guild_id.get(),

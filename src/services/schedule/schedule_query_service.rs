@@ -92,10 +92,17 @@ impl ScheduleQueryService {
         let quest_repo = SeaOrmQuestRepository::new();
 
         // スケジュールを取得
+        // RLSによりguild_idでフィルタリング済み
+        let schedules = schedule_repo.find_by_guild_id(txn, guild_id).await?;
+
+        // show_all=falseの場合は、さらに作成者でフィルタリング
         let schedules = if show_all {
-            schedule_repo.find_by_guild_id(txn, guild_id).await?
+            schedules
         } else {
-            schedule_repo.find_by_created_by(txn, user_id).await?
+            schedules
+                .into_iter()
+                .filter(|(schedule, _)| schedule.created_by == user_id)
+                .collect()
         };
 
         // スケジュールを整形
