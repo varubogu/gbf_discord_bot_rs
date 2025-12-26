@@ -44,6 +44,15 @@ pub struct SpreadsheetImportFacade {
     app_state: std::sync::Arc<AppState>,
 }
 
+/// 単一テーブル処理結果
+struct TableProcessResult {
+    success: bool,
+    inserted_rows: usize,
+    errors: Vec<String>,
+    warnings: Vec<String>,
+    generated_uuids: Vec<(String, GeneratedUuidInfo)>,
+}
+
 impl SpreadsheetImportFacade {
     /// 新しいFacadeを作成
     pub fn new(
@@ -66,6 +75,167 @@ impl SpreadsheetImportFacade {
             google_auth_service,
             app_state,
         })
+    }
+
+    /// 生成されたUUIDをスプレッドシートに書き戻す
+    async fn write_back_uuids(
+        sheets_client: &google_sheets4::Sheets<
+            google_sheets4::hyper_rustls::HttpsConnector<
+                google_sheets4::hyper::client::HttpConnector,
+            >,
+        >,
+        spreadsheet_id: &str,
+        generated_uuids: &[(String, GeneratedUuidInfo)],
+    ) -> Result<(), FacadeError> {
+        if generated_uuids.is_empty() {
+            return Ok(());
+        }
+
+        info!(
+            uuid_count = generated_uuids.len(),
+            "生成されたUUIDをスプレッドシートに書き戻します"
+        );
+
+        // UUID情報のみを抽出
+        let uuid_infos: Vec<_> = generated_uuids
+            .iter()
+            .map(|(_, info)| info.clone())
+            .collect();
+
+        // SpreadsheetWriterServiceを使用して書き戻し
+        let data_converter = DataConverterService::new();
+        let writer_service = SpreadsheetWriterService::new(data_converter);
+
+        writer_service
+            .write_back_generated_uuids(sheets_client, spreadsheet_id, &uuid_infos)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "UUID書き戻しに失敗しました");
+                FacadeError::ExternalService { source: e }
+            })?;
+
+        info!("UUID書き戻しが完了しました");
+        Ok(())
+    }
+
+    /// 単一テーブルのインポート処理
+    async fn process_single_table(
+        txn: &sea_orm::DatabaseTransaction,
+        reader_service: &SpreadsheetReaderService<TableDefinitionService, DataConverterService>,
+        sheets_client: &google_sheets4::Sheets<
+            google_sheets4::hyper_rustls::HttpsConnector<
+                google_sheets4::hyper::client::HttpConnector,
+            >,
+        >,
+        spreadsheet_id: &str,
+        table_def: &TableDefinition,
+        table_schema: &[crate::services::spreadsheet::ColumnSchema],
+        guild_id: Option<i64>,
+    ) -> TableProcessResult {
+        // データ読み込み
+        let read_result = match reader_service
+            .read_table_data(sheets_client, spreadsheet_id, table_def, table_schema)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => {
+                error!(
+                    table_name = %table_def.table_name,
+                    error = %e,
+                    "テーブルの読み込みに失敗しました"
+                );
+                return TableProcessResult {
+                    success: false,
+                    inserted_rows: 0,
+                    errors: vec![format!("テーブル「{}」: {}", table_def.table_name, e)],
+                    warnings: Vec::new(),
+                    generated_uuids: Vec::new(),
+                };
+            }
+        };
+
+        // 読み込みエラーを収集
+        let mut errors = Vec::new();
+        for err in &read_result.errors {
+            errors.push(format!(
+                "テーブル「{}」行{}: {}",
+                err.table_name, err.row_number, err.message
+            ));
+        }
+
+        // 生成されたUUIDを記録
+        let generated_uuids: Vec<_> = read_result
+            .generated_uuids
+            .iter()
+            .map(|generated_uuid| {
+                (
+                    table_def.table_name.clone(),
+                    GeneratedUuidInfo {
+                        sheet_name: table_def.sheet_name.clone(),
+                        row_number: generated_uuid.row_number,
+                        column_index: generated_uuid.column_index,
+                        uuid: generated_uuid.uuid,
+                    },
+                )
+            })
+            .collect();
+
+        info!(
+            table_name = %table_def.table_name,
+            row_count = read_result.rows.len(),
+            error_count = read_result.errors.len(),
+            generated_uuid_count = read_result.generated_uuids.len(),
+            "テーブルデータを読み込みました"
+        );
+
+        // データ永続化
+        let persistence_service = SpreadsheetPersistenceService::new();
+        match persistence_service
+            .persist_table_data(txn, &table_def.table_name, table_schema, &read_result.rows, guild_id)
+            .await
+        {
+            Ok(persist_result) => TableProcessResult {
+                success: true,
+                inserted_rows: persist_result.inserted_rows,
+                errors,
+                warnings: persist_result.warnings,
+                generated_uuids,
+            },
+            Err(FacadeError::Database { source }) => {
+                let message = format!(
+                    "テーブル『{}』: DB書き込みに失敗しました: {}",
+                    table_def.table_name, source
+                );
+                error!(
+                    table_name = %table_def.table_name,
+                    db_error = %source,
+                    "テーブルデータの保存に失敗しました"
+                );
+                errors.push(message);
+                TableProcessResult {
+                    success: false,
+                    inserted_rows: 0,
+                    errors,
+                    warnings: Vec::new(),
+                    generated_uuids,
+                }
+            }
+            Err(other) => {
+                error!(
+                    table_name = %table_def.table_name,
+                    error = %other,
+                    "テーブルデータの保存に失敗しました"
+                );
+                errors.push(format!("テーブル『{}』: {}", table_def.table_name, other));
+                TableProcessResult {
+                    success: false,
+                    inserted_rows: 0,
+                    errors,
+                    warnings: Vec::new(),
+                    generated_uuids,
+                }
+            }
+        }
     }
 
     /// グローバルスプレッドシートからデータをインポート
@@ -157,95 +327,27 @@ impl SpreadsheetImportFacade {
                     None => continue,
                 };
 
-                match reader_service
-                    .read_table_data(&sheets_client, spreadsheet_id, &table_def, &table.schema)
-                    .await
-                {
-                    Ok(read_result) => {
-                        if !read_result.errors.is_empty() {
-                            for err in &read_result.errors {
-                                errors.push(format!(
-                                    "テーブル「{}」行{}: {}",
-                                    err.table_name, err.row_number, err.message
-                                ));
-                            }
-                        }
+                let result = Self::process_single_table(
+                    &txn,
+                    &reader_service,
+                    &sheets_client,
+                    spreadsheet_id,
+                    &table_def,
+                    &table.schema,
+                    None, // グローバル版ではguild_idなし
+                )
+                .await;
 
-                        // 生成されたUUIDを記録
-                        for generated_uuid in &read_result.generated_uuids {
-                            all_generated_uuids.push((
-                                table_def.table_name.clone(),
-                                GeneratedUuidInfo {
-                                    sheet_name: table_def.sheet_name.clone(),
-                                    row_number: generated_uuid.row_number,
-                                    column_index: generated_uuid.column_index,
-                                    uuid: generated_uuid.uuid,
-                                },
-                            ));
-                        }
+                // 結果を集計
+                errors.extend(result.errors);
+                warnings.extend(result.warnings);
+                all_generated_uuids.extend(result.generated_uuids);
+                total_rows += result.inserted_rows;
 
-                        info!(
-                            table_name = %table_def.table_name,
-                            row_count = read_result.rows.len(),
-                            error_count = read_result.errors.len(),
-                            generated_uuid_count = read_result.generated_uuids.len(),
-                            "テーブルデータを読み込みました"
-                        );
-
-                        let persistence_service = SpreadsheetPersistenceService::new();
-                        match persistence_service
-                            .persist_table_data(
-                                &txn,
-                                &table_def.table_name,
-                                &table.schema,
-                                &read_result.rows,
-                                None, // グローバル版ではguild_idなし
-                            )
-                            .await
-                        {
-                            Ok(persist_result) => {
-                                total_rows += persist_result.inserted_rows;
-                                if !persist_result.warnings.is_empty() {
-                                    warnings.extend(persist_result.warnings);
-                                }
-                                success_count += 1;
-                            }
-                            Err(FacadeError::Database { source }) => {
-                                let message = format!(
-                                    "テーブル『{}』: DB書き込みに失敗しました: {}",
-                                    table_def.table_name, source
-                                );
-                                error!(
-                                    table_name = %table_def.table_name,
-                                    db_error = %source,
-                                    "テーブルデータの保存に失敗しました"
-                                );
-                                failure_count += 1;
-                                errors.push(message);
-                            }
-                            Err(other) => {
-                                error!(
-                                    table_name = %table_def.table_name,
-                                    error = %other,
-                                    "テーブルデータの保存に失敗しました"
-                                );
-                                failure_count += 1;
-                                errors.push(format!(
-                                    "テーブル『{}』: {}",
-                                    table_def.table_name, other
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!(
-                            table_name = %table_def.table_name,
-                            error = %e,
-                            "テーブルの読み込みに失敗しました"
-                        );
-                        failure_count += 1;
-                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
-                    }
+                if result.success {
+                    success_count += 1;
+                } else {
+                    failure_count += 1;
                 }
             }
 
@@ -275,35 +377,19 @@ impl SpreadsheetImportFacade {
         match result {
             Ok(import_result) => {
                 // 生成されたUUIDをスプレッドシートに書き戻し（コミット前に実施）
-                if !import_result.generated_uuids.is_empty() {
-                    info!(
-                        uuid_count = import_result.generated_uuids.len(),
-                        "生成されたUUIDをスプレッドシートに書き戻します"
+                if let Err(e) = Self::write_back_uuids(
+                    &sheets_client,
+                    spreadsheet_id,
+                    &import_result.generated_uuids,
+                )
+                .await
+                {
+                    error!(
+                        error = %e,
+                        "UUID書き戻しに失敗したため、トランザクションをロールバックします"
                     );
-
-                    // UUID情報のみを抽出
-                    let uuid_infos: Vec<_> = import_result
-                        .generated_uuids
-                        .iter()
-                        .map(|(_, info)| info.clone())
-                        .collect();
-
-                    // SpreadsheetWriterServiceを使用して書き戻し
-                    let data_converter = DataConverterService::new();
-                    let writer_service = SpreadsheetWriterService::new(data_converter);
-
-                    if let Err(e) = writer_service
-                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &uuid_infos)
-                        .await
-                    {
-                        error!(
-                            error = %e,
-                            "UUID書き戻しに失敗したため、トランザクションをロールバックします"
-                        );
-                        txn.rollback().await?;
-                        return Err(FacadeError::ExternalService { source: e });
-                    }
-                    info!("UUID書き戻しが完了しました");
+                    txn.rollback().await?;
+                    return Err(e);
                 }
 
                 // UUID書き戻しが成功した場合のみコミット
@@ -520,95 +606,27 @@ impl SpreadsheetImportFacade {
                     None => continue,
                 };
 
-                match reader_service
-                    .read_table_data(&sheets_client, spreadsheet_id, &table_def, &table.schema)
-                    .await
-                {
-                    Ok(read_result) => {
-                        if !read_result.errors.is_empty() {
-                            for err in &read_result.errors {
-                                errors.push(format!(
-                                    "テーブル「{}」行{}: {}",
-                                    err.table_name, err.row_number, err.message
-                                ));
-                            }
-                        }
+                let result = Self::process_single_table(
+                    &txn,
+                    &reader_service,
+                    &sheets_client,
+                    spreadsheet_id,
+                    &table_def,
+                    &table.schema,
+                    Some(guild_id as i64), // ギルド版ではguild_idを渡す
+                )
+                .await;
 
-                        // 生成されたUUIDを記録
-                        for generated_uuid in &read_result.generated_uuids {
-                            all_generated_uuids.push((
-                                table_def.table_name.clone(),
-                                GeneratedUuidInfo {
-                                    sheet_name: table_def.sheet_name.clone(),
-                                    row_number: generated_uuid.row_number,
-                                    column_index: generated_uuid.column_index,
-                                    uuid: generated_uuid.uuid,
-                                },
-                            ));
-                        }
+                // 結果を集計
+                errors.extend(result.errors);
+                warnings.extend(result.warnings);
+                all_generated_uuids.extend(result.generated_uuids);
+                total_rows += result.inserted_rows;
 
-                        info!(
-                            table_name = %table_def.table_name,
-                            row_count = read_result.rows.len(),
-                            error_count = read_result.errors.len(),
-                            generated_uuid_count = read_result.generated_uuids.len(),
-                            "テーブルデータを読み込みました"
-                        );
-
-                        let persistence_service = SpreadsheetPersistenceService::new();
-                        match persistence_service
-                            .persist_table_data(
-                                &txn,
-                                &table_def.table_name,
-                                &table.schema,
-                                &read_result.rows,
-                                Some(guild_id as i64), // ギルド版ではguild_idを渡す
-                            )
-                            .await
-                        {
-                            Ok(persist_result) => {
-                                total_rows += persist_result.inserted_rows;
-                                if !persist_result.warnings.is_empty() {
-                                    warnings.extend(persist_result.warnings);
-                                }
-                                success_count += 1;
-                            }
-                            Err(FacadeError::Database { source }) => {
-                                let message = format!(
-                                    "テーブル『{}』: DB書き込みに失敗しました: {}",
-                                    table_def.table_name, source
-                                );
-                                error!(
-                                    table_name = %table_def.table_name,
-                                    db_error = %source,
-                                    "テーブルデータの保存に失敗しました"
-                                );
-                                failure_count += 1;
-                                errors.push(message);
-                            }
-                            Err(other) => {
-                                error!(
-                                    table_name = %table_def.table_name,
-                                    error = %other,
-                                    "テーブルデータの保存に失敗しました"
-                                );
-                                failure_count += 1;
-                                errors.push(format!(
-                                    "テーブル『{}』: {}",
-                                    table_def.table_name, other
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!(
-                            table_name = %table_def.table_name,
-                            error = %e,
-                            "テーブルの読み込みに失敗しました"
-                        );
-                        failure_count += 1;
-                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
-                    }
+                if result.success {
+                    success_count += 1;
+                } else {
+                    failure_count += 1;
                 }
             }
 
@@ -638,35 +656,19 @@ impl SpreadsheetImportFacade {
         match result {
             Ok(import_result) => {
                 // 生成されたUUIDをスプレッドシートに書き戻し（コミット前に実施）
-                if !import_result.generated_uuids.is_empty() {
-                    info!(
-                        uuid_count = import_result.generated_uuids.len(),
-                        "生成されたUUIDをスプレッドシートに書き戻します"
+                if let Err(e) = Self::write_back_uuids(
+                    &sheets_client,
+                    spreadsheet_id,
+                    &import_result.generated_uuids,
+                )
+                .await
+                {
+                    error!(
+                        error = %e,
+                        "UUID書き戻しに失敗したため、トランザクションをロールバックします"
                     );
-
-                    // UUID情報のみを抽出
-                    let uuid_infos: Vec<_> = import_result
-                        .generated_uuids
-                        .iter()
-                        .map(|(_, info)| info.clone())
-                        .collect();
-
-                    // SpreadsheetWriterServiceを使用して書き戻し
-                    let data_converter = DataConverterService::new();
-                    let writer_service = SpreadsheetWriterService::new(data_converter);
-
-                    if let Err(e) = writer_service
-                        .write_back_generated_uuids(&sheets_client, spreadsheet_id, &uuid_infos)
-                        .await
-                    {
-                        error!(
-                            error = %e,
-                            "UUID書き戻しに失敗したため、トランザクションをロールバックします"
-                        );
-                        txn.rollback().await?;
-                        return Err(FacadeError::ExternalService { source: e });
-                    }
-                    info!("UUID書き戻しが完了しました");
+                    txn.rollback().await?;
+                    return Err(e);
                 }
 
                 // UUID書き戻しが成功した場合のみコミット
