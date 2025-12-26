@@ -10,6 +10,7 @@ use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageTextId, MessageService};
+use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
@@ -98,7 +99,7 @@ where
         parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"))
     };
 
-    // メッセージ内容を作成
+    // メッセージ内容を作成（解散時刻なし - create_recruitment_dataでは解散時刻情報がないため）
     let message_content = create_message_content(
         db,
         &quest.name,
@@ -106,6 +107,7 @@ where
         &expiry_date,
         timezone,
         Some(guild_id as i64),
+        None,
     )
     .await?;
 
@@ -193,6 +195,7 @@ pub async fn create_message_content<C>(
     expiry_date: &DateTime<chrono::Utc>,
     timezone: chrono_tz::Tz,
     guild_id: Option<i64>,
+    dismissal_times: Option<&[ParsedDismissalTime]>,
 ) -> types::Result<String>
 where
     C: sea_orm::ConnectionTrait,
@@ -245,7 +248,62 @@ where
         local_date.format(&date_format)
     ));
 
+    // 解散時刻を追加
+    if let Some(dismissal_times_list) = dismissal_times {
+        if !dismissal_times_list.is_empty() {
+            let dismissal_label = message_service
+                .get_message(
+                    db,
+                    MessageTextId::RecruitmentDismissalTimesLabel.as_str(),
+                    HashMap::new(),
+                    guild_id,
+                    Some("ja"),
+                )
+                .await?;
+
+            let dismissal_texts: Vec<String> = dismissal_times_list
+                .iter()
+                .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
+                .collect();
+
+            message_text.push_str(&format!("\n{}{}", dismissal_label, dismissal_texts.join(", ")));
+        }
+    }
+
     Ok(message_text)
+}
+
+/// 解散時刻をフォーマット（相対時刻と絶対時刻の両方を表示）
+fn format_dismissal_time(
+    dismissal_time: &ParsedDismissalTime,
+    departure_time: &DateTime<Utc>,
+    timezone: &chrono_tz::Tz,
+    date_format: &str,
+) -> String {
+    match dismissal_time {
+        ParsedDismissalTime::Absolute {
+            input_value,
+            datetime,
+        } => {
+            let local_datetime = datetime.with_timezone(timezone);
+            let formatted_datetime = local_datetime.format(date_format).to_string();
+            format!("{} ({})", input_value, formatted_datetime)
+        }
+        ParsedDismissalTime::Relative {
+            input_value,
+            days,
+            hours,
+            minutes,
+        } => {
+            use chrono::Duration;
+            let duration =
+                Duration::days(*days as i64) + Duration::hours(*hours as i64) + Duration::minutes(*minutes as i64);
+            let dismissal_datetime = *departure_time - duration;
+            let local_datetime = dismissal_datetime.with_timezone(timezone);
+            let formatted_datetime = local_datetime.format(date_format).to_string();
+            format!("{} ({})", input_value, formatted_datetime)
+        }
+    }
 }
 
 /// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）

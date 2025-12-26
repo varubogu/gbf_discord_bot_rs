@@ -40,3 +40,7 @@ test-log = { version = "0.2", features = ["trace"] }
 env_logger = "0.10"
 tempfile = "3.13"
 serial_test = "3.2"
+
+[[bin]]
+name = "schema_lint"
+path = "tools/schema_lint.rs"

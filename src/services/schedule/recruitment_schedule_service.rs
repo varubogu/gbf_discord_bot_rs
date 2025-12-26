@@ -173,7 +173,7 @@ impl RecruitmentScheduleService {
 
         // 募集開始時刻とクエスト開始時刻の整合性チェック
         if let Some(recruit_time) = recruit_start_time {
-            if recruit_start_day_offset == 0 && recruit_time > quest_start_time {
+            if recruit_start_day_offset == 0 && recruit_time >= quest_start_time {
                 return Err(crate::types::AppError::Business {
                     message:
                         "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
@@ -272,13 +272,25 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_schedule_input_invalid_time() {
+    fn test_validate_schedule_input_invalid_time_after() {
         let service = RecruitmentScheduleService::new();
         let result = service.validate_schedule_input(
             &[1],
             NaiveTime::from_hms_opt(22, 0, 0).unwrap(),
             0,
             Some(NaiveTime::from_hms_opt(23, 0, 0).unwrap()), // 募集開始時刻がクエスト開始時刻より後
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_schedule_input_invalid_time_equal() {
+        let service = RecruitmentScheduleService::new();
+        let result = service.validate_schedule_input(
+            &[1],
+            NaiveTime::from_hms_opt(22, 0, 0).unwrap(),
+            0,
+            Some(NaiveTime::from_hms_opt(22, 0, 0).unwrap()), // 募集開始時刻とクエスト開始時刻が同じ
         );
         assert!(result.is_err());
     }

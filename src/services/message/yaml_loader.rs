@@ -182,6 +182,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         "recruitment.date_format" => {
             Some(t!("recruitment.date_format", locale = locale).to_string())
         }
+        "recruitment.dismissal_times_label" => {
+            Some(t!("recruitment.dismissal_times_label", locale = locale).to_string())
+        }
         "recruitment.element_fire" => {
             Some(t!("recruitment.element_fire", locale = locale).to_string())
         }

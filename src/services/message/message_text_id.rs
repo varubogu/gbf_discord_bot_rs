@@ -96,6 +96,7 @@ pub enum MessageTextId {
     RecruitmentStart,
     RecruitmentEventDateLabel,
     RecruitmentDateFormat,
+    RecruitmentDismissalTimesLabel,
     RecruitmentElementFire,
     RecruitmentElementWater,
     RecruitmentElementEarth,
@@ -131,6 +132,9 @@ pub enum MessageTextId {
     RecruitCancellingProgress,
     RecruitChangeNoChanges,
     RecruitChangeSuccess,
+
+    // Recruitment dismissal messages
+    RecruitmentDismissalNotification,
 
     // General messages
     MessagesWelcome,
@@ -244,6 +248,7 @@ impl MessageTextId {
             MessageTextId::RecruitmentStart => "recruitment.start",
             MessageTextId::RecruitmentEventDateLabel => "recruitment.event_date_label",
             MessageTextId::RecruitmentDateFormat => "recruitment.date_format",
+            MessageTextId::RecruitmentDismissalTimesLabel => "recruitment.dismissal_times_label",
             MessageTextId::RecruitmentElementFire => "recruitment.element_fire",
             MessageTextId::RecruitmentElementWater => "recruitment.element_water",
             MessageTextId::RecruitmentElementEarth => "recruitment.element_earth",
@@ -283,6 +288,11 @@ impl MessageTextId {
             MessageTextId::RecruitCancellingProgress => "recruit.cancelling_progress",
             MessageTextId::RecruitChangeNoChanges => "recruit.change_no_changes",
             MessageTextId::RecruitChangeSuccess => "recruit.change_success",
+
+            // Recruitment dismissal
+            MessageTextId::RecruitmentDismissalNotification => {
+                "recruitment.dismissal_notification"
+            }
 
             // Messages
             MessageTextId::MessagesWelcome => "messages.welcome",

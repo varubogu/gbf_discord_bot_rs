@@ -81,7 +81,7 @@ impl ActiveModelBehavior for ActiveModel {
             quest_id: sea_orm::NotSet,
             battle_style_id: sea_orm::NotSet,
             quest_start_time: sea_orm::NotSet,
-            recruit_start_day_offset: sea_orm::Set(0),
+            recruit_start_day_offset: sea_orm::NotSet, // デフォルト値はコマンド層で決定
             recruit_start_time: sea_orm::NotSet,
             max_participants: sea_orm::NotSet,
             note: sea_orm::NotSet,

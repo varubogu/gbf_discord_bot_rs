@@ -30,6 +30,11 @@ pub async fn recruit_new_v2(
     #[description = "battle style"]
     #[description_localized("ja", "マルチ攻略方法（未指定の場合はクエストのデフォルト値を使用）")]
     battle_style: Option<i32>,
+
+    #[name_localized("ja", "解散時刻")]
+    #[description = "dismissal times (comma-separated, max 3)"]
+    #[description_localized("ja", "解散時刻（カンマ区切り、最大3つ。例: 1時間前, 21:00, 2日前）")]
+    dismissal_times: Option<String>,
 ) -> Result<()> {
     ctx.defer().await?;
 
@@ -53,6 +58,7 @@ pub async fn recruit_new_v2(
         battle_style,
         Some(parsed_date),
         true,
+        dismissal_times,
     )
     .await?;
 

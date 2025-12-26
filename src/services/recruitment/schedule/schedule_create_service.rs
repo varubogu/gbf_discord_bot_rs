@@ -5,14 +5,18 @@ use crate::repository::database::battle_style_repository::{
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
-    ScheduledTaskRepository,
+    BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
+    ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
+use sea_orm::entity::prelude::TimeTime;
 use crate::repository::quests_repository::QuestRepository;
+use crate::services::recruitment::dismissal_time_parser_service::{
+    DismissalTimeParserService, ParsedDismissalTime,
+};
 use crate::services::recruitment::schedule::{DaysParserService, TimeParserService};
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::types::{AppError, Result};
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
 use sea_orm::DatabaseTransaction;
 use tracing::{debug, info};
@@ -32,6 +36,7 @@ pub struct ScheduleCreationResult {
     pub recruit_start_time: String,
     pub note: Option<String>,
     pub timezone: Tz,
+    pub dismissal_times: Option<String>,
 }
 
 /// スケジュール作成サービス
@@ -84,6 +89,7 @@ impl ScheduleCreateService {
         battle_style_id: Option<i32>,
         recruit_day_offset: i32,
         note: Option<String>,
+        dismissal_times: Option<String>,
         timezone: Tz,
     ) -> Result<ScheduleCreationResult> {
         // 1. クエスト検索・取得
@@ -162,7 +168,19 @@ impl ScheduleCreateService {
         self.create_next_scheduled_task(txn, &schedule, &days)
             .await?;
 
-        // 10. 結果データ作成
+        // 10. 解散時刻を登録（指定されている場合）
+        if let Some(ref dismissal_times_str) = dismissal_times {
+            self.save_dismissal_times(
+                txn,
+                schedule.id,
+                dismissal_times_str,
+                quest_start_time_local,
+                timezone,
+            )
+            .await?;
+        }
+
+        // 11. 結果データ作成
         Ok(ScheduleCreationResult {
             schedule_id: schedule.id as i64,
             schedule_name: name,
@@ -176,6 +194,7 @@ impl ScheduleCreateService {
             recruit_start_time: recruit_start_time_local.format("%H:%M").to_string(),
             note,
             timezone,
+            dismissal_times,
         })
     }
 
@@ -332,6 +351,87 @@ impl ScheduleCreateService {
                 });
             }
         }
+    }
+
+    /// 解散時刻を保存
+    async fn save_dismissal_times(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_id: i32,
+        dismissal_times_str: &str,
+        quest_start_time_local: chrono::NaiveTime,
+        timezone: Tz,
+    ) -> Result<()> {
+        debug!(
+            schedule_id,
+            dismissal_times = %dismissal_times_str,
+            "定期募集の解散時刻をパースします"
+        );
+
+        // 環境変数から最大日数を取得（デフォルト7日）
+        let max_days = std::env::var("DISMISSAL_MAX_DAYS")
+            .ok()
+            .and_then(|v| v.parse::<i32>().ok())
+            .unwrap_or(7);
+
+        // 仮の出発日時を作成（パース用）
+        let today = Utc::now().date_naive();
+        let departure_time = timezone
+            .from_local_datetime(&today.and_time(quest_start_time_local))
+            .single()
+            .ok_or_else(|| AppError::Business {
+                message: "出発時刻の変換に失敗しました".to_string(),
+            })?
+            .with_timezone(&Utc);
+
+        // 解散時刻をパース
+        let parser = DismissalTimeParserService::new();
+        let parsed_dismissal_times =
+            parser.parse(dismissal_times_str, departure_time, timezone, max_days)?;
+
+        // データベースに保存
+        let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+
+        for dismissal_time in parsed_dismissal_times {
+            match dismissal_time {
+                ParsedDismissalTime::Absolute {
+                    input_value,
+                    datetime,
+                } => {
+                    // 絶対時刻の場合、時刻部分のみ抽出してTimeTimeに変換
+                    let naive_time = datetime.time();
+                    let dismissal_time = TimeTime::from_hms(
+                        naive_time.hour() as u8,
+                        naive_time.minute() as u8,
+                        naive_time.second() as u8,
+                    )
+                    .map_err(|e| AppError::Business {
+                        message: format!("解散時刻の変換に失敗しました: {}", e),
+                    })?;
+                    dismissal_repo
+                        .create_absolute(txn, schedule_id, input_value, dismissal_time)
+                        .await?;
+                }
+                ParsedDismissalTime::Relative {
+                    input_value,
+                    days,
+                    hours,
+                    minutes,
+                } => {
+                    dismissal_repo
+                        .create_relative(txn, schedule_id, input_value, days, hours, minutes)
+                        .await?;
+                }
+            }
+        }
+
+        info!(
+            schedule_id,
+            count = dismissal_times_str.split(',').count(),
+            "定期募集の解散時刻を保存しました"
+        );
+
+        Ok(())
     }
 }
 

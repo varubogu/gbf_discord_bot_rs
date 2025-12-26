@@ -41,6 +41,7 @@ pub enum ScheduledTaskType {
     Dissolution = 2,          // 解散
     DataCleanup = 3,          // データクリーンアップ
     RecurringRecruitment = 4, // 定期募集
+    Dismissal = 5,            // 人数不足解散
 }
 
 impl ScheduledTaskType {
@@ -48,6 +49,7 @@ impl ScheduledTaskType {
         *self as i32
     }
 
+    #[warn(dead_code)]
     pub fn from_i32(value: i32) -> Option<Self> {
         match value {
             1 => Some(Self::Notification),
@@ -58,12 +60,14 @@ impl ScheduledTaskType {
         }
     }
 
+    #[warn(dead_code)]
     pub fn description(&self) -> &'static str {
         match self {
             Self::Notification => "通知",
             Self::Dissolution => "解散",
             Self::DataCleanup => "データ整理",
             Self::RecurringRecruitment => "定期募集",
+            Self::Dismissal => "人数不足解散",
         }
     }
 }

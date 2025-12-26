@@ -56,6 +56,7 @@ impl RecruitmentScheduleFacade {
         battle_style_id: Option<i32>,
         recruit_day_offset: i32,
         note: Option<String>,
+        dismissal_times: Option<String>,
     ) -> Result<ScheduleCreationResult> {
         info!(
             guild_id = guild_id,
@@ -100,6 +101,7 @@ impl RecruitmentScheduleFacade {
                     battle_style_id,
                     recruit_day_offset,
                     note,
+                    dismissal_times,
                     timezone,
                 )
                 .await?;

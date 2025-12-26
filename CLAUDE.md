@@ -24,6 +24,7 @@ cargo test -- --nocapture      # Run with logging
 cargo clippy                   # Check code
 cargo fmt                      # Format code
 cargo fmt -- --check           # Check formatting
+cargo run --bin schema_lint    # Verify schema consistency
 ```
 
 ### Database Migrations
@@ -52,6 +53,15 @@ See `.claude/skills/` for detailed guidelines:
 - `testing` - Test structure and mocking patterns
 - `documentation` - Documentation principles for `docs/develop/`
 - `architecture-lint` - Detect architecture violations
+
+## Schema Management
+
+Schema name mappings are automatically generated from entity definitions.
+See `docs/schema_management.md` for details.
+
+- Entity schema info → auto-generated at build time
+- Use `get_schema_name(table_name)` and `get_entity_table_ref(table_name)` from `schema_utils`
+- Run `cargo run --bin schema_lint` to verify consistency
 
 ## Important Rules
 

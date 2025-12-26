@@ -3,9 +3,10 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
+use crate::services::recruitment::dismissal_time_parser_service::DismissalTimeParserService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::NotificationManagementService;
+use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
@@ -28,6 +29,7 @@ pub async fn new_recruitment(
     battle_style_id: Option<i32>,
     event_date: Option<DateTime<Utc>>,
     use_buttons: bool,
+    dismissal_times: Option<String>,
 ) -> types::Result<(u64, Vec<poise::serenity_prelude::ReactionType>)> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
@@ -107,6 +109,75 @@ pub async fn new_recruitment(
                 recruitment.id,
             )
             .await?;
+
+        // 5. 解散時刻を登録（指定されている場合）
+        if let Some(ref dismissal_times_str) = dismissal_times {
+            debug!(
+                dismissal_times = %dismissal_times_str,
+                recruitment_id = recruitment.id,
+                "解散時刻のパースと登録を開始します"
+            );
+
+            // 環境変数から最大日数を取得（デフォルト7日）
+            let max_days = std::env::var("DISMISSAL_MAX_DAYS")
+                .ok()
+                .and_then(|v| v.parse::<i32>().ok())
+                .unwrap_or(7);
+
+            // 解散時刻をパース
+            let parser = DismissalTimeParserService::new();
+            let parsed_dismissal_times = parser.parse(
+                dismissal_times_str,
+                recruitment_data.expiry_date,
+                timezone,
+                max_days,
+            )?;
+
+            // 解散時刻を含めたメッセージを再生成
+            let message_content_with_dismissal = new::create_message_content(
+                &txn,
+                &recruitment_data.quest.name,
+                &recruitment_data.battle_style_name,
+                &recruitment_data.expiry_date,
+                timezone,
+                Some(guild_id as i64),
+                Some(&parsed_dismissal_times),
+            )
+            .await?;
+
+            // ロールメンションがある場合は先頭に追加
+            let final_message_content = if !role_mentions.is_empty() {
+                format!("{}\n{}", role_mentions, message_content_with_dismissal)
+            } else {
+                message_content_with_dismissal
+            };
+
+            // Discordメッセージを更新
+            use poise::serenity_prelude::{ChannelId, MessageId};
+            let channel = ChannelId::new(channel_id);
+            let msg = MessageId::new(message_id);
+            channel
+                .edit_message(ctx.http(), msg, poise::serenity_prelude::EditMessage::new().content(final_message_content))
+                .await?;
+
+            // 解散時刻を登録
+            let dismissal_service = DismissalManagementService::new();
+            dismissal_service
+                .create_recruitment_dismissals(
+                    &txn,
+                    recruitment.id,
+                    parsed_dismissal_times,
+                    recruitment_data.expiry_date,
+                    guild_id as i64,
+                    channel_id as i64,
+                )
+                .await?;
+
+            info!(
+                recruitment_id = recruitment.id,
+                "解散時刻を登録しました"
+            );
+        }
 
         // message_idとreactionsを返す
         Ok((message_id, recruitment_data.reactions.clone()))

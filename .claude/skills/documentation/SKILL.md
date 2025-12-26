@@ -113,6 +113,54 @@ pub async fn create_user(data: UserData) -> Result<User> {
 4. Save within transaction
 ```
 
+### Permanence Principle (Critical)
+
+**Documents are permanent design references, not temporary work trackers**
+
+- Documents should remain valid regardless of implementation timeline
+- Avoid including any time-bound or progress-related information
+- Focus on stable design decisions and architectural principles
+
+```markdown
+❌ Bad (temporal information):
+## User Authentication Feature
+
+### TODO
+- [ ] Implement password hashing
+- [ ] Add JWT token generation
+- [ ] Currently working on session management
+
+### Progress
+Week 1: Completed user model
+Week 2: In progress - authentication logic
+
+✅ Good (permanent design):
+## User Authentication Feature
+
+### Responsibilities
+- Validate user credentials
+- Generate secure session tokens
+- Manage user sessions
+
+### Security Constraints
+- Passwords must be hashed with bcrypt
+- Tokens expire after 24 hours
+- Sessions invalidate on logout
+```
+
+**Do not include:**
+- Implementation plans or roadmaps
+- Progress tracking or status updates
+- TODO lists or task checklists
+- Temporary notes or WIP markers
+- Time-sensitive information (e.g., "currently implementing...", "planned for next sprint")
+- Developer assignments or timelines
+
+**Documents should be:**
+- Permanent design references
+- Independent of who implements or when
+- Focused on "what" and "why", not "when" or "who"
+
 ### Language
 
 - All documentation in **Japanese** (except this skill file)
@@ -313,6 +361,7 @@ When this rule doesn't apply
 Check when creating/modifying documents:
 
 - [ ] No concrete code implementation included
+- [ ] No temporal information (plans, progress, TODOs) included
 - [ ] Responsibilities and flow clearly described
 - [ ] Written in Japanese
 - [ ] Constraints and prohibitions specified

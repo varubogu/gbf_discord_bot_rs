@@ -233,6 +233,9 @@ recruitment.event_date_label:
 recruitment.date_format:
   ja: "%m/%d %H:%M %Z"
   en: "%m/%d %I:%M %p %Z"
+recruitment.dismissal_times_label:
+  ja: "解散時刻："
+  en: "Dismissal Times: "
 recruitment.element_fire:
   ja: "火"
   en: "Fire"
