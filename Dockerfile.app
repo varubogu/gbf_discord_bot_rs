@@ -9,20 +9,27 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY migration ./migration
 
-# ロケールファイルをコピー（ビルド時最適化のため必要
+# ビルドスクリプトをコピー（スキーマユーティリティ生成に必要）
+COPY build.rs ./
+
+# ロケールファイルをコピー（ビルド時最適化のため必要）
 COPY locales ./locales
 
 # ダミーソースで依存関係をビルド（キャッシュ層として機能）
-# 次回以降、ソースコード変更時は依存関係のビルドをスキップできる
-RUN mkdir src && \
+# schema_lintは開発用ツールのため本番イメージでは除外
+RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src target/release/gbf_discord_bot_rs*
+    cargo build --release --bin gbf_discord_bot_rs || true
+
+# ビルド成果物のうち、次のビルドで再利用されないものを削除
+# target/release/build/ は build.rs の成果物が入っているが、
+# srcディレクトリが変更されると無効になるため削除
+RUN rm -rf src target/release/build/
 
 # 実際のソースコードをコピーしてリビルド
-# 依存関係は既にキャッシュされているため、アプリケーションコードのみビルドされる
+# build/ ディレクトリが存在しないため、build.rsが確実に実行される
 COPY src ./src
-RUN cargo build --release
+RUN cargo build --release --bin gbf_discord_bot_rs
 
 # ================================
 # ランタイムステージ
