@@ -1,6 +1,7 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, NotificationRepository,
+    BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
+    NotificationRepository,
 };
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::schedule::convert_utc_days_and_time_to_local;
@@ -24,6 +25,7 @@ pub struct ScheduleListItem {
     pub recruit_time_str: String,
     pub created_by: i64,
     pub is_enabled: bool,
+    pub dismissal_times: Option<String>,
 }
 
 /// スケジュール統計（通知統計）
@@ -139,6 +141,24 @@ impl ScheduleQueryService {
                 )
             };
 
+            // 解散時刻を取得
+            let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+            let dismissals = dismissal_repo
+                .find_by_schedule_id(txn, schedule.id)
+                .await?;
+
+            let dismissal_times = if dismissals.is_empty() {
+                None
+            } else {
+                Some(
+                    dismissals
+                        .iter()
+                        .map(|d| d.input_value.clone())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            };
+
             items.push(ScheduleListItem {
                 id: schedule.id,
                 name: schedule.name,
@@ -151,6 +171,7 @@ impl ScheduleQueryService {
                 recruit_time_str,
                 created_by: schedule.created_by,
                 is_enabled: schedule.is_enabled,
+                dismissal_times,
             });
         }
 

@@ -74,12 +74,18 @@ pub async fn recruitment_schedule_list(
             "❌ 無効"
         };
 
+        let dismissal_display = item
+            .dismissal_times
+            .as_ref()
+            .map(|d| format!("\n                解散: {}", d))
+            .unwrap_or_default();
+
         description.push_str(&format!(
             "{}. **{}** (ID: {}) {}\n\
                 クエスト: {}\n\
                 曜日: {} ({})\n\
                 開始: {:02}:{:02}\n\
-                募集: {}日前の{}\n\
+                募集: {}日前の{}{}\n\
                 作成者: <@{}>\n\n",
             i + 1,
             item.name,
@@ -92,6 +98,7 @@ pub async fn recruitment_schedule_list(
             item.quest_start_minute,
             item.recruit_day_offset,
             item.recruit_time_str,
+            dismissal_display,
             item.created_by
         ));
     }

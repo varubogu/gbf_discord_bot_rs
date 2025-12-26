@@ -36,6 +36,7 @@ pub struct ScheduleCreationResult {
     pub recruit_start_time: String,
     pub note: Option<String>,
     pub timezone: Tz,
+    pub dismissal_times: Option<String>,
 }
 
 /// スケジュール作成サービス
@@ -193,6 +194,7 @@ impl ScheduleCreateService {
             recruit_start_time: recruit_start_time_local.format("%H:%M").to_string(),
             note,
             timezone,
+            dismissal_times,
         })
     }
 

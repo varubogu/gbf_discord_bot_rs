@@ -95,6 +95,12 @@ impl ScheduleDisplayService {
 
     /// 定期募集スケジュール作成成功時の埋め込みを生成
     pub fn build_creation_embed(result: &ScheduleCreationResult, user_id: u64) -> CreateEmbed {
+        let default_dismissal = "-".to_string();
+        let dismissal_display = result
+            .dismissal_times
+            .as_ref()
+            .unwrap_or(&default_dismissal);
+
         let description = format!(
             "**スケジュール名**: {}\n\
              **スケジュールID**: {}\n\
@@ -103,6 +109,7 @@ impl ScheduleDisplayService {
              **対象曜日**: {} ({}タイムゾーン)\n\
              **クエスト開始時刻**: {}\n\
              **募集開始**: {}日前の{}\n\
+             **解散時刻**: {}\n\
              **備考**: {}\n\
              **作成者**: <@{}>\n\n\
              このスケジュールに基づいて、自動的に募集が投稿されます。\n\
@@ -117,6 +124,7 @@ impl ScheduleDisplayService {
             result.quest_start_time,
             result.recruit_start_day_offset,
             result.recruit_start_time,
+            dismissal_display,
             result.note.as_ref().unwrap_or(&"-".to_string()),
             user_id
         );

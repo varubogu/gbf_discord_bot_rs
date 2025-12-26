@@ -8,16 +8,19 @@ use crate::repository::database::guild_channel_repository::GuildChannelRepositor
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::database::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
+use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
 use crate::services::recruitment::new::{
     create_initial_participants_text_for_buttons, create_message_content,
     create_recruitment_buttons,
 };
 use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::NotificationManagementService;
+use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
 use crate::types::Result;
+use chrono::TimeZone;
 use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
@@ -110,8 +113,72 @@ impl RecruitmentCreationService {
             .get_role_mentions(txn, calculated_time.guild_id, quest.id)
             .await?;
 
+        // 2.5. 定期募集スケジュールの解散時刻を取得
+        let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+        let schedule_dismissals = dismissal_repo
+            .find_by_schedule_id(txn, calculated_time.schedule_id)
+            .await?;
+
+        // 解散時刻をParsedDismissalTimeに変換
+        let parsed_dismissal_times: Vec<ParsedDismissalTime> = schedule_dismissals
+            .iter()
+            .map(|sd| {
+                if sd.input_type == 1 {
+                    // 絶対時刻
+                    let dismissal_time = sd.dismissal_time.ok_or_else(|| {
+                        crate::types::AppError::Business {
+                            message: "絶対時刻の解散時刻が設定されていません".to_string(),
+                        }
+                    })?;
+                    // TimeTimeをNaiveTimeに変換
+                    let naive_time = chrono::NaiveTime::from_hms_opt(
+                        dismissal_time.hour() as u32,
+                        dismissal_time.minute() as u32,
+                        dismissal_time.second() as u32,
+                    )
+                    .ok_or_else(|| crate::types::AppError::Business {
+                        message: "解散時刻の変換に失敗しました".to_string(),
+                    })?;
+                    // 日付を出発日に合わせる
+                    let departure_date = calculated_time.quest_start_at.date_naive();
+                    let dismissal_datetime_local = timezone
+                        .from_local_datetime(&departure_date.and_time(naive_time))
+                        .single()
+                        .ok_or_else(|| crate::types::AppError::Business {
+                            message: "解散時刻の日時変換に失敗しました".to_string(),
+                        })?;
+                    // 出発時刻より後になる場合は前日にする
+                    let dismissal_datetime_utc = if dismissal_datetime_local
+                        >= calculated_time.quest_start_at.with_timezone(&timezone)
+                    {
+                        (dismissal_datetime_local - chrono::Duration::days(1))
+                            .with_timezone(&chrono::Utc)
+                    } else {
+                        dismissal_datetime_local.with_timezone(&chrono::Utc)
+                    };
+                    Ok(ParsedDismissalTime::Absolute {
+                        input_value: sd.input_value.clone(),
+                        datetime: dismissal_datetime_utc,
+                    })
+                } else {
+                    // 相対時刻
+                    Ok(ParsedDismissalTime::Relative {
+                        input_value: sd.input_value.clone(),
+                        days: sd.relative_days.unwrap_or(0),
+                        hours: sd.relative_hours.unwrap_or(0),
+                        minutes: sd.relative_minutes.unwrap_or(0),
+                    })
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // 3. メッセージ内容を作成
-        // TODO: 定期募集の解散時刻をDBから取得して表示する
+        let dismissal_times_option = if parsed_dismissal_times.is_empty() {
+            None
+        } else {
+            Some(parsed_dismissal_times.as_slice())
+        };
+
         let mut message_content = create_message_content(
             txn,
             &quest.name,
@@ -119,7 +186,7 @@ impl RecruitmentCreationService {
             &calculated_time.quest_start_at,
             timezone,
             Some(calculated_time.guild_id),
-            None, // 定期募集の解散時刻は今後実装予定
+            dismissal_times_option,
         )
         .await?;
 
@@ -213,6 +280,33 @@ impl RecruitmentCreationService {
                 recruitment.id,
             )
             .await?;
+
+        // 9. 解散時刻を登録（指定されている場合）
+        if !parsed_dismissal_times.is_empty() {
+            debug!(
+                recruitment_id = recruitment.id,
+                dismissal_count = parsed_dismissal_times.len(),
+                "募集の解散時刻を登録します"
+            );
+
+            let dismissal_service = DismissalManagementService::new();
+            dismissal_service
+                .create_recruitment_dismissals(
+                    txn,
+                    recruitment.id,
+                    parsed_dismissal_times.clone(),
+                    calculated_time.quest_start_at,
+                    calculated_time.guild_id,
+                    recruitment_channel_id,
+                )
+                .await?;
+
+            info!(
+                recruitment_id = recruitment.id,
+                dismissal_count = parsed_dismissal_times.len(),
+                "募集の解散時刻を登録しました"
+            );
+        }
 
         Ok(())
     }
