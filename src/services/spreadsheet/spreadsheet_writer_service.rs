@@ -35,6 +35,19 @@ pub struct WriteError {
     pub message: String,
 }
 
+/// 生成されたUUID情報
+#[derive(Debug, Clone)]
+pub struct GeneratedUuidInfo {
+    /// シート名
+    pub sheet_name: String,
+    /// スプレッドシート上の行番号（1始まり）
+    pub row_number: usize,
+    /// スプレッドシート上の列番号（0始まり）
+    pub column_index: usize,
+    /// 生成されたUUID
+    pub uuid: uuid::Uuid,
+}
+
 /// スプレッドシート書き込みサービストレイト
 #[async_trait]
 pub trait SpreadsheetWriterServiceTrait: Send + Sync {
@@ -62,6 +75,14 @@ pub trait SpreadsheetWriterServiceTrait: Send + Sync {
         spreadsheet_id: &str,
         table_data: Vec<(TableDefinition, Vec<Vec<PostgresValue>>)>,
     ) -> Result<Vec<WriteResult>, ExternalServiceError>;
+
+    /// 生成されたUUIDをスプレッドシートに書き戻す
+    async fn write_back_generated_uuids(
+        &self,
+        sheets_client: &Sheets<HttpsConnector<HttpConnector>>,
+        spreadsheet_id: &str,
+        generated_uuids: &[GeneratedUuidInfo],
+    ) -> Result<(), ExternalServiceError>;
 }
 
 /// スプレッドシート書き込みサービス実装
@@ -85,6 +106,22 @@ where
     /// シート名からデータ範囲を構築（A2以降、ヘッダー除く）
     fn build_data_range(sheet_name: &str) -> String {
         format!("'{sheet_name}'!A2:ZZ")
+    }
+
+    /// 列番号（0始まり）をA1記法の列文字列に変換
+    /// 例: 0 -> "A", 1 -> "B", 25 -> "Z", 26 -> "AA"
+    fn column_index_to_letter(index: usize) -> String {
+        let mut result = String::new();
+        let mut n = index + 1; // A1記法は1始まり
+
+        while n > 0 {
+            n -= 1; // 0ベースに変換
+            let remainder = n % 26;
+            result.insert(0, (b'A' + remainder as u8) as char);
+            n /= 26;
+        }
+
+        result
     }
 
     /// PostgreSQL値の行をスプレッドシート文字列に変換
@@ -299,6 +336,63 @@ where
         );
 
         Ok(results)
+    }
+
+    async fn write_back_generated_uuids(
+        &self,
+        sheets_client: &Sheets<HttpsConnector<HttpConnector>>,
+        spreadsheet_id: &str,
+        generated_uuids: &[GeneratedUuidInfo],
+    ) -> Result<(), ExternalServiceError> {
+        use std::collections::HashMap;
+
+        // シート名ごとにグループ化
+        let mut updates_by_sheet: HashMap<String, Vec<(usize, usize, String)>> = HashMap::new();
+
+        for uuid_info in generated_uuids {
+            updates_by_sheet
+                .entry(uuid_info.sheet_name.clone())
+                .or_default()
+                .push((
+                    uuid_info.row_number,
+                    uuid_info.column_index,
+                    uuid_info.uuid.to_string(),
+                ));
+        }
+
+        // シートごとに書き込み
+        for (sheet_name, updates) in updates_by_sheet {
+            for (row_number, column_index, uuid_str) in updates {
+                // A1記法に変換（列番号をアルファベットに変換）
+                let column_letter = Self::column_index_to_letter(column_index);
+                let range = format!("'{sheet_name}'!{column_letter}{row_number}");
+
+                let value_range = ValueRange {
+                    values: Some(vec![vec![serde_json::Value::String(uuid_str.clone())]]),
+                    range: Some(range.clone()),
+                    ..Default::default()
+                };
+
+                sheets_client
+                    .spreadsheets()
+                    .values_update(value_range, spreadsheet_id, &range)
+                    .value_input_option("USER_ENTERED")
+                    .doit()
+                    .await
+                    .map_err(|e| ExternalServiceError::GoogleSheetsApiError {
+                        message: format!("UUID書き戻しに失敗しました: {e}"),
+                    })?;
+
+                tracing::debug!(
+                    sheet_name = %sheet_name,
+                    range = %range,
+                    uuid = %uuid_str,
+                    "UUIDを書き戻しました"
+                );
+            }
+        }
+
+        Ok(())
     }
 }
 
