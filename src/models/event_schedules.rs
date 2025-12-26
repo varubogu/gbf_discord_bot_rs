@@ -1,4 +1,4 @@
-use crate::models::entities::{event_schedules, event_schedules::Entity as EventScheduleEntity};
+use crate::models::entities::master::event_schedules::{self, Entity as EventScheduleEntity};
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

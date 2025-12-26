@@ -1,4 +1,4 @@
-use crate::models::entities::{elements, elements::Entity as ElementEntity};
+use crate::models::entities::master::elements::{self, Entity as ElementEntity};
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

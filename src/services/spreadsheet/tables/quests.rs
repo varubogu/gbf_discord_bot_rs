@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct QuestsTable;
 
 impl TableConfig for QuestsTable {
-    type Entity = entities::quests::Entity;
+    type Entity = entities::master::quests::Entity;
 
     fn table_name() -> &'static str {
         "quests"

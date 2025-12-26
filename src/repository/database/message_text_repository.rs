@@ -1,4 +1,4 @@
-use crate::models::entities::message_texts::Entity as MessageTextEntity;
+use crate::models::entities::master::message_texts::Entity as MessageTextEntity;
 use crate::models::message_texts::MessageTexts;
 use crate::repository::MessageTextRepository;
 use async_trait::async_trait;

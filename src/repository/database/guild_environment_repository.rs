@@ -1,4 +1,4 @@
-use crate::models::entities::guild_environments::{self, Entity as GuildEnvironmentEntity};
+use crate::models::entities::guild_master::guild_environments::{self, Entity as GuildEnvironmentEntity};
 use crate::models::guild_environments::GuildEnvironments;
 use crate::repository::GuildEnvironmentRepository;
 use async_trait::async_trait;

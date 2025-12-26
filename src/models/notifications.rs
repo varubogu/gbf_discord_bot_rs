@@ -1,4 +1,4 @@
-use crate::models::entities::{notifications, notifications::Entity as NotificationEntity};
+use crate::models::entities::worker::notifications::{self, Entity as NotificationEntity};
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

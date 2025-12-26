@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::models::entities::{
-    battle_recruitments, battle_recruitments::Entity as BattleRecruitmentEntity,
+use crate::models::entities::worker::battle_recruitments::{
+    self, Entity as BattleRecruitmentEntity,
 };
 use crate::repository::database::db_compat::Database;
 

@@ -1,4 +1,4 @@
-use crate::models::entities::{event_schedule_details, event_schedules};
+use crate::models::entities::master::{event_schedule_details, event_schedules};
 use crate::types::Result;
 use sea_orm::EntityTrait;
 use tracing::{debug, error};

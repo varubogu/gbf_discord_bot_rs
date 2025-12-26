@@ -49,10 +49,12 @@ pub enum DismissalInputType {
 }
 
 impl DismissalInputType {
+    #[allow(dead_code)]
     pub fn as_i32(&self) -> i32 {
         *self as i32
     }
 
+    #[allow(dead_code)]
     pub fn from_i32(value: i32) -> Option<Self> {
         match value {
             1 => Some(Self::Absolute),

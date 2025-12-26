@@ -2,8 +2,8 @@ use chrono::{TimeZone, Timelike};
 use chrono_tz::Tz;
 use poise::serenity_prelude::{AutocompleteChoice, CreateEmbed, CreateEmbedFooter};
 
-use crate::models::entities::battle_recruitment_schedule_days;
-use crate::models::entities::battle_recruitment_schedules;
+use crate::models::entities::guild_master::battle_recruitment_schedule_days;
+use crate::models::entities::guild_master::battle_recruitment_schedules;
 use crate::services::recruitment::schedule::ScheduleCreationResult;
 
 /// スケジュール表示用のユーティリティ（サービス層）

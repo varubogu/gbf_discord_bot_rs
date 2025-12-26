@@ -1,4 +1,4 @@
-use crate::models::entities::guild_channels;
+use crate::models::entities::guild_master::guild_channels;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};

@@ -1,4 +1,4 @@
-use crate::models::entities::scheduled_tasks::ScheduledTaskType;
+use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
     ScheduledTaskNotificationRepository, ScheduledTaskRepository,

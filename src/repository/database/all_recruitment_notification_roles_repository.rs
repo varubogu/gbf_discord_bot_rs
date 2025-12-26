@@ -1,4 +1,4 @@
-use crate::models::entities::all_recruitment_notification_roles;
+use crate::models::entities::guild_master::all_recruitment_notification_roles;
 use crate::types::Result;
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, Set};
 use tracing::{debug, error, info};

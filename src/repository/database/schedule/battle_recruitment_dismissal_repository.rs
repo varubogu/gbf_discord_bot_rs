@@ -1,4 +1,4 @@
-use crate::models::entities::battle_recruitment_dismissals;
+use crate::models::entities::worker::battle_recruitment_dismissals;
 use crate::types::{AppError, Result};
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};

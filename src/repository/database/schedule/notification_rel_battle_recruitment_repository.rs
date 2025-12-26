@@ -1,4 +1,4 @@
-use crate::models::entities::notification_rel_battle_recruitments;
+use crate::models::entities::worker::notification_rel_battle_recruitments;
 use crate::types::Result;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};

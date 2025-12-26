@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct GuildEventSchedulesTable;
 
 impl TableConfig for GuildEventSchedulesTable {
-    type Entity = entities::guild_event_schedules::Entity;
+    type Entity = entities::guild_master::guild_event_schedules::Entity;
 
     fn table_name() -> &'static str {
         "guild_event_schedules"

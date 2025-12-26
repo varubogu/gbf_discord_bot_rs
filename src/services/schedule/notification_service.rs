@@ -1,4 +1,4 @@
-use crate::models::entities::{battle_recruitments, notifications};
+use crate::models::entities::worker::{battle_recruitments, notifications};
 use crate::repository::RecruitmentParticipantsRepository;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;

@@ -173,7 +173,7 @@ impl<
 
         // scheduled_tasksを実行
         use crate::repository::database::schedule::ScheduledTaskNotificationRepository;
-        use crate::models::entities::notifications;
+        use crate::models::entities::worker::notifications;
 
         let notification_service = NotificationService::new(Arc::clone(http));
         let scheduled_task_notification_repo = Arc::new(ScheduledTaskNotificationRepository::new());

@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct ElementsTable;
 
 impl TableConfig for ElementsTable {
-    type Entity = entities::elements::Entity;
+    type Entity = entities::master::elements::Entity;
 
     fn table_name() -> &'static str {
         "elements"

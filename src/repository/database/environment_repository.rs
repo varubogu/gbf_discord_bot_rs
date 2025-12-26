@@ -1,4 +1,4 @@
-use crate::models::entities::environments::{self, Entity as EnvironmentEntity};
+use crate::models::entities::master::environments::{self, Entity as EnvironmentEntity};
 use crate::models::environments::Environments;
 use crate::repository::EnvironmentRepository;
 use async_trait::async_trait;

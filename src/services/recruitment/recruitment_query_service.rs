@@ -1,5 +1,5 @@
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::models::entities::battle_styles;
+use crate::models::entities::master::battle_styles;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,

@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct EnvironmentsTable;
 
 impl TableConfig for EnvironmentsTable {
-    type Entity = entities::environments::Entity;
+    type Entity = entities::master::environments::Entity;
 
     fn table_name() -> &'static str {
         "environments"

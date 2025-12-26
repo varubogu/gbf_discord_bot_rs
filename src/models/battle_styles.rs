@@ -1,4 +1,4 @@
-use crate::models::entities::{battle_styles, battle_styles::Entity as BattleStyleEntity};
+use crate::models::entities::master::battle_styles::{self, Entity as BattleStyleEntity};
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

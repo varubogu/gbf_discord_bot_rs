@@ -1,4 +1,4 @@
-use crate::models::entities::guilds;
+use crate::models::entities::guild_master::guilds;
 use crate::types::Result;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};

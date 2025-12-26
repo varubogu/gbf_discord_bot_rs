@@ -1,5 +1,5 @@
 use crate::models::entities::Quest as QuestEntity;
-use crate::models::entities::quests;
+use crate::models::entities::master::quests;
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

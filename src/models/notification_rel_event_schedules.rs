@@ -1,6 +1,5 @@
-use crate::models::entities::{
-    notification_rel_event_schedules,
-    notification_rel_event_schedules::Entity as NotificationRelEventScheduleEntity,
+use crate::models::entities::worker::notification_rel_event_schedules::{
+    self, Entity as NotificationRelEventScheduleEntity,
 };
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};

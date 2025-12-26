@@ -1,4 +1,4 @@
-use crate::models::entities::battle_recruitment_schedule_dismissals;
+use crate::models::entities::guild_master::battle_recruitment_schedule_dismissals;
 use crate::types::{AppError, Result};
 use sea_orm::entity::prelude::TimeTime;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};

@@ -1,4 +1,4 @@
-use crate::models::entities::guild_channels;
+use crate::models::entities::guild_master::guild_channels;
 use crate::services::schedule::ScheduleCalculator;
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::types::{AppState, Result};
@@ -6,8 +6,8 @@ use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
-use crate::models::entities::battle_recruitment_schedules;
-use crate::models::entities::last_process_times::LastProcessType;
+use crate::models::entities::guild_master::battle_recruitment_schedules;
+use crate::models::entities::worker::last_process_times::LastProcessType;
 use crate::models::last_process_times::LastProcessTime;
 use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
 use crate::repository::database::schedule::{
@@ -127,7 +127,7 @@ impl SchedulerService {
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
         use chrono::Utc;
-        use crate::models::entities::scheduled_tasks::ScheduledTaskType;
+        use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
         use crate::repository::database::schedule::{
             ScheduledTaskNotificationRepository, ScheduledTaskRepository,
         };
@@ -243,7 +243,7 @@ impl SchedulerService {
     ) -> Result<
         Vec<(
             battle_recruitment_schedules::Model,
-            Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
+            Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
         let schedule_repo = BattleRecruitmentScheduleRepository::new();

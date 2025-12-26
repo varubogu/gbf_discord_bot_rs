@@ -1,4 +1,4 @@
-use crate::models::entities::notifications;
+use crate::models::entities::worker::notifications;
 use crate::repository::database::schedule::NotificationRepository;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};

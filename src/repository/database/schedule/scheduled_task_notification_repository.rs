@@ -1,4 +1,4 @@
-use crate::models::entities::{scheduled_task_notifications, scheduled_tasks};
+use crate::models::entities::worker::{scheduled_task_notifications, scheduled_tasks};
 use crate::types::Result;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};

@@ -22,9 +22,9 @@ pub enum Relation {
     )]
     Guild,
     #[sea_orm(
-        belongs_to = "super::channel_types::Entity",
+        belongs_to = "super::super::master::channel_types::Entity",
         from = "Column::ChannelType",
-        to = "super::channel_types::Column::Id"
+        to = "super::super::master::channel_types::Column::Id"
     )]
     ChannelType,
 }
@@ -35,7 +35,7 @@ impl Related<super::guilds::Entity> for Entity {
     }
 }
 
-impl Related<super::channel_types::Entity> for Entity {
+impl Related<super::super::master::channel_types::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ChannelType.def()
     }

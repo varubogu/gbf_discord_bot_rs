@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct MessageTextsTable;
 
 impl TableConfig for MessageTextsTable {
-    type Entity = entities::message_texts::Entity;
+    type Entity = entities::master::message_texts::Entity;
 
     fn table_name() -> &'static str {
         "message_texts"

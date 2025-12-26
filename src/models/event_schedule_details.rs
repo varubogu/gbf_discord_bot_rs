@@ -1,5 +1,5 @@
-use crate::models::entities::{
-    event_schedule_details, event_schedule_details::Entity as EventScheduleDetailEntity,
+use crate::models::entities::master::event_schedule_details::{
+    self, Entity as EventScheduleDetailEntity,
 };
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};

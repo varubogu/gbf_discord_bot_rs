@@ -220,7 +220,7 @@ async fn update_recruitment_message(
         })?;
 
     // 2. DBから参加者一覧を取得
-    use crate::models::entities::recruitment_participants::{
+    use crate::models::entities::worker::recruitment_participants::{
         Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
     };
     use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
@@ -306,7 +306,7 @@ async fn update_recruitment_message(
 /// * `ctx` - Discord Context（ユーザー情報取得用）
 async fn create_participants_text(
     battle_style_name: &str,
-    participants: &[crate::models::entities::recruitment_participants::Model],
+    participants: &[crate::models::entities::worker::recruitment_participants::Model],
     element_emojis: &ElementEmojis,
     _ctx: &Context,
 ) -> Result<String> {

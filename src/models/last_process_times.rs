@@ -1,6 +1,5 @@
-use crate::models::entities::{
-    last_process_times, last_process_times::Entity as LastProcessTimeEntity,
-    last_process_times::LastProcessType,
+use crate::models::entities::worker::last_process_times::{
+    self, Entity as LastProcessTimeEntity, LastProcessType,
 };
 use crate::repository::database::db_compat::Database;
 use sea_orm::{

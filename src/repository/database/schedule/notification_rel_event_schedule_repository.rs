@@ -1,4 +1,4 @@
-use crate::models::entities::notification_rel_event_schedules;
+use crate::models::entities::worker::notification_rel_event_schedules;
 use crate::types::Result;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};

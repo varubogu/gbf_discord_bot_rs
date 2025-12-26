@@ -1,4 +1,4 @@
-use crate::models::entities::recruitment_participants::{
+use crate::models::entities::worker::recruitment_participants::{
     ActiveModel, Column, Entity as RecruitmentParticipantEntity,
 };
 use crate::repository::RecruitmentParticipantsRepository;

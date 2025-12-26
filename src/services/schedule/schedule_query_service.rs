@@ -61,8 +61,8 @@ impl ScheduleQueryService {
         user_id: i64,
     ) -> Result<
         Vec<(
-            crate::models::entities::battle_recruitment_schedules::Model,
-            Vec<crate::models::entities::battle_recruitment_schedule_days::Model>,
+            crate::models::entities::guild_master::battle_recruitment_schedules::Model,
+            Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
         let schedule_repo = BattleRecruitmentScheduleRepository::new();

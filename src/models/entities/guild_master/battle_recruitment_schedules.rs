@@ -25,24 +25,24 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::guilds::Entity",
+        belongs_to = "super::super::guild_master::guilds::Entity",
         from = "Column::GuildId",
-        to = "super::guilds::Column::GuildId"
+        to = "super::super::guild_master::guilds::Column::GuildId"
     )]
     Guild,
     #[sea_orm(
-        belongs_to = "super::quests::Entity",
+        belongs_to = "super::super::master::quests::Entity",
         from = "Column::QuestId",
-        to = "super::quests::Column::Id"
+        to = "super::super::master::quests::Column::Id"
     )]
     Quest,
     #[sea_orm(
-        belongs_to = "super::battle_styles::Entity",
+        belongs_to = "super::super::master::battle_styles::Entity",
         from = "Column::BattleStyleId",
-        to = "super::battle_styles::Column::Id"
+        to = "super::super::master::battle_styles::Column::Id"
     )]
     BattleStyle,
-    #[sea_orm(has_many = "super::battle_recruitment_schedule_days::Entity")]
+    #[sea_orm(has_many = "super::super::guild_master::battle_recruitment_schedule_days::Entity")]
     BattleRecruitmentScheduleDays,
 }
 
@@ -52,13 +52,13 @@ impl Related<super::guilds::Entity> for Entity {
     }
 }
 
-impl Related<super::quests::Entity> for Entity {
+impl Related<super::super::master::quests::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Quest.def()
     }
 }
 
-impl Related<super::battle_styles::Entity> for Entity {
+impl Related<super::super::master::battle_styles::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::BattleStyle.def()
     }

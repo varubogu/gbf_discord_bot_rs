@@ -1,4 +1,4 @@
-use crate::models::entities::guild_message_texts;
+use crate::models::entities::guild_master::guild_message_texts;
 use async_trait::async_trait;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 

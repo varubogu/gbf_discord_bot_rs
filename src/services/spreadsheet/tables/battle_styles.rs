@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct BattleStylesTable;
 
 impl TableConfig for BattleStylesTable {
-    type Entity = entities::battle_styles::Entity;
+    type Entity = entities::master::battle_styles::Entity;
 
     fn table_name() -> &'static str {
         "battle_styles"

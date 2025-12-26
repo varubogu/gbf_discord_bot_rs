@@ -25,15 +25,15 @@ pub enum Relation {
     )]
     Notification,
     #[sea_orm(
-        belongs_to = "super::event_schedules::Entity",
+        belongs_to = "super::super::master::event_schedules::Entity",
         from = "Column::EventScheduleId",
-        to = "super::event_schedules::Column::Id"
+        to = "super::super::master::event_schedules::Column::Id"
     )]
     EventSchedule,
     #[sea_orm(
-        belongs_to = "super::event_schedule_details::Entity",
+        belongs_to = "super::super::master::event_schedule_details::Entity",
         from = "Column::EventScheduleDetailId",
-        to = "super::event_schedule_details::Column::Id"
+        to = "super::super::master::event_schedule_details::Column::Id"
     )]
     EventScheduleDetail,
 }
@@ -44,13 +44,13 @@ impl Related<super::notifications::Entity> for Entity {
     }
 }
 
-impl Related<super::event_schedules::Entity> for Entity {
+impl Related<super::super::master::event_schedules::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::EventSchedule.def()
     }
 }
 
-impl Related<super::event_schedule_details::Entity> for Entity {
+impl Related<super::super::master::event_schedule_details::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::EventScheduleDetail.def()
     }

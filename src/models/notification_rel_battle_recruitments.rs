@@ -1,6 +1,5 @@
-use crate::models::entities::{
-    notification_rel_battle_recruitments,
-    notification_rel_battle_recruitments::Entity as NotificationRelBattleRecruitmentEntity,
+use crate::models::entities::worker::notification_rel_battle_recruitments::{
+    self, Entity as NotificationRelBattleRecruitmentEntity,
 };
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};

@@ -7,7 +7,7 @@ use super::TableConfig;
 pub struct ChannelTypesTable;
 
 impl TableConfig for ChannelTypesTable {
-    type Entity = entities::channel_types::Entity;
+    type Entity = entities::master::channel_types::Entity;
 
     fn table_name() -> &'static str {
         "channel_types"

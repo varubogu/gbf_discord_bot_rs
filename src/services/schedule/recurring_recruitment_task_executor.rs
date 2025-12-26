@@ -1,4 +1,4 @@
-use crate::models::entities::scheduled_tasks::ScheduledTaskType;
+use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
     BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
     ScheduledTaskRepository,
@@ -188,8 +188,8 @@ impl RecurringRecruitmentTaskExecutor {
     async fn create_next_scheduled_task(
         &self,
         txn: &DatabaseTransaction,
-        schedule: &crate::models::entities::battle_recruitment_schedules::Model,
-        days: &[crate::models::entities::battle_recruitment_schedule_days::Model],
+        schedule: &crate::models::entities::guild_master::battle_recruitment_schedules::Model,
+        days: &[crate::models::entities::guild_master::battle_recruitment_schedule_days::Model],
     ) -> Result<i32> {
         debug!(
             schedule_id = schedule.id,

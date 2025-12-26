@@ -23,9 +23,9 @@ pub enum Relation {
     )]
     BattleRecruitment,
     #[sea_orm(
-        belongs_to = "super::elements::Entity",
+        belongs_to = "super::super::master::elements::Entity",
         from = "Column::ElementId",
-        to = "super::elements::Column::Id"
+        to = "super::super::master::elements::Column::Id"
     )]
     Element,
 }
@@ -36,7 +36,7 @@ impl Related<super::battle_recruitments::Entity> for Entity {
     }
 }
 
-impl Related<super::elements::Entity> for Entity {
+impl Related<super::super::master::elements::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Element.def()
     }

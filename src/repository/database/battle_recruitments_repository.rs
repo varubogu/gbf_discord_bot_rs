@@ -1,5 +1,5 @@
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::models::entities::battle_recruitments::{
+use crate::models::entities::worker::battle_recruitments::{
     ActiveModel, Column, Entity as BattleRecruitmentEntity,
 };
 use crate::repository::BattleRecruitmentsRepository;

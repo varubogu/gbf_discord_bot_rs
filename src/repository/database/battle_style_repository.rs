@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 
-use crate::models::entities::battle_styles;
+use crate::models::entities::master::battle_styles;
 use crate::types;
 
 /// BattleStyleRepositoryトレイト

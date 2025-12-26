@@ -1,4 +1,4 @@
-use crate::models::entities::{
+use crate::models::entities::worker::{
     last_process_times, last_process_times::Entity as LastProcessTimeEntity,
     last_process_times::LastProcessType,
 };

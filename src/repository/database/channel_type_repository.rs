@@ -1,4 +1,4 @@
-use crate::models::entities::channel_types;
+use crate::models::entities::master::channel_types;
 use crate::types::Result;
 use sea_orm::EntityTrait;
 use tracing::{debug, error};

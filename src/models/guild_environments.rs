@@ -1,4 +1,4 @@
-use crate::models::entities::guild_environments;
+use crate::models::entities::guild_master::guild_environments;
 use serde::{Deserialize, Serialize};
 
 /// ギルド環境変数のDomain Model

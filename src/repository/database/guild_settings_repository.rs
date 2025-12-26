@@ -1,4 +1,4 @@
-use crate::models::entities::guild_settings;
+use crate::models::entities::guild_master::guild_settings;
 use crate::types::Result;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
