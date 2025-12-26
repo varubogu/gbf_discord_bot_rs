@@ -29,9 +29,7 @@ pub use schema_extractor_service::{
     RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
 };
 pub use schema_utils::{get_entity_table_ref, get_schema_name};
-pub use spreadsheet_persistence_service::{
-    PersistResult, SpreadsheetPersistenceService,
-};
+pub use spreadsheet_persistence_service::{PersistResult, SpreadsheetPersistenceService};
 pub use spreadsheet_reader_service::{
     ReadError, ReadResult, RowData, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
 };

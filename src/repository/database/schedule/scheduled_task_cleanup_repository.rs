@@ -60,7 +60,10 @@ impl ScheduledTaskCleanupRepository {
             }
         }
 
-        debug!(count = results.len(), "未実行クリーンアップタスクを取得しました");
+        debug!(
+            count = results.len(),
+            "未実行クリーンアップタスクを取得しました"
+        );
         Ok(results)
     }
 
@@ -114,9 +117,7 @@ impl ScheduledTaskCleanupRepository {
 
         debug!(
             task_id,
-            target_schema,
-            target_table,
-            "クリーンアップタスクを作成しました"
+            target_schema, target_table, "クリーンアップタスクを作成しました"
         );
         Ok(cleanup)
     }

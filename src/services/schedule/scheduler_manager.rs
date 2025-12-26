@@ -34,10 +34,8 @@ pub struct SchedulerManager<
     message_service: Arc<MessageService>,
 }
 
-impl<
-        R: BattleRecruitmentsRepository + 'static,
-        P: RecruitmentParticipantsRepository + 'static,
-    > SchedulerManager<R, P>
+impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsRepository + 'static>
+    SchedulerManager<R, P>
 {
     /// 新しいSchedulerManagerを作成
     pub async fn new(
@@ -49,9 +47,9 @@ impl<
         participants_repo: Arc<P>,
         message_service: Arc<MessageService>,
     ) -> Result<Self> {
-        let scheduler = JobScheduler::new()
-            .await
-            .map_err(|e| crate::types::AppError::Generic(format!("JobScheduler creation failed: {e}")))?;
+        let scheduler = JobScheduler::new().await.map_err(|e| {
+            crate::types::AppError::Generic(format!("JobScheduler creation failed: {e}"))
+        })?;
 
         Ok(Self {
             scheduler,
@@ -123,10 +121,9 @@ impl<
     /// スケジューラーを停止
     pub async fn stop(&mut self) -> Result<()> {
         info!("SchedulerManagerを停止します");
-        self.scheduler
-            .shutdown()
-            .await
-            .map_err(|e| crate::types::AppError::Generic(format!("Scheduler shutdown failed: {e}")))?;
+        self.scheduler.shutdown().await.map_err(|e| {
+            crate::types::AppError::Generic(format!("Scheduler shutdown failed: {e}"))
+        })?;
         info!("SchedulerManagerを停止しました");
         Ok(())
     }
@@ -156,9 +153,7 @@ impl<
 
         // 未実行タスクを取得（scheduled_tasks）
         // is_executed=falseで絞り込んでいるため、過去の未実行タスクも取得される
-        let tasks = task_repo
-            .find_pending_to(&txn, preload_until)
-            .await?;
+        let tasks = task_repo.find_pending_to(&txn, preload_until).await?;
 
         if tasks.is_empty() {
             debug!("プリロード対象のタスクはありません");
@@ -166,14 +161,11 @@ impl<
             return Ok(());
         }
 
-        info!(
-            tasks = tasks.len(),
-            "タスクをプリロードしました"
-        );
+        info!(tasks = tasks.len(), "タスクをプリロードしました");
 
         // scheduled_tasksを実行
-        use crate::repository::database::schedule::ScheduledTaskNotificationRepository;
         use crate::models::entities::worker::notifications;
+        use crate::repository::database::schedule::ScheduledTaskNotificationRepository;
 
         let notification_service = NotificationService::new(Arc::clone(http));
         let scheduled_task_notification_repo = Arc::new(ScheduledTaskNotificationRepository::new());
@@ -193,9 +185,11 @@ impl<
                         {
                             Ok(Some(notification_rel)) => {
                                 // notificationsテーブルから通知を取得
-                                match notifications::Entity::find_by_id(notification_rel.notification_id)
-                                    .one(&txn)
-                                    .await
+                                match notifications::Entity::find_by_id(
+                                    notification_rel.notification_id,
+                                )
+                                .one(&txn)
+                                .await
                                 {
                                     Ok(Some(notification)) => {
                                         // 通知を送信
@@ -205,13 +199,15 @@ impl<
                                         {
                                             Ok(_) => {
                                                 // タスクを完了としてマーク
-                                                if let Err(e) = task_repo
-                                                    .mark_as_executed(&txn, task.id)
-                                                    .await
+                                                if let Err(e) =
+                                                    task_repo.mark_as_executed(&txn, task.id).await
                                                 {
                                                     error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                                 }
-                                                info!(task_id = task.id, "通知タスクを実行しました");
+                                                info!(
+                                                    task_id = task.id,
+                                                    "通知タスクを実行しました"
+                                                );
                                             }
                                             Err(e) => {
                                                 error!(task_id = task.id, error = %e, "通知の送信中にエラーが発生しました");
@@ -219,7 +215,11 @@ impl<
                                         }
                                     }
                                     Ok(None) => {
-                                        error!(task_id = task.id, notification_id = notification_rel.notification_id, "通知が見つかりません");
+                                        error!(
+                                            task_id = task.id,
+                                            notification_id = notification_rel.notification_id,
+                                            "通知が見つかりません"
+                                        );
                                     }
                                     Err(e) => {
                                         error!(task_id = task.id, error = %e, "通知の取得に失敗しました");
@@ -263,10 +263,12 @@ impl<
                     4 => {
                         // RecurringRecruitment
                         info!(task_id = task.id, "定期募集タスクを実行します");
-                        let recurring_repo = Arc::new(ScheduledTaskRecurringRecruitmentRepository::new());
+                        let recurring_repo =
+                            Arc::new(ScheduledTaskRecurringRecruitmentRepository::new());
                         let schedule_repo = Arc::new(BattleRecruitmentScheduleRepository::new());
                         let schedule_service = Arc::new(RecruitmentScheduleService::new());
-                        let recruitment_creation_service = Arc::new(RecruitmentCreationService::new());
+                        let recruitment_creation_service =
+                            Arc::new(RecruitmentCreationService::new());
 
                         let executor = RecurringRecruitmentTaskExecutor::new(
                             Arc::clone(task_repo),
@@ -302,7 +304,11 @@ impl<
                         }
                     }
                     _ => {
-                        warn!(task_id = task.id, task_type = task.task_type, "不明なタスクタイプです");
+                        warn!(
+                            task_id = task.id,
+                            task_type = task.task_type,
+                            "不明なタスクタイプです"
+                        );
                     }
                 }
             } else {

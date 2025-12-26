@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::services::message::MessageTextId;
 use crate::services::message::MessageService;
+use crate::services::message::MessageTextId;
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
 
@@ -239,9 +239,7 @@ where
         .unwrap_or_else(|_| "この募集はキャンセルされました".to_string());
 
     // 元のメッセージに打ち消し線と「キャンセル済み」を追加
-    Ok(format!(
-        "~~{original_content}~~\n\n**{cancelled_suffix}**"
-    ))
+    Ok(format!("~~{original_content}~~\n\n**{cancelled_suffix}**"))
 }
 
 /// キャンセル通知メッセージ作成

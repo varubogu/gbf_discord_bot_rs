@@ -1,8 +1,5 @@
 use crate::models::entities::master::{
-    quest_aliases,
-    quest_aliases::Entity as QuestAliasEntity,
-    quests,
-    quests::Entity as QuestEntity,
+    quest_aliases, quest_aliases::Entity as QuestAliasEntity, quests, quests::Entity as QuestEntity,
 };
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;

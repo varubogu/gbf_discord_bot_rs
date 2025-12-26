@@ -1,9 +1,7 @@
 use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::DatabaseBackend;
-use sea_orm::sea_query::{
-    Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue,
-};
+use sea_orm::sea_query::{Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue};
 use sea_orm::{ConnectionTrait, DatabaseTransaction, Statement};
 use tracing::warn;
 
@@ -12,8 +10,7 @@ use crate::services::spreadsheet::schema_extractor_service::SchemaExtractorServi
 use crate::services::spreadsheet::spreadsheet_reader_service::SpreadsheetReaderServiceTrait;
 use crate::services::spreadsheet::{
     ColumnSchema, DataConverterService, GoogleAuthService, PostgresType, PostgresValue,
-    SchemaExtractorService, SpreadsheetReaderService, TableDefinitionService,
-    get_entity_table_ref,
+    SchemaExtractorService, SpreadsheetReaderService, TableDefinitionService, get_entity_table_ref,
 };
 use std::collections::HashMap;
 

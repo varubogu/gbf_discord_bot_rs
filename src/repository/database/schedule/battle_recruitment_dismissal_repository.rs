@@ -43,7 +43,10 @@ impl BattleRecruitmentDismissalRepository {
             AppError::Database(e)
         })?;
 
-        debug!(id = model.id, recruitment_id, "解散時刻を作成しました（絶対日時）");
+        debug!(
+            id = model.id,
+            recruitment_id, "解散時刻を作成しました（絶対日時）"
+        );
         Ok(model)
     }
 
@@ -82,7 +85,10 @@ impl BattleRecruitmentDismissalRepository {
             AppError::Database(e)
         })?;
 
-        debug!(id = model.id, recruitment_id, "解散時刻を作成しました（相対時刻）");
+        debug!(
+            id = model.id,
+            recruitment_id, "解散時刻を作成しました（相対時刻）"
+        );
         Ok(model)
     }
 
@@ -103,7 +109,11 @@ impl BattleRecruitmentDismissalRepository {
                 AppError::Database(e)
             })?;
 
-        debug!(recruitment_id, count = models.len(), "解散時刻を取得しました");
+        debug!(
+            recruitment_id,
+            count = models.len(),
+            "解散時刻を取得しました"
+        );
         Ok(models)
     }
 
@@ -144,7 +154,11 @@ impl BattleRecruitmentDismissalRepository {
                 AppError::Database(e)
             })?;
 
-        debug!(recruitment_id, deleted_count = result.rows_affected, "解散時刻を削除しました");
+        debug!(
+            recruitment_id,
+            deleted_count = result.rows_affected,
+            "解散時刻を削除しました"
+        );
         Ok(result.rows_affected)
     }
 }

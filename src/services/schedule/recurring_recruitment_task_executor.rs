@@ -100,9 +100,7 @@ impl RecurringRecruitmentTaskExecutor {
             None => {
                 error!(task_id, "定期募集情報が見つかりません");
                 return Err(AppError::Business {
-                    message: format!(
-                        "Recurring recruitment info not found for task {task_id}"
-                    ),
+                    message: format!("Recurring recruitment info not found for task {task_id}"),
                 });
             }
         };
@@ -120,30 +118,24 @@ impl RecurringRecruitmentTaskExecutor {
                 );
                 // タスクを実行済みにマーク
                 self.task_repo.mark_as_executed(txn, task_id).await?;
-                return Ok(RecurringRecruitmentExecutionResult::ScheduleNotFound {
-                    schedule_id,
-                });
+                return Ok(RecurringRecruitmentExecutionResult::ScheduleNotFound { schedule_id });
             }
         };
 
         // スケジュールが有効かチェック
         if !schedule.is_enabled {
-            info!(
-                task_id,
-                schedule_id, "スケジュールは無効化されています"
-            );
+            info!(task_id, schedule_id, "スケジュールは無効化されています");
             // タスクを実行済みにマーク
             self.task_repo.mark_as_executed(txn, task_id).await?;
-            return Ok(RecurringRecruitmentExecutionResult::ScheduleDisabled {
-                schedule_id,
-            });
+            return Ok(RecurringRecruitmentExecutionResult::ScheduleDisabled { schedule_id });
         }
 
         // マルチ募集を作成（CalculatedRecruitmentTimeを構築）
         info!(
             task_id,
             schedule_id,
-            quest_id = schedule.quest_id, "マルチ募集を作成します"
+            quest_id = schedule.quest_id,
+            "マルチ募集を作成します"
         );
 
         // CalculatedRecruitmentTimeを作成
@@ -173,10 +165,7 @@ impl RecurringRecruitmentTaskExecutor {
         // 現在のタスクを実行済みにマーク
         self.task_repo.mark_as_executed(txn, task_id).await?;
 
-        info!(
-            task_id,
-            schedule_id, next_task_id, "定期募集タスク実行完了"
-        );
+        info!(task_id, schedule_id, next_task_id, "定期募集タスク実行完了");
 
         Ok(RecurringRecruitmentExecutionResult::Success { next_task_id })
     }
@@ -212,9 +201,12 @@ impl RecurringRecruitmentTaskExecutor {
             );
 
             // 次回募集日時を計算
-            let next_times = self
-                .schedule_service
-                .calculate_next_recruitment_times(schedule, days, search_from, search_to)?;
+            let next_times = self.schedule_service.calculate_next_recruitment_times(
+                schedule,
+                days,
+                search_from,
+                search_to,
+            )?;
 
             // 最初に見つかった未来の募集開始日時を使用
             if let Some(next_time) = next_times.first() {

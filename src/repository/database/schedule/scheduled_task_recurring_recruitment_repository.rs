@@ -72,15 +72,20 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     ) -> Result<Option<scheduled_task_recurring_recruitments::Model>> {
         debug!(task_id, "定期募集関連情報をtask_idで取得します");
 
-        let recurring_recruitment_rel = scheduled_task_recurring_recruitments::Entity::find_by_id(task_id)
-            .one(txn)
-            .await
-            .map_err(|e| {
-                error!(error = %e, task_id, "定期募集関連情報の取得に失敗しました");
-                e
-            })?;
+        let recurring_recruitment_rel =
+            scheduled_task_recurring_recruitments::Entity::find_by_id(task_id)
+                .one(txn)
+                .await
+                .map_err(|e| {
+                    error!(error = %e, task_id, "定期募集関連情報の取得に失敗しました");
+                    e
+                })?;
 
-        debug!(task_id, found = recurring_recruitment_rel.is_some(), "定期募集関連情報を取得しました");
+        debug!(
+            task_id,
+            found = recurring_recruitment_rel.is_some(),
+            "定期募集関連情報を取得しました"
+        );
         Ok(recurring_recruitment_rel)
     }
 
@@ -101,7 +106,11 @@ impl ScheduledTaskRecurringRecruitmentRepository {
                 e
             })?;
 
-        debug!(schedule_id, found = recurring_recruitment_rel.is_some(), "定期募集関連情報を取得しました");
+        debug!(
+            schedule_id,
+            found = recurring_recruitment_rel.is_some(),
+            "定期募集関連情報を取得しました"
+        );
         Ok(recurring_recruitment_rel)
     }
 
@@ -112,11 +121,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         task_id: i32,
         schedule_id: i32,
     ) -> Result<scheduled_task_recurring_recruitments::Model> {
-        debug!(
-            task_id,
-            schedule_id,
-            "定期募集タスク関連情報を作成します"
-        );
+        debug!(task_id, schedule_id, "定期募集タスク関連情報を作成します");
 
         let active_model = scheduled_task_recurring_recruitments::ActiveModel {
             task_id: Set(task_id),
@@ -149,7 +154,11 @@ impl ScheduledTaskRecurringRecruitmentRepository {
                 e
             })?;
 
-        debug!(schedule_id, deleted_count = result.rows_affected, "定期募集タスク関連情報を削除しました");
+        debug!(
+            schedule_id,
+            deleted_count = result.rows_affected,
+            "定期募集タスク関連情報を削除しました"
+        );
         Ok(result.rows_affected)
     }
 }

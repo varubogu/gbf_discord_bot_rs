@@ -151,14 +151,15 @@ async fn cancel_recruitment_internal(
         let message_service = app_state.message_service();
 
         // 4. 募集メッセージを編集してキャンセル状態を明記
-        let cancelled_content = crate::services::recruitment::cancel::create_cancelled_message_content(
-            &txn,
-            message_service,
-            guild_id_i64,
-            locale,
-            &original_content,
-        )
-        .await?;
+        let cancelled_content =
+            crate::services::recruitment::cancel::create_cancelled_message_content(
+                &txn,
+                message_service,
+                guild_id_i64,
+                locale,
+                &original_content,
+            )
+            .await?;
         let channel = ChannelId::from(channel_id);
         let edit_message = poise::serenity_prelude::EditMessage::new().content(cancelled_content);
         channel

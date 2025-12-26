@@ -125,11 +125,11 @@ impl RecruitmentCreationService {
             .map(|sd| {
                 if sd.input_type == 1 {
                     // 絶対時刻
-                    let dismissal_time = sd.dismissal_time.ok_or_else(|| {
-                        crate::types::AppError::Business {
-                            message: "絶対時刻の解散時刻が設定されていません".to_string(),
-                        }
-                    })?;
+                    let dismissal_time =
+                        sd.dismissal_time
+                            .ok_or_else(|| crate::types::AppError::Business {
+                                message: "絶対時刻の解散時刻が設定されていません".to_string(),
+                            })?;
                     // TimeTimeをNaiveTimeに変換
                     let naive_time = chrono::NaiveTime::from_hms_opt(
                         dismissal_time.hour() as u32,

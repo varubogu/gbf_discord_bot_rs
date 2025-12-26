@@ -131,7 +131,9 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         if recruitment.is_canceled {
             info!(
                 task_id,
-                recruit_id, recruitment_id = recruitment.id, "募集は既にキャンセル済みです"
+                recruit_id,
+                recruitment_id = recruitment.id,
+                "募集は既にキャンセル済みです"
             );
             // タスクを実行済みにマーク
             self.task_repo.mark_as_executed(txn, task_id).await?;
@@ -247,7 +249,8 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
 
         info!(
             task_id,
-            recruitment_id = recruitment.id, "解散タスク実行完了"
+            recruitment_id = recruitment.id,
+            "解散タスク実行完了"
         );
 
         Ok(DissolutionExecutionResult::Cancelled {

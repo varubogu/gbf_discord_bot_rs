@@ -5,9 +5,7 @@ use gbf_discord_bot_rs::events::{
 use gbf_discord_bot_rs::repository::database::{
     battle_recruitments_repository::BattleRecruitmentsRepositoryImpl,
     recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl,
-    schedule::{
-        ScheduledTaskDissolutionRepository, ScheduledTaskRepository,
-    },
+    schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository},
 };
 use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
@@ -205,28 +203,25 @@ async fn main() -> Result<()> {
 
                 // 管理サーバー専用コマンドを特定ギルドにのみ登録
                 match env::var("BOT_ADMIN_SERVER_ID") {
-                    Ok(admin_server_id) => {
-                        match admin_server_id.parse::<u64>() {
-                            Ok(guild_id_u64) => {
-                                let guild_id = serenity::GuildId::new(guild_id_u64);
-                                let admin_cmds = admin_commands();
-                                poise::builtins::register_in_guild(ctx, &admin_cmds, guild_id)
-                                    .await?;
-                                info!(
-                                    "Registered {} admin commands in guild {} ({})",
-                                    admin_cmds.len(),
-                                    guild_id,
-                                    admin_server_id
-                                );
-                            }
-                            Err(e) => {
-                                error!(
-                                    "BOT_ADMIN_SERVER_ID '{}' is not a valid number: {}",
-                                    admin_server_id, e
-                                );
-                            }
+                    Ok(admin_server_id) => match admin_server_id.parse::<u64>() {
+                        Ok(guild_id_u64) => {
+                            let guild_id = serenity::GuildId::new(guild_id_u64);
+                            let admin_cmds = admin_commands();
+                            poise::builtins::register_in_guild(ctx, &admin_cmds, guild_id).await?;
+                            info!(
+                                "Registered {} admin commands in guild {} ({})",
+                                admin_cmds.len(),
+                                guild_id,
+                                admin_server_id
+                            );
                         }
-                    }
+                        Err(e) => {
+                            error!(
+                                "BOT_ADMIN_SERVER_ID '{}' is not a valid number: {}",
+                                admin_server_id, e
+                            );
+                        }
+                    },
                     Err(_) => {
                         error!(
                             "⚠️ BOT_ADMIN_SERVER_ID not set - admin commands will not be registered"

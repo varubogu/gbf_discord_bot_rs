@@ -3,8 +3,7 @@ use crate::repository::database::battle_recruitments_repository::BattleRecruitme
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
-    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository,
-    ScheduledTaskRepository,
+    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
 use crate::repository::quests_repository::QuestRepository;
 use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
@@ -100,9 +99,7 @@ impl DismissalTaskExecutor {
                     recruitment_dismissal_id, "解散設定が見つかりません"
                 );
                 return Err(AppError::Business {
-                    message: format!(
-                        "Dismissal setting {recruitment_dismissal_id} not found"
-                    ),
+                    message: format!("Dismissal setting {recruitment_dismissal_id} not found"),
                 });
             }
         };
@@ -116,7 +113,10 @@ impl DismissalTaskExecutor {
         {
             Some(r) => r,
             None => {
-                warn!(task_id, recruitment_id, "募集が見つかりません（既に削除済み）");
+                warn!(
+                    task_id,
+                    recruitment_id, "募集が見つかりません（既に削除済み）"
+                );
                 task_repo.mark_as_executed(txn, task_id).await?;
                 return Ok(DismissalExecutionResult::RecruitmentNotFound);
             }
@@ -153,12 +153,15 @@ impl DismissalTaskExecutor {
         if participant_count >= max_participants {
             info!(
                 task_id,
-                recruitment_id, participant_count, max_participants, "定員に達しているため解散をスキップします"
+                recruitment_id,
+                participant_count,
+                max_participants,
+                "定員に達しているため解散をスキップします"
             );
             task_repo.mark_as_executed(txn, task_id).await?;
-            return Ok(DismissalExecutionResult::SkippedDueToSufficientParticipants {
-                recruitment_id,
-            });
+            return Ok(
+                DismissalExecutionResult::SkippedDueToSufficientParticipants { recruitment_id },
+            );
         }
 
         // 定員未達のため募集をキャンセル
@@ -183,9 +186,7 @@ impl DismissalTaskExecutor {
                     "Discordメッセージが見つかりません"
                 );
                 task_repo.mark_as_executed(txn, task_id).await?;
-                return Ok(DismissalExecutionResult::DiscordMessageNotFound {
-                    recruitment_id,
-                });
+                return Ok(DismissalExecutionResult::DiscordMessageNotFound { recruitment_id });
             }
         };
 
@@ -212,7 +213,11 @@ impl DismissalTaskExecutor {
 
         // メッセージを編集
         channel_id
-            .edit_message(http, message_id, EditMessage::new().content(cancelled_content))
+            .edit_message(
+                http,
+                message_id,
+                EditMessage::new().content(cancelled_content),
+            )
             .await
             .map_err(|e| {
                 error!(error = %e, "募集メッセージの編集に失敗しました");

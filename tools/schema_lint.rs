@@ -17,7 +17,10 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
     let entities_dir = Path::new("src/models/entities");
 
     if !entities_dir.exists() {
-        eprintln!("エラー: エンティティディレクトリが見つかりません: {:?}", entities_dir);
+        eprintln!(
+            "エラー: エンティティディレクトリが見つかりません: {:?}",
+            entities_dir
+        );
         return schema_map;
     }
 
@@ -145,7 +148,8 @@ fn main() {
     for (table, schema) in &entity_schemas {
         if table.starts_with("guild_")
             && schema != "guild_master"
-            && table != "guild_last_process_times" // 例外: ワーカー状態管理テーブル
+            && table != "guild_last_process_times"
+        // 例外: ワーカー状態管理テーブル
         {
             eprintln!(
                 "❌ エラー: テーブル '{}' はguild_masterスキーマである必要がありますが、'{}' スキーマになっています",

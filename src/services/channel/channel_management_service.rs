@@ -1,4 +1,4 @@
-use crate::models::entities::{master::channel_types, guild_master::guild_channels};
+use crate::models::entities::{guild_master::guild_channels, master::channel_types};
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::GuildChannelRepository;
 use crate::repository::database::guild_repository::GuildRepository;

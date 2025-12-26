@@ -8,24 +8,41 @@ fn extract_schema_info() -> HashMap<String, String> {
     let entities_dir = Path::new("src/models/entities");
 
     if !entities_dir.exists() {
-        eprintln!("警告: エンティティディレクトリが見つかりません: {:?}", entities_dir);
+        eprintln!("警告: エンティティディレクトリが見つかりません: {entities_dir:?}");
         return schema_map;
     }
 
-    let entries = match fs::read_dir(entities_dir) {
+    // 再帰的にエンティティファイルを探索
+    extract_schema_info_recursive(entities_dir, &mut schema_map);
+
+    schema_map
+}
+
+/// エンティティディレクトリを再帰的に探索してスキーマ情報を抽出
+fn extract_schema_info_recursive(dir: &Path, schema_map: &mut HashMap<String, String>) {
+    let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(e) => {
-            eprintln!("エンティティディレクトリの読み取りに失敗: {}", e);
-            return schema_map;
+            eprintln!("ディレクトリの読み取りに失敗: {dir:?}, error: {e}");
+            return;
         }
     };
 
     for entry in entries.flatten() {
         let path = entry.path();
+
+        // サブディレクトリの場合は再帰的に探索
+        if path.is_dir() {
+            extract_schema_info_recursive(&path, schema_map);
+            continue;
+        }
+
+        // .rsファイル以外はスキップ
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
         }
 
+        // mod.rsはスキップ
         if path.file_name().and_then(|s| s.to_str()) == Some("mod.rs") {
             continue;
         }
@@ -33,7 +50,7 @@ fn extract_schema_info() -> HashMap<String, String> {
         let content = match fs::read_to_string(&path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!("ファイル読み取りエラー {:?}: {}", path, e);
+                eprintln!("ファイル読み取りエラー {path:?}: {e}");
                 continue;
             }
         };
@@ -43,21 +60,25 @@ fn extract_schema_info() -> HashMap<String, String> {
             schema_map.insert(table_name, schema_name);
         }
     }
-
-    schema_map
 }
 
 /// エンティティファイルの内容からschema_nameとtable_nameを抽出
 fn parse_entity_file(content: &str) -> Option<(String, String)> {
     let mut schema_name = None;
     let mut table_name = None;
+    let mut in_sea_orm_attr = false;
 
-    // sea_orm属性を含む行を探す
+    // sea_orm属性を含む行を探す（複数行対応）
     for line in content.lines() {
         let trimmed = line.trim();
 
-        // #[sea_orm(...)] の行を探す
+        // #[sea_orm( で属性開始
         if trimmed.starts_with("#[sea_orm(") {
+            in_sea_orm_attr = true;
+        }
+
+        // 属性内またはインライン属性の場合
+        if in_sea_orm_attr || trimmed.starts_with("#[sea_orm(") {
             // schema_name を抽出
             if let Some(start) = trimmed.find("schema_name = \"") {
                 let start_idx = start + "schema_name = \"".len();
@@ -71,6 +92,15 @@ fn parse_entity_file(content: &str) -> Option<(String, String)> {
                 let start_idx = start + "table_name = \"".len();
                 if let Some(end_idx) = trimmed[start_idx..].find('"') {
                     table_name = Some(trimmed[start_idx..start_idx + end_idx].to_string());
+                }
+            }
+
+            // )] で属性終了
+            if trimmed.ends_with(")]") {
+                in_sea_orm_attr = false;
+                // 両方見つかっていれば早期リターン
+                if schema_name.is_some() && table_name.is_some() {
+                    break;
                 }
             }
         }
@@ -89,7 +119,7 @@ fn generate_schema_name_function(schema_map: &HashMap<String, String>) -> String
     for (table, schema) in schema_map {
         schema_groups
             .entry(schema.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(table.clone());
     }
 
@@ -121,16 +151,16 @@ pub fn get_schema_name(table_name: &str) -> &str {
 
     for schema in schemas {
         if let Some(tables) = schema_groups.get(&schema) {
-            code.push_str(&format!("        // {} スキーマ\n", schema));
+            code.push_str(&format!("        // {schema} スキーマ\n"));
 
             for (i, table) in tables.iter().enumerate() {
                 if i == 0 {
-                    code.push_str(&format!("        \"{}\"\n", table));
+                    code.push_str(&format!("        \"{table}\"\n"));
                 } else {
-                    code.push_str(&format!("        | \"{}\"\n", table));
+                    code.push_str(&format!("        | \"{table}\"\n"));
                 }
             }
-            code.push_str(&format!(" => \"{}\",\n", schema));
+            code.push_str(&format!(" => \"{schema}\",\n"));
         }
     }
 
@@ -175,8 +205,7 @@ mod tests {
     for table in all_tables {
         if let Some(expected_schema) = schema_map.get(&table) {
             code.push_str(&format!(
-                "        assert_eq!(get_schema_name(\"{}\"), \"{}\");\n",
-                table, expected_schema
+                "        assert_eq!(get_schema_name(\"{table}\"), \"{expected_schema}\");\n"
             ));
         }
     }
@@ -214,7 +243,7 @@ fn main() {
 
     println!("抽出されたスキーマ情報:");
     for (table, schema) in &schema_map {
-        println!("  {} -> {}", table, schema);
+        println!("  {table} -> {schema}");
     }
 
     let generated_code = generate_schema_name_function(&schema_map);
@@ -224,5 +253,5 @@ fn main() {
 
     fs::write(&dest_path, generated_code).expect("生成されたコードの書き込みに失敗しました");
 
-    println!("スキーマユーティリティコードを生成しました: {:?}", dest_path);
+    println!("スキーマユーティリティコードを生成しました: {dest_path:?}");
 }

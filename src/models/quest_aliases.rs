@@ -1,5 +1,5 @@
-use crate::models::entities::{Quest as QuestEntity, QuestAlias as QuestAliasEntity};
 use crate::models::entities::master::{quest_aliases, quests};
+use crate::models::entities::{Quest as QuestEntity, QuestAlias as QuestAliasEntity};
 use crate::models::quests::Quest;
 use crate::repository::database::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};

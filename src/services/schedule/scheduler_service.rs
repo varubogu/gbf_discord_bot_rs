@@ -126,11 +126,11 @@ impl SchedulerService {
         txn: &DatabaseTransaction,
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
-        use chrono::Utc;
         use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
         use crate::repository::database::schedule::{
             ScheduledTaskNotificationRepository, ScheduledTaskRepository,
         };
+        use chrono::Utc;
 
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelEventScheduleRepository::new();

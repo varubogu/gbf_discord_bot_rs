@@ -1,9 +1,7 @@
 use crate::models::entities::worker::{scheduled_task_dissolutions, scheduled_tasks};
 use crate::types::Result;
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
 /// スケジュールタスクリポジトリ
@@ -158,11 +156,7 @@ impl ScheduledTaskRepository {
     }
 
     /// IDでタスクを削除
-    pub async fn delete_by_id(
-        &self,
-        txn: &DatabaseTransaction,
-        task_id: i32,
-    ) -> Result<u64> {
+    pub async fn delete_by_id(&self, txn: &DatabaseTransaction, task_id: i32) -> Result<u64> {
         debug!(task_id, "タスクを削除します");
 
         let delete_result = scheduled_tasks::Entity::delete_by_id(task_id)

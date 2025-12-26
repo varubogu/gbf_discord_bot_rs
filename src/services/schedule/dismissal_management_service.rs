@@ -1,7 +1,6 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository,
-    ScheduledTaskRepository,
+    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
 use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
 use crate::types::Result;
@@ -165,8 +164,7 @@ impl DismissalManagementService {
 
         debug!(
             recruitment_id,
-            dismissals_count,
-            "募集に紐づく解散時刻とリレーションを削除します"
+            dismissals_count, "募集に紐づく解散時刻とリレーションを削除します"
         );
 
         // 外部キー制約を考慮し、scheduled_task_dismissals → scheduled_task → dismissal の順で削除

@@ -5,5 +5,5 @@ pub mod worker;
 // masterスキーマからのre-export
 pub use master::Environment;
 pub use master::MessageText;
-pub use master::QuestAlias;
 pub use master::Quest;
+pub use master::QuestAlias;

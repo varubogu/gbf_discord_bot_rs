@@ -8,7 +8,6 @@ use crate::repository::database::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
-use sea_orm::entity::prelude::TimeTime;
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::recruitment::dismissal_time_parser_service::{
     DismissalTimeParserService, ParsedDismissalTime,
@@ -19,6 +18,7 @@ use crate::types::{AppError, Result};
 use chrono::{Duration, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
 use sea_orm::DatabaseTransaction;
+use sea_orm::entity::prelude::TimeTime;
 use tracing::{debug, info};
 
 /// スケジュール作成結果
@@ -302,9 +302,12 @@ impl ScheduleCreateService {
             );
 
             // 次回募集日時を計算
-            let next_times = self
-                .schedule_service
-                .calculate_next_recruitment_times(schedule, days, search_from, search_to)?;
+            let next_times = self.schedule_service.calculate_next_recruitment_times(
+                schedule,
+                days,
+                search_from,
+                search_to,
+            )?;
 
             // 最初に見つかった未来の募集開始日時を使用
             if let Some(next_time) = next_times.first() {
@@ -323,9 +326,7 @@ impl ScheduleCreateService {
 
                     // scheduled_task_recurring_recruitmentsに関連付けを登録
                     let recurring_repo = ScheduledTaskRecurringRecruitmentRepository::new();
-                    recurring_repo
-                        .create(txn, task.id, schedule.id)
-                        .await?;
+                    recurring_repo.create(txn, task.id, schedule.id).await?;
 
                     info!(
                         schedule_id = schedule.id,

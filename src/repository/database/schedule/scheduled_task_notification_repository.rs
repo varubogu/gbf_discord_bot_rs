@@ -48,15 +48,19 @@ impl ScheduledTaskNotificationRepository {
         let mut results = Vec::new();
         for task in tasks {
             // 各タスクに対して notification_rel 情報を取得
-            if let Some(notification_rel) = scheduled_task_notifications::Entity::find_by_id(task.id)
-                .one(txn)
-                .await
-                .map_err(|e| {
-                    error!(error = %e, task_id = task.id, "通知関連情報の取得に失敗しました");
-                    e
-                })?
+            if let Some(notification_rel) =
+                scheduled_task_notifications::Entity::find_by_id(task.id)
+                    .one(txn)
+                    .await
+                    .map_err(|e| {
+                        error!(error = %e, task_id = task.id, "通知関連情報の取得に失敗しました");
+                        e
+                    })?
             {
-                results.push(NotificationWithTask { task, notification_rel });
+                results.push(NotificationWithTask {
+                    task,
+                    notification_rel,
+                });
             }
         }
 
@@ -80,7 +84,11 @@ impl ScheduledTaskNotificationRepository {
                 e
             })?;
 
-        debug!(task_id, found = notification_rel.is_some(), "通知関連情報を取得しました");
+        debug!(
+            task_id,
+            found = notification_rel.is_some(),
+            "通知関連情報を取得しました"
+        );
         Ok(notification_rel)
     }
 
@@ -101,7 +109,11 @@ impl ScheduledTaskNotificationRepository {
                 e
             })?;
 
-        debug!(notification_id, found = notification_rel.is_some(), "通知関連情報を取得しました");
+        debug!(
+            notification_id,
+            found = notification_rel.is_some(),
+            "通知関連情報を取得しました"
+        );
         Ok(notification_rel)
     }
 
@@ -112,11 +124,7 @@ impl ScheduledTaskNotificationRepository {
         task_id: i32,
         notification_id: i32,
     ) -> Result<scheduled_task_notifications::Model> {
-        debug!(
-            task_id,
-            notification_id,
-            "通知タスク関連情報を作成します"
-        );
+        debug!(task_id, notification_id, "通知タスク関連情報を作成します");
 
         let active_model = scheduled_task_notifications::ActiveModel {
             task_id: Set(task_id),
@@ -149,7 +157,11 @@ impl ScheduledTaskNotificationRepository {
                 e
             })?;
 
-        debug!(notification_id, deleted_count = result.rows_affected, "通知タスク関連情報を削除しました");
+        debug!(
+            notification_id,
+            deleted_count = result.rows_affected,
+            "通知タスク関連情報を削除しました"
+        );
         Ok(result.rows_affected)
     }
 }

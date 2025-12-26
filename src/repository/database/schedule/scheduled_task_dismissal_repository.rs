@@ -131,8 +131,7 @@ impl ScheduledTaskDismissalRepository {
     ) -> Result<scheduled_task_dismissals::Model> {
         debug!(
             task_id,
-            recruitment_dismissal_id,
-            "解散タスク関連情報を作成します"
+            recruitment_dismissal_id, "解散タスク関連情報を作成します"
         );
 
         let now = chrono::Utc::now();
@@ -149,8 +148,7 @@ impl ScheduledTaskDismissalRepository {
 
         debug!(
             task_id,
-            recruitment_dismissal_id,
-            "解散タスク関連情報を作成しました"
+            recruitment_dismissal_id, "解散タスク関連情報を作成しました"
         );
         Ok(model)
     }
@@ -161,10 +159,7 @@ impl ScheduledTaskDismissalRepository {
         txn: &DatabaseTransaction,
         recruitment_dismissal_id: i32,
     ) -> Result<u64> {
-        debug!(
-            recruitment_dismissal_id,
-            "解散タスク関連情報を削除します"
-        );
+        debug!(recruitment_dismissal_id, "解散タスク関連情報を削除します");
 
         let result = scheduled_task_dismissals::Entity::delete_many()
             .filter(

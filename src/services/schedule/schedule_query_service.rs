@@ -143,9 +143,7 @@ impl ScheduleQueryService {
 
             // 解散時刻を取得
             let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
-            let dismissals = dismissal_repo
-                .find_by_schedule_id(txn, schedule.id)
-                .await?;
+            let dismissals = dismissal_repo.find_by_schedule_id(txn, schedule.id).await?;
 
             let dismissal_times = if dismissals.is_empty() {
                 None

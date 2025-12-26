@@ -215,7 +215,8 @@ impl RoleNotificationService {
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
-    ) -> Result<Vec<crate::models::entities::guild_master::all_recruitment_notification_roles::Model>> {
+    ) -> Result<Vec<crate::models::entities::guild_master::all_recruitment_notification_roles::Model>>
+    {
         self.all_roles_repo
             .find_by_guild_with_txn(txn, guild_id)
             .await
@@ -233,7 +234,9 @@ impl RoleNotificationService {
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
-    ) -> Result<Vec<crate::models::entities::guild_master::quest_recruitment_notification_roles::Model>> {
+    ) -> Result<
+        Vec<crate::models::entities::guild_master::quest_recruitment_notification_roles::Model>,
+    > {
         self.quest_roles_repo
             .find_by_guild_with_txn(txn, guild_id)
             .await

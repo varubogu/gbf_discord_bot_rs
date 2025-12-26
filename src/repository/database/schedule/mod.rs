@@ -19,9 +19,7 @@ pub use notification_rel_battle_recruitment_repository::NotificationRelBattleRec
 pub use notification_rel_event_schedule_repository::NotificationRelEventScheduleRepository;
 pub use notification_repository::NotificationRepository;
 pub use schedule_repository::ScheduleRepository;
-pub use scheduled_task_cleanup_repository::{
-    CleanupWithTask, ScheduledTaskCleanupRepository,
-};
+pub use scheduled_task_cleanup_repository::{CleanupWithTask, ScheduledTaskCleanupRepository};
 pub use scheduled_task_dismissal_repository::{
     DismissalWithTask, ScheduledTaskDismissalRepository,
 };

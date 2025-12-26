@@ -1,5 +1,5 @@
 /// メッセージサービス用ヘルパー関数
-use crate::services::message::{MessageTextId, MessageService};
+use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
 

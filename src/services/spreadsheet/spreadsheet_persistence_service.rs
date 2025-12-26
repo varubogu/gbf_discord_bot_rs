@@ -6,9 +6,7 @@
 /// - 参照整合性を考慮した削除処理
 /// - PostgresValueからSeaValueへの変換
 use chrono::Utc;
-use sea_orm::sea_query::{
-    Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue,
-};
+use sea_orm::sea_query::{Alias, ArrayType, Expr, PostgresQueryBuilder, Query, Value as SeaValue};
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseTransaction, DbErr, Statement};
 
 use crate::errors::FacadeError;
@@ -173,10 +171,8 @@ impl SpreadsheetPersistenceService {
             .map_err(FacadeError::from)?;
 
             // スプレッドシートに存在しないレコードを削除（参照されていないもののみ）
-            let inserted_ids: Vec<&PostgresValue> = rows
-                .iter()
-                .filter_map(|row| row.values.first())
-                .collect();
+            let inserted_ids: Vec<&PostgresValue> =
+                rows.iter().filter_map(|row| row.values.first()).collect();
 
             self.delete_unreferenced_records(txn, table_name, &inserted_ids)
                 .await?;

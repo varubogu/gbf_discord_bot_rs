@@ -235,7 +235,10 @@ impl RecruitmentScheduleFacade {
         match result {
             Ok(_) => {
                 txn.commit().await?;
-                info!(schedule_id, guild_id, "募集スケジュールの有効/無効を切り替えました");
+                info!(
+                    schedule_id,
+                    guild_id, "募集スケジュールの有効/無効を切り替えました"
+                );
                 Ok(())
             }
             Err(e) => {

@@ -169,7 +169,9 @@ impl MessageTextId {
             MessageTextId::BattleRecruitmentRecruitmentClosed => {
                 "battle_recruitment.recruitment_closed"
             }
-            MessageTextId::BattleRecruitmentRecruitmentFull => "battle_recruitment.recruitment_full",
+            MessageTextId::BattleRecruitmentRecruitmentFull => {
+                "battle_recruitment.recruitment_full"
+            }
             MessageTextId::BattleRecruitmentJoinSuccess => "battle_recruitment.join_success",
             MessageTextId::BattleRecruitmentLeaveSuccess => "battle_recruitment.leave_success",
             MessageTextId::BattleRecruitmentNotFound => "battle_recruitment.not_found",
@@ -214,7 +216,9 @@ impl MessageTextId {
             MessageTextId::KosenjoQualifyingStart => "kosenjo.qualifying_start",
             MessageTextId::KosenjoQualifyingEnd => "kosenjo.qualifying_end",
             MessageTextId::KosenjoQualifyingEndNoInterval => "kosenjo.qualifying_end_no_interval",
-            MessageTextId::KosenjoMainTournamentBefore1Day => "kosenjo.main_tournament_before_1_day",
+            MessageTextId::KosenjoMainTournamentBefore1Day => {
+                "kosenjo.main_tournament_before_1_day"
+            }
             MessageTextId::KosenjoMainTournamentDayStart => "kosenjo.main_tournament_day_start",
             MessageTextId::KosenjoMainTournamentHalfDay => "kosenjo.main_tournament_half_day",
             MessageTextId::KosenjoMainTournamentDayEnd => "kosenjo.main_tournament_day_end",
@@ -290,9 +294,7 @@ impl MessageTextId {
             MessageTextId::RecruitChangeSuccess => "recruit.change_success",
 
             // Recruitment dismissal
-            MessageTextId::RecruitmentDismissalNotification => {
-                "recruitment.dismissal_notification"
-            }
+            MessageTextId::RecruitmentDismissalNotification => "recruitment.dismissal_notification",
 
             // Messages
             MessageTextId::MessagesWelcome => "messages.welcome",

@@ -1,4 +1,6 @@
-use crate::models::entities::guild_master::{battle_recruitment_schedule_days, battle_recruitment_schedules};
+use crate::models::entities::guild_master::{
+    battle_recruitment_schedule_days, battle_recruitment_schedules,
+};
 use crate::types::Result;
 use chrono::{DateTime, Datelike, Duration, NaiveTime, Utc, Weekday};
 use std::collections::HashSet;

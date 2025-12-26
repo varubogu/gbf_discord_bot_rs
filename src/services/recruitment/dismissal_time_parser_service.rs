@@ -106,9 +106,9 @@ impl DismissalTimeParserService {
                     minutes,
                     ..
                 } => {
-                    let duration =
-                        Duration::days(*days as i64) + Duration::hours(*hours as i64)
-                            + Duration::minutes(*minutes as i64);
+                    let duration = Duration::days(*days as i64)
+                        + Duration::hours(*hours as i64)
+                        + Duration::minutes(*minutes as i64);
                     departure_time - duration
                 }
             };
@@ -152,11 +152,9 @@ impl DismissalTimeParserService {
     ) -> Result<ParsedDismissalTime> {
         // 1. 相対時刻パターンを試行
         if let Some(caps) = RE_RELATIVE_TIME.captures(input) {
-            let value = caps[1]
-                .parse::<i32>()
-                .map_err(|_| AppError::Business {
-                    message: format!("数値のパースに失敗しました: {}", &caps[1]),
-                })?;
+            let value = caps[1].parse::<i32>().map_err(|_| AppError::Business {
+                message: format!("数値のパースに失敗しました: {}", &caps[1]),
+            })?;
             let unit = &caps[2];
 
             let (days, hours, minutes) = match unit {
@@ -166,17 +164,11 @@ impl DismissalTimeParserService {
                 _ => {
                     return Err(AppError::Business {
                         message: format!("不明な時間単位です: {}", unit),
-                    })
+                    });
                 }
             };
 
-            debug!(
-                input,
-                days,
-                hours,
-                minutes,
-                "相対時刻としてパースしました"
-            );
+            debug!(input, days, hours, minutes, "相対時刻としてパースしました");
 
             return Ok(ParsedDismissalTime::Relative {
                 input_value: input.to_string(),
@@ -279,7 +271,12 @@ mod tests {
         let parsed = result.unwrap();
         assert_eq!(parsed.len(), 1);
         match &parsed[0] {
-            ParsedDismissalTime::Relative { days, hours, minutes, .. } => {
+            ParsedDismissalTime::Relative {
+                days,
+                hours,
+                minutes,
+                ..
+            } => {
                 assert_eq!(*days, 1);
                 assert_eq!(*hours, 0);
                 assert_eq!(*minutes, 0);
@@ -308,7 +305,12 @@ mod tests {
         let parsed = result.unwrap();
         assert_eq!(parsed.len(), 1);
         match &parsed[0] {
-            ParsedDismissalTime::Relative { days, hours, minutes, .. } => {
+            ParsedDismissalTime::Relative {
+                days,
+                hours,
+                minutes,
+                ..
+            } => {
                 assert_eq!(*days, 0);
                 assert_eq!(*hours, 1);
                 assert_eq!(*minutes, 0);
@@ -337,7 +339,12 @@ mod tests {
         let parsed = result.unwrap();
         assert_eq!(parsed.len(), 1);
         match &parsed[0] {
-            ParsedDismissalTime::Relative { days, hours, minutes, .. } => {
+            ParsedDismissalTime::Relative {
+                days,
+                hours,
+                minutes,
+                ..
+            } => {
                 assert_eq!(*days, 0);
                 assert_eq!(*hours, 0);
                 assert_eq!(*minutes, 90);
@@ -609,7 +616,12 @@ mod tests {
 
         // 1つ目: 相対時刻
         match &parsed[0] {
-            ParsedDismissalTime::Relative { days, hours, minutes, .. } => {
+            ParsedDismissalTime::Relative {
+                days,
+                hours,
+                minutes,
+                ..
+            } => {
                 assert_eq!(*days, 0);
                 assert_eq!(*hours, 1);
                 assert_eq!(*minutes, 0);

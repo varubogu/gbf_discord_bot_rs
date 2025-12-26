@@ -9,7 +9,7 @@ use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
-use crate::services::message::{MessageTextId, MessageService};
+use crate::services::message::{MessageService, MessageTextId};
 use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
 use crate::types;
 use crate::types::PoiseContext;
@@ -266,7 +266,11 @@ where
                 .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
                 .collect();
 
-            message_text.push_str(&format!("\n{}{}", dismissal_label, dismissal_texts.join(", ")));
+            message_text.push_str(&format!(
+                "\n{}{}",
+                dismissal_label,
+                dismissal_texts.join(", ")
+            ));
         }
     }
 
@@ -296,8 +300,9 @@ fn format_dismissal_time(
             minutes,
         } => {
             use chrono::Duration;
-            let duration =
-                Duration::days(*days as i64) + Duration::hours(*hours as i64) + Duration::minutes(*minutes as i64);
+            let duration = Duration::days(*days as i64)
+                + Duration::hours(*hours as i64)
+                + Duration::minutes(*minutes as i64);
             let dismissal_datetime = *departure_time - duration;
             let local_datetime = dismissal_datetime.with_timezone(timezone);
             let formatted_datetime = local_datetime.format(date_format).to_string();
