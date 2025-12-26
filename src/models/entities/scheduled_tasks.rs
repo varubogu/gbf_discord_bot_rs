@@ -41,6 +41,7 @@ pub enum ScheduledTaskType {
     Dissolution = 2,          // 解散
     DataCleanup = 3,          // データクリーンアップ
     RecurringRecruitment = 4, // 定期募集
+    Dismissal = 5,            // 人数不足解散
 }
 
 impl ScheduledTaskType {
@@ -66,6 +67,7 @@ impl ScheduledTaskType {
             Self::Dissolution => "解散",
             Self::DataCleanup => "データ整理",
             Self::RecurringRecruitment => "定期募集",
+            Self::Dismissal => "人数不足解散",
         }
     }
 }

@@ -1,3 +1,5 @@
+pub mod dismissal_management_service;
+pub mod dismissal_task_executor;
 pub mod dissolution_task_executor;
 pub mod notification_history_service;
 pub mod notification_management_service;
@@ -10,6 +12,8 @@ pub mod scheduler_manager;
 pub mod scheduler_service;
 pub mod timezone_converter;
 
+pub use dismissal_management_service::DismissalManagementService;
+pub use dismissal_task_executor::{DismissalExecutionResult, DismissalTaskExecutor};
 pub use dissolution_task_executor::{DissolutionExecutionResult, DissolutionTaskExecutor};
 pub use notification_history_service::{NotificationHistoryService, NotificationStats};
 pub use notification_management_service::NotificationManagementService;

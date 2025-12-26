@@ -67,6 +67,10 @@ pub async fn recruitment_schedule_create(
     #[description = "Note (optional)"]
     #[description_localized("ja", "備考（省略可）")]
     note: Option<String>,
+    #[name_localized("ja", "解散時刻")]
+    #[description = "dismissal times (comma-separated, max 3)"]
+    #[description_localized("ja", "解散時刻（カンマ区切り、最大3つ。例: 1時間前, 21:00, 2日前）")]
+    dismissal_times: Option<String>,
 ) -> Result<()> {
     let guild_id = ctx
         .guild_id()
@@ -111,6 +115,7 @@ pub async fn recruitment_schedule_create(
             battle_style,
             default_offset,
             note,
+            dismissal_times,
         )
         .await;
 

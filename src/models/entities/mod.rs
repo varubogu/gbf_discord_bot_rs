@@ -1,5 +1,7 @@
 pub mod all_recruitment_notification_roles;
+pub mod battle_recruitment_dismissals;
 pub mod battle_recruitment_schedule_days;
+pub mod battle_recruitment_schedule_dismissals;
 pub mod battle_recruitment_schedules;
 pub mod battle_recruitments;
 pub mod battle_styles;
@@ -28,6 +30,7 @@ pub mod quest_recruitment_notification_roles;
 pub mod quests;
 pub mod recruitment_participants;
 pub mod scheduled_task_cleanups;
+pub mod scheduled_task_dismissals;
 pub mod scheduled_task_dissolutions;
 pub mod scheduled_task_notifications;
 pub mod scheduled_task_recurring_recruitments;

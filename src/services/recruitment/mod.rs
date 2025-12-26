@@ -1,5 +1,6 @@
 pub mod battle_style_query_service;
 pub mod cancel;
+pub mod dismissal_time_parser_service;
 pub mod get;
 mod message;
 pub mod new;

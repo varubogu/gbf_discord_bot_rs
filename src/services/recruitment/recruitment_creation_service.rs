@@ -111,6 +111,7 @@ impl RecruitmentCreationService {
             .await?;
 
         // 3. メッセージ内容を作成
+        // TODO: 定期募集の解散時刻をDBから取得して表示する
         let mut message_content = create_message_content(
             txn,
             &quest.name,
@@ -118,6 +119,7 @@ impl RecruitmentCreationService {
             &calculated_time.quest_start_at,
             timezone,
             Some(calculated_time.guild_id),
+            None, // 定期募集の解散時刻は今後実装予定
         )
         .await?;
 

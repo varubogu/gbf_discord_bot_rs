@@ -5,6 +5,7 @@ use crate::repository::database::schedule::{
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;
+use crate::services::schedule::dismissal_task_executor::DismissalTaskExecutor;
 use crate::services::schedule::dissolution_task_executor::DissolutionTaskExecutor;
 use crate::services::schedule::recurring_recruitment_task_executor::RecurringRecruitmentTaskExecutor;
 use crate::services::schedule::{NotificationService, RecruitmentScheduleService};
@@ -281,6 +282,21 @@ impl<
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "定期募集タスクの実行中にエラーが発生しました");
+                                // エラーがあっても他のタスクは継続
+                            }
+                        }
+                    }
+                    5 => {
+                        // Dismissal
+                        info!(task_id = task.id, "解散（人数不足）タスクを実行します");
+                        let executor = DismissalTaskExecutor::new(Arc::clone(message_service));
+
+                        match executor.execute(&txn, http, task.id).await {
+                            Ok(result) => {
+                                info!(task_id = task.id, result = ?result, "解散（人数不足）タスクを実行しました");
+                            }
+                            Err(e) => {
+                                error!(task_id = task.id, error = %e, "解散（人数不足）タスクの実行中にエラーが発生しました");
                                 // エラーがあっても他のタスクは継続
                             }
                         }
