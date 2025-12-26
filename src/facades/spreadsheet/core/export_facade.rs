@@ -12,6 +12,7 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
     DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
+    RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
     SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetWriterService,
     SpreadsheetWriterServiceTrait, TableDefinition, TableDefinitionService, TableIO,
 };
@@ -27,6 +28,42 @@ pub struct ExportResult {
     pub total_rows: usize,
     /// エラーメッセージ
     pub errors: Vec<String>,
+}
+
+/// エクスポート設定
+struct ExportConfig {
+    /// エクスポート種別の名前（ログ用）
+    export_type_name: &'static str,
+    /// ギルドID（Noneの場合はグローバル）
+    guild_id: Option<i64>,
+}
+
+impl ExportConfig {
+    /// グローバル用設定
+    fn global() -> Self {
+        Self {
+            export_type_name: "グローバルスプレッドシート",
+            guild_id: None,
+        }
+    }
+
+    /// ギルド用設定
+    fn guild(guild_id: i64) -> Self {
+        Self {
+            export_type_name: "ギルド用スプレッドシート",
+            guild_id: Some(guild_id),
+        }
+    }
+
+    /// テーブルをフィルタするか判定
+    fn should_include_table(&self, table: &RegisteredTableSchema) -> bool {
+        match self.guild_id {
+            // ギルド版: guild_で始まるテーブルのみ
+            Some(_) => table.table_name.starts_with("guild_"),
+            // グローバル版: 全テーブル
+            None => true,
+        }
+    }
 }
 
 /// スプレッドシートエクスポートFacade
@@ -55,13 +92,13 @@ impl SpreadsheetExportFacade {
         })
     }
 
-    /// グローバルデータをスプレッドシートにエクスポート
-    #[instrument(level = "info", skip(self), fields(spreadsheet_id = %spreadsheet_id))]
-    pub async fn export_global_spreadsheet(
+    /// スプレッドシートにデータをエクスポート（内部共通処理）
+    async fn export_spreadsheet_internal(
         &self,
         spreadsheet_id: &str,
+        config: ExportConfig,
     ) -> Result<ExportResult, FacadeError> {
-        info!("グローバルデータのエクスポートを開始します");
+        info!("{}のエクスポートを開始します", config.export_type_name);
 
         // Google Sheets APIクライアントを取得
         let sheets_client = self.google_auth_service.get_sheets_client().await?;
@@ -89,6 +126,16 @@ impl SpreadsheetExportFacade {
             "テーブル定義を読み込みました"
         );
 
+        // SeaORMエンティティからスキーマ定義を取得
+        let schema_extractor = SchemaExtractorService::new();
+        let registered_tables = schema_extractor.extract_registered_tables();
+
+        // テーブルフィルタ（ギルド/グローバル）
+        let target_tables: Vec<RegisteredTableSchema> = registered_tables
+            .into_iter()
+            .filter(|table| config.should_include_table(table))
+            .collect();
+
         // エクスポート対象のテーブルのみをフィルタ（table_io = Out or Both）
         let export_tables: Vec<TableDefinition> = table_definitions
             .into_iter()
@@ -113,6 +160,11 @@ impl SpreadsheetExportFacade {
         // トランザクション開始（読み取り専用）
         let txn = self.db.begin().await?;
 
+        // RLS設定（ギルドの場合のみ）
+        if let Some(guild_id) = config.guild_id {
+            set_current_guild_id(&txn, guild_id).await?;
+        }
+
         let result = async {
             let mut success_count = 0;
             let mut failure_count = 0;
@@ -120,6 +172,20 @@ impl SpreadsheetExportFacade {
             let mut errors = Vec::new();
 
             for table_def in export_tables {
+                // target_tablesに含まれているかチェック
+                let is_target = target_tables
+                    .iter()
+                    .any(|t| t.table_name == table_def.table_name);
+
+                if !is_target {
+                    info!(
+                        table_name = %table_def.table_name,
+                        "{}のフィルタ条件により対象外のためスキップします",
+                        config.export_type_name
+                    );
+                    continue;
+                }
+
                 // TODO: データベースからデータを取得する処理
                 // 現時点ではダミーデータ
                 let rows: Vec<Vec<PostgresValue>> = Vec::new();
@@ -183,7 +249,8 @@ impl SpreadsheetExportFacade {
                     success = export_result.success_count,
                     failure = export_result.failure_count,
                     total_rows = export_result.total_rows,
-                    "グローバルデータのエクスポートが完了しました"
+                    "{}のエクスポートが完了しました",
+                    config.export_type_name
                 );
                 Ok(export_result)
             }
@@ -195,6 +262,16 @@ impl SpreadsheetExportFacade {
         }
     }
 
+    /// グローバルデータをスプレッドシートにエクスポート
+    #[instrument(level = "info", skip(self), fields(spreadsheet_id = %spreadsheet_id))]
+    pub async fn export_global_spreadsheet(
+        &self,
+        spreadsheet_id: &str,
+    ) -> Result<ExportResult, FacadeError> {
+        self.export_spreadsheet_internal(spreadsheet_id, ExportConfig::global())
+            .await
+    }
+
     /// ギルドデータをスプレッドシートにエクスポート
     #[instrument(level = "info", skip(self), fields(spreadsheet_id = %spreadsheet_id, guild_id = %guild_id))]
     pub async fn export_guild_spreadsheet(
@@ -202,14 +279,8 @@ impl SpreadsheetExportFacade {
         spreadsheet_id: &str,
         guild_id: u64,
     ) -> Result<ExportResult, FacadeError> {
-        info!(
-            guild_id = %guild_id,
-            "ギルドデータのエクスポートを開始します"
-        );
-
-        // グローバルと同様の処理（guild_idを考慮）
-        // TODO: 実装を完成させる（現時点ではグローバルと同様）
-        self.export_global_spreadsheet(spreadsheet_id).await
+        self.export_spreadsheet_internal(spreadsheet_id, ExportConfig::guild(guild_id as i64))
+            .await
     }
 
     /// ギルド設定（DB）からスプレッドシートIDを取得してエクスポートを実行
