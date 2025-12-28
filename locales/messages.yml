@@ -263,6 +263,9 @@ recruitment.no_participants:
 recruitment.leave_all_button:
   ja: "❌ 全て取り消し"
   en: "❌ Cancel All"
+recruitment.dismissal_notification:
+  ja: "人数が集まらなかったため、この募集は解散しました。"
+  en: "This recruitment has been dismissed due to insufficient participants."
 
 timezone.set_success:
   ja: "タイムゾーンを {{timezone}} に設定しました。"
