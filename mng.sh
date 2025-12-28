@@ -22,13 +22,16 @@ show_help() {
     echo -e "${WHITE}  prod    - Production environment (pulls from GHCR)${NC}"
     echo ""
     echo -e "${YELLOW}Commands:${NC}"
-    echo -e "${WHITE}  up      - Start services (default)${NC}"
-    echo -e "${WHITE}  down    - Stop services${NC}"
+    echo -e "${WHITE}  up         - Start services (default)${NC}"
+    echo -e "${WHITE}  down       - Stop services${NC}"
+    echo -e "${WHITE}  update_app - Update app container only (staging/prod only)${NC}"
     # echo -e "${WHITE}  nocache - Build without cache and start (prod only)${NC}"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo -e "${WHITE}  ./mng.sh dev up${NC}"
     echo -e "${WHITE}  ./mng.sh staging up${NC}"
+    echo -e "${WHITE}  ./mng.sh staging update_app${NC}"
+    echo -e "${WHITE}  ./mng.sh prod update_app${NC}"
     echo -e "${WHITE}  ./mng.sh prod down${NC}"
     # echo -e "${WHITE}  ./mng.sh prod nocache${NC}"
 }
@@ -58,10 +61,10 @@ _mng_completion() {
                 opts="up down"
                 ;;
             staging)
-                opts="up down"
+                opts="up down update_app"
                 ;;
             prod)
-                opts="up down"  # nocache is commented out
+                opts="up down update_app"  # nocache is commented out
                 # opts="up down nocache"
                 ;;
             *)
@@ -117,12 +120,12 @@ case $ENVIRONMENT in
         ;;
     staging)
         case $COMMAND in
-            up|down|help)
+            up|down|update_app|help)
                 # 有効なコマンド
                 ;;
             *)
                 echo -e "${RED}❌ Invalid command for staging: $COMMAND${NC}"
-                echo -e "${YELLOW}Available commands for staging: up, down${NC}"
+                echo -e "${YELLOW}Available commands for staging: up, down, update_app${NC}"
                 show_help
                 exit 1
                 ;;
@@ -130,13 +133,13 @@ case $ENVIRONMENT in
         ;;
     prod)
         case $COMMAND in
-            up|down|help)  # nocache is commented out
+            up|down|update_app|help)  # nocache is commented out
             # up|down|nocache|help)
                 # 有効なコマンド
                 ;;
             *)
                 echo -e "${RED}❌ Invalid command for prod: $COMMAND${NC}"
-                echo -e "${YELLOW}Available commands for prod: up, down${NC}"  # nocache is commented out
+                echo -e "${YELLOW}Available commands for prod: up, down, update_app${NC}"  # nocache is commented out
                 # echo -e "${YELLOW}Available commands for prod: up, down, nocache${NC}"
                 show_help
                 exit 1
@@ -239,6 +242,22 @@ staging_down() {
     docker compose -f docker-compose.staging.yml down
 }
 
+# staging update_app の処理
+staging_update_app() {
+    echo -e "${CYAN}🔄 検証環境のappコンテナを更新しています...${NC}"
+    docker compose -f docker-compose.staging.yml build app
+    docker compose -f docker-compose.staging.yml up -d app
+    echo -e "${GREEN}✅ appコンテナの更新が完了しました${NC}"
+}
+
+# prod update_app の処理
+prod_update_app() {
+    echo -e "${CYAN}🔄 本番環境のappコンテナを更新しています...${NC}"
+    docker compose pull app
+    docker compose up -d app
+    echo -e "${GREEN}✅ appコンテナの更新が完了しました${NC}"
+}
+
 # prod nocache の処理 (commented out - no longer needed as production pulls pre-built images)
 # prod_nocache() {
 #     echo -e "${CYAN}🔄 キャッシュなしでビルドしています...${NC}"
@@ -275,6 +294,9 @@ case $ENVIRONMENT in
             "down")
                 staging_down
                 ;;
+            "update_app")
+                staging_update_app
+                ;;
             "help")
                 show_help
                 ;;
@@ -287,6 +309,9 @@ case $ENVIRONMENT in
                 ;;
             "down")
                 prod_down
+                ;;
+            "update_app")
+                prod_update_app
                 ;;
             # "nocache")
             #     prod_nocache

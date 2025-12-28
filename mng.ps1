@@ -14,14 +14,14 @@ param(
                 @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             'staging' {
-                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
+                @('up', 'down', 'update_app', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             'prod' {
-                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
+                @('up', 'down', 'update_app', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
                 # @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             default {
-                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
+                @('up', 'down', 'update_app', 'help') | Where-Object { $_ -like "$wordToComplete*" }  # nocache is commented out
                 # @('up', 'down', 'nocache', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
         }
@@ -42,13 +42,16 @@ function Show-Help
     Write-Host "  prod    - Production environment (pulls from GHCR)" -ForegroundColor White
     Write-Host ""
     Write-Host "Commands:" -ForegroundColor Yellow
-    Write-Host "  up      - Start services (default)" -ForegroundColor White
-    Write-Host "  down    - Stop services" -ForegroundColor White
+    Write-Host "  up         - Start services (default)" -ForegroundColor White
+    Write-Host "  down       - Stop services" -ForegroundColor White
+    Write-Host "  update_app - Update app container only (staging/prod only)" -ForegroundColor White
     # Write-Host "  nocache - Build without cache and start (prod only)" -ForegroundColor White
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\mng.ps1 dev up" -ForegroundColor White
     Write-Host "  .\mng.ps1 staging up" -ForegroundColor White
+    Write-Host "  .\mng.ps1 staging update_app" -ForegroundColor White
+    Write-Host "  .\mng.ps1 prod update_app" -ForegroundColor White
     Write-Host "  .\mng.ps1 prod down" -ForegroundColor White
     # Write-Host "  .\mng.ps1 prod nocache" -ForegroundColor White
 }
@@ -153,6 +156,22 @@ function Stop-StagingServices
     docker compose -f docker-compose.staging.yml down
 }
 
+function Update-StagingApp
+{
+    Write-Host "🔄 検証環境のappコンテナを更新しています..." -ForegroundColor Cyan
+    docker compose -f docker-compose.staging.yml build app
+    docker compose -f docker-compose.staging.yml up -d app
+    Write-Host "✅ appコンテナの更新が完了しました" -ForegroundColor Green
+}
+
+function Update-ProdApp
+{
+    Write-Host "🔄 本番環境のappコンテナを更新しています..." -ForegroundColor Cyan
+    docker compose pull app
+    docker compose up -d app
+    Write-Host "✅ appコンテナの更新が完了しました" -ForegroundColor Green
+}
+
 # function Start-ProdServicesNoCache (commented out - no longer needed as production pulls pre-built images)
 # {
 #     Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
@@ -204,10 +223,10 @@ switch ($Environment)
     }
     "staging" {
         # stagingで利用可能なコマンドの検証
-        if ($Command -notin @("up", "down", "help"))
+        if ($Command -notin @("up", "down", "update_app", "help"))
         {
             Write-Host "❌ Invalid command for staging: $Command" -ForegroundColor Red
-            Write-Host "Available commands for staging: up, down" -ForegroundColor Yellow
+            Write-Host "Available commands for staging: up, down, update_app" -ForegroundColor Yellow
             Show-Help
             exit 1
         }
@@ -220,6 +239,9 @@ switch ($Environment)
             "down" {
                 Stop-StagingServices
             }
+            "update_app" {
+                Update-StagingApp
+            }
             "help" {
                 Show-Help
             }
@@ -227,11 +249,11 @@ switch ($Environment)
     }
     "prod" {
         # prodで利用可能なコマンドの検証 (nocache is commented out)
-        if ($Command -notin @("up", "down", "help"))
+        if ($Command -notin @("up", "down", "update_app", "help"))
         # if ($Command -notin @("up", "down", "nocache", "help"))
         {
             Write-Host "❌ Invalid command for prod: $Command" -ForegroundColor Red
-            Write-Host "Available commands for prod: up, down" -ForegroundColor Yellow  # nocache is commented out
+            Write-Host "Available commands for prod: up, down, update_app" -ForegroundColor Yellow  # nocache is commented out
             # Write-Host "Available commands for prod: up, down, nocache" -ForegroundColor Yellow
             Show-Help
             exit 1
@@ -244,6 +266,9 @@ switch ($Environment)
             }
             "down" {
                 Stop-ProdServices
+            }
+            "update_app" {
+                Update-ProdApp
             }
             # "nocache" {
             #     Start-ProdServicesNoCache
