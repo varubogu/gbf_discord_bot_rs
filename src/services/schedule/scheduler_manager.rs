@@ -227,7 +227,15 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                                 }
                             }
                             Ok(None) => {
-                                error!(task_id = task.id, "通知タスク関連情報が見つかりません");
+                                // データ不整合：scheduled_task_notificationsに紐付けがない
+                                // このタスクは実行不可能なため、実行済みとしてマークして次回以降スキップ
+                                warn!(
+                                    task_id = task.id,
+                                    "通知タスク関連情報が見つかりません（データ不整合）。タスクを実行済みとしてマークします"
+                                );
+                                if let Err(e) = task_repo.mark_as_executed(&txn, task.id).await {
+                                    error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
+                                }
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "通知タスク関連情報の取得に失敗しました");
