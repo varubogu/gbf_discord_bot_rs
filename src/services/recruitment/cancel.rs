@@ -230,7 +230,7 @@ where
     let cancelled_suffix = message_service
         .get_message(
             db,
-            MessageTextId::RecruitCancelledMessageSuffix.as_str(),
+            MessageTextId::RecruitmentCommandCancelledMessageSuffix.as_str(),
             HashMap::new(),
             guild_id,
             locale,
@@ -258,7 +258,7 @@ where
         let message = message_service
             .get_message(
                 db,
-                MessageTextId::RecruitCancelNotificationNoParticipants.as_str(),
+                MessageTextId::RecruitmentCommandCancelNotificationNoParticipants.as_str(),
                 HashMap::new(),
                 guild_id,
                 locale,
@@ -271,7 +271,7 @@ where
         let base_message = message_service
             .get_message(
                 db,
-                MessageTextId::RecruitCancelNotificationWithParticipants.as_str(),
+                MessageTextId::RecruitmentCommandCancelNotificationWithParticipants.as_str(),
                 HashMap::new(),
                 guild_id,
                 locale,
@@ -337,7 +337,7 @@ where
     let cancelling_message = message_service
         .get_message(
             db,
-            MessageTextId::RecruitCancellingProgress.as_str(),
+            MessageTextId::RecruitmentCommandCancellingProgress.as_str(),
             HashMap::new(),
             guild_id,
             locale,

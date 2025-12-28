@@ -201,7 +201,7 @@ impl DismissalTaskExecutor {
             .message_service
             .get_message(
                 txn,
-                MessageTextId::RecruitCancelledMessageSuffix.as_str(),
+                MessageTextId::RecruitmentCommandCancelledMessageSuffix.as_str(),
                 HashMap::new(),
                 guild_id,
                 None,
@@ -229,7 +229,7 @@ impl DismissalTaskExecutor {
             .message_service
             .get_message(
                 txn,
-                MessageTextId::RecruitmentDismissalNotification.as_str(),
+                MessageTextId::RecruitmentNotificationDismissal.as_str(),
                 HashMap::new(),
                 guild_id,
                 None,

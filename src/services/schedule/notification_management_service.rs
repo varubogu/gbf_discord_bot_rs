@@ -54,7 +54,7 @@ impl NotificationManagementService {
                     five_minutes_before,
                     guild_id,
                     channel_id,
-                    MessageTextId::RecruitmentBefore5Minutes
+                    MessageTextId::RecruitmentNotificationBefore5Minutes
                         .as_str()
                         .to_string(),
                 )
@@ -94,7 +94,9 @@ impl NotificationManagementService {
                 departure_time,
                 guild_id,
                 channel_id,
-                MessageTextId::RecruitmentStart.as_str().to_string(),
+                MessageTextId::RecruitmentNotificationStart
+                    .as_str()
+                    .to_string(),
             )
             .await?;
 

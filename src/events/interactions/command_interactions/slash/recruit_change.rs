@@ -48,7 +48,7 @@ pub async fn recruit_change(
         let message = get_message_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
-            MessageTextId::RecruitChangeNoChanges,
+            MessageTextId::RecruitmentCommandChangeNoChanges,
             HashMap::new(),
         )
         .await
@@ -85,7 +85,7 @@ pub async fn recruit_change(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageTextId::RecruitChangeSuccess,
+        MessageTextId::RecruitmentCommandChangeSuccess,
         HashMap::new(),
     )
     .await

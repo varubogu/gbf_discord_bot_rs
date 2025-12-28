@@ -34,7 +34,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::RecruitCancelAlreadyCancelled,
+                MessageTextId::RecruitmentCommandCancelAlreadyCancelled,
                 HashMap::new(),
             )
             .await
@@ -52,7 +52,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::RecruitCancelMessageDeleted,
+                MessageTextId::RecruitmentCommandCancelMessageDeleted,
                 HashMap::new(),
             )
             .await
@@ -70,7 +70,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::RecruitCancelInvalidMessage,
+                MessageTextId::RecruitmentCommandCancelInvalidMessage,
                 HashMap::new(),
             )
             .await
@@ -88,7 +88,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::RecruitCancelNotFound,
+                MessageTextId::RecruitmentCommandCancelNotFound,
                 HashMap::new(),
             )
             .await
@@ -108,7 +108,7 @@ pub async fn recruit_cancel(
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::RecruitCancelError,
+                MessageTextId::RecruitmentCommandCancelError,
                 HashMap::new(),
             )
             .await

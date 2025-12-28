@@ -204,9 +204,9 @@ where
 
     // メッセージIDを決定
     let message_id = if battle_style_name == "6属性" {
-        MessageTextId::RecruitmentSixElements
+        MessageTextId::RecruitmentDisplaySixElements
     } else {
-        MessageTextId::RecruitmentNormal
+        MessageTextId::RecruitmentDisplayNormal
     };
 
     // パラメータを準備
@@ -225,7 +225,7 @@ where
     let date_label = message_service
         .get_message(
             db,
-            MessageTextId::RecruitmentEventDateLabel.as_str(),
+            MessageTextId::RecruitmentDisplayEventDateLabel.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),
@@ -235,7 +235,7 @@ where
     let date_format = message_service
         .get_message(
             db,
-            MessageTextId::RecruitmentDateFormat.as_str(),
+            MessageTextId::RecruitmentDisplayDateFormat.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),
@@ -254,7 +254,7 @@ where
             let dismissal_label = message_service
                 .get_message(
                     db,
-                    MessageTextId::RecruitmentDismissalTimesLabel.as_str(),
+                    MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
                     HashMap::new(),
                     guild_id,
                     Some("ja"),
@@ -338,7 +338,7 @@ where
     let no_participants = message_service
         .get_message(
             db,
-            MessageTextId::RecruitmentNoParticipants.as_str(),
+            MessageTextId::RecruitmentDisplayNoParticipants.as_str(),
             HashMap::new(),
             guild_id,
             Some("ja"),

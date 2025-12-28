@@ -91,7 +91,7 @@ pub async fn recruit_role_add(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageTextId::RecruitRoleAddSuccess,
+        MessageTextId::RecruitmentRoleAddSuccess,
         params,
     )
     .await

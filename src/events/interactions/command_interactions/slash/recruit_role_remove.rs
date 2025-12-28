@@ -91,7 +91,7 @@ pub async fn recruit_role_remove(
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageTextId::RecruitRoleRemoveSuccess,
+        MessageTextId::RecruitmentRoleRemoveSuccess,
         params,
     )
     .await

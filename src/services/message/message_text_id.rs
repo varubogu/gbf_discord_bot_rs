@@ -16,17 +16,17 @@ pub enum MessageTextId {
     CommonLoading,
     CommonUnknown,
 
-    // Battle recruitment messages
-    BattleRecruitmentTitle,
-    BattleRecruitmentNewRecruitment,
-    BattleRecruitmentRecruitmentCancelled,
-    BattleRecruitmentRecruitmentClosed,
-    BattleRecruitmentRecruitmentFull,
-    BattleRecruitmentJoinSuccess,
-    BattleRecruitmentLeaveSuccess,
-    BattleRecruitmentNotFound,
-    BattleRecruitmentAlreadyJoined,
-    BattleRecruitmentNotJoined,
+    // Recruitment UI messages
+    RecruitmentUiTitle,
+    RecruitmentUiNewRecruitment,
+    RecruitmentUiRecruitmentCancelled,
+    RecruitmentUiRecruitmentClosed,
+    RecruitmentUiRecruitmentFull,
+    RecruitmentUiJoinSuccess,
+    RecruitmentUiLeaveSuccess,
+    RecruitmentUiNotFound,
+    RecruitmentUiAlreadyJoined,
+    RecruitmentUiNotJoined,
 
     // Error messages
     ErrorsInvalidInput,
@@ -88,24 +88,27 @@ pub enum MessageTextId {
     OmikujiHakyoku,
     OmikujiOmegaUnit,
 
-    // Recruitment messages
-    RecruitmentNormal,
-    RecruitmentSixElements,
-    RecruitmentMemberFull,
-    RecruitmentBefore5Minutes,
-    RecruitmentStart,
-    RecruitmentEventDateLabel,
-    RecruitmentDateFormat,
-    RecruitmentDismissalTimesLabel,
-    RecruitmentElementFire,
-    RecruitmentElementWater,
-    RecruitmentElementEarth,
-    RecruitmentElementWind,
-    RecruitmentElementLight,
-    RecruitmentElementDark,
-    RecruitmentAllElements,
-    RecruitmentNoParticipants,
-    RecruitmentLeaveAllButton,
+    // Recruitment display messages
+    RecruitmentDisplayNormal,
+    RecruitmentDisplaySixElements,
+    RecruitmentDisplayEventDateLabel,
+    RecruitmentDisplayDateFormat,
+    RecruitmentDisplayDismissalTimesLabel,
+    RecruitmentDisplayElementFire,
+    RecruitmentDisplayElementWater,
+    RecruitmentDisplayElementEarth,
+    RecruitmentDisplayElementWind,
+    RecruitmentDisplayElementLight,
+    RecruitmentDisplayElementDark,
+    RecruitmentDisplayAllElements,
+    RecruitmentDisplayNoParticipants,
+    RecruitmentDisplayLeaveAllButton,
+
+    // Recruitment notification messages
+    RecruitmentNotificationMemberFull,
+    RecruitmentNotificationBefore5Minutes,
+    RecruitmentNotificationStart,
+    RecruitmentNotificationDismissal,
 
     // Timezone messages (deprecated - use GuildSettings instead)
     TimezoneSetSuccess,
@@ -116,25 +119,22 @@ pub enum MessageTextId {
     GuildSettingsShowSuccess,
     GuildSettingsNotSet,
 
-    // Recruit role messages
-    RecruitRoleAddSuccess,
-    RecruitRoleRemoveSuccess,
+    // Recruitment role messages
+    RecruitmentRoleAddSuccess,
+    RecruitmentRoleRemoveSuccess,
 
-    // Recruit messages
-    RecruitCancelAlreadyCancelled,
-    RecruitCancelMessageDeleted,
-    RecruitCancelInvalidMessage,
-    RecruitCancelNotFound,
-    RecruitCancelError,
-    RecruitCancelledMessageSuffix,
-    RecruitCancelNotificationNoParticipants,
-    RecruitCancelNotificationWithParticipants,
-    RecruitCancellingProgress,
-    RecruitChangeNoChanges,
-    RecruitChangeSuccess,
-
-    // Recruitment dismissal messages
-    RecruitmentDismissalNotification,
+    // Recruitment command messages
+    RecruitmentCommandCancelAlreadyCancelled,
+    RecruitmentCommandCancelMessageDeleted,
+    RecruitmentCommandCancelInvalidMessage,
+    RecruitmentCommandCancelNotFound,
+    RecruitmentCommandCancelError,
+    RecruitmentCommandCancelledMessageSuffix,
+    RecruitmentCommandCancelNotificationNoParticipants,
+    RecruitmentCommandCancelNotificationWithParticipants,
+    RecruitmentCommandCancellingProgress,
+    RecruitmentCommandChangeNoChanges,
+    RecruitmentCommandChangeSuccess,
 
     // General messages
     MessagesWelcome,
@@ -160,23 +160,19 @@ impl MessageTextId {
             MessageTextId::CommonLoading => "common.loading",
             MessageTextId::CommonUnknown => "common.unknown",
 
-            // Battle recruitment
-            MessageTextId::BattleRecruitmentTitle => "battle_recruitment.title",
-            MessageTextId::BattleRecruitmentNewRecruitment => "battle_recruitment.new_recruitment",
-            MessageTextId::BattleRecruitmentRecruitmentCancelled => {
-                "battle_recruitment.recruitment_cancelled"
+            // Recruitment UI
+            MessageTextId::RecruitmentUiTitle => "recruitment.ui.title",
+            MessageTextId::RecruitmentUiNewRecruitment => "recruitment.ui.new_recruitment",
+            MessageTextId::RecruitmentUiRecruitmentCancelled => {
+                "recruitment.ui.recruitment_cancelled"
             }
-            MessageTextId::BattleRecruitmentRecruitmentClosed => {
-                "battle_recruitment.recruitment_closed"
-            }
-            MessageTextId::BattleRecruitmentRecruitmentFull => {
-                "battle_recruitment.recruitment_full"
-            }
-            MessageTextId::BattleRecruitmentJoinSuccess => "battle_recruitment.join_success",
-            MessageTextId::BattleRecruitmentLeaveSuccess => "battle_recruitment.leave_success",
-            MessageTextId::BattleRecruitmentNotFound => "battle_recruitment.not_found",
-            MessageTextId::BattleRecruitmentAlreadyJoined => "battle_recruitment.already_joined",
-            MessageTextId::BattleRecruitmentNotJoined => "battle_recruitment.not_joined",
+            MessageTextId::RecruitmentUiRecruitmentClosed => "recruitment.ui.recruitment_closed",
+            MessageTextId::RecruitmentUiRecruitmentFull => "recruitment.ui.recruitment_full",
+            MessageTextId::RecruitmentUiJoinSuccess => "recruitment.ui.join_success",
+            MessageTextId::RecruitmentUiLeaveSuccess => "recruitment.ui.leave_success",
+            MessageTextId::RecruitmentUiNotFound => "recruitment.ui.not_found",
+            MessageTextId::RecruitmentUiAlreadyJoined => "recruitment.ui.already_joined",
+            MessageTextId::RecruitmentUiNotJoined => "recruitment.ui.not_joined",
 
             // Errors
             MessageTextId::ErrorsInvalidInput => "errors.invalid_input",
@@ -244,24 +240,39 @@ impl MessageTextId {
             MessageTextId::OmikujiHakyoku => "omikuji.hakyoku",
             MessageTextId::OmikujiOmegaUnit => "omikuji.omega_unit",
 
-            // Recruitment
-            MessageTextId::RecruitmentNormal => "recruitment.normal",
-            MessageTextId::RecruitmentSixElements => "recruitment.six_elements",
-            MessageTextId::RecruitmentMemberFull => "recruitment.member_full",
-            MessageTextId::RecruitmentBefore5Minutes => "recruitment.before_5_minutes",
-            MessageTextId::RecruitmentStart => "recruitment.start",
-            MessageTextId::RecruitmentEventDateLabel => "recruitment.event_date_label",
-            MessageTextId::RecruitmentDateFormat => "recruitment.date_format",
-            MessageTextId::RecruitmentDismissalTimesLabel => "recruitment.dismissal_times_label",
-            MessageTextId::RecruitmentElementFire => "recruitment.element_fire",
-            MessageTextId::RecruitmentElementWater => "recruitment.element_water",
-            MessageTextId::RecruitmentElementEarth => "recruitment.element_earth",
-            MessageTextId::RecruitmentElementWind => "recruitment.element_wind",
-            MessageTextId::RecruitmentElementLight => "recruitment.element_light",
-            MessageTextId::RecruitmentElementDark => "recruitment.element_dark",
-            MessageTextId::RecruitmentAllElements => "recruitment.all_elements",
-            MessageTextId::RecruitmentNoParticipants => "recruitment.no_participants",
-            MessageTextId::RecruitmentLeaveAllButton => "recruitment.leave_all_button",
+            // Recruitment display
+            MessageTextId::RecruitmentDisplayNormal => "recruitment.display.normal",
+            MessageTextId::RecruitmentDisplaySixElements => "recruitment.display.six_elements",
+            MessageTextId::RecruitmentDisplayEventDateLabel => {
+                "recruitment.display.event_date_label"
+            }
+            MessageTextId::RecruitmentDisplayDateFormat => "recruitment.display.date_format",
+            MessageTextId::RecruitmentDisplayDismissalTimesLabel => {
+                "recruitment.display.dismissal_times_label"
+            }
+            MessageTextId::RecruitmentDisplayElementFire => "recruitment.display.element_fire",
+            MessageTextId::RecruitmentDisplayElementWater => "recruitment.display.element_water",
+            MessageTextId::RecruitmentDisplayElementEarth => "recruitment.display.element_earth",
+            MessageTextId::RecruitmentDisplayElementWind => "recruitment.display.element_wind",
+            MessageTextId::RecruitmentDisplayElementLight => "recruitment.display.element_light",
+            MessageTextId::RecruitmentDisplayElementDark => "recruitment.display.element_dark",
+            MessageTextId::RecruitmentDisplayAllElements => "recruitment.display.all_elements",
+            MessageTextId::RecruitmentDisplayNoParticipants => {
+                "recruitment.display.no_participants"
+            }
+            MessageTextId::RecruitmentDisplayLeaveAllButton => {
+                "recruitment.display.leave_all_button"
+            }
+
+            // Recruitment notification
+            MessageTextId::RecruitmentNotificationMemberFull => {
+                "recruitment.notification.member_full"
+            }
+            MessageTextId::RecruitmentNotificationBefore5Minutes => {
+                "recruitment.notification.before_5_minutes"
+            }
+            MessageTextId::RecruitmentNotificationStart => "recruitment.notification.start",
+            MessageTextId::RecruitmentNotificationDismissal => "recruitment.notification.dismissal",
 
             // Timezone
             MessageTextId::TimezoneSetSuccess => "timezone.set_success",
@@ -272,29 +283,40 @@ impl MessageTextId {
             MessageTextId::GuildSettingsShowSuccess => "guild_settings.show_success",
             MessageTextId::GuildSettingsNotSet => "guild_settings.not_set",
 
-            // Recruit role
-            MessageTextId::RecruitRoleAddSuccess => "recruit_role.add_success",
-            MessageTextId::RecruitRoleRemoveSuccess => "recruit_role.remove_success",
+            // Recruitment role
+            MessageTextId::RecruitmentRoleAddSuccess => "recruitment.role.add_success",
+            MessageTextId::RecruitmentRoleRemoveSuccess => "recruitment.role.remove_success",
 
-            // Recruit
-            MessageTextId::RecruitCancelAlreadyCancelled => "recruit.cancel_already_cancelled",
-            MessageTextId::RecruitCancelMessageDeleted => "recruit.cancel_message_deleted",
-            MessageTextId::RecruitCancelInvalidMessage => "recruit.cancel_invalid_message",
-            MessageTextId::RecruitCancelNotFound => "recruit.cancel_not_found",
-            MessageTextId::RecruitCancelError => "recruit.cancel_error",
-            MessageTextId::RecruitCancelledMessageSuffix => "recruit.cancelled_message_suffix",
-            MessageTextId::RecruitCancelNotificationNoParticipants => {
-                "recruit.cancel_notification_no_participants"
+            // Recruitment command
+            MessageTextId::RecruitmentCommandCancelAlreadyCancelled => {
+                "recruitment.command.cancel_already_cancelled"
             }
-            MessageTextId::RecruitCancelNotificationWithParticipants => {
-                "recruit.cancel_notification_with_participants"
+            MessageTextId::RecruitmentCommandCancelMessageDeleted => {
+                "recruitment.command.cancel_message_deleted"
             }
-            MessageTextId::RecruitCancellingProgress => "recruit.cancelling_progress",
-            MessageTextId::RecruitChangeNoChanges => "recruit.change_no_changes",
-            MessageTextId::RecruitChangeSuccess => "recruit.change_success",
-
-            // Recruitment dismissal
-            MessageTextId::RecruitmentDismissalNotification => "recruitment.dismissal_notification",
+            MessageTextId::RecruitmentCommandCancelInvalidMessage => {
+                "recruitment.command.cancel_invalid_message"
+            }
+            MessageTextId::RecruitmentCommandCancelNotFound => {
+                "recruitment.command.cancel_not_found"
+            }
+            MessageTextId::RecruitmentCommandCancelError => "recruitment.command.cancel_error",
+            MessageTextId::RecruitmentCommandCancelledMessageSuffix => {
+                "recruitment.command.cancelled_message_suffix"
+            }
+            MessageTextId::RecruitmentCommandCancelNotificationNoParticipants => {
+                "recruitment.command.cancel_notification_no_participants"
+            }
+            MessageTextId::RecruitmentCommandCancelNotificationWithParticipants => {
+                "recruitment.command.cancel_notification_with_participants"
+            }
+            MessageTextId::RecruitmentCommandCancellingProgress => {
+                "recruitment.command.cancelling_progress"
+            }
+            MessageTextId::RecruitmentCommandChangeNoChanges => {
+                "recruitment.command.change_no_changes"
+            }
+            MessageTextId::RecruitmentCommandChangeSuccess => "recruitment.command.change_success",
 
             // Messages
             MessageTextId::MessagesWelcome => "messages.welcome",
