@@ -3,7 +3,14 @@ use chrono::NaiveTime;
 
 /// 時刻パースサービス
 ///
+/// **非推奨**: このサービスは `unified_datetime_parser` に統合されました。
+/// 代わりに `DateTimeParseOptions::strict_hhmm_only()` を使用してください。
+///
 /// 時刻文字列（HH:MM形式）の解析を担当するサービス。
+#[deprecated(
+    since = "0.5.0",
+    note = "代わりに unified_datetime_parser::DateTimeParseOptions::strict_hhmm_only() を使用してください"
+)]
 pub struct TimeParserService;
 
 impl TimeParserService {

@@ -21,6 +21,18 @@ lazy_static! {
     /// 日本語形式の日付パターン（1月2日）
     static ref RE_JAPANESE_DATE: Regex = Regex::new(r"^(\d+)月(\d+)日$")
         .expect("日本語形式（日付）のRegexパターンが無効です");
+
+    /// 4桁数字の時刻パターン（1230 → 12:30）
+    static ref RE_FOUR_DIGIT_TIME: Regex = Regex::new(r"^(\d{4})$")
+        .expect("4桁時刻のRegexパターンが無効です");
+
+    /// 8桁数字の日時パターン（10111230 → 10月11日12時30分、スペース区切りも許可）
+    static ref RE_EIGHT_DIGIT_DATETIME: Regex = Regex::new(r"^(\d{2})(\d{2})\s*(\d{4})$")
+        .expect("8桁日時のRegexパターンが無効です");
+
+    /// 日と時刻の組み合わせパターン（30 1230 → 30日12時30分、30 2:15 → 30日2時15分）
+    static ref RE_DAY_AND_TIME: Regex = Regex::new(r"^(\d{1,2})\s+(?:(\d{4})|(\d{1,2}):(\d{2}))$")
+        .expect("日+時刻のRegexパターンが無効です");
 }
 
 /// 日時文字列をDateTime<Utc>に変換
@@ -30,32 +42,39 @@ lazy_static! {
 /// # 対応フォーマット
 /// - 日時: "2025/11/15 21:00", "2025-11-15 21:00", "12/11 14:00", "12-11 14:00"（過ぎていたら翌年）
 /// - 日付のみ: "11/15", "11-15" (時刻は21時固定)
-/// - 時刻のみ: "21:00", "21時" (当日、過ぎていたら翌日)
-/// - 日本語: "1月2日3時4分", "午後9時半"
+/// - 時刻のみ: "21:00", "2:15", "21時" (当日、過ぎていたら翌日)
+/// - 日本語: "1月2日3時4分", "午後9時半", "21時", "21時半", "午後6時"
+/// - 数字のみ: "1230" (12時30分), "10111230" (10月11日12時30分)
+/// - 日+時刻: "30 1230" (30日12時30分), "30 2:15" (30日2時15分), "15 21:00" (15日21時)
 pub fn parse_event_date(date_str: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     let trimmed = date_str.trim();
 
-    // 1. 日本語形式を試行
+    // 1. 数字のみのパターンを試行（優先度高: 4桁、8桁、日+4桁）
+    if let Ok(dt) = parse_numeric_patterns(trimmed, timezone) {
+        return Ok(dt);
+    }
+
+    // 2. 日本語形式を試行
     if let Ok(dt) = parse_japanese_datetime(trimmed, timezone) {
         return Ok(dt);
     }
 
-    // 2. 完全な日時形式 (yyyy/MM/dd HH:mm, yyyy-MM-dd HH:mm)
+    // 3. 完全な日時形式 (yyyy/MM/dd HH:mm, yyyy-MM-dd HH:mm)
     if let Ok(dt) = parse_full_datetime(trimmed, timezone) {
         return Ok(dt);
     }
 
-    // 3. 年なし日時形式 (MM/dd HH:mm, MM-dd HH:mm)
+    // 4. 年なし日時形式 (MM/dd HH:mm, MM-dd HH:mm)
     if let Ok(dt) = parse_datetime_without_year(trimmed, timezone) {
         return Ok(dt);
     }
 
-    // 4. 日付のみ (MM/dd, MM-dd, yyyy/MM/dd, yyyy-MM-dd)
+    // 5. 日付のみ (MM/dd, MM-dd, yyyy/MM/dd, yyyy-MM-dd)
     if let Ok(dt) = parse_date_only(trimmed, timezone) {
         return Ok(dt);
     }
 
-    // 5. 時刻のみ (HH:mm, H:mm)
+    // 6. 時刻のみ (HH:mm, H:mm)
     if let Ok(dt) = parse_time_only(trimmed, timezone) {
         return Ok(dt);
     }
@@ -288,6 +307,107 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     Err("日本語形式のパースに失敗".to_string().into())
 }
 
+/// 数字のみのパターンをパース
+/// - 4桁: "1230" → 12時30分（当日、過ぎていたら翌日）
+/// - 8桁: "10111230" → 10月11日12時30分
+/// - 日+時刻: "30 1230" → 30日12時30分、"30 2:15" → 30日2時15分
+fn parse_numeric_patterns(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
+    let now_tz = Utc::now().with_timezone(&timezone);
+
+    // 8桁日時パターン: "10111230" または "1011 1230" → 10月11日12時30分
+    if let Some(caps) = RE_EIGHT_DIGIT_DATETIME.captures(s) {
+        let month: u32 = caps[1]
+            .parse()
+            .map_err(|_| "月のパースエラー".to_string())?;
+        let day: u32 = caps[2]
+            .parse()
+            .map_err(|_| "日のパースエラー".to_string())?;
+        let time_str = &caps[3];
+
+        let hour: u32 = time_str[0..2]
+            .parse()
+            .map_err(|_| "時のパースエラー".to_string())?;
+        let minute: u32 = time_str[2..4]
+            .parse()
+            .map_err(|_| "分のパースエラー".to_string())?;
+
+        let year = now_tz.year();
+        let naive_date =
+            NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| "無効な日付".to_string())?;
+        let naive_time =
+            NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
+        let naive_dt = NaiveDateTime::new(naive_date, naive_time);
+
+        let tz_dt = timezone
+            .from_local_datetime(&naive_dt)
+            .single()
+            .ok_or_else(|| "曖昧な時刻またはサマータイム切り替え時刻です".to_string())?;
+        return Ok(tz_dt.with_timezone(&Utc));
+    }
+
+    // 日+時刻パターン: "30 1230" → 30日12時30分、"30 2:15" → 30日2時15分
+    if let Some(caps) = RE_DAY_AND_TIME.captures(s) {
+        let day: u32 = caps[1]
+            .parse()
+            .map_err(|_| "日のパースエラー".to_string())?;
+
+        // 4桁数字 or コロン区切り
+        let (hour, minute) = if let Some(four_digit) = caps.get(2) {
+            // 4桁: "1230" → 12時30分
+            let time_str = four_digit.as_str();
+            let hour: u32 = time_str[0..2]
+                .parse()
+                .map_err(|_| "時のパースエラー".to_string())?;
+            let minute: u32 = time_str[2..4]
+                .parse()
+                .map_err(|_| "分のパースエラー".to_string())?;
+            (hour, minute)
+        } else {
+            // コロン区切り: "2:15" → 2時15分
+            let hour: u32 = caps[3]
+                .parse()
+                .map_err(|_| "時のパースエラー".to_string())?;
+            let minute: u32 = caps[4]
+                .parse()
+                .map_err(|_| "分のパースエラー".to_string())?;
+            (hour, minute)
+        };
+
+        // 現在の月を使用
+        let year = now_tz.year();
+        let month = now_tz.month();
+        let naive_date =
+            NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| "無効な日付".to_string())?;
+        let naive_time =
+            NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
+        let naive_dt = NaiveDateTime::new(naive_date, naive_time);
+
+        let tz_dt = timezone
+            .from_local_datetime(&naive_dt)
+            .single()
+            .ok_or_else(|| "曖昧な時刻またはサマータイム切り替え時刻です".to_string())?;
+        return Ok(tz_dt.with_timezone(&Utc));
+    }
+
+    // 4桁時刻パターン: "1230" → 12時30分（当日、過ぎていたら翌日）
+    if let Some(caps) = RE_FOUR_DIGIT_TIME.captures(s) {
+        let time_str = &caps[1];
+        let hour: u32 = time_str[0..2]
+            .parse()
+            .map_err(|_| "時のパースエラー".to_string())?;
+        let minute: u32 = time_str[2..4]
+            .parse()
+            .map_err(|_| "分のパースエラー".to_string())?;
+
+        let naive_time =
+            NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
+
+        return create_datetime_from_time(now_tz, naive_time, timezone);
+    }
+
+    Err("数字パターンのパースに失敗".to_string().into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,5 +497,107 @@ mod tests {
         assert_eq!(result.day(), 1); // UTC（日をまたぐ）
         assert_eq!(result.hour(), 18); // UTC（JST - 9時間）
         assert_eq!(result.minute(), 4);
+    }
+
+    #[test]
+    fn test_parse_four_digit_time_jst() {
+        // 4桁時刻: "1230" → 12時30分 JST = 3時30分 UTC
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("1230", timezone).unwrap();
+        // 時刻のみの場合は当日または翌日
+        assert_eq!(result.hour(), 3); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_eight_digit_datetime_jst() {
+        // 8桁日時: "10111230" → 10月11日12時30分 JST = 10月11日3時30分 UTC
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("10111230", timezone).unwrap();
+        let now = Utc::now();
+        assert_eq!(result.year(), now.year());
+        assert_eq!(result.month(), 10);
+        assert_eq!(result.day(), 11);
+        assert_eq!(result.hour(), 3); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_eight_digit_datetime_with_space_jst() {
+        // 8桁日時（スペース区切り）: "1011 1230" → 10月11日12時30分 JST
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("1011 1230", timezone).unwrap();
+        let now = Utc::now();
+        assert_eq!(result.year(), now.year());
+        assert_eq!(result.month(), 10);
+        assert_eq!(result.day(), 11);
+        assert_eq!(result.hour(), 3); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_day_and_four_digit_time_jst() {
+        // 日+4桁時刻: "30 1230" → 30日12時30分 JST（現在月を使用）
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("30 1230", timezone).unwrap();
+        let now = Utc::now().with_timezone(&timezone);
+        assert_eq!(result.with_timezone(&timezone).year(), now.year());
+        assert_eq!(result.with_timezone(&timezone).month(), now.month());
+        assert_eq!(result.with_timezone(&timezone).day(), 30);
+        assert_eq!(result.with_timezone(&timezone).hour(), 12);
+        assert_eq!(result.with_timezone(&timezone).minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_day_and_colon_time_jst() {
+        // 日+コロン区切り時刻: "30 21:00" → 30日21時0分 JST
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("30 21:00", timezone).unwrap();
+        let now = Utc::now().with_timezone(&timezone);
+        assert_eq!(result.with_timezone(&timezone).year(), now.year());
+        assert_eq!(result.with_timezone(&timezone).month(), now.month());
+        assert_eq!(result.with_timezone(&timezone).day(), 30);
+        assert_eq!(result.with_timezone(&timezone).hour(), 21);
+        assert_eq!(result.with_timezone(&timezone).minute(), 0);
+    }
+
+    #[test]
+    fn test_parse_day_and_single_digit_hour_jst() {
+        // 日+コロン区切り時刻（1桁時）: "15 2:15" → 15日2時15分 JST
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("15 2:15", timezone).unwrap();
+        let now = Utc::now().with_timezone(&timezone);
+        assert_eq!(result.with_timezone(&timezone).year(), now.year());
+        assert_eq!(result.with_timezone(&timezone).month(), now.month());
+        assert_eq!(result.with_timezone(&timezone).day(), 15);
+        assert_eq!(result.with_timezone(&timezone).hour(), 2);
+        assert_eq!(result.with_timezone(&timezone).minute(), 15);
+    }
+
+    #[test]
+    fn test_parse_japanese_time_with_half_jst() {
+        // 日本語時刻（半）: "21時半" → 21時30分 JST = 12時30分 UTC
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("21時半", timezone).unwrap();
+        assert_eq!(result.hour(), 12); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_japanese_time_pm_jst() {
+        // 日本語時刻（午後）: "午後6時" → 18時 JST = 9時 UTC
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("午後6時", timezone).unwrap();
+        assert_eq!(result.hour(), 9); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 0);
+    }
+
+    #[test]
+    fn test_parse_japanese_time_only_jst() {
+        // 日本語時刻（時のみ）: "21時" → 21時 JST = 12時 UTC
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("21時", timezone).unwrap();
+        assert_eq!(result.hour(), 12); // UTC（JST - 9時間）
+        assert_eq!(result.minute(), 0);
     }
 }

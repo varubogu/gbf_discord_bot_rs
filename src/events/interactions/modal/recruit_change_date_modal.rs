@@ -1,7 +1,9 @@
 use crate::events::interactions::components::recruit_change_handler;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
-use crate::services::datetime_parser;
 use crate::services::timezone_service::TimezoneService;
+use crate::services::unified_datetime_parser::{
+    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+};
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ActionRowComponent, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
@@ -70,19 +72,36 @@ pub async fn handle_recruit_change_date_modal(
         .await?;
 
     // 日時文字列を解析
-    let event_date = match datetime_parser::parse_event_date(&event_date_str, timezone) {
-        Ok(dt) => dt,
-        Err(e) => {
-            error!(error = %e, "日時の解析に失敗しました");
-            interaction
-                .edit_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content(format!("日時の解析に失敗しました: {e}"))
-                        .components(vec![]),
-                )
-                .await?;
-            return Ok(());
+    let event_date = {
+        let options = DateTimeParseOptions::for_quest_departure(timezone);
+        match parse_datetime(&event_date_str, &options) {
+            Ok(results) => match &results[0] {
+                ParsedDateTime::Absolute(dt) => *dt,
+                _ => {
+                    error!("日時の解析に失敗しました: 絶対日時ではありません");
+                    interaction
+                        .edit_response(
+                            &ctx.http,
+                            EditInteractionResponse::new()
+                                .content("日時の解析に失敗しました: 絶対日時で指定してください")
+                                .components(vec![]),
+                        )
+                        .await?;
+                    return Ok(());
+                }
+            },
+            Err(e) => {
+                error!(error = %e, "日時の解析に失敗しました");
+                interaction
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new()
+                            .content(format!("日時の解析に失敗しました: {e}"))
+                            .components(vec![]),
+                    )
+                    .await?;
+                return Ok(());
+            }
         }
     };
 

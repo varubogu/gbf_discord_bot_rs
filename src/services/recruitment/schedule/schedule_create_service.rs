@@ -9,11 +9,11 @@ use crate::repository::database::schedule::{
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
 use crate::repository::quests_repository::QuestRepository;
-use crate::services::recruitment::dismissal_time_parser_service::{
-    DismissalTimeParserService, ParsedDismissalTime,
-};
-use crate::services::recruitment::schedule::{DaysParserService, TimeParserService};
+use crate::services::recruitment::schedule::DaysParserService;
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
+use crate::services::unified_datetime_parser::{
+    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+};
 use crate::types::{AppError, Result};
 use chrono::{Duration, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
@@ -43,7 +43,6 @@ pub struct ScheduleCreationResult {
 ///
 /// 定期募集スケジュールの作成ビジネスロジックを担当するサービス。
 pub struct ScheduleCreateService {
-    time_parser: TimeParserService,
     days_parser: DaysParserService,
     schedule_service: RecruitmentScheduleService,
 }
@@ -51,7 +50,6 @@ pub struct ScheduleCreateService {
 impl ScheduleCreateService {
     pub fn new() -> Self {
         Self {
-            time_parser: TimeParserService::new(),
             days_parser: DaysParserService::new(),
             schedule_service: RecruitmentScheduleService::new(),
         }
@@ -103,8 +101,45 @@ impl ScheduleCreateService {
             .await?;
 
         // 3. 時刻・曜日パース
-        let quest_start_time_local = self.time_parser.parse_time_string(quest_start_time)?;
-        let recruit_start_time_local = self.time_parser.parse_time_string(recruit_start_time)?;
+        // クエスト開始時刻（HH:MM厳格モード）
+        let quest_options = DateTimeParseOptions::strict_hhmm_only(timezone);
+        let quest_results = parse_datetime(quest_start_time, &quest_options)?;
+        let quest_start_time_local = match &quest_results[0] {
+            ParsedDateTime::Time(t) => *t,
+            _ => {
+                return Err(AppError::Business {
+                    message: "クエスト開始時刻はHH:MM形式で指定してください".to_string(),
+                })
+            }
+        };
+
+        // 募集開始時刻（相対時刻もサポート）
+        let recruit_options =
+            DateTimeParseOptions::for_schedule_start_time(timezone, quest_start_time_local);
+        let recruit_results = parse_datetime(recruit_start_time, &recruit_options)?;
+        let recruit_start_time_local = match &recruit_results[0] {
+            ParsedDateTime::Time(t) => *t,
+            ParsedDateTime::Relative { days, hours, minutes } => {
+                // 相対時刻の場合、クエスト開始時刻から計算
+                use chrono::{Duration, NaiveDate};
+
+                let total_minutes = -(days * 24 * 60 + hours * 60 + minutes);
+                let duration = Duration::minutes(total_minutes as i64);
+
+                // 仮の日付を使ってDateTime演算を行い、時刻部分を取得
+                let dummy_date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
+                let base_datetime = dummy_date.and_time(quest_start_time_local);
+                let result_datetime = base_datetime + duration;
+
+                result_datetime.time()
+            }
+            _ => {
+                return Err(AppError::Business {
+                    message: "募集開始時刻は時刻または相対時刻で指定してください".to_string(),
+                })
+            }
+        };
+
         let local_day_of_weeks = self.days_parser.parse_days_input(days)?;
 
         // 4. バリデーション
@@ -369,12 +404,6 @@ impl ScheduleCreateService {
             "定期募集の解散時刻をパースします"
         );
 
-        // 環境変数から最大日数を取得（デフォルト7日）
-        let max_days = std::env::var("DISMISSAL_MAX_DAYS")
-            .ok()
-            .and_then(|v| v.parse::<i32>().ok())
-            .unwrap_or(7);
-
         // 仮の出発日時を作成（パース用）
         let today = Utc::now().date_naive();
         let departure_time = timezone
@@ -385,20 +414,25 @@ impl ScheduleCreateService {
             })?
             .with_timezone(&Utc);
 
-        // 解散時刻をパース
-        let parser = DismissalTimeParserService::new();
-        let parsed_dismissal_times =
-            parser.parse(dismissal_times_str, departure_time, timezone, max_days)?;
+        // 解散時刻をパース（統一パーサーを使用）
+        let options = DateTimeParseOptions::for_dismissal_time(timezone, departure_time);
+        let parsed_dismissal_times = parse_datetime(dismissal_times_str, &options)?;
 
         // データベースに保存
         let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
 
-        for dismissal_time in parsed_dismissal_times {
+        // 元の入力値を分割（トリムして空文字除去）
+        let input_values: Vec<&str> = dismissal_times_str
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        for (idx, dismissal_time) in parsed_dismissal_times.iter().enumerate() {
+            let input_value = input_values.get(idx).unwrap_or(&"").to_string();
+
             match dismissal_time {
-                ParsedDismissalTime::Absolute {
-                    input_value,
-                    datetime,
-                } => {
+                ParsedDateTime::Absolute(datetime) => {
                     // 絶対時刻の場合、時刻部分のみ抽出してTimeTimeに変換
                     let naive_time = datetime.time();
                     let dismissal_time = TimeTime::from_hms(
@@ -413,15 +447,19 @@ impl ScheduleCreateService {
                         .create_absolute(txn, schedule_id, input_value, dismissal_time)
                         .await?;
                 }
-                ParsedDismissalTime::Relative {
-                    input_value,
+                ParsedDateTime::Relative {
                     days,
                     hours,
                     minutes,
                 } => {
                     dismissal_repo
-                        .create_relative(txn, schedule_id, input_value, days, hours, minutes)
+                        .create_relative(txn, schedule_id, input_value, *days, *hours, *minutes)
                         .await?;
+                }
+                ParsedDateTime::Time(_) => {
+                    return Err(AppError::Business {
+                        message: "解散時刻にTime型が返されました（想定外）".to_string(),
+                    });
                 }
             }
         }

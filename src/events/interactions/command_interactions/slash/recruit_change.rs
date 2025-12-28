@@ -1,8 +1,10 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::change_recruitment_information;
-use crate::services::datetime_parser;
 use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
+use crate::services::unified_datetime_parser::{
+    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+};
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
 use std::collections::HashMap;
@@ -72,7 +74,17 @@ pub async fn recruit_change(
         let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
 
         // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
-        Some(datetime_parser::parse_event_date(&date_str, timezone)?)
+        let options = DateTimeParseOptions::for_quest_departure(timezone);
+        let results = parse_datetime(&date_str, &options)?;
+        let parsed_date = match &results[0] {
+            ParsedDateTime::Absolute(dt) => *dt,
+            _ => {
+                return Err(crate::types::AppError::Business {
+                    message: "クエスト出発日時は絶対日時で指定してください".to_string(),
+                })
+            }
+        };
+        Some(parsed_date)
     } else {
         None
     };

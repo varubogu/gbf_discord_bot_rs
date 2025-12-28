@@ -39,6 +39,13 @@ pub enum ParsedDismissalTime {
 }
 
 /// 解散時刻パーサーサービス
+///
+/// **非推奨**: このサービスは `unified_datetime_parser` に統合されました。
+/// 代わりに `DateTimeParseOptions::for_dismissal_time()` を使用してください。
+#[deprecated(
+    since = "0.5.0",
+    note = "代わりに unified_datetime_parser::DateTimeParseOptions::for_dismissal_time() を使用してください"
+)]
 pub struct DismissalTimeParserService;
 
 impl DismissalTimeParserService {

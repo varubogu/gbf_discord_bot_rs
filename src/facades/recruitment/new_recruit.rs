@@ -3,11 +3,14 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::dismissal_time_parser_service::DismissalTimeParserService;
+use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
+use crate::services::unified_datetime_parser::{
+    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+};
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Utc};
@@ -118,20 +121,46 @@ pub async fn new_recruitment(
                 "解散時刻のパースと登録を開始します"
             );
 
-            // 環境変数から最大日数を取得（デフォルト7日）
-            let max_days = std::env::var("DISMISSAL_MAX_DAYS")
-                .ok()
-                .and_then(|v| v.parse::<i32>().ok())
-                .unwrap_or(7);
+            // 解散時刻をパース（統一パーサーを使用）
+            let options =
+                DateTimeParseOptions::for_dismissal_time(timezone, recruitment_data.expiry_date);
+            let parsed_results = parse_datetime(dismissal_times_str, &options)?;
 
-            // 解散時刻をパース
-            let parser = DismissalTimeParserService::new();
-            let parsed_dismissal_times = parser.parse(
-                dismissal_times_str,
-                recruitment_data.expiry_date,
-                timezone,
-                max_days,
-            )?;
+            // 元の入力値を分割（トリムして空文字除去）
+            let input_values: Vec<&str> = dismissal_times_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            // ParsedDateTime を ParsedDismissalTime に変換
+            let parsed_dismissal_times: Vec<ParsedDismissalTime> = parsed_results
+                .iter()
+                .enumerate()
+                .map(|(idx, result)| {
+                    let input_value = input_values.get(idx).unwrap_or(&"").to_string();
+                    match result {
+                        ParsedDateTime::Absolute(datetime) => ParsedDismissalTime::Absolute {
+                            input_value,
+                            datetime: *datetime,
+                        },
+                        ParsedDateTime::Relative {
+                            days,
+                            hours,
+                            minutes,
+                        } => ParsedDismissalTime::Relative {
+                            input_value,
+                            days: *days,
+                            hours: *hours,
+                            minutes: *minutes,
+                        },
+                        ParsedDateTime::Time(_) => {
+                            // 解散時刻でTime型が返されることは想定外だが、念のためエラー処理
+                            panic!("解散時刻でTime型が返されました（想定外）");
+                        }
+                    }
+                })
+                .collect();
 
             // 解散時刻を含めたメッセージを再生成
             let message_content_with_dismissal = new::create_message_content(
