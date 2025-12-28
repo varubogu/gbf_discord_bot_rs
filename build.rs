@@ -233,6 +233,7 @@ mod tests {
 
 fn main() {
     println!("cargo:rerun-if-changed=src/models/entities/");
+    println!("cargo:rerun-if-changed=locales/messages.yml");
 
     let schema_map = extract_schema_info();
 
