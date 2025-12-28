@@ -338,6 +338,8 @@ impl std::fmt::Display for MessageTextId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+    use std::fs;
 
     #[test]
     fn test_message_id_as_str() {
@@ -358,5 +360,160 @@ mod tests {
             MessageTextId::TimezoneShowCurrent.to_string(),
             "timezone.show_current"
         );
+    }
+
+    /// MessageTextIdの全enumバリアントがYAMLファイルに定義されていることを検証する
+    ///
+    /// このテストは以下を保証する:
+    /// - Rustコードで定義された全てのメッセージIDが、対応するYAMLキーを持つこと
+    /// - YAMLファイルに存在しないキーを参照しようとした場合、テストが失敗すること
+    ///
+    /// YAMLに余分なキーがあっても問題ない（将来の拡張のため）
+    #[test]
+    fn test_all_message_ids_exist_in_yaml() {
+        // YAMLファイルを読み込む
+        let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/locales/messages.yml");
+        let yaml_content = fs::read_to_string(yaml_path)
+            .expect("locales/messages.yml が見つかりません");
+
+        // YAMLから全てのキーを抽出
+        let mut yaml_keys = HashSet::new();
+        for line in yaml_content.lines() {
+            // "key:" の形式の行を抽出（インデントは無視）
+            if let Some(key) = line.trim_start().strip_suffix(':') {
+                // "_version" や言語キー（"ja:", "en:"）は除外
+                if !key.starts_with('_') && key != "ja" && key != "en" {
+                    yaml_keys.insert(key.to_string());
+                }
+            }
+        }
+
+        // 全てのMessageTextIdバリアントを列挙
+        let all_message_ids = vec![
+            MessageTextId::CommonSuccess,
+            MessageTextId::CommonError,
+            MessageTextId::CommonWarning,
+            MessageTextId::CommonInfo,
+            MessageTextId::CommonYes,
+            MessageTextId::CommonNo,
+            MessageTextId::CommonCancel,
+            MessageTextId::CommonConfirm,
+            MessageTextId::CommonLoading,
+            MessageTextId::CommonUnknown,
+            MessageTextId::RecruitmentUiTitle,
+            MessageTextId::RecruitmentUiNewRecruitment,
+            MessageTextId::RecruitmentUiRecruitmentCancelled,
+            MessageTextId::RecruitmentUiRecruitmentClosed,
+            MessageTextId::RecruitmentUiRecruitmentFull,
+            MessageTextId::RecruitmentUiJoinSuccess,
+            MessageTextId::RecruitmentUiLeaveSuccess,
+            MessageTextId::RecruitmentUiNotFound,
+            MessageTextId::RecruitmentUiAlreadyJoined,
+            MessageTextId::RecruitmentUiNotJoined,
+            MessageTextId::ErrorsInvalidInput,
+            MessageTextId::ErrorsPermissionDenied,
+            MessageTextId::ErrorsInternalError,
+            MessageTextId::ErrorsUserNotFound,
+            MessageTextId::ErrorsCommandFailed,
+            MessageTextId::ErrorsEnvVarNotSet,
+            MessageTextId::ErrorsGuildOnly,
+            MessageTextId::ErrorsSpreadsheetNotRegistered,
+            MessageTextId::ErrorsSpreadsheetConfigFetchFailed,
+            MessageTextId::SpreadsheetLoading,
+            MessageTextId::SpreadsheetLoadSuccess,
+            MessageTextId::SpreadsheetLoadPartialSuccess,
+            MessageTextId::SpreadsheetLoadFailed,
+            MessageTextId::SpreadsheetRegistering,
+            MessageTextId::SpreadsheetRegisterSuccess,
+            MessageTextId::SpreadsheetRegisterFailed,
+            MessageTextId::SpreadsheetPushing,
+            MessageTextId::SpreadsheetPushSuccess,
+            MessageTextId::SpreadsheetPushPartialSuccess,
+            MessageTextId::SpreadsheetPushFailed,
+            MessageTextId::SpreadsheetGlobalPushing,
+            MessageTextId::SpreadsheetGlobalPushSuccess,
+            MessageTextId::SpreadsheetGlobalPushPartialSuccess,
+            MessageTextId::SpreadsheetGlobalPushFailed,
+            MessageTextId::KosenjoBefore3Days,
+            MessageTextId::KosenjoBefore1Day,
+            MessageTextId::KosenjoQualifyingStart,
+            MessageTextId::KosenjoQualifyingEnd,
+            MessageTextId::KosenjoQualifyingEndNoInterval,
+            MessageTextId::KosenjoMainTournamentBefore1Day,
+            MessageTextId::KosenjoMainTournamentDayStart,
+            MessageTextId::KosenjoMainTournamentHalfDay,
+            MessageTextId::KosenjoMainTournamentDayEnd,
+            MessageTextId::KosenjoMainTournamentEnd,
+            MessageTextId::KosenjoSpBattleEnd,
+            MessageTextId::KosenjoTeamAbility1,
+            MessageTextId::KosenjoTeamAbility2,
+            MessageTextId::DorebaraStart,
+            MessageTextId::DorebaraEnd,
+            MessageTextId::DorebaraReset,
+            MessageTextId::DorebaraVariant,
+            MessageTextId::DorebaraLastDay,
+            MessageTextId::BotMention,
+            MessageTextId::BotMentionSix,
+            MessageTextId::BotMentionCalling,
+            MessageTextId::OmikujiHihi,
+            MessageTextId::OmikujiHakyoku,
+            MessageTextId::OmikujiOmegaUnit,
+            MessageTextId::RecruitmentDisplayNormal,
+            MessageTextId::RecruitmentDisplaySixElements,
+            MessageTextId::RecruitmentDisplayEventDateLabel,
+            MessageTextId::RecruitmentDisplayDateFormat,
+            MessageTextId::RecruitmentDisplayDismissalTimesLabel,
+            MessageTextId::RecruitmentDisplayElementFire,
+            MessageTextId::RecruitmentDisplayElementWater,
+            MessageTextId::RecruitmentDisplayElementEarth,
+            MessageTextId::RecruitmentDisplayElementWind,
+            MessageTextId::RecruitmentDisplayElementLight,
+            MessageTextId::RecruitmentDisplayElementDark,
+            MessageTextId::RecruitmentDisplayAllElements,
+            MessageTextId::RecruitmentDisplayNoParticipants,
+            MessageTextId::RecruitmentDisplayLeaveAllButton,
+            MessageTextId::RecruitmentNotificationMemberFull,
+            MessageTextId::RecruitmentNotificationBefore5Minutes,
+            MessageTextId::RecruitmentNotificationStart,
+            MessageTextId::RecruitmentNotificationDismissal,
+            MessageTextId::RecruitmentNotificationDismissalWithParticipants,
+            MessageTextId::TimezoneSetSuccess,
+            MessageTextId::TimezoneShowCurrent,
+            MessageTextId::GuildSettingsSetSuccess,
+            MessageTextId::GuildSettingsShowSuccess,
+            MessageTextId::GuildSettingsNotSet,
+            MessageTextId::RecruitmentRoleAddSuccess,
+            MessageTextId::RecruitmentRoleRemoveSuccess,
+            MessageTextId::RecruitmentCommandCancelAlreadyCancelled,
+            MessageTextId::RecruitmentCommandCancelMessageDeleted,
+            MessageTextId::RecruitmentCommandCancelInvalidMessage,
+            MessageTextId::RecruitmentCommandCancelNotFound,
+            MessageTextId::RecruitmentCommandCancelError,
+            MessageTextId::RecruitmentCommandCancelledMessageSuffix,
+            MessageTextId::RecruitmentCommandCancelNotificationNoParticipants,
+            MessageTextId::RecruitmentCommandCancelNotificationWithParticipants,
+            MessageTextId::RecruitmentCommandCancellingProgress,
+            MessageTextId::RecruitmentCommandChangeNoChanges,
+            MessageTextId::RecruitmentCommandChangeSuccess,
+            MessageTextId::MessagesWelcome,
+            MessageTextId::MessagesHelp,
+        ];
+
+        // 各MessageTextIdに対してYAMLにキーが存在することを確認
+        let mut missing_keys = Vec::new();
+        for message_id in all_message_ids {
+            let key = message_id.as_str();
+            if !yaml_keys.contains(key) {
+                missing_keys.push(key.to_string());
+            }
+        }
+
+        // 見つからないキーがあった場合、テスト失敗
+        if !missing_keys.is_empty() {
+            panic!(
+                "以下のメッセージIDがYAMLファイルに定義されていません:\n{}",
+                missing_keys.join("\n")
+            );
+        }
     }
 }
