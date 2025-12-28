@@ -1,3 +1,4 @@
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::schedule::{
     ScheduledTaskDissolutionRepository, ScheduledTaskRepository,
 };
@@ -10,7 +11,7 @@ use crate::types::{AppError, Result};
 use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// 解散タスク実行結果
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +41,7 @@ pub struct DissolutionTaskExecutor<
     recruitment_repo: Arc<R>,
     participants_repo: Arc<P>,
     message_service: Arc<MessageService>,
+    guild_settings_repo: Arc<GuildSettingsRepository>,
 }
 
 impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
@@ -58,6 +60,27 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             recruitment_repo,
             participants_repo,
             message_service,
+            guild_settings_repo: Arc::new(GuildSettingsRepository::new()),
+        }
+    }
+
+    /// ギルドのロケールを取得
+    /// 未設定の場合はデフォルト（ja）を返す
+    async fn get_guild_locale(&self, txn: &DatabaseTransaction, guild_id: i64) -> Result<String> {
+        match self
+            .guild_settings_repo
+            .find_by_guild_id_with_txn(txn, guild_id)
+            .await?
+        {
+            Some(settings) => Ok(settings.locale),
+            None => {
+                // 未設定の場合はデフォルト（ja）を返す
+                debug!(
+                    guild_id = guild_id,
+                    "ロケール未設定のため、デフォルト（ja）を使用します"
+                );
+                Ok("ja".to_string())
+            }
         }
     }
 
@@ -172,16 +195,16 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             }
         };
 
-        // ロケール情報を取得（guild_settingsから取得するのが望ましいが、ここでは簡易的にNoneで対応）
+        // ロケール情報を取得
         let guild_id = Some(recruitment.guild_id as i64);
-        let locale = None; // TODO: guild_settingsから取得
+        let locale = self.get_guild_locale(txn, recruitment.guild_id as i64).await?;
 
         // キャンセル済みメッセージを作成
         let cancelled_content = create_cancelled_message_content(
             txn,
             &self.message_service,
             guild_id,
-            locale,
+            Some(&locale),
             &message.content,
         )
         .await?;
@@ -220,7 +243,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             txn,
             &self.message_service,
             guild_id,
-            locale,
+            Some(&locale),
             &participant_mentions,
         )
         .await?;

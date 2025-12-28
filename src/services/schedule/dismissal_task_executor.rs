@@ -1,5 +1,6 @@
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
@@ -14,7 +15,7 @@ use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// 解散タスク実行結果
 #[derive(Debug, Clone, PartialEq)]
@@ -34,11 +35,35 @@ pub enum DismissalExecutionResult {
 /// 解散タスク実行サービス
 pub struct DismissalTaskExecutor {
     message_service: Arc<MessageService>,
+    guild_settings_repo: Arc<GuildSettingsRepository>,
 }
 
 impl DismissalTaskExecutor {
     pub fn new(message_service: Arc<MessageService>) -> Self {
-        Self { message_service }
+        Self {
+            message_service,
+            guild_settings_repo: Arc::new(GuildSettingsRepository::new()),
+        }
+    }
+
+    /// ギルドのロケールを取得
+    /// 未設定の場合はデフォルト（ja）を返す
+    async fn get_guild_locale(&self, txn: &DatabaseTransaction, guild_id: i64) -> Result<String> {
+        match self
+            .guild_settings_repo
+            .find_by_guild_id_with_txn(txn, guild_id)
+            .await?
+        {
+            Some(settings) => Ok(settings.locale),
+            None => {
+                // 未設定の場合はデフォルト（ja）を返す
+                debug!(
+                    guild_id = guild_id,
+                    "ロケール未設定のため、デフォルト（ja）を使用します"
+                );
+                Ok("ja".to_string())
+            }
+        }
     }
 
     /// 解散タスクを実行する
@@ -197,6 +222,7 @@ impl DismissalTaskExecutor {
             task.guild_id
                 .unwrap_or_else(|| recruitment.guild_id.try_into().unwrap()),
         );
+        let locale = self.get_guild_locale(txn, guild_id.unwrap()).await?;
         let cancelled_suffix = self
             .message_service
             .get_message(
@@ -204,7 +230,7 @@ impl DismissalTaskExecutor {
                 MessageTextId::RecruitmentCommandCancelledMessageSuffix.as_str(),
                 HashMap::new(),
                 guild_id,
-                None,
+                Some(&locale),
             )
             .await
             .unwrap_or_else(|_| "この募集はキャンセルされました".to_string());
@@ -238,7 +264,7 @@ impl DismissalTaskExecutor {
                     MessageTextId::RecruitmentNotificationDismissal.as_str(),
                     HashMap::new(),
                     guild_id,
-                    None,
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| {
@@ -253,7 +279,7 @@ impl DismissalTaskExecutor {
                     MessageTextId::RecruitmentNotificationDismissalWithParticipants.as_str(),
                     HashMap::new(),
                     guild_id,
-                    None,
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| {
