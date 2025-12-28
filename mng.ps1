@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet("dev", "prod", "help")]
+    [ValidateSet("dev", "staging", "prod", "help")]
     [string]$Environment,
 
     [Parameter(Position = 1)]
@@ -11,6 +11,9 @@ param(
         switch ($environment)
         {
             'dev' {
+                @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
+            }
+            'staging' {
                 @('up', 'down', 'help') | Where-Object { $_ -like "$wordToComplete*" }
             }
             'prod' {
@@ -28,14 +31,15 @@ param(
 
 function Show-Help
 {
-    Write-Host "🛠️ Management Script for Development and Production" -ForegroundColor Green
+    Write-Host "🛠️ Management Script for Development, Staging and Production" -ForegroundColor Green
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor Yellow
     Write-Host "  .\mng.ps1 [environment] [command]" -ForegroundColor White
     Write-Host ""
     Write-Host "Environments:" -ForegroundColor Yellow
-    Write-Host "  dev  - Development environment" -ForegroundColor White
-    Write-Host "  prod - Production environment" -ForegroundColor White
+    Write-Host "  dev     - Development environment" -ForegroundColor White
+    Write-Host "  staging - Staging environment (builds locally)" -ForegroundColor White
+    Write-Host "  prod    - Production environment (pulls from GHCR)" -ForegroundColor White
     Write-Host ""
     Write-Host "Commands:" -ForegroundColor Yellow
     Write-Host "  up      - Start services (default)" -ForegroundColor White
@@ -44,6 +48,7 @@ function Show-Help
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\mng.ps1 dev up" -ForegroundColor White
+    Write-Host "  .\mng.ps1 staging up" -ForegroundColor White
     Write-Host "  .\mng.ps1 prod down" -ForegroundColor White
     # Write-Host "  .\mng.ps1 prod nocache" -ForegroundColor White
 }
@@ -135,6 +140,19 @@ function Stop-ProdServices
     docker compose down
 }
 
+function Start-StagingServices
+{
+    Write-Host "🚀 検証環境のサービスを起動しています（appコンテナを再ビルド）..." -ForegroundColor Green
+    docker compose -f docker-compose.staging.yml build app
+    docker compose -f docker-compose.staging.yml up -d
+}
+
+function Stop-StagingServices
+{
+    Write-Host "🛑 検証環境のサービスを停止しています..." -ForegroundColor Yellow
+    docker compose -f docker-compose.staging.yml down
+}
+
 # function Start-ProdServicesNoCache (commented out - no longer needed as production pulls pre-built images)
 # {
 #     Write-Host "🔄 キャッシュなしでビルドしています..." -ForegroundColor Cyan
@@ -178,6 +196,29 @@ switch ($Environment)
             }
             "down" {
                 Stop-DevDatabase
+            }
+            "help" {
+                Show-Help
+            }
+        }
+    }
+    "staging" {
+        # stagingで利用可能なコマンドの検証
+        if ($Command -notin @("up", "down", "help"))
+        {
+            Write-Host "❌ Invalid command for staging: $Command" -ForegroundColor Red
+            Write-Host "Available commands for staging: up, down" -ForegroundColor Yellow
+            Show-Help
+            exit 1
+        }
+
+        switch ($Command)
+        {
+            "up" {
+                Start-StagingServices
+            }
+            "down" {
+                Stop-StagingServices
             }
             "help" {
                 Show-Help

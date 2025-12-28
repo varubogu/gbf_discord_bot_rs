@@ -11,14 +11,15 @@ NC='\033[0m' # No Color
 
 # ヘルプメッセージの表示
 show_help() {
-    echo -e "${GREEN}🛠️ Management Script for Development and Production${NC}"
+    echo -e "${GREEN}🛠️ Management Script for Development, Staging and Production${NC}"
     echo ""
     echo -e "${YELLOW}Usage:${NC}"
     echo -e "${WHITE}  ./mng.sh [environment] [command]${NC}"
     echo ""
     echo -e "${YELLOW}Environments:${NC}"
-    echo -e "${WHITE}  dev  - Development environment${NC}"
-    echo -e "${WHITE}  prod - Production environment${NC}"
+    echo -e "${WHITE}  dev     - Development environment${NC}"
+    echo -e "${WHITE}  staging - Staging environment (builds locally)${NC}"
+    echo -e "${WHITE}  prod    - Production environment (pulls from GHCR)${NC}"
     echo ""
     echo -e "${YELLOW}Commands:${NC}"
     echo -e "${WHITE}  up      - Start services (default)${NC}"
@@ -27,6 +28,7 @@ show_help() {
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
     echo -e "${WHITE}  ./mng.sh dev up${NC}"
+    echo -e "${WHITE}  ./mng.sh staging up${NC}"
     echo -e "${WHITE}  ./mng.sh prod down${NC}"
     # echo -e "${WHITE}  ./mng.sh prod nocache${NC}"
 }
@@ -40,7 +42,7 @@ _mng_completion() {
     
     # 第1引数の場合
     if [[ ${COMP_CWORD} -eq 1 ]]; then
-        opts="dev prod"
+        opts="dev staging prod"
         if [[ ${cur} == -* ]] ; then
             COMPREPLY=( $(compgen -W "-h --help" -- ${cur}) )
             return 0
@@ -53,6 +55,9 @@ _mng_completion() {
     if [[ ${COMP_CWORD} -eq 2 ]]; then
         case "${COMP_WORDS[1]}" in
             dev)
+                opts="up down"
+                ;;
+            staging)
                 opts="up down"
                 ;;
             prod)
@@ -84,12 +89,12 @@ fi
 
 # 環境の検証
 case $ENVIRONMENT in
-    dev|prod)
+    dev|staging|prod)
         # 有効な環境
         ;;
     *)
         echo -e "${RED}❌ Invalid environment: $ENVIRONMENT${NC}"
-        echo -e "${YELLOW}Available environments: dev, prod${NC}"
+        echo -e "${YELLOW}Available environments: dev, staging, prod${NC}"
         show_help
         exit 1
         ;;
@@ -105,6 +110,19 @@ case $ENVIRONMENT in
             *)
                 echo -e "${RED}❌ Invalid command for dev: $COMMAND${NC}"
                 echo -e "${YELLOW}Available commands for dev: up, down${NC}"
+                show_help
+                exit 1
+                ;;
+        esac
+        ;;
+    staging)
+        case $COMMAND in
+            up|down|help)
+                # 有効なコマンド
+                ;;
+            *)
+                echo -e "${RED}❌ Invalid command for staging: $COMMAND${NC}"
+                echo -e "${YELLOW}Available commands for staging: up, down${NC}"
                 show_help
                 exit 1
                 ;;
@@ -208,6 +226,19 @@ prod_down() {
     docker compose down
 }
 
+# staging up の処理
+staging_up() {
+    echo -e "${GREEN}🚀 検証環境のサービスを起動しています（appコンテナを再ビルド）...${NC}"
+    docker compose -f docker-compose.staging.yml build app
+    docker compose -f docker-compose.staging.yml up -d
+}
+
+# staging down の処理
+staging_down() {
+    echo -e "${YELLOW}🛑 検証環境のサービスを停止しています...${NC}"
+    docker compose -f docker-compose.staging.yml down
+}
+
 # prod nocache の処理 (commented out - no longer needed as production pulls pre-built images)
 # prod_nocache() {
 #     echo -e "${CYAN}🔄 キャッシュなしでビルドしています...${NC}"
@@ -230,6 +261,19 @@ case $ENVIRONMENT in
                 ;;
             "down")
                 dev_down
+                ;;
+            "help")
+                show_help
+                ;;
+        esac
+        ;;
+    "staging")
+        case $COMMAND in
+            "up")
+                staging_up
+                ;;
+            "down")
+                staging_down
                 ;;
             "help")
                 show_help
