@@ -1,3 +1,147 @@
+/// メッセージキー定数定義
+///
+/// YAMLファイル内のキーを定数として定義する。
+/// これらの定数は `MessageTextId::as_str()` と `yaml_loader.rs` の両方から参照される。
+/// 単一の情報源(Single Source of Truth)として機能する。
+pub mod keys {
+    // Common messages
+    pub const COMMON_SUCCESS: &str = "common.success";
+    pub const COMMON_ERROR: &str = "common.error";
+    pub const COMMON_WARNING: &str = "common.warning";
+    pub const COMMON_INFO: &str = "common.info";
+    pub const COMMON_YES: &str = "common.yes";
+    pub const COMMON_NO: &str = "common.no";
+    pub const COMMON_CANCEL: &str = "common.cancel";
+    pub const COMMON_CONFIRM: &str = "common.confirm";
+    pub const COMMON_LOADING: &str = "common.loading";
+    pub const COMMON_UNKNOWN: &str = "common.unknown";
+
+    // Recruitment UI messages
+    pub const RECRUITMENT_UI_TITLE: &str = "recruitment.ui.title";
+    pub const RECRUITMENT_UI_NEW_RECRUITMENT: &str = "recruitment.ui.new_recruitment";
+    pub const RECRUITMENT_UI_RECRUITMENT_CANCELLED: &str = "recruitment.ui.recruitment_cancelled";
+    pub const RECRUITMENT_UI_RECRUITMENT_CLOSED: &str = "recruitment.ui.recruitment_closed";
+    pub const RECRUITMENT_UI_RECRUITMENT_FULL: &str = "recruitment.ui.recruitment_full";
+    pub const RECRUITMENT_UI_JOIN_SUCCESS: &str = "recruitment.ui.join_success";
+    pub const RECRUITMENT_UI_LEAVE_SUCCESS: &str = "recruitment.ui.leave_success";
+    pub const RECRUITMENT_UI_NOT_FOUND: &str = "recruitment.ui.not_found";
+    pub const RECRUITMENT_UI_ALREADY_JOINED: &str = "recruitment.ui.already_joined";
+    pub const RECRUITMENT_UI_NOT_JOINED: &str = "recruitment.ui.not_joined";
+
+    // Error messages
+    pub const ERRORS_INVALID_INPUT: &str = "errors.invalid_input";
+    pub const ERRORS_PERMISSION_DENIED: &str = "errors.permission_denied";
+    pub const ERRORS_INTERNAL_ERROR: &str = "errors.internal_error";
+    pub const ERRORS_USER_NOT_FOUND: &str = "errors.user_not_found";
+    pub const ERRORS_COMMAND_FAILED: &str = "errors.command_failed";
+    pub const ERRORS_ENV_VAR_NOT_SET: &str = "errors.env_var_not_set";
+    pub const ERRORS_GUILD_ONLY: &str = "errors.guild_only";
+    pub const ERRORS_SPREADSHEET_NOT_REGISTERED: &str = "errors.spreadsheet_not_registered";
+    pub const ERRORS_SPREADSHEET_CONFIG_FETCH_FAILED: &str = "errors.spreadsheet_config_fetch_failed";
+
+    // Spreadsheet messages
+    pub const SPREADSHEET_LOADING: &str = "spreadsheet.loading";
+    pub const SPREADSHEET_LOAD_SUCCESS: &str = "spreadsheet.load_success";
+    pub const SPREADSHEET_LOAD_PARTIAL_SUCCESS: &str = "spreadsheet.load_partial_success";
+    pub const SPREADSHEET_LOAD_FAILED: &str = "spreadsheet.load_failed";
+    pub const SPREADSHEET_REGISTERING: &str = "spreadsheet.registering";
+    pub const SPREADSHEET_REGISTER_SUCCESS: &str = "spreadsheet.register_success";
+    pub const SPREADSHEET_REGISTER_FAILED: &str = "spreadsheet.register_failed";
+    pub const SPREADSHEET_PUSHING: &str = "spreadsheet.pushing";
+    pub const SPREADSHEET_PUSH_SUCCESS: &str = "spreadsheet.push_success";
+    pub const SPREADSHEET_PUSH_PARTIAL_SUCCESS: &str = "spreadsheet.push_partial_success";
+    pub const SPREADSHEET_PUSH_FAILED: &str = "spreadsheet.push_failed";
+    pub const SPREADSHEET_GLOBAL_PUSHING: &str = "spreadsheet.global_pushing";
+    pub const SPREADSHEET_GLOBAL_PUSH_SUCCESS: &str = "spreadsheet.global_push_success";
+    pub const SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS: &str = "spreadsheet.global_push_partial_success";
+    pub const SPREADSHEET_GLOBAL_PUSH_FAILED: &str = "spreadsheet.global_push_failed";
+
+    // Kosenjo messages
+    pub const KOSENJO_BEFORE_3_DAYS: &str = "kosenjo.before_3_days";
+    pub const KOSENJO_BEFORE_1_DAY: &str = "kosenjo.before_1_day";
+    pub const KOSENJO_QUALIFYING_START: &str = "kosenjo.qualifying_start";
+    pub const KOSENJO_QUALIFYING_END: &str = "kosenjo.qualifying_end";
+    pub const KOSENJO_QUALIFYING_END_NO_INTERVAL: &str = "kosenjo.qualifying_end_no_interval";
+    pub const KOSENJO_MAIN_TOURNAMENT_BEFORE_1_DAY: &str = "kosenjo.main_tournament_before_1_day";
+    pub const KOSENJO_MAIN_TOURNAMENT_DAY_START: &str = "kosenjo.main_tournament_day_start";
+    pub const KOSENJO_MAIN_TOURNAMENT_HALF_DAY: &str = "kosenjo.main_tournament_half_day";
+    pub const KOSENJO_MAIN_TOURNAMENT_DAY_END: &str = "kosenjo.main_tournament_day_end";
+    pub const KOSENJO_MAIN_TOURNAMENT_END: &str = "kosenjo.main_tournament_end";
+    pub const KOSENJO_SP_BATTLE_END: &str = "kosenjo.sp_battle_end";
+    pub const KOSENJO_TEAM_ABILITY_1: &str = "kosenjo.team_ability_1";
+    pub const KOSENJO_TEAM_ABILITY_2: &str = "kosenjo.team_ability_2";
+
+    // Dorebara messages
+    pub const DOREBARA_START: &str = "dorebara.start";
+    pub const DOREBARA_END: &str = "dorebara.end";
+    pub const DOREBARA_RESET: &str = "dorebara.reset";
+    pub const DOREBARA_VARIANT: &str = "dorebara.variant";
+    pub const DOREBARA_LAST_DAY: &str = "dorebara.last_day";
+
+    // Bot messages
+    pub const BOT_MENTION: &str = "bot.mention";
+    pub const BOT_MENTION_SIX: &str = "bot.mention_six";
+    pub const BOT_MENTION_CALLING: &str = "bot.mention_calling";
+
+    // Omikuji messages
+    pub const OMIKUJI_HIHI: &str = "omikuji.hihi";
+    pub const OMIKUJI_HAKYOKU: &str = "omikuji.hakyoku";
+    pub const OMIKUJI_OMEGA_UNIT: &str = "omikuji.omega_unit";
+
+    // Recruitment display messages
+    pub const RECRUITMENT_DISPLAY_NORMAL: &str = "recruitment.display.normal";
+    pub const RECRUITMENT_DISPLAY_SIX_ELEMENTS: &str = "recruitment.display.six_elements";
+    pub const RECRUITMENT_DISPLAY_EVENT_DATE_LABEL: &str = "recruitment.display.event_date_label";
+    pub const RECRUITMENT_DISPLAY_DATE_FORMAT: &str = "recruitment.display.date_format";
+    pub const RECRUITMENT_DISPLAY_DISMISSAL_TIMES_LABEL: &str = "recruitment.display.dismissal_times_label";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_FIRE: &str = "recruitment.display.element_fire";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_WATER: &str = "recruitment.display.element_water";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_EARTH: &str = "recruitment.display.element_earth";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_WIND: &str = "recruitment.display.element_wind";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_LIGHT: &str = "recruitment.display.element_light";
+    pub const RECRUITMENT_DISPLAY_ELEMENT_DARK: &str = "recruitment.display.element_dark";
+    pub const RECRUITMENT_DISPLAY_ALL_ELEMENTS: &str = "recruitment.display.all_elements";
+    pub const RECRUITMENT_DISPLAY_NO_PARTICIPANTS: &str = "recruitment.display.no_participants";
+    pub const RECRUITMENT_DISPLAY_LEAVE_ALL_BUTTON: &str = "recruitment.display.leave_all_button";
+
+    // Recruitment notification messages
+    pub const RECRUITMENT_NOTIFICATION_MEMBER_FULL: &str = "recruitment.notification.member_full";
+    pub const RECRUITMENT_NOTIFICATION_BEFORE_5_MINUTES: &str = "recruitment.notification.before_5_minutes";
+    pub const RECRUITMENT_NOTIFICATION_START: &str = "recruitment.notification.start";
+    pub const RECRUITMENT_NOTIFICATION_DISMISSAL: &str = "recruitment.notification.dismissal";
+    pub const RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS: &str = "recruitment.notification.dismissal_with_participants";
+
+    // Timezone messages (deprecated - use GuildSettings instead)
+    pub const TIMEZONE_SET_SUCCESS: &str = "timezone.set_success";
+    pub const TIMEZONE_SHOW_CURRENT: &str = "timezone.show_current";
+
+    // Guild settings messages
+    pub const GUILD_SETTINGS_SET_SUCCESS: &str = "guild_settings.set_success";
+    pub const GUILD_SETTINGS_SHOW_SUCCESS: &str = "guild_settings.show_success";
+    pub const GUILD_SETTINGS_NOT_SET: &str = "guild_settings.not_set";
+
+    // Recruitment role messages
+    pub const RECRUITMENT_ROLE_ADD_SUCCESS: &str = "recruitment.role.add_success";
+    pub const RECRUITMENT_ROLE_REMOVE_SUCCESS: &str = "recruitment.role.remove_success";
+
+    // Recruitment command messages
+    pub const RECRUITMENT_COMMAND_CANCEL_ALREADY_CANCELLED: &str = "recruitment.command.cancel_already_cancelled";
+    pub const RECRUITMENT_COMMAND_CANCEL_MESSAGE_DELETED: &str = "recruitment.command.cancel_message_deleted";
+    pub const RECRUITMENT_COMMAND_CANCEL_INVALID_MESSAGE: &str = "recruitment.command.cancel_invalid_message";
+    pub const RECRUITMENT_COMMAND_CANCEL_NOT_FOUND: &str = "recruitment.command.cancel_not_found";
+    pub const RECRUITMENT_COMMAND_CANCEL_ERROR: &str = "recruitment.command.cancel_error";
+    pub const RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX: &str = "recruitment.command.cancelled_message_suffix";
+    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_NO_PARTICIPANTS: &str = "recruitment.command.cancel_notification_no_participants";
+    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_WITH_PARTICIPANTS: &str = "recruitment.command.cancel_notification_with_participants";
+    pub const RECRUITMENT_COMMAND_CANCELLING_PROGRESS: &str = "recruitment.command.cancelling_progress";
+    pub const RECRUITMENT_COMMAND_CHANGE_NO_CHANGES: &str = "recruitment.command.change_no_changes";
+    pub const RECRUITMENT_COMMAND_CHANGE_SUCCESS: &str = "recruitment.command.change_success";
+
+    // General messages
+    pub const MESSAGES_WELCOME: &str = "messages.welcome";
+    pub const MESSAGES_HELP: &str = "messages.help";
+}
+
 /// メッセージID定義
 ///
 /// メッセージIDを型安全に管理するためのenum
@@ -147,184 +291,189 @@ impl MessageTextId {
     ///
     /// # 戻り値
     /// YAMLファイル内のキー（例: "timezone.show_current"）
+    ///
+    /// # 実装ノート
+    /// 各キーの定義は `keys` モジュールで一元管理されている。
+    /// これにより、`as_str()` と `yaml_loader.rs` で同じ定数を参照でき、
+    /// 単一の情報源(Single Source of Truth)を実現している。
     pub fn as_str(&self) -> &'static str {
         match self {
             // Common
-            MessageTextId::CommonSuccess => "common.success",
-            MessageTextId::CommonError => "common.error",
-            MessageTextId::CommonWarning => "common.warning",
-            MessageTextId::CommonInfo => "common.info",
-            MessageTextId::CommonYes => "common.yes",
-            MessageTextId::CommonNo => "common.no",
-            MessageTextId::CommonCancel => "common.cancel",
-            MessageTextId::CommonConfirm => "common.confirm",
-            MessageTextId::CommonLoading => "common.loading",
-            MessageTextId::CommonUnknown => "common.unknown",
+            MessageTextId::CommonSuccess => keys::COMMON_SUCCESS,
+            MessageTextId::CommonError => keys::COMMON_ERROR,
+            MessageTextId::CommonWarning => keys::COMMON_WARNING,
+            MessageTextId::CommonInfo => keys::COMMON_INFO,
+            MessageTextId::CommonYes => keys::COMMON_YES,
+            MessageTextId::CommonNo => keys::COMMON_NO,
+            MessageTextId::CommonCancel => keys::COMMON_CANCEL,
+            MessageTextId::CommonConfirm => keys::COMMON_CONFIRM,
+            MessageTextId::CommonLoading => keys::COMMON_LOADING,
+            MessageTextId::CommonUnknown => keys::COMMON_UNKNOWN,
 
             // Recruitment UI
-            MessageTextId::RecruitmentUiTitle => "recruitment.ui.title",
-            MessageTextId::RecruitmentUiNewRecruitment => "recruitment.ui.new_recruitment",
+            MessageTextId::RecruitmentUiTitle => keys::RECRUITMENT_UI_TITLE,
+            MessageTextId::RecruitmentUiNewRecruitment => keys::RECRUITMENT_UI_NEW_RECRUITMENT,
             MessageTextId::RecruitmentUiRecruitmentCancelled => {
-                "recruitment.ui.recruitment_cancelled"
+                keys::RECRUITMENT_UI_RECRUITMENT_CANCELLED
             }
-            MessageTextId::RecruitmentUiRecruitmentClosed => "recruitment.ui.recruitment_closed",
-            MessageTextId::RecruitmentUiRecruitmentFull => "recruitment.ui.recruitment_full",
-            MessageTextId::RecruitmentUiJoinSuccess => "recruitment.ui.join_success",
-            MessageTextId::RecruitmentUiLeaveSuccess => "recruitment.ui.leave_success",
-            MessageTextId::RecruitmentUiNotFound => "recruitment.ui.not_found",
-            MessageTextId::RecruitmentUiAlreadyJoined => "recruitment.ui.already_joined",
-            MessageTextId::RecruitmentUiNotJoined => "recruitment.ui.not_joined",
+            MessageTextId::RecruitmentUiRecruitmentClosed => keys::RECRUITMENT_UI_RECRUITMENT_CLOSED,
+            MessageTextId::RecruitmentUiRecruitmentFull => keys::RECRUITMENT_UI_RECRUITMENT_FULL,
+            MessageTextId::RecruitmentUiJoinSuccess => keys::RECRUITMENT_UI_JOIN_SUCCESS,
+            MessageTextId::RecruitmentUiLeaveSuccess => keys::RECRUITMENT_UI_LEAVE_SUCCESS,
+            MessageTextId::RecruitmentUiNotFound => keys::RECRUITMENT_UI_NOT_FOUND,
+            MessageTextId::RecruitmentUiAlreadyJoined => keys::RECRUITMENT_UI_ALREADY_JOINED,
+            MessageTextId::RecruitmentUiNotJoined => keys::RECRUITMENT_UI_NOT_JOINED,
 
             // Errors
-            MessageTextId::ErrorsInvalidInput => "errors.invalid_input",
-            MessageTextId::ErrorsPermissionDenied => "errors.permission_denied",
-            MessageTextId::ErrorsInternalError => "errors.internal_error",
-            MessageTextId::ErrorsUserNotFound => "errors.user_not_found",
-            MessageTextId::ErrorsCommandFailed => "errors.command_failed",
-            MessageTextId::ErrorsEnvVarNotSet => "errors.env_var_not_set",
-            MessageTextId::ErrorsGuildOnly => "errors.guild_only",
-            MessageTextId::ErrorsSpreadsheetNotRegistered => "errors.spreadsheet_not_registered",
+            MessageTextId::ErrorsInvalidInput => keys::ERRORS_INVALID_INPUT,
+            MessageTextId::ErrorsPermissionDenied => keys::ERRORS_PERMISSION_DENIED,
+            MessageTextId::ErrorsInternalError => keys::ERRORS_INTERNAL_ERROR,
+            MessageTextId::ErrorsUserNotFound => keys::ERRORS_USER_NOT_FOUND,
+            MessageTextId::ErrorsCommandFailed => keys::ERRORS_COMMAND_FAILED,
+            MessageTextId::ErrorsEnvVarNotSet => keys::ERRORS_ENV_VAR_NOT_SET,
+            MessageTextId::ErrorsGuildOnly => keys::ERRORS_GUILD_ONLY,
+            MessageTextId::ErrorsSpreadsheetNotRegistered => keys::ERRORS_SPREADSHEET_NOT_REGISTERED,
             MessageTextId::ErrorsSpreadsheetConfigFetchFailed => {
-                "errors.spreadsheet_config_fetch_failed"
+                keys::ERRORS_SPREADSHEET_CONFIG_FETCH_FAILED
             }
 
             // Spreadsheet
-            MessageTextId::SpreadsheetLoading => "spreadsheet.loading",
-            MessageTextId::SpreadsheetLoadSuccess => "spreadsheet.load_success",
-            MessageTextId::SpreadsheetLoadPartialSuccess => "spreadsheet.load_partial_success",
-            MessageTextId::SpreadsheetLoadFailed => "spreadsheet.load_failed",
-            MessageTextId::SpreadsheetRegistering => "spreadsheet.registering",
-            MessageTextId::SpreadsheetRegisterSuccess => "spreadsheet.register_success",
-            MessageTextId::SpreadsheetRegisterFailed => "spreadsheet.register_failed",
-            MessageTextId::SpreadsheetPushing => "spreadsheet.pushing",
-            MessageTextId::SpreadsheetPushSuccess => "spreadsheet.push_success",
-            MessageTextId::SpreadsheetPushPartialSuccess => "spreadsheet.push_partial_success",
-            MessageTextId::SpreadsheetPushFailed => "spreadsheet.push_failed",
-            MessageTextId::SpreadsheetGlobalPushing => "spreadsheet.global_pushing",
-            MessageTextId::SpreadsheetGlobalPushSuccess => "spreadsheet.global_push_success",
+            MessageTextId::SpreadsheetLoading => keys::SPREADSHEET_LOADING,
+            MessageTextId::SpreadsheetLoadSuccess => keys::SPREADSHEET_LOAD_SUCCESS,
+            MessageTextId::SpreadsheetLoadPartialSuccess => keys::SPREADSHEET_LOAD_PARTIAL_SUCCESS,
+            MessageTextId::SpreadsheetLoadFailed => keys::SPREADSHEET_LOAD_FAILED,
+            MessageTextId::SpreadsheetRegistering => keys::SPREADSHEET_REGISTERING,
+            MessageTextId::SpreadsheetRegisterSuccess => keys::SPREADSHEET_REGISTER_SUCCESS,
+            MessageTextId::SpreadsheetRegisterFailed => keys::SPREADSHEET_REGISTER_FAILED,
+            MessageTextId::SpreadsheetPushing => keys::SPREADSHEET_PUSHING,
+            MessageTextId::SpreadsheetPushSuccess => keys::SPREADSHEET_PUSH_SUCCESS,
+            MessageTextId::SpreadsheetPushPartialSuccess => keys::SPREADSHEET_PUSH_PARTIAL_SUCCESS,
+            MessageTextId::SpreadsheetPushFailed => keys::SPREADSHEET_PUSH_FAILED,
+            MessageTextId::SpreadsheetGlobalPushing => keys::SPREADSHEET_GLOBAL_PUSHING,
+            MessageTextId::SpreadsheetGlobalPushSuccess => keys::SPREADSHEET_GLOBAL_PUSH_SUCCESS,
             MessageTextId::SpreadsheetGlobalPushPartialSuccess => {
-                "spreadsheet.global_push_partial_success"
+                keys::SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS
             }
-            MessageTextId::SpreadsheetGlobalPushFailed => "spreadsheet.global_push_failed",
+            MessageTextId::SpreadsheetGlobalPushFailed => keys::SPREADSHEET_GLOBAL_PUSH_FAILED,
 
             // Kosenjo
-            MessageTextId::KosenjoBefore3Days => "kosenjo.before_3_days",
-            MessageTextId::KosenjoBefore1Day => "kosenjo.before_1_day",
-            MessageTextId::KosenjoQualifyingStart => "kosenjo.qualifying_start",
-            MessageTextId::KosenjoQualifyingEnd => "kosenjo.qualifying_end",
-            MessageTextId::KosenjoQualifyingEndNoInterval => "kosenjo.qualifying_end_no_interval",
+            MessageTextId::KosenjoBefore3Days => keys::KOSENJO_BEFORE_3_DAYS,
+            MessageTextId::KosenjoBefore1Day => keys::KOSENJO_BEFORE_1_DAY,
+            MessageTextId::KosenjoQualifyingStart => keys::KOSENJO_QUALIFYING_START,
+            MessageTextId::KosenjoQualifyingEnd => keys::KOSENJO_QUALIFYING_END,
+            MessageTextId::KosenjoQualifyingEndNoInterval => keys::KOSENJO_QUALIFYING_END_NO_INTERVAL,
             MessageTextId::KosenjoMainTournamentBefore1Day => {
-                "kosenjo.main_tournament_before_1_day"
+                keys::KOSENJO_MAIN_TOURNAMENT_BEFORE_1_DAY
             }
-            MessageTextId::KosenjoMainTournamentDayStart => "kosenjo.main_tournament_day_start",
-            MessageTextId::KosenjoMainTournamentHalfDay => "kosenjo.main_tournament_half_day",
-            MessageTextId::KosenjoMainTournamentDayEnd => "kosenjo.main_tournament_day_end",
-            MessageTextId::KosenjoMainTournamentEnd => "kosenjo.main_tournament_end",
-            MessageTextId::KosenjoSpBattleEnd => "kosenjo.sp_battle_end",
-            MessageTextId::KosenjoTeamAbility1 => "kosenjo.team_ability_1",
-            MessageTextId::KosenjoTeamAbility2 => "kosenjo.team_ability_2",
+            MessageTextId::KosenjoMainTournamentDayStart => keys::KOSENJO_MAIN_TOURNAMENT_DAY_START,
+            MessageTextId::KosenjoMainTournamentHalfDay => keys::KOSENJO_MAIN_TOURNAMENT_HALF_DAY,
+            MessageTextId::KosenjoMainTournamentDayEnd => keys::KOSENJO_MAIN_TOURNAMENT_DAY_END,
+            MessageTextId::KosenjoMainTournamentEnd => keys::KOSENJO_MAIN_TOURNAMENT_END,
+            MessageTextId::KosenjoSpBattleEnd => keys::KOSENJO_SP_BATTLE_END,
+            MessageTextId::KosenjoTeamAbility1 => keys::KOSENJO_TEAM_ABILITY_1,
+            MessageTextId::KosenjoTeamAbility2 => keys::KOSENJO_TEAM_ABILITY_2,
 
             // Dorebara
-            MessageTextId::DorebaraStart => "dorebara.start",
-            MessageTextId::DorebaraEnd => "dorebara.end",
-            MessageTextId::DorebaraReset => "dorebara.reset",
-            MessageTextId::DorebaraVariant => "dorebara.variant",
-            MessageTextId::DorebaraLastDay => "dorebara.last_day",
+            MessageTextId::DorebaraStart => keys::DOREBARA_START,
+            MessageTextId::DorebaraEnd => keys::DOREBARA_END,
+            MessageTextId::DorebaraReset => keys::DOREBARA_RESET,
+            MessageTextId::DorebaraVariant => keys::DOREBARA_VARIANT,
+            MessageTextId::DorebaraLastDay => keys::DOREBARA_LAST_DAY,
 
             // Bot
-            MessageTextId::BotMention => "bot.mention",
-            MessageTextId::BotMentionSix => "bot.mention_six",
-            MessageTextId::BotMentionCalling => "bot.mention_calling",
+            MessageTextId::BotMention => keys::BOT_MENTION,
+            MessageTextId::BotMentionSix => keys::BOT_MENTION_SIX,
+            MessageTextId::BotMentionCalling => keys::BOT_MENTION_CALLING,
 
             // Omikuji
-            MessageTextId::OmikujiHihi => "omikuji.hihi",
-            MessageTextId::OmikujiHakyoku => "omikuji.hakyoku",
-            MessageTextId::OmikujiOmegaUnit => "omikuji.omega_unit",
+            MessageTextId::OmikujiHihi => keys::OMIKUJI_HIHI,
+            MessageTextId::OmikujiHakyoku => keys::OMIKUJI_HAKYOKU,
+            MessageTextId::OmikujiOmegaUnit => keys::OMIKUJI_OMEGA_UNIT,
 
             // Recruitment display
-            MessageTextId::RecruitmentDisplayNormal => "recruitment.display.normal",
-            MessageTextId::RecruitmentDisplaySixElements => "recruitment.display.six_elements",
+            MessageTextId::RecruitmentDisplayNormal => keys::RECRUITMENT_DISPLAY_NORMAL,
+            MessageTextId::RecruitmentDisplaySixElements => keys::RECRUITMENT_DISPLAY_SIX_ELEMENTS,
             MessageTextId::RecruitmentDisplayEventDateLabel => {
-                "recruitment.display.event_date_label"
+                keys::RECRUITMENT_DISPLAY_EVENT_DATE_LABEL
             }
-            MessageTextId::RecruitmentDisplayDateFormat => "recruitment.display.date_format",
+            MessageTextId::RecruitmentDisplayDateFormat => keys::RECRUITMENT_DISPLAY_DATE_FORMAT,
             MessageTextId::RecruitmentDisplayDismissalTimesLabel => {
-                "recruitment.display.dismissal_times_label"
+                keys::RECRUITMENT_DISPLAY_DISMISSAL_TIMES_LABEL
             }
-            MessageTextId::RecruitmentDisplayElementFire => "recruitment.display.element_fire",
-            MessageTextId::RecruitmentDisplayElementWater => "recruitment.display.element_water",
-            MessageTextId::RecruitmentDisplayElementEarth => "recruitment.display.element_earth",
-            MessageTextId::RecruitmentDisplayElementWind => "recruitment.display.element_wind",
-            MessageTextId::RecruitmentDisplayElementLight => "recruitment.display.element_light",
-            MessageTextId::RecruitmentDisplayElementDark => "recruitment.display.element_dark",
-            MessageTextId::RecruitmentDisplayAllElements => "recruitment.display.all_elements",
+            MessageTextId::RecruitmentDisplayElementFire => keys::RECRUITMENT_DISPLAY_ELEMENT_FIRE,
+            MessageTextId::RecruitmentDisplayElementWater => keys::RECRUITMENT_DISPLAY_ELEMENT_WATER,
+            MessageTextId::RecruitmentDisplayElementEarth => keys::RECRUITMENT_DISPLAY_ELEMENT_EARTH,
+            MessageTextId::RecruitmentDisplayElementWind => keys::RECRUITMENT_DISPLAY_ELEMENT_WIND,
+            MessageTextId::RecruitmentDisplayElementLight => keys::RECRUITMENT_DISPLAY_ELEMENT_LIGHT,
+            MessageTextId::RecruitmentDisplayElementDark => keys::RECRUITMENT_DISPLAY_ELEMENT_DARK,
+            MessageTextId::RecruitmentDisplayAllElements => keys::RECRUITMENT_DISPLAY_ALL_ELEMENTS,
             MessageTextId::RecruitmentDisplayNoParticipants => {
-                "recruitment.display.no_participants"
+                keys::RECRUITMENT_DISPLAY_NO_PARTICIPANTS
             }
             MessageTextId::RecruitmentDisplayLeaveAllButton => {
-                "recruitment.display.leave_all_button"
+                keys::RECRUITMENT_DISPLAY_LEAVE_ALL_BUTTON
             }
 
             // Recruitment notification
             MessageTextId::RecruitmentNotificationMemberFull => {
-                "recruitment.notification.member_full"
+                keys::RECRUITMENT_NOTIFICATION_MEMBER_FULL
             }
             MessageTextId::RecruitmentNotificationBefore5Minutes => {
-                "recruitment.notification.before_5_minutes"
+                keys::RECRUITMENT_NOTIFICATION_BEFORE_5_MINUTES
             }
-            MessageTextId::RecruitmentNotificationStart => "recruitment.notification.start",
-            MessageTextId::RecruitmentNotificationDismissal => "recruitment.notification.dismissal",
+            MessageTextId::RecruitmentNotificationStart => keys::RECRUITMENT_NOTIFICATION_START,
+            MessageTextId::RecruitmentNotificationDismissal => keys::RECRUITMENT_NOTIFICATION_DISMISSAL,
             MessageTextId::RecruitmentNotificationDismissalWithParticipants => {
-                "recruitment.notification.dismissal_with_participants"
+                keys::RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS
             }
 
             // Timezone
-            MessageTextId::TimezoneSetSuccess => "timezone.set_success",
-            MessageTextId::TimezoneShowCurrent => "timezone.show_current",
+            MessageTextId::TimezoneSetSuccess => keys::TIMEZONE_SET_SUCCESS,
+            MessageTextId::TimezoneShowCurrent => keys::TIMEZONE_SHOW_CURRENT,
 
             // Guild settings
-            MessageTextId::GuildSettingsSetSuccess => "guild_settings.set_success",
-            MessageTextId::GuildSettingsShowSuccess => "guild_settings.show_success",
-            MessageTextId::GuildSettingsNotSet => "guild_settings.not_set",
+            MessageTextId::GuildSettingsSetSuccess => keys::GUILD_SETTINGS_SET_SUCCESS,
+            MessageTextId::GuildSettingsShowSuccess => keys::GUILD_SETTINGS_SHOW_SUCCESS,
+            MessageTextId::GuildSettingsNotSet => keys::GUILD_SETTINGS_NOT_SET,
 
             // Recruitment role
-            MessageTextId::RecruitmentRoleAddSuccess => "recruitment.role.add_success",
-            MessageTextId::RecruitmentRoleRemoveSuccess => "recruitment.role.remove_success",
+            MessageTextId::RecruitmentRoleAddSuccess => keys::RECRUITMENT_ROLE_ADD_SUCCESS,
+            MessageTextId::RecruitmentRoleRemoveSuccess => keys::RECRUITMENT_ROLE_REMOVE_SUCCESS,
 
             // Recruitment command
             MessageTextId::RecruitmentCommandCancelAlreadyCancelled => {
-                "recruitment.command.cancel_already_cancelled"
+                keys::RECRUITMENT_COMMAND_CANCEL_ALREADY_CANCELLED
             }
             MessageTextId::RecruitmentCommandCancelMessageDeleted => {
-                "recruitment.command.cancel_message_deleted"
+                keys::RECRUITMENT_COMMAND_CANCEL_MESSAGE_DELETED
             }
             MessageTextId::RecruitmentCommandCancelInvalidMessage => {
-                "recruitment.command.cancel_invalid_message"
+                keys::RECRUITMENT_COMMAND_CANCEL_INVALID_MESSAGE
             }
             MessageTextId::RecruitmentCommandCancelNotFound => {
-                "recruitment.command.cancel_not_found"
+                keys::RECRUITMENT_COMMAND_CANCEL_NOT_FOUND
             }
-            MessageTextId::RecruitmentCommandCancelError => "recruitment.command.cancel_error",
+            MessageTextId::RecruitmentCommandCancelError => keys::RECRUITMENT_COMMAND_CANCEL_ERROR,
             MessageTextId::RecruitmentCommandCancelledMessageSuffix => {
-                "recruitment.command.cancelled_message_suffix"
+                keys::RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX
             }
             MessageTextId::RecruitmentCommandCancelNotificationNoParticipants => {
-                "recruitment.command.cancel_notification_no_participants"
+                keys::RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_NO_PARTICIPANTS
             }
             MessageTextId::RecruitmentCommandCancelNotificationWithParticipants => {
-                "recruitment.command.cancel_notification_with_participants"
+                keys::RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_WITH_PARTICIPANTS
             }
             MessageTextId::RecruitmentCommandCancellingProgress => {
-                "recruitment.command.cancelling_progress"
+                keys::RECRUITMENT_COMMAND_CANCELLING_PROGRESS
             }
             MessageTextId::RecruitmentCommandChangeNoChanges => {
-                "recruitment.command.change_no_changes"
+                keys::RECRUITMENT_COMMAND_CHANGE_NO_CHANGES
             }
-            MessageTextId::RecruitmentCommandChangeSuccess => "recruitment.command.change_success",
+            MessageTextId::RecruitmentCommandChangeSuccess => keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS,
 
             // Messages
-            MessageTextId::MessagesWelcome => "messages.welcome",
-            MessageTextId::MessagesHelp => "messages.help",
+            MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
+            MessageTextId::MessagesHelp => keys::MESSAGES_HELP,
         }
     }
 }
