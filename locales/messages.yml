@@ -85,6 +85,16 @@ errors.user_not_found:
   ja: "ユーザーが見つかりません"
   en: "User not found"
 
+guild_settings.not_set:
+  ja: "設定されていません"
+  en: "Not set"
+guild_settings.set_success:
+  ja: "設定を更新しました"
+  en: "Settings updated successfully"
+guild_settings.show_success:
+  ja: "現在の設定"
+  en: "Current settings"
+
 kosenjo.before_1_day:
   ja: "明日、古戦場が始まります。\n各自個人のアサルトタイムを見直しましょう。"
   en: "The Guild War will begin tomorrow.\nPlease review your Assault Time settings."
