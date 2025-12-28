@@ -109,6 +109,7 @@ pub enum MessageTextId {
     RecruitmentNotificationBefore5Minutes,
     RecruitmentNotificationStart,
     RecruitmentNotificationDismissal,
+    RecruitmentNotificationDismissalWithParticipants,
 
     // Timezone messages (deprecated - use GuildSettings instead)
     TimezoneSetSuccess,
@@ -273,6 +274,9 @@ impl MessageTextId {
             }
             MessageTextId::RecruitmentNotificationStart => "recruitment.notification.start",
             MessageTextId::RecruitmentNotificationDismissal => "recruitment.notification.dismissal",
+            MessageTextId::RecruitmentNotificationDismissalWithParticipants => {
+                "recruitment.notification.dismissal_with_participants"
+            }
 
             // Timezone
             MessageTextId::TimezoneSetSuccess => "timezone.set_success",

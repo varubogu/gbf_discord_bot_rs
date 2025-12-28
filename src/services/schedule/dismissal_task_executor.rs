@@ -224,18 +224,49 @@ impl DismissalTaskExecutor {
                 AppError::Discord(e)
             })?;
 
+        // 参加者リストを取得
+        let participant_user_ids = participants_repo
+            .get_all_participant_user_ids(txn, recruitment_id)
+            .await?;
+
         // 解散通知メッセージを送信（元の募集メッセージへの返信として）
-        let dismissal_notification = self
-            .message_service
-            .get_message(
-                txn,
-                MessageTextId::RecruitmentNotificationDismissal.as_str(),
-                HashMap::new(),
-                guild_id,
-                None,
-            )
-            .await
-            .unwrap_or_else(|_| "人数が集まらなかったため、この募集は解散しました。".to_string());
+        let dismissal_notification = if participant_user_ids.is_empty() {
+            // 参加者がいない場合
+            self.message_service
+                .get_message(
+                    txn,
+                    MessageTextId::RecruitmentNotificationDismissal.as_str(),
+                    HashMap::new(),
+                    guild_id,
+                    None,
+                )
+                .await
+                .unwrap_or_else(|_| "人数が集まらなかったため、この募集は解散しました。".to_string())
+        } else {
+            // 参加者がいる場合
+            let base_message = self
+                .message_service
+                .get_message(
+                    txn,
+                    MessageTextId::RecruitmentNotificationDismissalWithParticipants.as_str(),
+                    HashMap::new(),
+                    guild_id,
+                    None,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    "人数が集まらなかったため、この募集は解散しました。\n参加予定だった皆さん".to_string()
+                });
+
+            // 参加者のメンションを作成
+            let participants_str = participant_user_ids
+                .iter()
+                .map(|user_id| format!("<@{user_id}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            format!("{base_message}: {participants_str}")
+        };
 
         channel_id
             .send_message(
