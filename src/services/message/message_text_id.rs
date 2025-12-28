@@ -37,7 +37,8 @@ pub mod keys {
     pub const ERRORS_ENV_VAR_NOT_SET: &str = "errors.env_var_not_set";
     pub const ERRORS_GUILD_ONLY: &str = "errors.guild_only";
     pub const ERRORS_SPREADSHEET_NOT_REGISTERED: &str = "errors.spreadsheet_not_registered";
-    pub const ERRORS_SPREADSHEET_CONFIG_FETCH_FAILED: &str = "errors.spreadsheet_config_fetch_failed";
+    pub const ERRORS_SPREADSHEET_CONFIG_FETCH_FAILED: &str =
+        "errors.spreadsheet_config_fetch_failed";
 
     // Spreadsheet messages
     pub const SPREADSHEET_LOADING: &str = "spreadsheet.loading";
@@ -53,7 +54,8 @@ pub mod keys {
     pub const SPREADSHEET_PUSH_FAILED: &str = "spreadsheet.push_failed";
     pub const SPREADSHEET_GLOBAL_PUSHING: &str = "spreadsheet.global_pushing";
     pub const SPREADSHEET_GLOBAL_PUSH_SUCCESS: &str = "spreadsheet.global_push_success";
-    pub const SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS: &str = "spreadsheet.global_push_partial_success";
+    pub const SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS: &str =
+        "spreadsheet.global_push_partial_success";
     pub const SPREADSHEET_GLOBAL_PUSH_FAILED: &str = "spreadsheet.global_push_failed";
 
     // Kosenjo messages
@@ -93,7 +95,8 @@ pub mod keys {
     pub const RECRUITMENT_DISPLAY_SIX_ELEMENTS: &str = "recruitment.display.six_elements";
     pub const RECRUITMENT_DISPLAY_EVENT_DATE_LABEL: &str = "recruitment.display.event_date_label";
     pub const RECRUITMENT_DISPLAY_DATE_FORMAT: &str = "recruitment.display.date_format";
-    pub const RECRUITMENT_DISPLAY_DISMISSAL_TIMES_LABEL: &str = "recruitment.display.dismissal_times_label";
+    pub const RECRUITMENT_DISPLAY_DISMISSAL_TIMES_LABEL: &str =
+        "recruitment.display.dismissal_times_label";
     pub const RECRUITMENT_DISPLAY_ELEMENT_FIRE: &str = "recruitment.display.element_fire";
     pub const RECRUITMENT_DISPLAY_ELEMENT_WATER: &str = "recruitment.display.element_water";
     pub const RECRUITMENT_DISPLAY_ELEMENT_EARTH: &str = "recruitment.display.element_earth";
@@ -106,10 +109,12 @@ pub mod keys {
 
     // Recruitment notification messages
     pub const RECRUITMENT_NOTIFICATION_MEMBER_FULL: &str = "recruitment.notification.member_full";
-    pub const RECRUITMENT_NOTIFICATION_BEFORE_5_MINUTES: &str = "recruitment.notification.before_5_minutes";
+    pub const RECRUITMENT_NOTIFICATION_BEFORE_5_MINUTES: &str =
+        "recruitment.notification.before_5_minutes";
     pub const RECRUITMENT_NOTIFICATION_START: &str = "recruitment.notification.start";
     pub const RECRUITMENT_NOTIFICATION_DISMISSAL: &str = "recruitment.notification.dismissal";
-    pub const RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS: &str = "recruitment.notification.dismissal_with_participants";
+    pub const RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS: &str =
+        "recruitment.notification.dismissal_with_participants";
 
     // Timezone messages (deprecated - use GuildSettings instead)
     pub const TIMEZONE_SET_SUCCESS: &str = "timezone.set_success";
@@ -125,15 +130,22 @@ pub mod keys {
     pub const RECRUITMENT_ROLE_REMOVE_SUCCESS: &str = "recruitment.role.remove_success";
 
     // Recruitment command messages
-    pub const RECRUITMENT_COMMAND_CANCEL_ALREADY_CANCELLED: &str = "recruitment.command.cancel_already_cancelled";
-    pub const RECRUITMENT_COMMAND_CANCEL_MESSAGE_DELETED: &str = "recruitment.command.cancel_message_deleted";
-    pub const RECRUITMENT_COMMAND_CANCEL_INVALID_MESSAGE: &str = "recruitment.command.cancel_invalid_message";
+    pub const RECRUITMENT_COMMAND_CANCEL_ALREADY_CANCELLED: &str =
+        "recruitment.command.cancel_already_cancelled";
+    pub const RECRUITMENT_COMMAND_CANCEL_MESSAGE_DELETED: &str =
+        "recruitment.command.cancel_message_deleted";
+    pub const RECRUITMENT_COMMAND_CANCEL_INVALID_MESSAGE: &str =
+        "recruitment.command.cancel_invalid_message";
     pub const RECRUITMENT_COMMAND_CANCEL_NOT_FOUND: &str = "recruitment.command.cancel_not_found";
     pub const RECRUITMENT_COMMAND_CANCEL_ERROR: &str = "recruitment.command.cancel_error";
-    pub const RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX: &str = "recruitment.command.cancelled_message_suffix";
-    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_NO_PARTICIPANTS: &str = "recruitment.command.cancel_notification_no_participants";
-    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_WITH_PARTICIPANTS: &str = "recruitment.command.cancel_notification_with_participants";
-    pub const RECRUITMENT_COMMAND_CANCELLING_PROGRESS: &str = "recruitment.command.cancelling_progress";
+    pub const RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX: &str =
+        "recruitment.command.cancelled_message_suffix";
+    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_NO_PARTICIPANTS: &str =
+        "recruitment.command.cancel_notification_no_participants";
+    pub const RECRUITMENT_COMMAND_CANCEL_NOTIFICATION_WITH_PARTICIPANTS: &str =
+        "recruitment.command.cancel_notification_with_participants";
+    pub const RECRUITMENT_COMMAND_CANCELLING_PROGRESS: &str =
+        "recruitment.command.cancelling_progress";
     pub const RECRUITMENT_COMMAND_CHANGE_NO_CHANGES: &str = "recruitment.command.change_no_changes";
     pub const RECRUITMENT_COMMAND_CHANGE_SUCCESS: &str = "recruitment.command.change_success";
 
@@ -316,7 +328,9 @@ impl MessageTextId {
             MessageTextId::RecruitmentUiRecruitmentCancelled => {
                 keys::RECRUITMENT_UI_RECRUITMENT_CANCELLED
             }
-            MessageTextId::RecruitmentUiRecruitmentClosed => keys::RECRUITMENT_UI_RECRUITMENT_CLOSED,
+            MessageTextId::RecruitmentUiRecruitmentClosed => {
+                keys::RECRUITMENT_UI_RECRUITMENT_CLOSED
+            }
             MessageTextId::RecruitmentUiRecruitmentFull => keys::RECRUITMENT_UI_RECRUITMENT_FULL,
             MessageTextId::RecruitmentUiJoinSuccess => keys::RECRUITMENT_UI_JOIN_SUCCESS,
             MessageTextId::RecruitmentUiLeaveSuccess => keys::RECRUITMENT_UI_LEAVE_SUCCESS,
@@ -332,7 +346,9 @@ impl MessageTextId {
             MessageTextId::ErrorsCommandFailed => keys::ERRORS_COMMAND_FAILED,
             MessageTextId::ErrorsEnvVarNotSet => keys::ERRORS_ENV_VAR_NOT_SET,
             MessageTextId::ErrorsGuildOnly => keys::ERRORS_GUILD_ONLY,
-            MessageTextId::ErrorsSpreadsheetNotRegistered => keys::ERRORS_SPREADSHEET_NOT_REGISTERED,
+            MessageTextId::ErrorsSpreadsheetNotRegistered => {
+                keys::ERRORS_SPREADSHEET_NOT_REGISTERED
+            }
             MessageTextId::ErrorsSpreadsheetConfigFetchFailed => {
                 keys::ERRORS_SPREADSHEET_CONFIG_FETCH_FAILED
             }
@@ -361,7 +377,9 @@ impl MessageTextId {
             MessageTextId::KosenjoBefore1Day => keys::KOSENJO_BEFORE_1_DAY,
             MessageTextId::KosenjoQualifyingStart => keys::KOSENJO_QUALIFYING_START,
             MessageTextId::KosenjoQualifyingEnd => keys::KOSENJO_QUALIFYING_END,
-            MessageTextId::KosenjoQualifyingEndNoInterval => keys::KOSENJO_QUALIFYING_END_NO_INTERVAL,
+            MessageTextId::KosenjoQualifyingEndNoInterval => {
+                keys::KOSENJO_QUALIFYING_END_NO_INTERVAL
+            }
             MessageTextId::KosenjoMainTournamentBefore1Day => {
                 keys::KOSENJO_MAIN_TOURNAMENT_BEFORE_1_DAY
             }
@@ -401,10 +419,16 @@ impl MessageTextId {
                 keys::RECRUITMENT_DISPLAY_DISMISSAL_TIMES_LABEL
             }
             MessageTextId::RecruitmentDisplayElementFire => keys::RECRUITMENT_DISPLAY_ELEMENT_FIRE,
-            MessageTextId::RecruitmentDisplayElementWater => keys::RECRUITMENT_DISPLAY_ELEMENT_WATER,
-            MessageTextId::RecruitmentDisplayElementEarth => keys::RECRUITMENT_DISPLAY_ELEMENT_EARTH,
+            MessageTextId::RecruitmentDisplayElementWater => {
+                keys::RECRUITMENT_DISPLAY_ELEMENT_WATER
+            }
+            MessageTextId::RecruitmentDisplayElementEarth => {
+                keys::RECRUITMENT_DISPLAY_ELEMENT_EARTH
+            }
             MessageTextId::RecruitmentDisplayElementWind => keys::RECRUITMENT_DISPLAY_ELEMENT_WIND,
-            MessageTextId::RecruitmentDisplayElementLight => keys::RECRUITMENT_DISPLAY_ELEMENT_LIGHT,
+            MessageTextId::RecruitmentDisplayElementLight => {
+                keys::RECRUITMENT_DISPLAY_ELEMENT_LIGHT
+            }
             MessageTextId::RecruitmentDisplayElementDark => keys::RECRUITMENT_DISPLAY_ELEMENT_DARK,
             MessageTextId::RecruitmentDisplayAllElements => keys::RECRUITMENT_DISPLAY_ALL_ELEMENTS,
             MessageTextId::RecruitmentDisplayNoParticipants => {
@@ -422,7 +446,9 @@ impl MessageTextId {
                 keys::RECRUITMENT_NOTIFICATION_BEFORE_5_MINUTES
             }
             MessageTextId::RecruitmentNotificationStart => keys::RECRUITMENT_NOTIFICATION_START,
-            MessageTextId::RecruitmentNotificationDismissal => keys::RECRUITMENT_NOTIFICATION_DISMISSAL,
+            MessageTextId::RecruitmentNotificationDismissal => {
+                keys::RECRUITMENT_NOTIFICATION_DISMISSAL
+            }
             MessageTextId::RecruitmentNotificationDismissalWithParticipants => {
                 keys::RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS
             }
@@ -469,7 +495,9 @@ impl MessageTextId {
             MessageTextId::RecruitmentCommandChangeNoChanges => {
                 keys::RECRUITMENT_COMMAND_CHANGE_NO_CHANGES
             }
-            MessageTextId::RecruitmentCommandChangeSuccess => keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS,
+            MessageTextId::RecruitmentCommandChangeSuccess => {
+                keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS
+            }
 
             // Messages
             MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
@@ -522,8 +550,8 @@ mod tests {
     fn test_all_message_ids_exist_in_yaml() {
         // YAMLファイルを読み込む
         let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/locales/messages.yml");
-        let yaml_content = fs::read_to_string(yaml_path)
-            .expect("locales/messages.yml が見つかりません");
+        let yaml_content =
+            fs::read_to_string(yaml_path).expect("locales/messages.yml が見つかりません");
 
         // YAMLから全てのキーを抽出
         let mut yaml_keys = HashSet::new();

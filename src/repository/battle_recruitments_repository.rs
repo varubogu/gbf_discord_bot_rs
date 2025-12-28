@@ -74,4 +74,12 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         battle_style_id: i32,
         quest_start_at: DateTime<Utc>,
     ) -> Result<()>;
+
+    /// 規定人数到達通知フラグを更新（トランザクション対応）
+    async fn set_full_notification_sent_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        sent: bool,
+    ) -> Result<()>;
 }

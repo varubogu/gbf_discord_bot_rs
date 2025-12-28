@@ -20,6 +20,7 @@ pub struct BattleRecruitments {
     pub is_recruiting: bool,
     pub is_canceled: bool,
     pub recruit_end_message_id: Option<u64>,
+    pub full_notification_sent: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -37,6 +38,7 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
             is_recruiting: model.is_recruiting,
             is_canceled: model.is_canceled,
             recruit_end_message_id: model.recruit_end_message_id.map(|id| id as u64), // i64 → u64に変換
+            full_notification_sent: model.full_notification_sent,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

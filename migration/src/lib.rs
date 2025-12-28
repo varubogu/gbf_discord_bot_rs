@@ -5,6 +5,7 @@ mod m20251224_000000_rename_to_guild_settings_and_add_locale;
 mod m20251225_000000_move_battle_recruitment_schedules_to_guild_master;
 mod m20251225_010000_create_scheduled_tasks;
 mod m20251226_000000_add_recruitment_dismissal;
+mod m20251228_000000_add_full_notification_sent_flag;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251225_000000_move_battle_recruitment_schedules_to_guild_master::Migration),
             Box::new(m20251225_010000_create_scheduled_tasks::Migration),
             Box::new(m20251226_000000_add_recruitment_dismissal::Migration),
+            Box::new(m20251228_000000_add_full_notification_sent_flag::Migration),
         ]
     }
 }

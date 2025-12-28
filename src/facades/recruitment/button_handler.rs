@@ -1,4 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
@@ -145,10 +147,23 @@ pub async fn handle_recruitment_button(
             "参加者数を取得しました"
         );
 
+        let participant_count_usize = participant_count.max(0) as usize;
+
         // 6. メッセージを更新して参加者一覧を反映
         update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
 
-        // 7. インタラクションに応答（deferの後なのでedit_response）
+        // 7. 規定人数到達の通知処理
+        check_and_notify_recruitment_full(
+            ctx,
+            &txn,
+            &recruitment,
+            participant_count_usize,
+            channel_id,
+            message_id,
+        )
+        .await?;
+
+        // 8. インタラクションに応答（deferの後なのでedit_response）
         interaction
             .edit_response(
                 &ctx.http,
@@ -379,6 +394,189 @@ async fn create_participants_text(
     } else {
         Ok(text)
     }
+}
+
+/// 規定人数到達の通知処理
+///
+/// # 引数
+/// * `ctx` - Discord Context
+/// * `txn` - データベーストランザクション
+/// * `recruitment` - 募集情報
+/// * `participant_count` - 現在の参加者数
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+#[instrument(level = "info", skip(ctx, txn))]
+async fn check_and_notify_recruitment_full(
+    ctx: &Context,
+    txn: &sea_orm::DatabaseTransaction,
+    recruitment: &crate::models::battle_recruitments::BattleRecruitments,
+    participant_count: usize,
+    channel_id: u64,
+    message_id: u64,
+) -> Result<()> {
+    info!("規定人数到達チェックを開始します");
+
+    // クエスト情報を取得して規定人数を確認
+    use crate::repository::QuestRepository;
+    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+    let quest_repository = SeaOrmQuestRepository::new();
+    let quest = quest_repository
+        .get_by_target_id(txn, recruitment.quest_id)
+        .await?
+        .ok_or_else(|| AppError::Business {
+            message: "クエスト情報が見つかりませんでした".to_string(),
+        })?;
+
+    let required_count = quest.recruit_count as usize;
+    let is_full = participant_count >= required_count;
+    let notification_sent = recruitment.full_notification_sent;
+
+    info!(
+        participant_count = participant_count,
+        required_count = required_count,
+        is_full = is_full,
+        notification_sent = notification_sent,
+        "人数チェック結果"
+    );
+
+    // リポジトリを作成
+    let recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
+
+    match (notification_sent, is_full) {
+        (false, false) => {
+            // フラグ無し（未送信）で規定人数未満 → 何もしない
+            info!("規定人数未達のため通知しません");
+            Ok(())
+        }
+        (false, true) => {
+            // フラグ無し（未送信）で規定人数以上 → フラグを立てて通知送信
+            info!("規定人数に到達しました。通知を送信します");
+
+            // 全参加者のメンションを取得
+            let participants = get_all_participant_mentions(txn, recruitment.id).await?;
+
+            // 通知メッセージを送信
+            send_full_notification(ctx, channel_id, message_id, participants).await?;
+
+            // フラグを立てる
+            recruitment_repo
+                .set_full_notification_sent_with_txn(txn, recruitment.id, true)
+                .await?;
+
+            info!("規定人数到達通知を送信しました");
+            Ok(())
+        }
+        (true, false) => {
+            // フラグあり（送信済）で規定人数未満 → フラグを下げて減少通知送信
+            info!("参加者が規定人数を下回りました。通知を送信します");
+
+            // 減少通知メッセージを送信
+            send_decreased_notification(ctx, channel_id, message_id).await?;
+
+            // フラグを下げる
+            recruitment_repo
+                .set_full_notification_sent_with_txn(txn, recruitment.id, false)
+                .await?;
+
+            info!("参加者減少通知を送信しました");
+            Ok(())
+        }
+        (true, true) => {
+            // フラグあり（送信済）で規定人数以上 → 何もしない
+            info!("既に通知済みで規定人数以上のため何もしません");
+            Ok(())
+        }
+    }
+}
+
+/// 全参加者のメンションを取得
+///
+/// # 引数
+/// * `txn` - データベーストランザクション
+/// * `recruitment_id` - 募集ID
+async fn get_all_participant_mentions(
+    txn: &sea_orm::DatabaseTransaction,
+    recruitment_id: i32,
+) -> Result<Vec<String>> {
+    use crate::models::entities::worker::recruitment_participants::{
+        Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
+    };
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+    use std::collections::HashSet;
+
+    let participants = RecruitmentParticipantEntity::find()
+        .filter(ParticipantColumn::RecruitmentId.eq(recruitment_id))
+        .all(txn)
+        .await
+        .map_err(AppError::Database)?;
+
+    // ユニークなユーザーIDを取得（重複排除）
+    let unique_user_ids: HashSet<i64> = participants.iter().map(|p| p.user_id).collect();
+
+    Ok(unique_user_ids
+        .into_iter()
+        .map(|user_id| format!("<@{user_id}>"))
+        .collect())
+}
+
+/// 規定人数到達通知メッセージを送信
+///
+/// # 引数
+/// * `ctx` - Discord Context
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+/// * `participants` - 参加者のメンション一覧
+async fn send_full_notification(
+    ctx: &Context,
+    channel_id: u64,
+    message_id: u64,
+    participants: Vec<String>,
+) -> Result<()> {
+    use poise::serenity_prelude::{ChannelId, CreateMessage, MessageId, MessageReference};
+
+    let channel = ChannelId::new(channel_id);
+    let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
+
+    let reference = MessageReference::from((channel, MessageId::new(message_id)));
+    let message = CreateMessage::new()
+        .content(notification_message)
+        .reference_message(reference);
+
+    channel
+        .send_message(&ctx.http, message)
+        .await
+        .map_err(AppError::Discord)?;
+
+    Ok(())
+}
+
+/// 参加者減少通知メッセージを送信
+///
+/// # 引数
+/// * `ctx` - Discord Context
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+async fn send_decreased_notification(
+    ctx: &Context,
+    channel_id: u64,
+    message_id: u64,
+) -> Result<()> {
+    use poise::serenity_prelude::{ChannelId, CreateMessage, MessageId, MessageReference};
+
+    let channel = ChannelId::new(channel_id);
+    let notification_message = "参加メンバーが規定人数を下回りました。".to_string();
+
+    let reference = MessageReference::from((channel, MessageId::new(message_id)));
+    let message = CreateMessage::new()
+        .content(notification_message)
+        .reference_message(reference);
+
+    channel
+        .send_message(&ctx.http, message)
+        .await
+        .map_err(AppError::Discord)?;
+
+    Ok(())
 }
 
 /// 属性IDから属性名を取得する

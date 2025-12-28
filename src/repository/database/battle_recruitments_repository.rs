@@ -175,4 +175,25 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
 
         Ok(())
     }
+
+    async fn set_full_notification_sent_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+        sent: bool,
+    ) -> Result<()> {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(txn)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::Business {
+                message: "Recruitment not found".to_string(),
+            })?
+            .into();
+
+        active_model.full_notification_sent = Set(sent);
+        active_model.update(txn).await.map_err(AppError::Database)?;
+
+        Ok(())
+    }
 }

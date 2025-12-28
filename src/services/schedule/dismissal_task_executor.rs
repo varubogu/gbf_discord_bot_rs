@@ -241,7 +241,9 @@ impl DismissalTaskExecutor {
                     None,
                 )
                 .await
-                .unwrap_or_else(|_| "人数が集まらなかったため、この募集は解散しました。".to_string())
+                .unwrap_or_else(|_| {
+                    "人数が集まらなかったため、この募集は解散しました。".to_string()
+                })
         } else {
             // 参加者がいる場合
             let base_message = self
@@ -255,7 +257,8 @@ impl DismissalTaskExecutor {
                 )
                 .await
                 .unwrap_or_else(|_| {
-                    "人数が集まらなかったため、この募集は解散しました。\n参加予定だった皆さん".to_string()
+                    "人数が集まらなかったため、この募集は解散しました。\n参加予定だった皆さん"
+                        .to_string()
                 });
 
             // 参加者のメンションを作成
