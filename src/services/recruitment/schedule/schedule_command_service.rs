@@ -1,8 +1,13 @@
+use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
     BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
+    ScheduledTaskRepository,
 };
+use crate::services::schedule::RecruitmentScheduleService;
 use crate::types::Result;
+use chrono::{Duration, Utc};
 use sea_orm::DatabaseTransaction;
+use tracing::{debug, info};
 
 /// スケジュール操作サービス（削除・有効/無効切替）
 ///
@@ -42,26 +47,115 @@ impl ScheduleCommandService {
         let repo = BattleRecruitmentScheduleRepository::new();
 
         // 現在の状態を取得（RLS設定済みのトランザクションを使用）
-        let new_enabled = if let Some((model, _)) = repo.find_by_id(txn, schedule_id).await? {
-            !model.is_enabled
+        let (schedule, days) = if let Some(data) = repo.find_by_id(txn, schedule_id).await? {
+            data
         } else {
             return Err(crate::types::AppError::NotFound(format!(
                 "スケジュールID {schedule_id} が見つかりません"
             )));
         };
 
+        let new_enabled = !schedule.is_enabled;
+
         // 反転適用
         repo.toggle_enabled_with_txn(txn, schedule_id, new_enabled)
             .await?;
 
-        // 無効化する場合は scheduled_tasks を削除
-        // 有効化する場合は、スケジュールワーカーが次回実行時に新しいタスクを自動生成する
         if !new_enabled {
+            // 無効化する場合は scheduled_tasks を削除
             let task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
             task_repo.delete_by_schedule_id(txn, schedule_id).await?;
+        } else {
+            // 有効化する場合は、次回実行タスクを scheduled_tasks に登録
+            self.create_next_scheduled_task(txn, &schedule, &days)
+                .await?;
         }
 
         Ok(())
+    }
+
+    /// 次回実行タスクをscheduled_tasksに登録
+    ///
+    /// 現在時刻から未来の次回実行日時を計算し、scheduled_tasksとscheduled_task_recurring_recruitmentsに登録
+    /// 最も近い募集開始日時のスケジュールを1つだけ作成する
+    async fn create_next_scheduled_task(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule: &crate::models::entities::guild_master::battle_recruitment_schedules::Model,
+        days: &[crate::models::entities::guild_master::battle_recruitment_schedule_days::Model],
+    ) -> Result<()> {
+        debug!(
+            schedule_id = schedule.id,
+            "次回実行タスクの作成を開始します"
+        );
+
+        let schedule_service = RecruitmentScheduleService::new();
+        let now = Utc::now();
+        let mut search_from = now;
+        let max_search_days = 365; // 最大1年先まで検索
+
+        // 未来の次回実行日時が見つかるまでループ
+        loop {
+            let search_to = search_from + Duration::days(7);
+
+            debug!(
+                schedule_id = schedule.id,
+                search_from = %search_from,
+                search_to = %search_to,
+                "次回実行日時を計算します"
+            );
+
+            // 次回募集日時を計算
+            let next_times = schedule_service.calculate_next_recruitment_times(
+                schedule,
+                days,
+                search_from,
+                search_to,
+            )?;
+
+            // 最初に見つかった未来の募集開始日時を使用
+            if let Some(next_time) = next_times.first() {
+                if next_time.recruit_start_at > now {
+                    // 未来日時が見つかった場合、scheduled_tasksに登録
+                    let task_repo = ScheduledTaskRepository::new();
+                    let task = task_repo
+                        .create(
+                            txn,
+                            next_time.recruit_start_at,
+                            ScheduledTaskType::RecurringRecruitment as i32,
+                            Some(next_time.guild_id),
+                            Some(next_time.channel_id),
+                        )
+                        .await?;
+
+                    // scheduled_task_recurring_recruitmentsに関連付けを登録
+                    let recurring_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+                    recurring_repo.create(txn, task.id, schedule.id).await?;
+
+                    info!(
+                        schedule_id = schedule.id,
+                        task_id = task.id,
+                        recruit_start_at = %next_time.recruit_start_at,
+                        "次回実行タスクを登録しました"
+                    );
+
+                    return Ok(());
+                }
+            }
+
+            // 次の検索範囲に進む
+            search_from = search_to;
+
+            // 無限ループ防止：最大検索日数を超えたらエラー
+            if (search_from - now).num_days() > max_search_days {
+                return Err(crate::types::AppError::Business {
+                    message: format!(
+                        "次回実行日時が{}日以内に見つかりませんでした。スケジュール設定を確認してください。",
+                        max_search_days
+                    ),
+                });
+            }
+        }
     }
 }
 
