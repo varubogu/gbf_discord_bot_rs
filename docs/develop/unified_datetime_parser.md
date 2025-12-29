@@ -223,6 +223,79 @@ cargo test --lib test_dismissal_time_multiple
 cargo test --lib test_relative_time_english
 ```
 
+## datetime_parser のメタデータ対応
+
+`datetime_parser` モジュールは v0.5.0 からメタデータ（入力に含まれていた日時要素の情報）を返すようになりました。
+
+### DateTimeComponents 構造体
+
+```rust
+pub struct DateTimeComponents {
+    pub has_year: bool,   // 年が入力に含まれていたか
+    pub has_month: bool,  // 月が入力に含まれていたか
+    pub has_day: bool,    // 日が入力に含まれていたか
+    pub has_time: bool,   // 時刻が入力に含まれていたか
+}
+```
+
+### 自動補正機能
+
+`parse_event_date()` は過去日時を自動的に未来に補正します:
+- **年が未指定**で過去になる場合 → 翌年に補正
+- **月が未指定**で過去になる場合 → 翌月に補正
+- 時刻のみの場合は既にパーサー内で翌日補正済み
+
+#### 補正の例
+
+```rust
+use crate::services::datetime_parser::parse_event_date;
+
+// 今日が12/29の場合
+let result = parse_event_date("28 1000", timezone)?;
+// → 翌月の1/28 10:00 に補正される（月が未指定で過去のため）
+
+let result = parse_event_date("1/4", timezone)?;
+// → 翌年の1/4 21:00 に補正される（年が未指定で過去のため）
+
+let result = parse_event_date("2025/1/4", timezone)?;
+// → 2025/1/4 21:00（年が指定されているため補正なし）
+```
+
+### 手動で補正を制御する場合
+
+自動補正が不要な場合は `parse_event_date_with_components()` を使用:
+
+```rust
+use crate::services::datetime_parser::parse_event_date_with_components;
+use chrono::Utc;
+
+let result = parse_event_date_with_components("12/28", timezone)?;
+// result.datetime は補正前の値
+// result.components でどの要素が入力されたかを確認可能
+
+// 独自の補正ロジックを実装
+let corrected = if !result.components.has_year && result.datetime < Utc::now() {
+    // カスタム補正処理
+    result.datetime + chrono::Duration::days(365)
+} else {
+    result.datetime
+};
+```
+
+### パターン別のメタデータ
+
+| 入力パターン | has_year | has_month | has_day | has_time |
+|-------------|----------|-----------|---------|----------|
+| `2025/11/15 21:00` | ✅ | ✅ | ✅ | ✅ |
+| `12/11 14:00` | ❌ | ✅ | ✅ | ✅ |
+| `11/15` | ❌ | ✅ | ✅ | ❌ |
+| `2025/11/15` | ✅ | ✅ | ✅ | ❌ |
+| `21:00` | ❌ | ❌ | ❌ | ✅ |
+| `30 2100` | ❌ | ❌ | ✅ | ✅ |
+| `1月2日3時4分` | ❌ | ✅ | ✅ | ✅ |
+| `1月2日` | ❌ | ✅ | ✅ | ❌ |
+| `午後9時半` | ❌ | ❌ | ❌ | ✅ |
+
 ## 移行ガイド
 
 ### 既存コードからの移行
@@ -234,7 +307,25 @@ cargo test --lib test_relative_time_english
 let dt = datetime_parser::parse_event_date(input, timezone)?;
 ```
 
-**After**:
+**After (メタデータ不要な場合)**:
+```rust
+let dt = datetime_parser::parse_event_date(input, timezone)?;
+// 後方互換性のため、既存のコードはそのまま動作します
+```
+
+**After (メタデータが必要な場合)**:
+```rust
+let result = datetime_parser::parse_event_date_with_components(input, timezone)?;
+let dt = result.datetime;
+let components = result.components;
+
+// componentsフラグを使って補正処理を実装
+if !components.has_year && dt < Utc::now() {
+    dt = dt + chrono::Duration::days(365);
+}
+```
+
+**After (unified_datetime_parser を使う場合)**:
 ```rust
 let options = DateTimeParseOptions::for_quest_departure(timezone);
 let results = parse_datetime(input, &options)?;
