@@ -119,7 +119,7 @@ pub async fn recruitment_schedule_create(
         ParsedDateTime::Time(t) => *t,
         ParsedDateTime::Relative { days, hours, minutes } => {
             // 相対時刻の場合、クエスト開始時刻から計算
-            use chrono::{Duration, NaiveDate, Timelike};
+            use chrono::{Duration, NaiveDate};
 
             // 相対時刻を合計分数に変換（マイナスにする）
             let total_minutes = -(days * 24 * 60 + hours * 60 + minutes);

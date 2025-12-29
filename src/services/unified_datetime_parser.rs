@@ -3,7 +3,7 @@
 /// ビットフラグベースの柔軟な日時解析システム。
 /// 既存の複数のパーサー（datetime_parser, TimeParserService, DismissalTimeParserService）を統合。
 use crate::types::Result;
-use chrono::{DateTime, NaiveTime, Utc};
+use chrono::{DateTime, Datelike, NaiveTime, Utc};
 use chrono_tz::Tz;
 
 /// 日時解析パターンフラグ
@@ -564,6 +564,41 @@ mod tests {
                 assert_eq!(*minutes, 90);
             }
             _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_quest_departure_month_correction() {
+        // マルチ募集コマンドと同じ設定で「28 1000」をテスト
+        let timezone = chrono_tz::Asia::Tokyo;
+        let options = DateTimeParseOptions::for_quest_departure(timezone);
+
+        let result = parse_datetime("28 1000", &options).unwrap();
+        assert_eq!(result.len(), 1);
+
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let now = chrono::Utc::now();
+                let dt_jst = dt.with_timezone(&timezone);
+                let now_jst = now.with_timezone(&timezone);
+
+                println!("現在: {} JST", now_jst.format("%Y/%m/%d %H:%M"));
+                println!("結果: {} JST", dt_jst.format("%Y/%m/%d %H:%M"));
+
+                // 補正により未来になっているはず
+                assert!(
+                    dt >= &now,
+                    "補正が効いていません: 現在={}, 結果={}",
+                    now_jst.format("%Y/%m/%d %H:%M"),
+                    dt_jst.format("%Y/%m/%d %H:%M")
+                );
+
+                // 28日であることを確認
+                assert_eq!(dt_jst.day(), 28);
+                // 10時であることを確認
+                assert_eq!(dt_jst.hour(), 10);
+            }
+            _ => panic!("Expected Absolute datetime"),
         }
     }
 }
