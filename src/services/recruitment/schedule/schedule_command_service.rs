@@ -1,4 +1,6 @@
-use crate::repository::database::schedule::BattleRecruitmentScheduleRepository;
+use crate::repository::database::schedule::{
+    BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
+};
 use crate::types::Result;
 use sea_orm::DatabaseTransaction;
 
@@ -17,8 +19,15 @@ impl ScheduleCommandService {
     ///
     /// RLS設定は呼び出し元のFacade層で既に行われている前提
     pub async fn delete_schedule(&self, txn: &DatabaseTransaction, schedule_id: i32) -> Result<()> {
-        let repo = BattleRecruitmentScheduleRepository::new();
-        repo.delete_with_txn(txn, schedule_id).await?;
+        // 1. scheduled_task_recurring_recruitments を削除
+        //    これにより関連する scheduled_tasks も CASCADE削除される
+        let task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+        task_repo.delete_by_schedule_id(txn, schedule_id).await?;
+
+        // 2. battle_recruitment_schedules を削除
+        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        schedule_repo.delete_with_txn(txn, schedule_id).await?;
+
         Ok(())
     }
 
@@ -44,6 +53,14 @@ impl ScheduleCommandService {
         // 反転適用
         repo.toggle_enabled_with_txn(txn, schedule_id, new_enabled)
             .await?;
+
+        // 無効化する場合は scheduled_tasks を削除
+        // 有効化する場合は、スケジュールワーカーが次回実行時に新しいタスクを自動生成する
+        if !new_enabled {
+            let task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+            task_repo.delete_by_schedule_id(txn, schedule_id).await?;
+        }
+
         Ok(())
     }
 }
