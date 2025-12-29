@@ -12,12 +12,13 @@ Built with Rust + poise + PostgreSQL + SeaORM, following clean architecture.
 ### Development
 ```bash
 cargo build                    # Build project
-cargo build --release          # Release build
 cargo run                      # Run bot (requires .env)
 cargo test                     # Run tests
 cargo test test_name           # Run specific test
 cargo test -- --nocapture      # Run with logging
 ```
+
+**IMPORTANT: DO NOT run `cargo build --release` or any release builds. Development builds only.**
 
 ### Linting and Formatting
 ```bash
