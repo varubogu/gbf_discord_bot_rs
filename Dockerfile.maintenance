@@ -1,0 +1,35 @@
+# ビルドステージ
+FROM rust:1.84-slim AS builder
+
+WORKDIR /app
+
+# 必要なビルド依存関係をインストール
+RUN apt-get update && \
+    apt-get install -y pkg-config libssl-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# 依存関係のキャッシュ用
+COPY Cargo.toml Cargo.lock ./
+COPY migration ./migration
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release --bin cleanup || true
+
+# 実際のソースコードをコピーしてビルド
+COPY src ./src
+RUN cargo build --release --bin cleanup
+
+# 実行ステージ
+FROM debian:bookworm-slim
+
+# 必要なパッケージをインストール
+RUN apt-get update && \
+    apt-get install -y ca-certificates libssl3 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ビルド成果物をコピー
+COPY --from=builder /app/target/release/cleanup /app/cleanup
+
+# 実行
+ENTRYPOINT ["/app/cleanup"]

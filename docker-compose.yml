@@ -59,5 +59,25 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  maintenance:
+    # メンテナンスイメージもGHCRからpull
+    image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}-maintenance:latest
+    # # 検証用：ビルドする
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.maintenance
+    env_file:
+      - .env.maintenance
+    environment:
+      DB_HOST: db
+      TZ: UTC
+    networks:
+      - app_network
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - maintenance  # デフォルトでは起動しない（手動実行用）
 volumes:
   pgdata:

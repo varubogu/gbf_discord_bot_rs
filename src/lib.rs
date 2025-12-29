@@ -3,7 +3,7 @@ pub mod errors;
 pub mod events;
 pub mod facades;
 pub mod infrastructure;
-mod models;
+pub mod models;
 pub mod repository;
 pub mod services;
 pub mod types;

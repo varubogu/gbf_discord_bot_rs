@@ -44,3 +44,7 @@ serial_test = "3.2"
 [[bin]]
 name = "schema_lint"
 path = "tools/schema_lint.rs"
+
+[[bin]]
+name = "cleanup"
+path = "src/bin/cleanup.rs"

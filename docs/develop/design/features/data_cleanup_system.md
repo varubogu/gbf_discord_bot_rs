@@ -936,8 +936,10 @@ async fn cleanup_with_conditions(
 
 ## 関連ドキュメント
 
+- [データベースロール設計書](./data_cleanup_system_database_role.md) - Cleanupロールの詳細設計
 - [スケジュール処理システム設計書](./schedule_processing_system.md) - 親システムの設計
 - [データベース設計](../../database/README.md) - テーブル設計とリレーション
+- [データベースロール使用ガイド](../../database/db_role_usage.md) - ロール全体の設計
 - [Clean Architecture ガイドライン](../../../CLAUDE.md) - アーキテクチャ原則
 
 ## CI/CDとデプロイ

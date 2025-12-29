@@ -8,6 +8,7 @@
 -- 使用方法:
 --   psql -v system_password="..." -v guild_password="..." \
 --        -v global_password="..." -v admin_password="..." \
+--        -v cleanup_password="..." \
 --        -v db_name="gbf_bot_db" -f init.sql
 -- ================================
 
@@ -55,6 +56,16 @@ ALTER ROLE gbf_bot_admin WITH LOGIN PASSWORD :'admin_password';
 -- Admin ロールはRLSをバイパス＋スキーマ作成権限
 ALTER ROLE gbf_bot_admin WITH BYPASSRLS CREATEDB;
 
+-- 5. Cleanup ロール（データクリーンアップ専用）
+\set ON_ERROR_STOP 0
+CREATE ROLE gbf_bot_cleanup WITH LOGIN PASSWORD :'cleanup_password';
+\set ON_ERROR_STOP 1
+
+ALTER ROLE gbf_bot_cleanup WITH LOGIN PASSWORD :'cleanup_password';
+
+-- Cleanup ロールはRLSをバイパス（全ギルドのデータを削除するため）
+ALTER ROLE gbf_bot_cleanup WITH BYPASSRLS;
+
 -- データベース作成（既存の場合はスキップ）
 \set ON_ERROR_STOP 0
 CREATE DATABASE :db_name WITH OWNER gbf_bot_admin ENCODING 'UTF8';
@@ -67,6 +78,7 @@ GRANT CONNECT ON DATABASE :db_name TO gbf_bot_system;
 GRANT CONNECT ON DATABASE :db_name TO gbf_bot_guild;
 GRANT CONNECT ON DATABASE :db_name TO gbf_bot_global;
 GRANT CONNECT ON DATABASE :db_name TO gbf_bot_admin;
+GRANT CONNECT ON DATABASE :db_name TO gbf_bot_cleanup;
 
 -- スキーマ作成権限（adminロールのみ）
 -- マイグレーション実行時に必要
@@ -83,9 +95,11 @@ BEGIN
     RAISE NOTICE '  - gbf_bot_guild (RLS適用)';
     RAISE NOTICE '  - gbf_bot_global (BYPASSRLS)';
     RAISE NOTICE '  - gbf_bot_admin (BYPASSRLS, CREATEDB)';
+    RAISE NOTICE '  - gbf_bot_cleanup (BYPASSRLS) ※テーブル権限付与はマイグレーション後';
     RAISE NOTICE '';
     RAISE NOTICE '次のステップ:';
     RAISE NOTICE '  1. マイグレーション実行: cargo run -- migrate';
+    RAISE NOTICE '  2. Cleanupロールに権限付与: psql -d :db_name -f db/sql/create_cleanup_role.sql';
     RAISE NOTICE '========================================';
 END
 $$;
