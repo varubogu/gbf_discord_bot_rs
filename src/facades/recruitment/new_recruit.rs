@@ -80,45 +80,11 @@ pub async fn new_recruitment(
             .get_role_mentions(&txn, guild_id as i64, recruitment_data.quest.id)
             .await?;
 
-        if !role_mentions.is_empty() {
-            debug!(role_mentions = %role_mentions, "ロールメンションを募集メッセージの先頭に追加します");
-            recruitment_data.message_content = format!("{}\n{}", role_mentions, recruitment_data.message_content);
-            info!("ロールメンションを募集メッセージに追加しました");
-        }
-
-        // 2. メッセージ送信（ボタンまたはリアクション用）
-        let message_id = if use_buttons {
-            new::send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
-        } else {
-            new::send_recruitment_message(ctx, &recruitment_data).await?
-        };
-
-        // 3. データ保存
-        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
-
-        // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
-        debug!(
-            expiry_date = %recruitment_data.expiry_date,
-            "募集の出発通知を登録します"
-        );
-
-        let notification_management_service = NotificationManagementService::new();
-        notification_management_service
-            .create_recruitment_departure_notification(
-                &txn,
-                recruitment_data.expiry_date,
-                guild_id as i64,
-                channel_id as i64,
-                recruitment.id,
-            )
-            .await?;
-
-        // 5. 解散時刻を登録（指定されている場合）
-        if let Some(ref dismissal_times_str) = dismissal_times {
+        // 1.7. 解散時刻をパースしてメッセージに含める（指定されている場合）
+        let parsed_dismissal_times = if let Some(ref dismissal_times_str) = dismissal_times {
             debug!(
                 dismissal_times = %dismissal_times_str,
-                recruitment_id = recruitment.id,
-                "解散時刻のパースと登録を開始します"
+                "解散時刻のパースを開始します"
             );
 
             // 解散時刻をパース（統一パーサーを使用）
@@ -162,7 +128,7 @@ pub async fn new_recruitment(
                 })
                 .collect();
 
-            // 解散時刻を含めたメッセージを再生成
+            // 解散時刻を含むメッセージを生成
             let message_content_with_dismissal = new::create_message_content(
                 &txn,
                 &recruitment_data.quest.name,
@@ -174,20 +140,55 @@ pub async fn new_recruitment(
             )
             .await?;
 
-            // ロールメンションがある場合は先頭に追加
-            let final_message_content = if !role_mentions.is_empty() {
-                format!("{}\n{}", role_mentions, message_content_with_dismissal)
-            } else {
-                message_content_with_dismissal
-            };
+            // RecruitmentData のメッセージ内容を解散時刻付きで更新
+            recruitment_data.message_content = message_content_with_dismissal;
 
-            // Discordメッセージを更新
-            use poise::serenity_prelude::{ChannelId, MessageId};
-            let channel = ChannelId::new(channel_id);
-            let msg = MessageId::new(message_id);
-            channel
-                .edit_message(ctx.http(), msg, poise::serenity_prelude::EditMessage::new().content(final_message_content))
-                .await?;
+            Some(parsed_dismissal_times)
+        } else {
+            None
+        };
+
+        // 1.8. ロールメンションがある場合は先頭に追加
+        if !role_mentions.is_empty() {
+            debug!(role_mentions = %role_mentions, "ロールメンションを募集メッセージの先頭に追加します");
+            recruitment_data.message_content = format!("{}\n{}", role_mentions, recruitment_data.message_content);
+            info!("ロールメンションを募集メッセージに追加しました");
+        }
+
+        // 2. メッセージ送信（ボタンまたはリアクション用）
+        let message_id = if use_buttons {
+            new::send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
+        } else {
+            new::send_recruitment_message(ctx, &recruitment_data).await?
+        };
+
+        // 3. データ保存
+        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
+
+        // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
+        debug!(
+            expiry_date = %recruitment_data.expiry_date,
+            "募集の出発通知を登録します"
+        );
+
+        let notification_management_service = NotificationManagementService::new();
+        notification_management_service
+            .create_recruitment_departure_notification(
+                &txn,
+                recruitment_data.expiry_date,
+                guild_id as i64,
+                channel_id as i64,
+                recruitment.id,
+            )
+            .await?;
+
+        // 5. 解散時刻を登録（指定されている場合）
+        if let Some(parsed_dismissal_times) = parsed_dismissal_times {
+            debug!(
+                recruitment_id = recruitment.id,
+                dismissal_count = parsed_dismissal_times.len(),
+                "解散時刻を登録します"
+            );
 
             // 解散時刻を登録
             let dismissal_service = DismissalManagementService::new();
