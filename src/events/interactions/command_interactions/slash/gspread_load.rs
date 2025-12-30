@@ -74,7 +74,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             .await
             .unwrap_or_else(|_| {
                 "❌ エラー: このギルドにスプレッドシートが登録されていません\n\
-                `/gspread_regist` コマンドでスプレッドシートを登録してください"
+                `/gspread_register` コマンドでスプレッドシートを登録してください"
                     .to_string()
             });
 

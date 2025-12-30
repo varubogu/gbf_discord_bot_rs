@@ -19,7 +19,7 @@ use tracing::{error, info};
     name_localized("ja", "スプレッドシート登録"),
     description_localized("ja", "ギルド用のGoogleスプレッドシートを登録")
 )]
-pub async fn gspread_regist(
+pub async fn gspread_register(
     ctx: PoiseContext<'_>,
 
     #[max_length = 512]

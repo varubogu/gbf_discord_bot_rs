@@ -12,7 +12,7 @@ use std::sync::Arc;
     name_localized("ja", "サーバー設定確認"),
     description_localized("ja", "サーバーの現在の設定（タイムゾーン、ロケールを確認します")
 )]
-pub async fn show_guild_settings(ctx: PoiseContext<'_>) -> Result<()> {
+pub async fn guild_settings_show(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer_ephemeral().await?;
 
     // ギルドIDを取得

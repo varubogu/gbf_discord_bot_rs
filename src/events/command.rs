@@ -33,13 +33,13 @@ pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::environ_load::environ_load(),
         slash::gspread_load::gspread_load(),
         slash::gspread_push::gspread_push(),
-        slash::gspread_regist::gspread_regist(),
+        slash::gspread_register::gspread_register(),
         slash::schedule_generate::schedule_generate(),
         slash::schedule_list::schedule_list(),
         slash::schedule_history::schedule_history(),
         slash::schedule_stats::schedule_stats(),
-        slash::guild_settings_set::set_guild_settings(),
-        slash::guild_settings_show::show_guild_settings(),
+        slash::guild_settings_set::guild_settings_set(),
+        slash::guild_settings_show::guild_settings_show(),
         // メッセージコンテキストメニューコマンド
         message::recruit_change::recruit_change_context_menu(),
     ]

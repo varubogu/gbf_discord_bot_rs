@@ -16,7 +16,7 @@ use super::autocomplete::{locale_auto_complete, timezone_auto_complete};
     name_localized("ja", "サーバー設定"),
     description_localized("ja", "サーバーのタイムゾーンと言語を設定します")
 )]
-pub async fn set_guild_settings(
+pub async fn guild_settings_set(
     ctx: PoiseContext<'_>,
 
     #[autocomplete = "timezone_auto_complete"]

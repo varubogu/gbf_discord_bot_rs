@@ -8,7 +8,7 @@ pub(crate) mod gspread_global_load;
 pub(crate) mod gspread_global_push;
 pub(crate) mod gspread_load;
 pub(crate) mod gspread_push;
-pub(crate) mod gspread_regist;
+pub(crate) mod gspread_register;
 pub(crate) mod guild_settings_set;
 pub(crate) mod guild_settings_show;
 pub(crate) mod help;
