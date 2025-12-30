@@ -8,6 +8,7 @@ use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
 };
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
+use crate::types::constants::ELEMENT_NAMES;
 use crate::types::{AppError, AppState, RecruitmentComponentId, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};
 use sea_orm::TransactionTrait;
@@ -102,7 +103,10 @@ pub async fn handle_recruitment_button(
             }
             RecruitmentComponentId::JoinElement(element_id) => {
                 // 属性参加
-                let element_name = get_element_name(element_id);
+                let element_name = ELEMENT_NAMES
+                    .get((element_id - 1) as usize)
+                    .copied()
+                    .unwrap_or("不明");
                 let action = service
                     .toggle_participation(&txn, recruitment.id, user_id, Some(element_id))
                     .await?;
@@ -579,21 +583,3 @@ async fn send_decreased_notification(
     Ok(())
 }
 
-/// 属性IDから属性名を取得する
-///
-/// # 引数
-/// * `element_id` - 属性ID（1: 火, 2: 水, 3: 土, 4: 風, 5: 光, 6: 闇）
-///
-/// # 戻り値
-/// 属性名（不明な場合は"不明"）
-fn get_element_name(element_id: i32) -> &'static str {
-    match element_id {
-        1 => "火",
-        2 => "水",
-        3 => "土",
-        4 => "風",
-        5 => "光",
-        6 => "闇",
-        _ => "不明",
-    }
-}
