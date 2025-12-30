@@ -36,7 +36,7 @@ async fn initialize_database(
         .idle_timeout(Duration::from_secs(300))
         .max_lifetime(Duration::from_secs(3600))
         .sqlx_logging(true)
-        .sqlx_logging_level(log::LevelFilter::Info);
+        .sqlx_logging_level(log::LevelFilter::Debug);
 
     let db = Database::connect(opt).await?;
     info!("Database connection pool initialised successfully");
