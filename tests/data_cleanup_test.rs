@@ -2,7 +2,8 @@ use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
 use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use gbf_discord_bot_rs::models::entities::worker::{
-    battle_recruitments, notifications, scheduled_tasks};
+    battle_recruitments, notifications, scheduled_tasks,
+};
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 

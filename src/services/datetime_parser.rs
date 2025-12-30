@@ -12,10 +12,10 @@ const DEFAULT_HOUR: u32 = 21; // デフォルト時刻（21時）
 /// 入力文字列に含まれていた日時要素の情報
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DateTimeComponents {
-    pub has_year: bool,   // 年が入力に含まれていたか
-    pub has_month: bool,  // 月が入力に含まれていたか
-    pub has_day: bool,    // 日が入力に含まれていたか
-    pub has_time: bool,   // 時刻が入力に含まれていたか
+    pub has_year: bool,  // 年が入力に含まれていたか
+    pub has_month: bool, // 月が入力に含まれていたか
+    pub has_day: bool,   // 日が入力に含まれていたか
+    pub has_time: bool,  // 時刻が入力に含まれていたか
 }
 
 impl DateTimeComponents {
@@ -135,7 +135,9 @@ fn correct_past_datetime(result: ParsedDateTimeResult, timezone: Tz) -> DateTime
     // 月が未指定で過去の場合 → 翌月に補正（優先）
     if !result.components.has_month && corrected < now {
         use chrono::Months;
-        corrected = corrected.checked_add_months(Months::new(1)).unwrap_or(corrected);
+        corrected = corrected
+            .checked_add_months(Months::new(1))
+            .unwrap_or(corrected);
 
         // 翌月にしたら未来になった場合はそれを返す
         if corrected >= now {
@@ -146,7 +148,9 @@ fn correct_past_datetime(result: ParsedDateTimeResult, timezone: Tz) -> DateTime
     // 年が未指定で過去の場合 → 翌年に補正
     if !result.components.has_year && corrected < now {
         let corrected_tz = corrected.with_timezone(&timezone);
-        let next_year = corrected_tz.with_year(corrected_tz.year() + 1).unwrap_or(corrected_tz);
+        let next_year = corrected_tz
+            .with_year(corrected_tz.year() + 1)
+            .unwrap_or(corrected_tz);
         corrected = next_year.with_timezone(&Utc);
     }
 
@@ -165,7 +169,10 @@ fn correct_past_datetime(result: ParsedDateTimeResult, timezone: Tz) -> DateTime
 /// - 日本語: "1月2日3時4分", "午後9時半", "21時", "21時半", "午後6時"
 /// - 数字のみ: "1230" (12時30分), "10111230" (10月11日12時30分)
 /// - 日+時刻: "30 1230" (30日12時30分), "30 2:15" (30日2時15分), "15 21:00" (15日21時)
-pub fn parse_event_date_with_components(date_str: &str, timezone: Tz) -> Result<ParsedDateTimeResult> {
+pub fn parse_event_date_with_components(
+    date_str: &str,
+    timezone: Tz,
+) -> Result<ParsedDateTimeResult> {
     let trimmed = date_str.trim();
 
     // 1. 数字のみのパターンを試行（優先度高: 4桁、8桁、日+4桁）
@@ -815,8 +822,13 @@ mod tests {
         println!("現在: {} JST", now_jst.format("%Y/%m/%d %H:%M"));
         println!("結果: {} JST", result_jst.format("%Y/%m/%d %H:%M"));
         println!("補正済み: {}", result >= now);
-        println!("年: {}, 月: {}, 日: {}, 時: {}",
-                 result_jst.year(), result_jst.month(), result_jst.day(), result_jst.hour());
+        println!(
+            "年: {}, 月: {}, 日: {}, 時: {}",
+            result_jst.year(),
+            result_jst.month(),
+            result_jst.day(),
+            result_jst.hour()
+        );
 
         // 補正により未来になっているはず
         assert!(result >= now, "補正が効いていません");
@@ -839,9 +851,18 @@ mod tests {
         println!("has_time: {}", result.components.has_time);
 
         // 「28 1000」は日と時刻のみのパターン
-        assert_eq!(result.components.has_year, false, "年フラグが間違っています");
-        assert_eq!(result.components.has_month, false, "月フラグが間違っています（★月補正のキー）");
+        assert_eq!(
+            result.components.has_year, false,
+            "年フラグが間違っています"
+        );
+        assert_eq!(
+            result.components.has_month, false,
+            "月フラグが間違っています（★月補正のキー）"
+        );
         assert_eq!(result.components.has_day, true, "日フラグが間違っています");
-        assert_eq!(result.components.has_time, true, "時刻フラグが間違っています");
+        assert_eq!(
+            result.components.has_time, true,
+            "時刻フラグが間違っています"
+        );
     }
 }

@@ -197,7 +197,9 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
 
         // ロケール情報を取得
         let guild_id = Some(recruitment.guild_id as i64);
-        let locale = self.get_guild_locale(txn, recruitment.guild_id as i64).await?;
+        let locale = self
+            .get_guild_locale(txn, recruitment.guild_id as i64)
+            .await?;
 
         // キャンセル済みメッセージを作成
         let cancelled_content = create_cancelled_message_content(

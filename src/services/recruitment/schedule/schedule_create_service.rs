@@ -12,7 +12,7 @@ use crate::repository::quests_repository::QuestRepository;
 use crate::services::recruitment::schedule::DaysParserService;
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::services::unified_datetime_parser::{
-    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+    DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{AppError, Result};
 use chrono::{Duration, TimeZone, Timelike, Utc};
@@ -109,7 +109,7 @@ impl ScheduleCreateService {
             _ => {
                 return Err(AppError::Business {
                     message: "クエスト開始時刻はHH:MM形式で指定してください".to_string(),
-                })
+                });
             }
         };
 
@@ -119,7 +119,11 @@ impl ScheduleCreateService {
         let recruit_results = parse_datetime(recruit_start_time, &recruit_options)?;
         let recruit_start_time_local = match &recruit_results[0] {
             ParsedDateTime::Time(t) => *t,
-            ParsedDateTime::Relative { days, hours, minutes } => {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
                 // 相対時刻の場合、クエスト開始時刻から計算
                 use chrono::{Duration, NaiveDate};
 
@@ -136,7 +140,7 @@ impl ScheduleCreateService {
             _ => {
                 return Err(AppError::Business {
                     message: "募集開始時刻は時刻または相対時刻で指定してください".to_string(),
-                })
+                });
             }
         };
 

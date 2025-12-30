@@ -1,10 +1,8 @@
-use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
 use crate::facades::guild_settings::GuildSettingsFacade;
-use crate::services::recruitment::schedule::{
-    OffsetCalculatorService, ScheduleDisplayService,
-};
+use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
+use crate::services::recruitment::schedule::{OffsetCalculatorService, ScheduleDisplayService};
 use crate::services::unified_datetime_parser::{
-    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+    DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::CreateEmbed;
@@ -106,7 +104,7 @@ pub async fn recruitment_schedule_create(
         _ => {
             return Err(crate::types::AppError::Business {
                 message: "クエスト開始時刻はHH:MM形式で指定してください".to_string(),
-            })
+            });
         }
     };
 
@@ -117,7 +115,11 @@ pub async fn recruitment_schedule_create(
     // ParsedDateTimeからNaiveTimeを取得
     let recruit_time = match &recruit_results[0] {
         ParsedDateTime::Time(t) => *t,
-        ParsedDateTime::Relative { days, hours, minutes } => {
+        ParsedDateTime::Relative {
+            days,
+            hours,
+            minutes,
+        } => {
             // 相対時刻の場合、クエスト開始時刻から計算
             use chrono::{Duration, NaiveDate};
 
@@ -135,7 +137,7 @@ pub async fn recruitment_schedule_create(
         _ => {
             return Err(crate::types::AppError::Business {
                 message: "募集開始時刻は時刻または相対時刻で指定してください".to_string(),
-            })
+            });
         }
     };
 

@@ -3,7 +3,7 @@ use crate::facades::recruitment::change::change_recruitment_information;
 use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::services::unified_datetime_parser::{
-    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+    DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
@@ -81,7 +81,7 @@ pub async fn recruit_change(
             _ => {
                 return Err(crate::types::AppError::Business {
                     message: "クエスト出発日時は絶対日時で指定してください".to_string(),
-                })
+                });
             }
         };
         Some(parsed_date)

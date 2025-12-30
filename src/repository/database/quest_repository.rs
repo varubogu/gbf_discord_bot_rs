@@ -169,7 +169,8 @@ impl QuestRepository for SeaOrmQuestRepository {
         // 除外リストがある場合は、それらのクエストを除外
         if let Some(ref excluded_ids) = excluded_quest_ids {
             if !excluded_ids.is_empty() {
-                quests_query = quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
+                quests_query =
+                    quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
             }
         }
 
@@ -272,7 +273,8 @@ impl QuestRepository for SeaOrmQuestRepository {
 
         // 無効化されたクエストを除外
         if !disabled_quest_ids.is_empty() {
-            quests_query = quests_query.filter(quests::Column::Id.is_not_in(disabled_quest_ids.clone()));
+            quests_query =
+                quests_query.filter(quests::Column::Id.is_not_in(disabled_quest_ids.clone()));
         }
 
         let quests_by_name = quests_query
@@ -370,8 +372,8 @@ impl QuestRepository for SeaOrmQuestRepository {
         }
 
         // クエスト名で部分一致検索
-        let mut quests_query = QuestEntity::find()
-            .filter(quests::Column::Id.is_in(disabled_quest_ids.clone()));
+        let mut quests_query =
+            QuestEntity::find().filter(quests::Column::Id.is_in(disabled_quest_ids.clone()));
 
         if !partial.trim().is_empty() {
             quests_query = quests_query.filter(quests::Column::Name.contains(partial));

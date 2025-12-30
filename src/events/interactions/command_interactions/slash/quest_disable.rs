@@ -1,8 +1,8 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::GuildQuestDisableRepository;
 use crate::repository::QuestRepository;
+use crate::repository::database::guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::AutocompleteChoice;
@@ -11,10 +11,7 @@ use std::collections::HashSet;
 use tracing::{error, info};
 
 /// クエスト名の入力候補を取得（無効化されていないクエストのみ）
-async fn quest_name_autocomplete(
-    ctx: PoiseContext<'_>,
-    partial: &str,
-) -> Vec<AutocompleteChoice> {
+async fn quest_name_autocomplete(ctx: PoiseContext<'_>, partial: &str) -> Vec<AutocompleteChoice> {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
@@ -77,7 +74,10 @@ async fn quest_name_autocomplete(
     ephemeral = true,
     rename = "quest_disable",
     name_localized("ja", "クエスト無効化"),
-    description_localized("ja", "クエストを無効化します（最大6つ）。（gbf_bot_controlロール必須）")
+    description_localized(
+        "ja",
+        "クエストを無効化します（最大6つ）。（gbf_bot_controlロール必須）"
+    )
 )]
 pub async fn quest_disable(
     ctx: PoiseContext<'_>,

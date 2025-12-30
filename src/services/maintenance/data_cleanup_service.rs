@@ -73,7 +73,9 @@ impl DataCleanupService {
         let txn = self.db.begin().await?;
 
         // 各テーブルのクリーンアップを実行
-        let deleted_recruitments = self.cleanup_battle_recruitments(&txn, cleanup_before).await?;
+        let deleted_recruitments = self
+            .cleanup_battle_recruitments(&txn, cleanup_before)
+            .await?;
         let deleted_notifications = self.cleanup_notifications(&txn, cleanup_before).await?;
         let deleted_tasks = self.cleanup_scheduled_tasks(&txn, cleanup_before).await?;
 
@@ -209,9 +211,7 @@ mod tests {
     use super::*;
     use crate::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
     use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-    use crate::models::entities::worker::{
-        battle_recruitments, notifications, scheduled_tasks,
-    };
+    use crate::models::entities::worker::{battle_recruitments, notifications, scheduled_tasks};
     use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 
     /// テストデータベース接続を取得

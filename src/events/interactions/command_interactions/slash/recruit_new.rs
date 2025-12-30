@@ -1,7 +1,7 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment;
 use crate::services::unified_datetime_parser::{
-    parse_datetime, DateTimeParseOptions, ParsedDateTime,
+    DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{PoiseContext, Result};
 use crate::utils::discord_helper;
@@ -61,7 +61,7 @@ pub async fn recruit_new(
         _ => {
             return Err(crate::types::AppError::Business {
                 message: "クエスト出発日時は絶対日時で指定してください".to_string(),
-            })
+            });
         }
     };
 

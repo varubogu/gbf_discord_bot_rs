@@ -213,11 +213,7 @@ pub enum ParsedDateTime {
     Absolute(DateTime<Utc>),
 
     /// 相対時刻（基準時刻からのオフセット）
-    Relative {
-        days: i32,
-        hours: i32,
-        minutes: i32,
-    },
+    Relative { days: i32, hours: i32, minutes: i32 },
 
     /// NaiveTime（定期募集開始時刻など）
     Time(NaiveTime),
@@ -295,10 +291,7 @@ fn parse_strict_hhmm(input: &str, _options: &DateTimeParseOptions) -> Result<Par
     let parts: Vec<&str> = input.split(':').collect();
 
     if parts.len() != 2 {
-        return Err(format!(
-            "無効な時刻形式です: {input}（HH:MM形式で指定してください）"
-        )
-        .into());
+        return Err(format!("無効な時刻形式です: {input}（HH:MM形式で指定してください）").into());
     }
 
     let hour = parts[0]
@@ -316,10 +309,7 @@ fn parse_strict_hhmm(input: &str, _options: &DateTimeParseOptions) -> Result<Par
 }
 
 /// 相対時刻のパース
-fn parse_relative_time(
-    input: &str,
-    _options: &DateTimeParseOptions,
-) -> Result<ParsedDateTime> {
+fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<ParsedDateTime> {
     use lazy_static::lazy_static;
     use regex::Regex;
 
@@ -480,9 +470,7 @@ mod tests {
     fn test_quest_departure_options() {
         let options = DateTimeParseOptions::for_quest_departure(chrono_tz::Asia::Tokyo);
 
-        assert!(options
-            .flags
-            .contains(DateTimeParseFlags::FULL_DATETIME));
+        assert!(options.flags.contains(DateTimeParseFlags::FULL_DATETIME));
         assert!(!options.flags.contains(DateTimeParseFlags::RELATIVE_TIME));
         assert!(!options.allow_multiple);
     }
