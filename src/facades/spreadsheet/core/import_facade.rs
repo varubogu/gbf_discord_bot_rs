@@ -20,6 +20,26 @@ use crate::services::spreadsheet::{
 };
 use crate::types::AppState;
 
+/// テーブル処理ステータス
+#[derive(Debug, Clone)]
+pub enum TableStatus {
+    /// 成功
+    Success,
+    /// 失敗
+    Failed,
+    /// 対象外（Botで扱わないテーブル）
+    Skipped,
+}
+
+/// テーブル処理結果情報
+#[derive(Debug, Clone)]
+pub struct TableResultInfo {
+    /// シート名
+    pub sheet_name: String,
+    /// 処理ステータス
+    pub status: TableStatus,
+}
+
 /// インポート結果
 #[derive(Debug, Clone)]
 pub struct ImportResult {
@@ -35,6 +55,8 @@ pub struct ImportResult {
     pub warnings: Vec<String>,
     /// 自動生成されたUUID情報（テーブル名、シート名、行番号、列番号、UUID）
     pub generated_uuids: Vec<(String, GeneratedUuidInfo)>, // (table_name, uuid_info)
+    /// テーブル処理結果一覧（シート名と処理ステータス）
+    pub table_results: Vec<TableResultInfo>,
 }
 
 /// スプレッドシートインポートFacade
@@ -349,6 +371,7 @@ impl SpreadsheetImportFacade {
                 errors: vec!["インポート対象のテーブルが見つかりません".to_string()],
                 warnings: Vec::new(),
                 generated_uuids: Vec::new(),
+                table_results: Vec::new(),
             });
         }
 
@@ -372,6 +395,7 @@ impl SpreadsheetImportFacade {
             let mut errors = Vec::new();
             let mut warnings = Vec::new();
             let mut all_generated_uuids = Vec::new();
+            let mut table_results = Vec::new();
 
             let mut import_table_map: HashMap<String, TableDefinition> = import_tables
                 .into_iter()
@@ -403,8 +427,16 @@ impl SpreadsheetImportFacade {
 
                 if result.success {
                     success_count += 1;
+                    table_results.push(TableResultInfo {
+                        sheet_name: table_def.sheet_name.clone(),
+                        status: TableStatus::Success,
+                    });
                 } else {
                     failure_count += 1;
+                    table_results.push(TableResultInfo {
+                        sheet_name: table_def.sheet_name.clone(),
+                        status: TableStatus::Failed,
+                    });
                 }
             }
 
@@ -418,6 +450,10 @@ impl SpreadsheetImportFacade {
                     "⚠️ テーブル「{}」（シート: {}）はBotで扱わないため無視しました",
                     leftover.table_name, leftover.sheet_name
                 ));
+                table_results.push(TableResultInfo {
+                    sheet_name: leftover.sheet_name,
+                    status: TableStatus::Skipped,
+                });
             }
 
             Ok(ImportResult {
@@ -427,6 +463,7 @@ impl SpreadsheetImportFacade {
                 errors,
                 warnings,
                 generated_uuids: all_generated_uuids,
+                table_results,
             })
         }
         .await;
@@ -593,15 +630,32 @@ impl std::fmt::Display for ImportResult {
             self.success_count, self.failure_count, self.total_rows
         )?;
 
+        // テーブル処理結果を1行ずつ表示
+        if !self.table_results.is_empty() {
+            write!(f, "\n")?;
+            for table_result in &self.table_results {
+                let (status_icon, status_text) = match table_result.status {
+                    TableStatus::Success => ("✅", "成功"),
+                    TableStatus::Failed => ("❌", "失敗"),
+                    TableStatus::Skipped => ("⚠️", "対象外"),
+                };
+                writeln!(
+                    f,
+                    "{}{}: {}",
+                    status_icon, table_result.sheet_name, status_text
+                )?;
+            }
+        }
+
         if !self.warnings.is_empty() {
-            write!(f, "\n\n⚠️ 警告:\n")?;
+            write!(f, "\n⚠️ 警告:\n")?;
             for warning in &self.warnings {
                 writeln!(f, "  - {warning}")?;
             }
         }
 
         if !self.errors.is_empty() {
-            write!(f, "\n\n❌ エラー詳細:\n")?;
+            write!(f, "\n❌ エラー詳細:\n")?;
             for error in &self.errors {
                 writeln!(f, "  - {error}")?;
             }

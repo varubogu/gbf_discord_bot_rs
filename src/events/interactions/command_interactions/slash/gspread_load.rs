@@ -127,75 +127,8 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         .await
     {
         Ok(result) => {
-            let message = if result.failure_count == 0 && result.errors.is_empty() {
-                let mut params = HashMap::new();
-                params.insert(
-                    "success_count".to_string(),
-                    result.success_count.to_string(),
-                );
-                params.insert("total_rows".to_string(), result.total_rows.to_string());
-
-                get_message_from_context(
-                    &ctx,
-                    ctx.data().app_state.message_service(),
-                    "spreadsheet.load_success",
-                    params,
-                )
-                .await
-                .unwrap_or_else(|_| {
-                    format!(
-                        "✅ ギルドスプレッドシート読み込み完了\n\n\
-                         📊 読み込み結果:\n\
-                         - 成功: {}テーブル\n\
-                         - 総行数: {}行",
-                        result.success_count, result.total_rows
-                    )
-                })
-            } else {
-                let error_details = if result.errors.len() <= 5 {
-                    format!("❌ エラー:\n{}", result.errors.join("\n"))
-                } else {
-                    format!(
-                        "❌ エラー（最初の5件）:\n{}\n... 他{}件",
-                        result.errors[..5].join("\n"),
-                        result.errors.len() - 5
-                    )
-                };
-
-                let mut params = HashMap::new();
-                params.insert(
-                    "success_count".to_string(),
-                    result.success_count.to_string(),
-                );
-                params.insert(
-                    "failure_count".to_string(),
-                    result.failure_count.to_string(),
-                );
-                params.insert("total_rows".to_string(), result.total_rows.to_string());
-                params.insert("error_details".to_string(), error_details.clone());
-
-                get_message_from_context(
-                    &ctx,
-                    ctx.data().app_state.message_service(),
-                    "spreadsheet.load_partial_success",
-                    params,
-                )
-                .await
-                .unwrap_or_else(|_| {
-                    format!(
-                        "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n\
-                         📊 読み込み結果:\n\
-                         - 成功: {}テーブル\n\
-                         - 失敗: {}テーブル\n\
-                         - 総行数: {}行\n\n\
-                         {}",
-                        result.success_count,
-                        result.failure_count,
-                        result.total_rows,
-                        error_details
-                    )
-                })
-            };
+            // Display実装を使用してメッセージを生成
+            let message = format!("✅ ギルドスプレッドシート読み込み完了\n\n{}", result);
 
             ctx.say(&message).await?;
 

@@ -75,36 +75,8 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     // インポート実行
     match facade.import_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
-            let message = if result.failure_count == 0 && result.errors.is_empty() {
-                format!(
-                    "✅ グローバルスプレッドシート読み込み完了\n\n\
-                     📊 読み込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 総行数: {}行",
-                    result.success_count, result.total_rows
-                )
-            } else {
-                format!(
-                    "⚠️ グローバルスプレッドシート読み込み完了（一部エラー）\n\n\
-                     📊 読み込み結果:\n\
-                     - 成功: {}テーブル\n\
-                     - 失敗: {}テーブル\n\
-                     - 総行数: {}行\n\n\
-                     {}",
-                    result.success_count,
-                    result.failure_count,
-                    result.total_rows,
-                    if result.errors.len() <= 5 {
-                        format!("❌ エラー:\n{}", result.errors.join("\n"))
-                    } else {
-                        format!(
-                            "❌ エラー（最初の5件）:\n{}\n... 他{}件",
-                            result.errors[..5].join("\n"),
-                            result.errors.len() - 5
-                        )
-                    }
-                )
-            };
+            // Display実装を使用してメッセージを生成
+            let message = format!("✅ グローバルスプレッドシート読み込み完了\n\n{}", result);
 
             ctx.say(message).await?;
 
