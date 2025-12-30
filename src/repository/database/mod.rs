@@ -6,6 +6,7 @@ pub mod db_compat;
 pub mod guild_channel_repository;
 pub mod guild_environment_repository;
 pub mod guild_message_text_repository;
+pub mod guild_quest_disable_repository;
 pub mod guild_repository;
 pub mod guild_settings_repository;
 pub mod last_process_time_repository;

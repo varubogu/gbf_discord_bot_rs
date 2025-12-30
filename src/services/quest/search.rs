@@ -59,6 +59,33 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
 
         Ok(limited_results)
     }
+
+    /// ギルド用のクエスト名またはエイリアスで部分一致検索を行い、結果を返す
+    /// Discord autocompleteの制限に合わせて最大25件まで返す
+    /// 空文字の場合はguild_questsで有効なクエストのみ、1文字以上の場合は全件対象
+    pub async fn search_for_autocomplete_for_guild<'c, C>(
+        &self,
+        db: &'c C,
+        guild_id: i64,
+        partial: &str,
+    ) -> Result<Vec<QuestAutocompleteItem>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let results = self
+            .quest_repository
+            .search_by_name_or_alias_for_guild(db, guild_id, partial)
+            .await?;
+
+        // Discord autocompleteは最大25件まで
+        let limited_results: Vec<QuestAutocompleteItem> = results
+            .into_iter()
+            .take(25)
+            .map(|r| create_autocomplete_item(&r))
+            .collect();
+
+        Ok(limited_results)
+    }
 }
 
 /// 検索結果をオートコンプリートアイテムに変換
@@ -186,6 +213,18 @@ mod tests {
                 .take()
                 .expect("search_by_name_or_alias was called but no expectation was set")
         }
+
+        async fn search_by_name_or_alias_for_guild<'c, C>(
+            &self,
+            _db: &'c C,
+            _guild_id: i64,
+            _partial: &str,
+        ) -> Result<Vec<QuestSearchResult>>
+        where
+            C: sea_orm::ConnectionTrait,
+        {
+            unimplemented!("このテストでは使用されません")
+        }
     }
 
     #[tokio::test]
@@ -202,6 +241,7 @@ mod tests {
                 default_battle_style_id: 1,
                 recruit_count: 30,
                 available_battle_style_ids: "1,2".to_string(),
+                sort_order: 0,
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
@@ -211,6 +251,7 @@ mod tests {
                 default_battle_style_id: 1,
                 recruit_count: 30,
                 available_battle_style_ids: "1,2".to_string(),
+                sort_order: 0,
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },

@@ -7,6 +7,7 @@ pub mod guild_environments;
 pub mod guild_event_schedule_details;
 pub mod guild_event_schedules;
 pub mod guild_message_texts;
+pub mod guild_quest_disables;
 pub mod guild_settings;
 pub mod guild_spreadsheet_exports;
 pub mod guild_spreadsheet_imports;

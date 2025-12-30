@@ -10,6 +10,7 @@ pub struct Model {
     pub default_battle_style_id: i32,
     pub recruit_count: i32,
     pub available_battle_style_ids: String,
+    pub sort_order: i32,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
