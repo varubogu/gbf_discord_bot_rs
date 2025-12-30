@@ -1,5 +1,4 @@
 pub mod channel;
-pub mod database;
 pub mod datetime_parser;
 pub mod environment;
 pub mod guild_environment_service;
