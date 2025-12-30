@@ -3,7 +3,7 @@
 /// ビットフラグベースの柔軟な日時解析システム。
 /// 既存の複数のパーサー（datetime_parser, TimeParserService, DismissalTimeParserService）を統合。
 use crate::types::Result;
-use chrono::{DateTime, Datelike, NaiveTime, Utc};
+use chrono::{DateTime, NaiveTime, Utc};
 use chrono_tz::Tz;
 
 /// 日時解析パターンフラグ
@@ -219,6 +219,26 @@ pub enum ParsedDateTime {
     Time(NaiveTime),
 }
 
+/// パース済み解散時刻（後方互換性のため）
+///
+/// 旧`DismissalTimeParserService`の`ParsedDismissalTime`の代替。
+/// `input_value`フィールドを含む、よりリッチな情報を保持。
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParsedDismissalTime {
+    /// 絶対日時
+    Absolute {
+        input_value: String,
+        datetime: DateTime<Utc>,
+    },
+    /// 相対時刻
+    Relative {
+        input_value: String,
+        days: i32,
+        hours: i32,
+        minutes: i32,
+    },
+}
+
 /// 統一日時パーサー
 ///
 /// # 引数
@@ -354,7 +374,7 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Timelike;
+    use chrono::{Datelike, Timelike};
 
     #[test]
     fn test_flags_union() {

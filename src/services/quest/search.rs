@@ -225,6 +225,30 @@ mod tests {
         {
             unimplemented!("このテストでは使用されません")
         }
+
+        async fn search_enabled_quests<'c, C>(
+            &self,
+            _db: &'c C,
+            _guild_id: i64,
+            _partial: &str,
+        ) -> Result<Vec<QuestSearchResult>>
+        where
+            C: sea_orm::ConnectionTrait,
+        {
+            unimplemented!("このテストでは使用されません")
+        }
+
+        async fn search_disabled_quests<'c, C>(
+            &self,
+            _db: &'c C,
+            _guild_id: i64,
+            _partial: &str,
+        ) -> Result<Vec<QuestSearchResult>>
+        where
+            C: sea_orm::ConnectionTrait,
+        {
+            unimplemented!("このテストでは使用されません")
+        }
     }
 
     #[tokio::test]

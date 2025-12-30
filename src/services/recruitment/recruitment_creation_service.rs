@@ -11,7 +11,7 @@ use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quests_repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
+use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::services::recruitment::new::{
     create_initial_participants_text_for_buttons, create_message_content,
     create_recruitment_buttons,

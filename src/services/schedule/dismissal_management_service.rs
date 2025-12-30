@@ -2,7 +2,7 @@ use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
-use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
+use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};
 use sea_orm::DatabaseTransaction;

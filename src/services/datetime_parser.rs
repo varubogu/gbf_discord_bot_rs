@@ -590,11 +590,6 @@ fn parse_numeric_patterns_with_components(s: &str, timezone: Tz) -> Result<Parse
     Err("数字パターンのパースに失敗".to_string().into())
 }
 
-/// 数字パターンのパース（後方互換性のため残す）
-fn parse_numeric_patterns(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
-    Ok(parse_numeric_patterns_with_components(s, timezone)?.datetime)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

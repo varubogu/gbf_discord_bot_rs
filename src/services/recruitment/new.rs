@@ -10,7 +10,7 @@ use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
-use crate::services::recruitment::dismissal_time_parser_service::ParsedDismissalTime;
+use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
