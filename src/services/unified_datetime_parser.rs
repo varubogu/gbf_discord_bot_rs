@@ -328,13 +328,97 @@ fn parse_strict_hhmm(input: &str, _options: &DateTimeParseOptions) -> Result<Par
     Ok(ParsedDateTime::Time(naive_time))
 }
 
+/// 全角数字・漢数字を半角数字に正規化
+fn normalize_numbers(input: &str) -> String {
+    let mut result = String::new();
+    let chars: Vec<char> = input.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let ch = chars[i];
+        match ch {
+            // 全角数字を半角に変換
+            '０' => result.push('0'),
+            '１' => result.push('1'),
+            '２' => result.push('2'),
+            '３' => result.push('3'),
+            '４' => result.push('4'),
+            '５' => result.push('5'),
+            '６' => result.push('6'),
+            '７' => result.push('7'),
+            '８' => result.push('8'),
+            '９' => result.push('9'),
+
+            // 漢数字を半角に変換（一桁のみ）
+            '〇' | '零' => result.push('0'),
+            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九' => {
+                let digit = match ch {
+                    '一' => '1',
+                    '二' => '2',
+                    '三' => '3',
+                    '四' => '4',
+                    '五' => '5',
+                    '六' => '6',
+                    '七' => '7',
+                    '八' => '8',
+                    '九' => '9',
+                    _ => unreachable!(),
+                };
+
+                // 次の文字が「十」かチェック
+                if i + 1 < chars.len() && chars[i + 1] == '十' {
+                    // 「X十」→「X0」（例: 二十→20）
+                    result.push(digit);
+                    result.push('0');
+                    i += 1; // 「十」をスキップ
+                } else {
+                    result.push(digit);
+                }
+            }
+
+            // 「十」の処理（単独の場合のみ10）
+            '十' => {
+                // 直前に数字がない場合は「十」→「10」
+                if result.is_empty() || !result.chars().last().unwrap().is_ascii_digit() {
+                    result.push_str("10");
+                }
+                // 直前に数字がある場合は既に処理済みなのでスキップ
+            }
+
+            // その他の文字はそのまま
+            _ => result.push(ch),
+        }
+
+        i += 1;
+    }
+
+    result
+}
+
 /// 相対時刻のパース
 fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<ParsedDateTime> {
     use lazy_static::lazy_static;
     use regex::Regex;
 
+    // 数字を正規化
+    let normalized = normalize_numbers(input);
+
     lazy_static! {
-        static ref RE_RELATIVE_TIME: Regex = Regex::new(
+        // 複数単位混在パターン: "1日2時間10分前", "1日1時間半前", "2h30m", "1 day 2 hours 10 minutes before"
+        static ref RE_MULTI_UNIT: Regex = Regex::new(
+            r"(?x)
+            ^
+            (?:(\d+)\s*(日|days?))?\s*                        # グループ1,2: 日（オプション）
+            (?:(\d+)\s*(時間?|hours?|h)\s*(半)?)?\s*         # グループ3,4,5: 時間と「半」（オプション）
+            (?:(\d+)\s*(分|minutes?|mins?|m))?\s*             # グループ6,7: 分（オプション）
+            (?:前|before)?                                     # 「前」または「before」（オプション）
+            $
+            "
+        )
+        .expect("複数単位相対時刻Regexパターンが無効です");
+
+        // 単一単位パターン（後方互換性）: "2時間前", "90m", "1day"
+        static ref RE_SINGLE_UNIT: Regex = Regex::new(
             r"(?x)
             ^
             (\d+)\s*                    # 数値（スペース許可）
@@ -343,10 +427,72 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
             $
             "
         )
-        .expect("相対時刻Regexパターンが無効です");
+        .expect("単一単位相対時刻Regexパターンが無効です");
+
+        // 「X時間半」パターン: "1時間半前", "2時間半"
+        static ref RE_HOUR_HALF: Regex = Regex::new(
+            r"(?x)
+            ^
+            (\d+)\s*                    # 数値
+            (時間?|hours?|h)\s*         # 時間単位
+            半\s*                        # 「半」
+            (?:前|before)?               # オプショナルな「前」「before」
+            $
+            "
+        )
+        .expect("時間半Regexパターンが無効です");
     }
 
-    if let Some(caps) = RE_RELATIVE_TIME.captures(input) {
+    // パターン1: 「X時間半」パターン（単独）
+    if let Some(caps) = RE_HOUR_HALF.captures(&normalized) {
+        let hours = caps[1]
+            .parse::<i32>()
+            .map_err(|_| format!("数値のパースに失敗しました: {}", &caps[1]))?;
+
+        return Ok(ParsedDateTime::Relative {
+            days: 0,
+            hours,
+            minutes: 30, // 「半」は30分
+        });
+    }
+
+    // パターン2: 複数単位混在パターン
+    if let Some(caps) = RE_MULTI_UNIT.captures(&normalized) {
+        // グループ1: 日の数値
+        let days = caps
+            .get(1)
+            .and_then(|m| m.as_str().parse::<i32>().ok())
+            .unwrap_or(0);
+
+        // グループ3: 時間の数値
+        let hours = caps
+            .get(3)
+            .and_then(|m| m.as_str().parse::<i32>().ok())
+            .unwrap_or(0);
+
+        // グループ5: 「半」の有無
+        let has_hour_half = caps.get(5).is_some();
+        let hour_half_minutes = if has_hour_half { 30 } else { 0 };
+
+        // グループ6: 分の数値
+        let minutes = caps
+            .get(6)
+            .and_then(|m| m.as_str().parse::<i32>().ok())
+            .unwrap_or(0)
+            + hour_half_minutes;
+
+        // 少なくとも1つの単位が指定されているか確認
+        if days > 0 || hours > 0 || minutes > 0 {
+            return Ok(ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            });
+        }
+    }
+
+    // パターン3: 単一単位パターン（後方互換性）
+    if let Some(caps) = RE_SINGLE_UNIT.captures(&normalized) {
         let value = caps[1]
             .parse::<i32>()
             .map_err(|_| format!("数値のパースに失敗しました: {}", &caps[1]))?;
@@ -608,5 +754,358 @@ mod tests {
             }
             _ => panic!("Expected Absolute datetime"),
         }
+    }
+
+    #[test]
+    fn test_relative_time_hour_half() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // 日本語: "1時間半前"
+        let result = parse_datetime("1時間半前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 0);
+                assert_eq!(*hours, 1);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // 「前」なし: "2時間半"
+        let result = parse_datetime("2時間半", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 0);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_relative_time_multi_unit_japanese() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // "1日2時間10分前"
+        let result = parse_datetime("1日2時間10分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 10);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "2時間30分前"
+        let result = parse_datetime("2時間30分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 0);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "1日3時間前"
+        let result = parse_datetime("1日3時間前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 3);
+                assert_eq!(*minutes, 0);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_relative_time_multi_unit_english() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // "1 day 2 hours 10 minutes before"
+        let result = parse_datetime("1 day 2 hours 10 minutes before", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 10);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "2h30m before"
+        let result = parse_datetime("2h30m before", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 0);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "10 min before"
+        let result = parse_datetime("10 min before", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 0);
+                assert_eq!(*hours, 0);
+                assert_eq!(*minutes, 10);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "1 day 2h before"
+        let result = parse_datetime("1 day 2h before", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 0);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_relative_time_backward_compatibility() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // 既存のパターンが引き続き動作することを確認
+
+        // "2時間前"
+        let result = parse_datetime("2時間前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { hours, .. } => {
+                assert_eq!(*hours, 2);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "90分前"
+        let result = parse_datetime("90分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { minutes, .. } => {
+                assert_eq!(*minutes, 90);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "1day"
+        let result = parse_datetime("1day", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { days, .. } => {
+                assert_eq!(*days, 1);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_relative_time_with_hour_half_in_multi_unit() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // "1日1時間半前"
+        let result = parse_datetime("1日1時間半前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 1);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // "2日3時間半前"
+        let result = parse_datetime("2日3時間半前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 2);
+                assert_eq!(*hours, 3);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_numbers_fullwidth() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // 全角数字: "２時間前"
+        let result = parse_datetime("２時間前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { hours, .. } => {
+                assert_eq!(*hours, 2);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // 全角数字混在: "１日２時間３０分前"
+        let result = parse_datetime("１日２時間３０分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_numbers_kanji() {
+        let options = DateTimeParseOptions {
+            flags: DateTimeParseFlags::RELATIVE_TIME,
+            timezone: chrono_tz::Asia::Tokyo,
+            relative_base: None,
+            default_time: None,
+            allow_multiple: false,
+            max_count: 1,
+        };
+
+        // 漢数字: "二時間前"
+        let result = parse_datetime("二時間前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { hours, .. } => {
+                assert_eq!(*hours, 2);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // 漢数字「十」: "十分前" → "10分前"
+        let result = parse_datetime("十分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { minutes, .. } => {
+                assert_eq!(*minutes, 10);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        // 漢数字混在: "一日二時間三十分前"
+        let result = parse_datetime("一日二時間三十分前", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative {
+                days,
+                hours,
+                minutes,
+            } => {
+                assert_eq!(*days, 1);
+                assert_eq!(*hours, 2);
+                assert_eq!(*minutes, 30);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_numbers_function() {
+        // 全角数字
+        assert_eq!(normalize_numbers("１２３"), "123");
+        assert_eq!(normalize_numbers("０"), "0");
+
+        // 漢数字
+        assert_eq!(normalize_numbers("一二三"), "123");
+        assert_eq!(normalize_numbers("〇"), "0");
+        assert_eq!(normalize_numbers("十"), "10");
+        assert_eq!(normalize_numbers("二十"), "20"); // "二十" → "20"
+        assert_eq!(normalize_numbers("三十"), "30"); // "三十" → "30"
+
+        // 混在
+        assert_eq!(normalize_numbers("１日二時間３０分前"), "1日2時間30分前");
+        assert_eq!(normalize_numbers("一日二十分前"), "1日20分前");
     }
 }
