@@ -3,7 +3,6 @@ use crate::repository::GuildQuestDisableRepository;
 use crate::repository::QuestRepository;
 use crate::repository::database::guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use poise::ChoiceParameter;
 use sea_orm::TransactionTrait;
@@ -27,7 +26,6 @@ pub enum QuestFilterType {
 #[poise::command(
     slash_command,
     guild_only,
-    check = "check_bot_control_role",
     ephemeral = true,
     rename = "quest_list",
     name_localized("ja", "クエスト一覧"),
