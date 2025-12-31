@@ -161,4 +161,73 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         );
         Ok(result.rows_affected)
     }
+
+    /// schedule_idに紐づく未実行のscheduled_tasksを削除
+    ///
+    /// 定期募集スケジュールの削除・無効化時に、まだ実行されていないタスクを削除する
+    /// 既に実行済み（is_executed=true）のタスクは削除しない（募集は独立して存在するため）
+    pub async fn delete_pending_tasks_by_schedule_id(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_id: i32,
+    ) -> Result<u64> {
+        use crate::repository::database::schedule::ScheduledTaskRepository;
+
+        debug!(
+            schedule_id,
+            "スケジュールに紐づく未実行scheduled_tasksを削除します"
+        );
+
+        // 1. schedule_idに紐づくscheduled_task_recurring_recruitmentsを取得
+        let recurring_tasks = scheduled_task_recurring_recruitments::Entity::find()
+            .filter(scheduled_task_recurring_recruitments::Column::ScheduleId.eq(schedule_id))
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, schedule_id, "定期募集タスク関連情報の取得に失敗しました");
+                e
+            })?;
+
+        let task_ids: Vec<i32> = recurring_tasks.iter().map(|r| r.task_id).collect();
+
+        if task_ids.is_empty() {
+            debug!(schedule_id, "削除対象のタスクがありません");
+            return Ok(0);
+        }
+
+        // 2. 未実行のscheduled_tasksのみを削除
+        let task_repo = ScheduledTaskRepository::new();
+        let mut deleted_count = 0;
+
+        for task_id in task_ids {
+            // タスクの状態を確認
+            if let Some(task) = scheduled_tasks::Entity::find_by_id(task_id)
+                .one(txn)
+                .await
+                .map_err(|e| {
+                    error!(error = %e, task_id, "タスクの取得に失敗しました");
+                    e
+                })?
+            {
+                // 未実行のタスクのみ削除
+                if !task.is_executed {
+                    task_repo.delete_by_id(txn, task_id).await?;
+                    deleted_count += 1;
+                    debug!(task_id, "未実行タスクを削除しました");
+                } else {
+                    debug!(
+                        task_id,
+                        "実行済みタスクはスキップしました（募集は独立して存在）"
+                    );
+                }
+            }
+        }
+
+        debug!(
+            schedule_id,
+            deleted_count, "未実行scheduled_tasksの削除が完了しました"
+        );
+
+        Ok(deleted_count)
+    }
 }

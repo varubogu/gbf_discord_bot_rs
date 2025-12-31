@@ -225,9 +225,20 @@ impl RecruitmentScheduleFacade {
         let _ = user_id; // TODO: 権限チェック追加
 
         let result = async {
-            // Service層に委譲
             let service = ScheduleCommandService::new();
-            service.toggle_schedule_enabled(&txn, schedule_id).await?;
+
+            // 現在の状態を取得
+            let is_enabled = service
+                .get_schedule_enabled_status(&txn, schedule_id)
+                .await?;
+
+            // 状態に応じて有効化/無効化を呼び分け
+            if is_enabled {
+                service.disable_schedule(&txn, schedule_id).await?;
+            } else {
+                service.enable_schedule(&txn, schedule_id).await?;
+            }
+
             Ok::<_, AppError>(())
         }
         .await;

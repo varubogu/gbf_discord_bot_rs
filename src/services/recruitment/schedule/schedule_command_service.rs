@@ -24,10 +24,8 @@ impl ScheduleCommandService {
     ///
     /// RLS設定は呼び出し元のFacade層で既に行われている前提
     pub async fn delete_schedule(&self, txn: &DatabaseTransaction, schedule_id: i32) -> Result<()> {
-        // 1. scheduled_task_recurring_recruitments を削除
-        //    これにより関連する scheduled_tasks も CASCADE削除される
-        let task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
-        task_repo.delete_by_schedule_id(txn, schedule_id).await?;
+        // 1. スケジュールを無効化（未実行タスクとリレーションを削除）
+        self.disable_schedule(txn, schedule_id).await?;
 
         // 2. battle_recruitment_schedules を削除
         let schedule_repo = BattleRecruitmentScheduleRepository::new();
@@ -36,40 +34,83 @@ impl ScheduleCommandService {
         Ok(())
     }
 
-    /// スケジュールの有効/無効を現在値から反転
+    /// スケジュールの現在の有効/無効状態を取得
     ///
     /// RLS設定は呼び出し元のFacade層で既に行われている前提
-    pub async fn toggle_schedule_enabled(
+    pub async fn get_schedule_enabled_status(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_id: i32,
+    ) -> Result<bool> {
+        let repo = BattleRecruitmentScheduleRepository::new();
+
+        let (schedule, _) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
+            crate::types::AppError::NotFound(format!(
+                "スケジュールID {schedule_id} が見つかりません"
+            ))
+        })?;
+
+        Ok(schedule.is_enabled)
+    }
+
+    /// スケジュールを有効化
+    ///
+    /// 次回実行タスクをscheduled_tasksに登録する
+    /// RLS設定は呼び出し元のFacade層で既に行われている前提
+    pub async fn enable_schedule(&self, txn: &DatabaseTransaction, schedule_id: i32) -> Result<()> {
+        let repo = BattleRecruitmentScheduleRepository::new();
+
+        // スケジュールを取得
+        let (schedule, days) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
+            crate::types::AppError::NotFound(format!(
+                "スケジュールID {schedule_id} が見つかりません"
+            ))
+        })?;
+
+        // 有効化
+        repo.toggle_enabled_with_txn(txn, schedule_id, true).await?;
+
+        // 次回実行タスクを登録
+        self.create_next_scheduled_task(txn, &schedule, &days)
+            .await?;
+
+        Ok(())
+    }
+
+    /// スケジュールを無効化（一時停止）
+    ///
+    /// 未実行のscheduled_tasksとscheduled_task_recurring_recruitmentsを削除する
+    /// 既に実行済み（募集開始済み）のタスクは削除しない（募集は独立して存在）
+    /// RLS設定は呼び出し元のFacade層で既に行われている前提
+    pub async fn disable_schedule(
         &self,
         txn: &DatabaseTransaction,
         schedule_id: i32,
     ) -> Result<()> {
         let repo = BattleRecruitmentScheduleRepository::new();
 
-        // 現在の状態を取得（RLS設定済みのトランザクションを使用）
-        let (schedule, days) = if let Some(data) = repo.find_by_id(txn, schedule_id).await? {
-            data
-        } else {
-            return Err(crate::types::AppError::NotFound(format!(
+        // スケジュールが存在することを確認
+        repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
+            crate::types::AppError::NotFound(format!(
                 "スケジュールID {schedule_id} が見つかりません"
-            )));
-        };
+            ))
+        })?;
 
-        let new_enabled = !schedule.is_enabled;
+        let recurring_task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
 
-        // 反転適用
-        repo.toggle_enabled_with_txn(txn, schedule_id, new_enabled)
+        // 未実行の scheduled_tasks を削除
+        recurring_task_repo
+            .delete_pending_tasks_by_schedule_id(txn, schedule_id)
             .await?;
 
-        if !new_enabled {
-            // 無効化する場合は scheduled_tasks を削除
-            let task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
-            task_repo.delete_by_schedule_id(txn, schedule_id).await?;
-        } else {
-            // 有効化する場合は、次回実行タスクを scheduled_tasks に登録
-            self.create_next_scheduled_task(txn, &schedule, &days)
-                .await?;
-        }
+        // scheduled_task_recurring_recruitments を削除
+        recurring_task_repo
+            .delete_by_schedule_id(txn, schedule_id)
+            .await?;
+
+        // 無効化
+        repo.toggle_enabled_with_txn(txn, schedule_id, false)
+            .await?;
 
         Ok(())
     }
