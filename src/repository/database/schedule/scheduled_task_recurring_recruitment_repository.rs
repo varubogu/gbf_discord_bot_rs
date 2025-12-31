@@ -64,50 +64,59 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         Ok(results)
     }
 
-    /// task_idで定期募集関連情報を取得
-    pub async fn find_by_task_id(
+    /// scheduled_task_idで定期募集関連情報を取得
+    pub async fn find_by_scheduled_task_id(
         &self,
         txn: &DatabaseTransaction,
-        task_id: i32,
+        scheduled_task_id: i32,
     ) -> Result<Option<scheduled_task_recurring_recruitments::Model>> {
-        debug!(task_id, "定期募集関連情報をtask_idで取得します");
+        debug!(
+            scheduled_task_id,
+            "定期募集関連情報をscheduled_task_idで取得します"
+        );
 
         let recurring_recruitment_rel =
-            scheduled_task_recurring_recruitments::Entity::find_by_id(task_id)
+            scheduled_task_recurring_recruitments::Entity::find_by_id(scheduled_task_id)
                 .one(txn)
                 .await
                 .map_err(|e| {
-                    error!(error = %e, task_id, "定期募集関連情報の取得に失敗しました");
+                    error!(error = %e, scheduled_task_id, "定期募集関連情報の取得に失敗しました");
                     e
                 })?;
 
         debug!(
-            task_id,
+            scheduled_task_id,
             found = recurring_recruitment_rel.is_some(),
             "定期募集関連情報を取得しました"
         );
         Ok(recurring_recruitment_rel)
     }
 
-    /// schedule_idで定期募集関連情報を取得
-    pub async fn find_by_schedule_id(
+    /// recruitment_schedule_idで定期募集関連情報を取得
+    pub async fn find_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
-        schedule_id: i32,
+        recruitment_schedule_id: i32,
     ) -> Result<Option<scheduled_task_recurring_recruitments::Model>> {
-        debug!(schedule_id, "定期募集関連情報をschedule_idで取得します");
+        debug!(
+            recruitment_schedule_id,
+            "定期募集関連情報をrecruitment_schedule_idで取得します"
+        );
 
         let recurring_recruitment_rel = scheduled_task_recurring_recruitments::Entity::find()
-            .filter(scheduled_task_recurring_recruitments::Column::ScheduleId.eq(schedule_id))
+            .filter(
+                scheduled_task_recurring_recruitments::Column::RecruitmentScheduleId
+                    .eq(recruitment_schedule_id),
+            )
             .one(txn)
             .await
             .map_err(|e| {
-                error!(error = %e, schedule_id, "定期募集関連情報の取得に失敗しました");
+                error!(error = %e, recruitment_schedule_id, "定期募集関連情報の取得に失敗しました");
                 e
             })?;
 
         debug!(
-            schedule_id,
+            recruitment_schedule_id,
             found = recurring_recruitment_rel.is_some(),
             "定期募集関連情報を取得しました"
         );
@@ -118,80 +127,98 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     pub async fn create(
         &self,
         txn: &DatabaseTransaction,
-        task_id: i32,
-        schedule_id: i32,
+        scheduled_task_id: i32,
+        recruitment_schedule_id: i32,
     ) -> Result<scheduled_task_recurring_recruitments::Model> {
-        debug!(task_id, schedule_id, "定期募集タスク関連情報を作成します");
+        debug!(
+            scheduled_task_id,
+            recruitment_schedule_id, "定期募集タスク関連情報を作成します"
+        );
 
         let active_model = scheduled_task_recurring_recruitments::ActiveModel {
-            task_id: Set(task_id),
-            schedule_id: Set(schedule_id),
+            scheduled_task_id: Set(scheduled_task_id),
+            recruitment_schedule_id: Set(recruitment_schedule_id),
         };
 
         let model = active_model.insert(txn).await.map_err(|e| {
-            error!(error = %e, task_id, schedule_id, "定期募集タスク関連情報の作成に失敗しました");
+            error!(error = %e, scheduled_task_id, recruitment_schedule_id, "定期募集タスク関連情報の作成に失敗しました");
             e
         })?;
 
-        debug!(task_id, schedule_id, "定期募集タスク関連情報を作成しました");
+        debug!(
+            scheduled_task_id,
+            recruitment_schedule_id, "定期募集タスク関連情報を作成しました"
+        );
         Ok(model)
     }
 
-    /// schedule_idで定期募集タスクを削除
-    pub async fn delete_by_schedule_id(
+    /// recruitment_schedule_idで定期募集タスクを削除
+    pub async fn delete_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
-        schedule_id: i32,
+        recruitment_schedule_id: i32,
     ) -> Result<u64> {
-        debug!(schedule_id, "定期募集タスク関連情報を削除します");
+        debug!(
+            recruitment_schedule_id,
+            "定期募集タスク関連情報を削除します"
+        );
 
         let result = scheduled_task_recurring_recruitments::Entity::delete_many()
-            .filter(scheduled_task_recurring_recruitments::Column::ScheduleId.eq(schedule_id))
+            .filter(
+                scheduled_task_recurring_recruitments::Column::RecruitmentScheduleId
+                    .eq(recruitment_schedule_id),
+            )
             .exec(txn)
             .await
             .map_err(|e| {
-                error!(error = %e, schedule_id, "定期募集タスク関連情報の削除に失敗しました");
+                error!(error = %e, recruitment_schedule_id, "定期募集タスク関連情報の削除に失敗しました");
                 e
             })?;
 
         debug!(
-            schedule_id,
+            recruitment_schedule_id,
             deleted_count = result.rows_affected,
             "定期募集タスク関連情報を削除しました"
         );
         Ok(result.rows_affected)
     }
 
-    /// schedule_idに紐づく未実行のscheduled_tasksを削除
+    /// recruitment_schedule_idに紐づく未実行のscheduled_tasksを削除
     ///
     /// 定期募集スケジュールの削除・無効化時に、まだ実行されていないタスクを削除する
     /// 既に実行済み（is_executed=true）のタスクは削除しない（募集は独立して存在するため）
-    pub async fn delete_pending_tasks_by_schedule_id(
+    pub async fn delete_pending_tasks_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
-        schedule_id: i32,
+        recruitment_schedule_id: i32,
     ) -> Result<u64> {
         use crate::repository::database::schedule::ScheduledTaskRepository;
 
         debug!(
-            schedule_id,
+            recruitment_schedule_id,
             "スケジュールに紐づく未実行scheduled_tasksを削除します"
         );
 
-        // 1. schedule_idに紐づくscheduled_task_recurring_recruitmentsを取得
+        // 1. recruitment_schedule_idに紐づくscheduled_task_recurring_recruitmentsを取得
         let recurring_tasks = scheduled_task_recurring_recruitments::Entity::find()
-            .filter(scheduled_task_recurring_recruitments::Column::ScheduleId.eq(schedule_id))
+            .filter(
+                scheduled_task_recurring_recruitments::Column::RecruitmentScheduleId
+                    .eq(recruitment_schedule_id),
+            )
             .all(txn)
             .await
             .map_err(|e| {
-                error!(error = %e, schedule_id, "定期募集タスク関連情報の取得に失敗しました");
+                error!(error = %e, recruitment_schedule_id, "定期募集タスク関連情報の取得に失敗しました");
                 e
             })?;
 
-        let task_ids: Vec<i32> = recurring_tasks.iter().map(|r| r.task_id).collect();
+        let task_ids: Vec<i32> = recurring_tasks
+            .iter()
+            .map(|r| r.scheduled_task_id)
+            .collect();
 
         if task_ids.is_empty() {
-            debug!(schedule_id, "削除対象のタスクがありません");
+            debug!(recruitment_schedule_id, "削除対象のタスクがありません");
             return Ok(0);
         }
 
@@ -224,7 +251,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         }
 
         debug!(
-            schedule_id,
+            recruitment_schedule_id,
             deleted_count, "未実行scheduled_tasksの削除が完了しました"
         );
 

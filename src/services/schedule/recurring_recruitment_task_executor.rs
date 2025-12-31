@@ -95,7 +95,11 @@ impl RecurringRecruitmentTaskExecutor {
         };
 
         // 定期募集情報を取得
-        let recurring = match self.recurring_repo.find_by_task_id(txn, task_id).await? {
+        let recurring = match self
+            .recurring_repo
+            .find_by_scheduled_task_id(txn, task_id)
+            .await?
+        {
             Some(r) => r,
             None => {
                 error!(task_id, "定期募集情報が見つかりません");
@@ -105,7 +109,7 @@ impl RecurringRecruitmentTaskExecutor {
             }
         };
 
-        let schedule_id = recurring.schedule_id;
+        let schedule_id = recurring.recruitment_schedule_id;
 
         // スケジュール情報を取得
         let schedule_and_days = self.schedule_repo.find_by_id(txn, schedule_id).await?;

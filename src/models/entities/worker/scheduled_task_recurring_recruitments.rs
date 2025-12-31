@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub task_id: i32,
-    pub schedule_id: i32,
+    pub scheduled_task_id: i32,
+    pub recruitment_schedule_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

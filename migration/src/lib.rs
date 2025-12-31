@@ -7,6 +7,7 @@ mod m20251225_010000_create_scheduled_tasks;
 mod m20251226_000000_add_recruitment_dismissal;
 mod m20251228_000000_add_full_notification_sent_flag;
 mod m20251229_000000_add_quest_sort_order_and_guild_quests;
+mod m20251231_000000_rename_schedule_id_to_recruitment_schedule_id;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251226_000000_add_recruitment_dismissal::Migration),
             Box::new(m20251228_000000_add_full_notification_sent_flag::Migration),
             Box::new(m20251229_000000_add_quest_sort_order_and_guild_quests::Migration),
+            Box::new(m20251231_000000_rename_schedule_id_to_recruitment_schedule_id::Migration),
         ]
     }
 }

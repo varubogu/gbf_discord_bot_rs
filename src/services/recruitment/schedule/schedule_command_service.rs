@@ -100,12 +100,12 @@ impl ScheduleCommandService {
 
         // 未実行の scheduled_tasks を削除
         recurring_task_repo
-            .delete_pending_tasks_by_schedule_id(txn, schedule_id)
+            .delete_pending_tasks_by_recruitment_schedule_id(txn, schedule_id)
             .await?;
 
         // scheduled_task_recurring_recruitments を削除
         recurring_task_repo
-            .delete_by_schedule_id(txn, schedule_id)
+            .delete_by_recruitment_schedule_id(txn, schedule_id)
             .await?;
 
         // 無効化
