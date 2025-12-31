@@ -19,7 +19,7 @@ rust_i18n::i18n!("locales");
 pub mod test_utils {
     use crate::infrastructure::database::connection::connection_manager::is_database_available;
     use crate::services::unified_datetime_parser::{
-        parse_datetime, DateTimeParseOptions, ParsedDateTime,
+        DateTimeParseOptions, ParsedDateTime, parse_datetime,
     };
     use chrono::{DateTime, Local, Timelike};
     use chrono_tz::Tz;

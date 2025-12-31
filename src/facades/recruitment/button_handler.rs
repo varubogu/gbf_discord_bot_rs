@@ -582,4 +582,3 @@ async fn send_decreased_notification(
 
     Ok(())
 }
-

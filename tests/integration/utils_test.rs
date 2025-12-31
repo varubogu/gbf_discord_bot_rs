@@ -30,6 +30,10 @@ async fn test_date_parser_integration() {
     // ローカルタイムゾーンがUTCの場合、JST 15:30 = UTC 06:30
     // ローカルタイムゾーンがJSTの場合、JST 15:30 = JST 15:30
     let hour = parsed_date.hour();
-    assert!(hour == 15 || hour == 6, "Expected hour to be 15 (JST) or 6 (UTC), got {}", hour);
+    assert!(
+        hour == 15 || hour == 6,
+        "Expected hour to be 15 (JST) or 6 (UTC), got {}",
+        hour
+    );
     assert_eq!(parsed_date.minute(), 30);
 }
