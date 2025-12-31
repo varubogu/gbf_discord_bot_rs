@@ -10,4 +10,7 @@ sudo apt-get upgrade -y
 echo "### Installing PostgreSQL client..."
 sudo apt-get install -y postgresql-client
 
+echo "### Installing sea-orm-cli..."
+cargo install sea-orm-cli@^2.0.0-rc
+
 echo "### Setup complete!"
