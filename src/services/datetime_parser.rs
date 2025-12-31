@@ -1,7 +1,8 @@
-use crate::types::Result;
 /// 日時パースサービス
 /// 様々な形式の日時文字列をDateTime<Utc>に変換する
 /// ユーザー入力はサーバー設定のタイムゾーンとして解釈し、UTCに変換する
+use crate::services::number_normalizer::normalize_numbers;
+use crate::types::Result;
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use lazy_static::lazy_static;
@@ -173,7 +174,9 @@ pub fn parse_event_date_with_components(
     date_str: &str,
     timezone: Tz,
 ) -> Result<ParsedDateTimeResult> {
-    let trimmed = date_str.trim();
+    // 全角数字・漢数字を半角数字に正規化
+    let normalized = normalize_numbers(date_str);
+    let trimmed = normalized.trim();
 
     // 1. 数字のみのパターンを試行（優先度高: 4桁、8桁、日+4桁）
     if let Ok(result) = parse_numeric_patterns_with_components(trimmed, timezone) {
@@ -859,5 +862,81 @@ mod tests {
             result.components.has_time, true,
             "時刻フラグが間違っています"
         );
+    }
+
+    #[test]
+    fn test_fullwidth_numbers() {
+        // 全角数字: "２８ １０００" → "28 1000"
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("２８ １０００", timezone).unwrap();
+        let now = Utc::now();
+        let result_jst = result.with_timezone(&timezone);
+
+        // 補正により未来になっている
+        assert!(result >= now, "補正が効いていません");
+        assert_eq!(result_jst.day(), 28);
+        assert_eq!(result_jst.hour(), 10);
+        assert_eq!(result_jst.minute(), 0);
+    }
+
+    #[test]
+    fn test_kanji_numbers() {
+        // 漢数字: "二十八 １０００" → "28 1000"
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("二十八 １０００", timezone).unwrap();
+        let now = Utc::now();
+        let result_jst = result.with_timezone(&timezone);
+
+        // 補正により未来になっている
+        assert!(result >= now, "補正が効いていません");
+        assert_eq!(result_jst.day(), 28);
+        assert_eq!(result_jst.hour(), 10);
+        assert_eq!(result_jst.minute(), 0);
+    }
+
+    #[test]
+    fn test_kanji_ten() {
+        // 漢数字「十」: "十 １２３０" → "10 1230"
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("十 １２３０", timezone).unwrap();
+        let now = Utc::now();
+        let result_jst = result.with_timezone(&timezone);
+
+        // 補正により未来になっている
+        assert!(result >= now, "補正が効いていません");
+        assert_eq!(result_jst.day(), 10);
+        assert_eq!(result_jst.hour(), 12);
+        assert_eq!(result_jst.minute(), 30);
+    }
+
+    #[test]
+    fn test_fullwidth_datetime() {
+        // 全角数字の日時形式: "１２/１１ １４:００" → "12/11 14:00"
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("１２/１１ １４:００", timezone).unwrap();
+        let now = Utc::now();
+        let result_jst = result.with_timezone(&timezone);
+
+        // 補正により未来になっている
+        assert!(result >= now, "補正が効いていません");
+        assert_eq!(result_jst.month(), 12);
+        assert_eq!(result_jst.day(), 11);
+        assert_eq!(result_jst.hour(), 14);
+        assert_eq!(result_jst.minute(), 0);
+    }
+
+    #[test]
+    fn test_mixed_numbers() {
+        // 混在: "二十 １０:００" → "20 10:00"
+        let timezone = chrono_tz::Asia::Tokyo;
+        let result = parse_event_date("二十 １０:００", timezone).unwrap();
+        let now = Utc::now();
+        let result_jst = result.with_timezone(&timezone);
+
+        // 補正により未来になっている
+        assert!(result >= now, "補正が効いていません");
+        assert_eq!(result_jst.day(), 20);
+        assert_eq!(result_jst.hour(), 10);
+        assert_eq!(result_jst.minute(), 0);
     }
 }

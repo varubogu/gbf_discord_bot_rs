@@ -2,6 +2,7 @@
 ///
 /// ビットフラグベースの柔軟な日時解析システム。
 /// 既存の複数のパーサー（datetime_parser, TimeParserService, DismissalTimeParserService）を統合。
+use crate::services::number_normalizer::normalize_numbers;
 use crate::types::Result;
 use chrono::{DateTime, NaiveTime, Utc};
 use chrono_tz::Tz;
@@ -326,73 +327,6 @@ fn parse_strict_hhmm(input: &str, _options: &DateTimeParseOptions) -> Result<Par
         .ok_or_else(|| format!("無効な時刻です: {input}"))?;
 
     Ok(ParsedDateTime::Time(naive_time))
-}
-
-/// 全角数字・漢数字を半角数字に正規化
-fn normalize_numbers(input: &str) -> String {
-    let mut result = String::new();
-    let chars: Vec<char> = input.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        let ch = chars[i];
-        match ch {
-            // 全角数字を半角に変換
-            '０' => result.push('0'),
-            '１' => result.push('1'),
-            '２' => result.push('2'),
-            '３' => result.push('3'),
-            '４' => result.push('4'),
-            '５' => result.push('5'),
-            '６' => result.push('6'),
-            '７' => result.push('7'),
-            '８' => result.push('8'),
-            '９' => result.push('9'),
-
-            // 漢数字を半角に変換（一桁のみ）
-            '〇' | '零' => result.push('0'),
-            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九' => {
-                let digit = match ch {
-                    '一' => '1',
-                    '二' => '2',
-                    '三' => '3',
-                    '四' => '4',
-                    '五' => '5',
-                    '六' => '6',
-                    '七' => '7',
-                    '八' => '8',
-                    '九' => '9',
-                    _ => unreachable!(),
-                };
-
-                // 次の文字が「十」かチェック
-                if i + 1 < chars.len() && chars[i + 1] == '十' {
-                    // 「X十」→「X0」（例: 二十→20）
-                    result.push(digit);
-                    result.push('0');
-                    i += 1; // 「十」をスキップ
-                } else {
-                    result.push(digit);
-                }
-            }
-
-            // 「十」の処理（単独の場合のみ10）
-            '十' => {
-                // 直前に数字がない場合は「十」→「10」
-                if result.is_empty() || !result.chars().last().unwrap().is_ascii_digit() {
-                    result.push_str("10");
-                }
-                // 直前に数字がある場合は既に処理済みなのでスキップ
-            }
-
-            // その他の文字はそのまま
-            _ => result.push(ch),
-        }
-
-        i += 1;
-    }
-
-    result
 }
 
 /// 相対時刻のパース
@@ -1091,21 +1025,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_normalize_numbers_function() {
-        // 全角数字
-        assert_eq!(normalize_numbers("１２３"), "123");
-        assert_eq!(normalize_numbers("０"), "0");
-
-        // 漢数字
-        assert_eq!(normalize_numbers("一二三"), "123");
-        assert_eq!(normalize_numbers("〇"), "0");
-        assert_eq!(normalize_numbers("十"), "10");
-        assert_eq!(normalize_numbers("二十"), "20"); // "二十" → "20"
-        assert_eq!(normalize_numbers("三十"), "30"); // "三十" → "30"
-
-        // 混在
-        assert_eq!(normalize_numbers("１日二時間３０分前"), "1日2時間30分前");
-        assert_eq!(normalize_numbers("一日二十分前"), "1日20分前");
-    }
 }

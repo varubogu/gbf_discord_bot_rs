@@ -4,6 +4,7 @@ pub mod environment;
 pub mod guild_environment_service;
 pub mod maintenance;
 pub mod message;
+pub mod number_normalizer;
 pub mod permission;
 pub mod quest;
 pub mod recruitment;
