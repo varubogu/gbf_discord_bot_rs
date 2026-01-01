@@ -172,12 +172,22 @@ impl RecruitmentScheduleFacade {
         }
     }
 
-    /// スケジュール削除（権限チェックは後続でPermissionServiceへ委譲）
+    /// スケジュール削除
+    ///
+    /// # 引数
+    /// - `guild_id`: ギルドID
+    /// - `schedule_id`: スケジュールID
+    /// - `user_id`: コマンド実行ユーザーID
+    /// - `is_admin`: 管理者権限の有無
+    ///
+    /// # 権限チェック
+    /// - 作成者本人または管理者のみが削除可能
     pub async fn delete_recruitment_schedule(
         &self,
         guild_id: i64,
         schedule_id: i32,
         user_id: i64,
+        is_admin: bool,
     ) -> Result<()> {
         let conn = self.app_state.guild_db();
         let txn = conn.begin().await?;
@@ -185,9 +195,23 @@ impl RecruitmentScheduleFacade {
         // RLSのためにセッション変数を設定
         set_current_guild_id(&txn, guild_id).await?;
 
-        let _ = user_id; // TODO: 権限チェック追加
-
         let result = async {
+            // 権限チェック：スケジュールの作成者を確認
+            use crate::repository::database::schedule::battle_recruitment_schedule_repository::BattleRecruitmentScheduleRepository;
+            let schedule_repo = BattleRecruitmentScheduleRepository::new();
+            let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
+
+            let schedule = schedule_opt.ok_or_else(|| AppError::Business {
+                message: format!("スケジュールID {} が見つかりません", schedule_id),
+            })?;
+
+            // 作成者本人でも管理者でもない場合はエラー
+            if schedule.0.created_by != user_id && !is_admin {
+                return Err(AppError::Business {
+                    message: "このスケジュールを削除する権限がありません。自分が作成したスケジュールのみ削除できます。".to_string(),
+                });
+            }
+
             // Service層に委譲
             let service = ScheduleCommandService::new();
             service.delete_schedule(&txn, schedule_id).await?;
@@ -198,23 +222,33 @@ impl RecruitmentScheduleFacade {
         match result {
             Ok(_) => {
                 txn.commit().await?;
-                info!(schedule_id, guild_id, "募集スケジュールを削除しました");
+                info!(schedule_id, guild_id, user_id, "募集スケジュールを削除しました");
                 Ok(())
             }
             Err(e) => {
-                error!(error = %e, schedule_id, guild_id, "募集スケジュールの削除に失敗しました");
+                error!(error = %e, schedule_id, guild_id, user_id, "募集スケジュールの削除に失敗しました");
                 txn.rollback().await?;
                 Err(e)
             }
         }
     }
 
-    /// スケジュールの有効/無効切替（現在値を読み取り反転）
+    /// スケジュールの有効/無効切替
+    ///
+    /// # 引数
+    /// - `guild_id`: ギルドID
+    /// - `schedule_id`: スケジュールID
+    /// - `user_id`: コマンド実行ユーザーID
+    /// - `is_admin`: 管理者権限の有無
+    ///
+    /// # 権限チェック
+    /// - 作成者本人または管理者のみが切り替え可能
     pub async fn toggle_recruitment_schedule(
         &self,
         guild_id: i64,
         schedule_id: i32,
         user_id: i64,
+        is_admin: bool,
     ) -> Result<()> {
         let conn = self.app_state.guild_db();
         let txn = conn.begin().await?;
@@ -222,9 +256,23 @@ impl RecruitmentScheduleFacade {
         // RLSのためにセッション変数を設定
         set_current_guild_id(&txn, guild_id).await?;
 
-        let _ = user_id; // TODO: 権限チェック追加
-
         let result = async {
+            // 権限チェック：スケジュールの作成者を確認
+            use crate::repository::database::schedule::battle_recruitment_schedule_repository::BattleRecruitmentScheduleRepository;
+            let schedule_repo = BattleRecruitmentScheduleRepository::new();
+            let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
+
+            let schedule = schedule_opt.ok_or_else(|| AppError::Business {
+                message: format!("スケジュールID {} が見つかりません", schedule_id),
+            })?;
+
+            // 作成者本人でも管理者でもない場合はエラー
+            if schedule.0.created_by != user_id && !is_admin {
+                return Err(AppError::Business {
+                    message: "このスケジュールを切り替える権限がありません。自分が作成したスケジュールのみ切り替えできます。".to_string(),
+                });
+            }
+
             let service = ScheduleCommandService::new();
 
             // 現在の状態を取得
@@ -248,12 +296,12 @@ impl RecruitmentScheduleFacade {
                 txn.commit().await?;
                 info!(
                     schedule_id,
-                    guild_id, "募集スケジュールの有効/無効を切り替えました"
+                    guild_id, user_id, "募集スケジュールの有効/無効を切り替えました"
                 );
                 Ok(())
             }
             Err(e) => {
-                error!(error = %e, schedule_id, guild_id, "募集スケジュールの切替に失敗しました");
+                error!(error = %e, schedule_id, guild_id, user_id, "募集スケジュールの切替に失敗しました");
                 txn.rollback().await?;
                 Err(e)
             }

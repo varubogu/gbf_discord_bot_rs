@@ -134,6 +134,11 @@ pub async fn recruitment_schedule_create(
 
             result_datetime.time()
         }
+        ParsedDateTime::Absolute(dt) => {
+            // 絶対日時の場合、タイムゾーンに変換して時刻部分を取得
+            dt.with_timezone(&timezone).time()
+        }
+        #[allow(unreachable_patterns)]
         _ => {
             return Err(crate::types::AppError::Business {
                 message: "募集開始時刻は時刻または相対時刻で指定してください".to_string(),

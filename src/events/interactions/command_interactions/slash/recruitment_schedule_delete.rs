@@ -1,6 +1,6 @@
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
 use crate::types::{PoiseContext, Result};
-use poise::serenity_prelude::CreateEmbed;
+use poise::serenity_prelude::{CreateEmbed, Permissions};
 use tracing::info;
 
 use super::autocomplete::recruitment_schedule_auto_complete;
@@ -42,6 +42,16 @@ pub async fn recruitment_schedule_delete(
 
     ctx.defer_ephemeral().await?;
 
+    // 管理者権限をチェック
+    let is_admin = if let Some(member) = ctx.author_member().await {
+        member
+            .permissions
+            .map(|p| p.contains(Permissions::ADMINISTRATOR))
+            .unwrap_or(false)
+    } else {
+        false
+    };
+
     let app_state = &ctx.data().app_state;
     let facade = RecruitmentScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
     facade
@@ -49,6 +59,7 @@ pub async fn recruitment_schedule_delete(
             guild_id.get() as i64,
             schedule_id as i32,
             user_id.get() as i64,
+            is_admin,
         )
         .await?;
 
