@@ -16,7 +16,7 @@ pub enum DiscordOperation {
         embed: Option<CreateEmbed>,
     },
     AddReaction {
-        message: Message,
+        message: Box<Message>,
         emoji: ReactionType,
     },
     DeleteMessage {
