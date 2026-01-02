@@ -61,5 +61,4 @@ async fn test_discord_connection() {
 
     println!("Discord connection test would go here");
     // For now, just pass the test
-    assert!(true);
 }

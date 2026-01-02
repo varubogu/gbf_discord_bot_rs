@@ -533,7 +533,7 @@ mod tests {
         let result = repo.get_by_target_id(&conn, 999999).await;
         match result {
             Ok(None) => {
-                assert!(true);
+                // クエストが見つからない場合は何もしない
             }
             Ok(Some(quest)) => {
                 println!("Found a quest for ID 999999: {}", quest.name);

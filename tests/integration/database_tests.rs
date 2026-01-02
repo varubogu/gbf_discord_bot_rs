@@ -12,5 +12,4 @@ fn test_database_integration() {
     // by using a test database or mocking the database
 
     println!("Database integration test placeholder");
-    assert!(true, "Database integration test passed");
 }

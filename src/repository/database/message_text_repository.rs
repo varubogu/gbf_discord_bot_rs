@@ -63,8 +63,7 @@ mod tests {
         let result = repo.get_by_id(&conn, "non_existent_message").await;
         match result {
             Ok(None) => {
-                // Expected result for a non-existent message
-                assert!(true);
+                // 存在しないメッセージに対する期待される結果
             }
             Ok(Some(message_text)) => {
                 println!(
