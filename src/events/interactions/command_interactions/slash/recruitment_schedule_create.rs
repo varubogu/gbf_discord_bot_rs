@@ -25,6 +25,7 @@ use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
         "指定した曜日と時刻に自動的にマルチ募集を投稿するスケジュールを作成します"
     )
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn recruitment_schedule_create(
     ctx: PoiseContext<'_>,
     #[name_localized("ja", "スケジュール名")]

@@ -18,6 +18,7 @@ use super::autocomplete::quest_auto_complete;
         "マルチバトル募集の通知ロールを削除します（gbf_bot_controlロール必須）"
     )
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn recruit_role_remove(
     ctx: PoiseContext<'_>,
 
