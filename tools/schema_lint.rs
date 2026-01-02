@@ -18,8 +18,7 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
 
     if !entities_dir.exists() {
         eprintln!(
-            "エラー: エンティティディレクトリが見つかりません: {:?}",
-            entities_dir
+            "エラー: エンティティディレクトリが見つかりません: {entities_dir:?}"
         );
         return schema_map;
     }
@@ -27,7 +26,7 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
     let entries = match fs::read_dir(entities_dir) {
         Ok(entries) => entries,
         Err(e) => {
-            eprintln!("エンティティディレクトリの読み取りに失敗: {}", e);
+            eprintln!("エンティティディレクトリの読み取りに失敗: {e}");
             return schema_map;
         }
     };
@@ -45,7 +44,7 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
         let content = match fs::read_to_string(&path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!("ファイル読み取りエラー {:?}: {}", path, e);
+                eprintln!("ファイル読み取りエラー {path:?}: {e}");
                 continue;
             }
         };
@@ -107,7 +106,7 @@ fn main() {
     for (table, schema) in &entity_schemas {
         schema_groups
             .entry(schema.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(table.clone());
     }
 
@@ -122,7 +121,7 @@ fn main() {
             let mut sorted_tables = tables.clone();
             sorted_tables.sort();
             for table in sorted_tables {
-                println!("   - {}", table);
+                println!("   - {table}");
             }
             println!();
         }
@@ -136,8 +135,7 @@ fn main() {
     for (table, schema) in &entity_schemas {
         if table.starts_with("notification_rel_") && schema != "worker" {
             eprintln!(
-                "❌ エラー: テーブル '{}' はworkerスキーマである必要がありますが、'{}' スキーマになっています",
-                table, schema
+                "❌ エラー: テーブル '{table}' はworkerスキーマである必要がありますが、'{schema}' スキーマになっています"
             );
             has_issues = true;
         }
@@ -152,8 +150,7 @@ fn main() {
         // 例外: ワーカー状態管理テーブル
         {
             eprintln!(
-                "❌ エラー: テーブル '{}' はguild_masterスキーマである必要がありますが、'{}' スキーマになっています",
-                table, schema
+                "❌ エラー: テーブル '{table}' はguild_masterスキーマである必要がありますが、'{schema}' スキーマになっています"
             );
             has_issues = true;
         }
@@ -163,8 +160,7 @@ fn main() {
     for (table, schema) in &entity_schemas {
         if table.starts_with("scheduled_task_") && schema != "worker" {
             eprintln!(
-                "❌ エラー: テーブル '{}' はworkerスキーマである必要がありますが、'{}' スキーマになっています",
-                table, schema
+                "❌ エラー: テーブル '{table}' はworkerスキーマである必要がありますが、'{schema}' スキーマになっています"
             );
             has_issues = true;
         }

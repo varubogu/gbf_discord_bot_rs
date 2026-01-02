@@ -4,6 +4,7 @@ use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
 /// スケジュールリポジトリ
+#[derive(Default)]
 pub struct ScheduleRepository;
 
 impl ScheduleRepository {
@@ -53,9 +54,9 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュール詳細を取得
-    pub async fn find_all_event_schedule_details<'c, C>(
+    pub async fn find_all_event_schedule_details<C>(
         &self,
-        db: &'c C,
+        db: &C,
     ) -> Result<Vec<event_schedule_details::Model>>
     where
         C: sea_orm::ConnectionTrait,
@@ -98,9 +99,9 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュールを取得
-    pub async fn find_all_event_schedules<'c, C>(
+    pub async fn find_all_event_schedules<C>(
         &self,
-        db: &'c C,
+        db: &C,
     ) -> Result<Vec<event_schedules::Model>>
     where
         C: sea_orm::ConnectionTrait,

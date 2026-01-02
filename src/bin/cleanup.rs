@@ -3,7 +3,6 @@ use std::{env, path::Path};
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
 use tracing::{error, info};
-use tracing_subscriber;
 
 /// データクリーンアップバッチのエントリーポイント
 ///

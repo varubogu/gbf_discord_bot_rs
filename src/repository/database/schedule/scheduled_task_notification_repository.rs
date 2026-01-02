@@ -12,6 +12,7 @@ pub struct NotificationWithTask {
 }
 
 /// 通知タスクリポジトリ
+#[derive(Default)]
 pub struct ScheduledTaskNotificationRepository;
 
 impl ScheduledTaskNotificationRepository {

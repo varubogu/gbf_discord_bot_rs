@@ -5,6 +5,7 @@ use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use uuid::Uuid;
 
 /// notification_rel_event_schedulesテーブルのRepository
+#[derive(Default)]
 pub struct NotificationRelEventScheduleRepository;
 
 impl NotificationRelEventScheduleRepository {

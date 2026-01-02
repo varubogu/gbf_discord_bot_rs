@@ -632,7 +632,7 @@ impl std::fmt::Display for ImportResult {
 
         // テーブル処理結果を1行ずつ表示
         if !self.table_results.is_empty() {
-            write!(f, "\n")?;
+            writeln!(f)?;
             for table_result in &self.table_results {
                 let (status_icon, status_text) = match table_result.status {
                     TableStatus::Success => ("✅", "成功"),

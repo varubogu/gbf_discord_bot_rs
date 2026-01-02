@@ -46,7 +46,7 @@ pub trait GuildSpreadsheetConfigRepositoryTrait: Send + Sync {
 }
 
 /// ギルドスプレッドシート設定リポジトリの実装
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GuildSpreadsheetConfigRepository;
 
 impl GuildSpreadsheetConfigRepository {

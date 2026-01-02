@@ -12,6 +12,7 @@ pub struct DismissalWithTask {
 }
 
 /// 解散タスクリポジトリ
+#[derive(Default)]
 pub struct ScheduledTaskDismissalRepository;
 
 impl ScheduledTaskDismissalRepository {

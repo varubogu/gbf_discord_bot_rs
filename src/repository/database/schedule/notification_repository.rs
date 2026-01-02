@@ -5,6 +5,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// 通知リポジトリ
+#[derive(Default)]
 pub struct NotificationRepository;
 
 impl NotificationRepository {
@@ -13,9 +14,9 @@ impl NotificationRepository {
     }
 
     /// 指定した日時範囲内の未送信通知を取得
-    pub async fn find_by_datetime_range<'c, C>(
+    pub async fn find_by_datetime_range<C>(
         &self,
-        db: &'c C,
+        db: &C,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<Vec<notifications::Model>>

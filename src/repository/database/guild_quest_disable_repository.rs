@@ -5,6 +5,7 @@ use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
+#[derive(Default)]
 pub struct SeaOrmGuildQuestDisableRepository;
 
 impl SeaOrmGuildQuestDisableRepository {

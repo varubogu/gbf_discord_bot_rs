@@ -76,7 +76,7 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     match facade.import_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
             // Display実装を使用してメッセージを生成
-            let message = format!("✅ グローバルスプレッドシート読み込み完了\n\n{}", result);
+            let message = format!("✅ グローバルスプレッドシート読み込み完了\n\n{result}");
 
             ctx.say(message).await?;
 

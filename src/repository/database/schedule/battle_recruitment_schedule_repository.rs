@@ -10,6 +10,7 @@ use sea_orm::{
 use tracing::{debug, error};
 
 /// マルチ募集スケジュールリポジトリ
+#[derive(Default)]
 pub struct BattleRecruitmentScheduleRepository;
 
 impl BattleRecruitmentScheduleRepository {
@@ -64,9 +65,9 @@ impl BattleRecruitmentScheduleRepository {
     }
 
     /// ギルドIDでスケジュール取得
-    pub async fn find_by_guild_id<'c, C>(
+    pub async fn find_by_guild_id<C>(
         &self,
-        db: &'c C,
+        db: &C,
         guild_id: i64,
     ) -> Result<
         Vec<(
@@ -108,9 +109,9 @@ impl BattleRecruitmentScheduleRepository {
     }
 
     /// 作成者IDでスケジュール取得
-    pub async fn find_by_created_by<'c, C>(
+    pub async fn find_by_created_by<C>(
         &self,
-        db: &'c C,
+        db: &C,
         created_by: i64,
     ) -> Result<
         Vec<(
@@ -152,9 +153,9 @@ impl BattleRecruitmentScheduleRepository {
     }
 
     /// IDでスケジュール取得
-    pub async fn find_by_id<'c, C>(
+    pub async fn find_by_id<C>(
         &self,
-        db: &'c C,
+        db: &C,
         id: i32,
     ) -> Result<
         Option<(

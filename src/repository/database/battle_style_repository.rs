@@ -23,6 +23,7 @@ pub trait BattleStyleRepository: Send + Sync {
 }
 
 /// SeaORMを使ったBattleStyleRepository実装
+#[derive(Default)]
 pub struct SeaOrmBattleStyleRepository;
 
 impl SeaOrmBattleStyleRepository {

@@ -9,6 +9,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// last_process_timesリポジトリ
+#[derive(Default)]
 pub struct LastProcessTimeRepository;
 
 impl LastProcessTimeRepository {
@@ -23,9 +24,9 @@ impl LastProcessTimeRepository {
     // }
 
     /// process_typeでlast_process_timeを取得
-    pub async fn find_by_type<'c, C>(
+    pub async fn find_by_type<C>(
         &self,
-        db: &'c C,
+        db: &C,
         process_type: LastProcessType,
     ) -> Result<Option<LastProcessTime>>
     where
@@ -49,9 +50,9 @@ impl LastProcessTimeRepository {
     // }
 
     /// スケジュール処理のlast_process_timeを取得
-    pub async fn find_schedule_last_process_time<'c, C>(
+    pub async fn find_schedule_last_process_time<C>(
         &self,
-        db: &'c C,
+        db: &C,
     ) -> Result<Option<LastProcessTime>>
     where
         C: sea_orm::ConnectionTrait,

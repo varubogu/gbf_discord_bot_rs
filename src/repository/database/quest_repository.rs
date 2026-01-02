@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct SeaOrmQuestRepository;
 
 impl SeaOrmQuestRepository {

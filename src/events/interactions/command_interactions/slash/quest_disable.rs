@@ -210,8 +210,7 @@ pub async fn quest_disable(
 
     if success_count > 0 {
         message_parts.push(format!(
-            "✅ {}件のクエストを無効化しました。\n新規募集時のオートコンプリートに表示されなくなります。",
-            success_count
+            "✅ {success_count}件のクエストを無効化しました。\n新規募集時のオートコンプリートに表示されなくなります。"
         ));
     }
 

@@ -12,6 +12,7 @@ pub struct RecurringRecruitmentWithTask {
 }
 
 /// 定期募集タスクリポジトリ
+#[derive(Default)]
 pub struct ScheduledTaskRecurringRecruitmentRepository;
 
 impl ScheduledTaskRecurringRecruitmentRepository {

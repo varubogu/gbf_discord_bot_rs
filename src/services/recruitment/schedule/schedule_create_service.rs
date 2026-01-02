@@ -385,8 +385,7 @@ impl ScheduleCreateService {
             if (search_from - now).num_days() > max_search_days {
                 return Err(AppError::Business {
                     message: format!(
-                        "次回実行日時が{}日以内に見つかりませんでした。スケジュール設定を確認してください。",
-                        max_search_days
+                        "次回実行日時が{max_search_days}日以内に見つかりませんでした。スケジュール設定を確認してください。"
                     ),
                 });
             }
@@ -445,7 +444,7 @@ impl ScheduleCreateService {
                         naive_time.second() as u8,
                     )
                     .map_err(|e| AppError::Business {
-                        message: format!("解散時刻の変換に失敗しました: {}", e),
+                        message: format!("解散時刻の変換に失敗しました: {e}"),
                     })?;
                     dismissal_repo
                         .create_absolute(txn, schedule_id, input_value, dismissal_time)

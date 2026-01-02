@@ -291,7 +291,7 @@ fn format_dismissal_time(
         } => {
             let local_datetime = datetime.with_timezone(timezone);
             let formatted_datetime = local_datetime.format(date_format).to_string();
-            format!("{} ({})", input_value, formatted_datetime)
+            format!("{input_value} ({formatted_datetime})")
         }
         ParsedDismissalTime::Relative {
             input_value,
@@ -306,7 +306,7 @@ fn format_dismissal_time(
             let dismissal_datetime = *departure_time - duration;
             let local_datetime = dismissal_datetime.with_timezone(timezone);
             let formatted_datetime = local_datetime.format(date_format).to_string();
-            format!("{} ({})", input_value, formatted_datetime)
+            format!("{input_value} ({formatted_datetime})")
         }
     }
 }

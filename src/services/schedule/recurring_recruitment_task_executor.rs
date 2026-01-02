@@ -250,8 +250,7 @@ impl RecurringRecruitmentTaskExecutor {
             if (search_from - now).num_days() > max_search_days {
                 return Err(AppError::Business {
                     message: format!(
-                        "次回実行日時が{}日以内に見つかりませんでした。スケジュール設定を確認してください。",
-                        max_search_days
+                        "次回実行日時が{max_search_days}日以内に見つかりませんでした。スケジュール設定を確認してください。"
                     ),
                 });
             }

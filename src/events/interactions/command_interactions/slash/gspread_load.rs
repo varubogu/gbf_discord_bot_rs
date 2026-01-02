@@ -128,7 +128,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     {
         Ok(result) => {
             // Display実装を使用してメッセージを生成
-            let message = format!("✅ ギルドスプレッドシート読み込み完了\n\n{}", result);
+            let message = format!("✅ ギルドスプレッドシート読み込み完了\n\n{result}");
 
             ctx.say(&message).await?;
 

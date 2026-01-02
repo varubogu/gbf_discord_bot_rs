@@ -138,7 +138,7 @@ impl ScheduledTaskRepository {
             .ok_or_else(|| {
                 error!(task_id, "タスクが見つかりません");
                 crate::types::AppError::Business {
-                    message: format!("タスクが見つかりません: {}", task_id),
+                    message: format!("タスクが見つかりません: {task_id}"),
                 }
             })?;
 

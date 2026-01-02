@@ -54,10 +54,10 @@ pub mod test_utils {
         let options = DateTimeParseOptions::for_quest_departure(timezone);
 
         let results = parse_datetime(trimmed_input, &options)
-            .map_err(|e| format!("Failed to parse date string '{}': {}", trimmed_input, e))?;
+            .map_err(|e| format!("Failed to parse date string '{trimmed_input}': {e}"))?;
 
         if results.is_empty() {
-            return Err(format!("No valid date parsed from '{}'", trimmed_input));
+            return Err(format!("No valid date parsed from '{trimmed_input}'"));
         }
 
         // 最初の結果を使用

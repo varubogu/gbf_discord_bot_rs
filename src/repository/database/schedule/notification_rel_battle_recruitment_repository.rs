@@ -4,6 +4,7 @@ use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 
 /// notification_rel_battle_recruitmentsテーブルのRepository
+#[derive(Default)]
 pub struct NotificationRelBattleRecruitmentRepository;
 
 impl NotificationRelBattleRecruitmentRepository {
@@ -12,9 +13,9 @@ impl NotificationRelBattleRecruitmentRepository {
     }
 
     /// 通知IDからマルチ募集との関連を取得
-    pub async fn find_by_notification_id<'c, C>(
+    pub async fn find_by_notification_id<C>(
         &self,
-        db: &'c C,
+        db: &C,
         notification_id: i32,
     ) -> Result<Option<notification_rel_battle_recruitments::Model>>
     where

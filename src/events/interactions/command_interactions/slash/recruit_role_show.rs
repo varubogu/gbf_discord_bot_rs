@@ -31,7 +31,7 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
     if !settings.all_recruitment_roles.is_empty() {
         message.push_str("**【すべての募集】**\n");
         for role_id in &settings.all_recruitment_roles {
-            message.push_str(&format!("• <@&{}>\n", role_id));
+            message.push_str(&format!("• <@&{role_id}>\n"));
         }
         message.push('\n');
     }
@@ -52,9 +52,9 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
                     .map(|s| s.as_str())
                     .unwrap_or("不明なクエスト");
 
-                message.push_str(&format!("**{}**\n", quest_name));
+                message.push_str(&format!("**{quest_name}**\n"));
                 for role_id in role_ids {
-                    message.push_str(&format!("• <@&{}>\n", role_id));
+                    message.push_str(&format!("• <@&{role_id}>\n"));
                 }
                 message.push('\n');
             }

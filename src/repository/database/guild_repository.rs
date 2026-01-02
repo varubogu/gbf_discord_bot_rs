@@ -4,6 +4,7 @@ use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guildsテーブルのRepository
+#[derive(Default)]
 pub struct GuildRepository;
 
 impl GuildRepository {

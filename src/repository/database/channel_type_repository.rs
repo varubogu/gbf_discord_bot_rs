@@ -4,6 +4,7 @@ use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
 /// channel_typesテーブルのRepository
+#[derive(Default)]
 pub struct ChannelTypeRepository;
 
 impl ChannelTypeRepository {
@@ -12,7 +13,7 @@ impl ChannelTypeRepository {
     }
 
     /// すべてのチャンネル種別を取得
-    pub async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<channel_types::Model>>
+    pub async fn get_all<C>(&self, db: &C) -> Result<Vec<channel_types::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -28,7 +29,7 @@ impl ChannelTypeRepository {
     }
 
     /// IDでチャンネル種別を取得
-    pub async fn get_by_id<'c, C>(&self, db: &'c C, id: i32) -> Result<Option<channel_types::Model>>
+    pub async fn get_by_id<C>(&self, db: &C, id: i32) -> Result<Option<channel_types::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {

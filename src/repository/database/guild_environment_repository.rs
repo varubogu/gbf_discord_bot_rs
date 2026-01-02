@@ -9,6 +9,7 @@ use sea_orm::{
 };
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct SeaOrmGuildEnvironmentRepository;
 
 impl SeaOrmGuildEnvironmentRepository {
@@ -87,7 +88,6 @@ impl GuildEnvironmentRepository for SeaOrmGuildEnvironmentRepository {
                 value: Set(value.to_string()),
                 created_at: Set(chrono::Utc::now()),
                 updated_at: Set(chrono::Utc::now()),
-                ..Default::default()
             };
 
             new_env.insert(txn).await?

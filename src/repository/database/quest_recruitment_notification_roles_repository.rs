@@ -4,6 +4,7 @@ use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryO
 use tracing::{debug, error, info};
 
 /// quest_recruitment_notification_rolesテーブルのRepository
+#[derive(Default)]
 pub struct QuestRecruitmentNotificationRolesRepository;
 
 impl QuestRecruitmentNotificationRolesRepository {

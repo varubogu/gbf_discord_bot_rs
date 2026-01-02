@@ -202,7 +202,7 @@ impl RecruitmentScheduleFacade {
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {
-                message: format!("スケジュールID {} が見つかりません", schedule_id),
+                message: format!("スケジュールID {schedule_id} が見つかりません"),
             })?;
 
             // 作成者本人でも管理者でもない場合はエラー
@@ -263,7 +263,7 @@ impl RecruitmentScheduleFacade {
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {
-                message: format!("スケジュールID {} が見つかりません", schedule_id),
+                message: format!("スケジュールID {schedule_id} が見つかりません"),
             })?;
 
             // 作成者本人でも管理者でもない場合はエラー

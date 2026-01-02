@@ -77,7 +77,7 @@ pub async fn recruitment_schedule_list(
         let dismissal_display = item
             .dismissal_times
             .as_ref()
-            .map(|d| format!("\n                解散: {}", d))
+            .map(|d| format!("\n                解散: {d}"))
             .unwrap_or_default();
 
         description.push_str(&format!(

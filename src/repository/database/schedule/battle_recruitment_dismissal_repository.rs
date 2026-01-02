@@ -5,6 +5,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// マルチ募集解散リポジトリ
+#[derive(Default)]
 pub struct BattleRecruitmentDismissalRepository;
 
 impl BattleRecruitmentDismissalRepository {
