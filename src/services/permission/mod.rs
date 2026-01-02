@@ -100,8 +100,7 @@ pub async fn check_bot_control_role(
     let roles = ctx
         .http()
         .get_guild_roles(guild_id)
-        .await
-        .map_err(crate::types::AppError::Discord)?;
+        .await?;
 
     let control_role = roles
         .iter()

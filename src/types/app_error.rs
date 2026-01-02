@@ -5,7 +5,7 @@ pub enum AppError {
     Database(#[from] sea_orm::DbErr),
 
     #[error("Discord API error: {0}")]
-    Discord(#[from] poise::serenity_prelude::Error),
+    Discord(Box<poise::serenity_prelude::Error>),
 
     #[error("Business logic error: {message}")]
     Business { message: String },
@@ -23,7 +23,19 @@ pub enum AppError {
     NotFound(String),
 
     #[error("Discord operation error: {0}")]
-    DiscordOperation(#[from] crate::types::DiscordOperationError),
+    DiscordOperation(Box<crate::types::DiscordOperationError>),
+}
+
+impl From<poise::serenity_prelude::Error> for AppError {
+    fn from(err: poise::serenity_prelude::Error) -> Self {
+        AppError::Discord(Box::new(err))
+    }
+}
+
+impl From<crate::types::DiscordOperationError> for AppError {
+    fn from(err: crate::types::DiscordOperationError) -> Self {
+        AppError::DiscordOperation(Box::new(err))
+    }
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {

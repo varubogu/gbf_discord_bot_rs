@@ -278,7 +278,7 @@ async fn main() -> Result<()> {
     // Start the bot
     if let Err(e) = client.start().await {
         error!("Error starting bot: {:?}", e);
-        return Err(AppError::Discord(e));
+        return Err(AppError::Discord(Box::new(e)));
     }
 
     Ok(())

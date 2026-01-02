@@ -176,7 +176,7 @@ pub async fn handle_recruitment_button(
                 )),
             )
             .await
-            .map_err(AppError::Discord)?;
+            ?;
 
         Ok(())
     }
@@ -276,7 +276,7 @@ async fn update_recruitment_message(
     let mut message = channel
         .message(&ctx.http, MessageId::new(message_id))
         .await
-        .map_err(AppError::Discord)?;
+        ?;
 
     // 既存のembedを取得（最初のembedを使用）
     let existing_embed = message.embeds.first().cloned();
@@ -311,7 +311,7 @@ async fn update_recruitment_message(
     message
         .edit(&ctx.http, EditMessage::new().embed(new_embed))
         .await
-        .map_err(AppError::Discord)?;
+        ?;
 
     info!("募集メッセージの参加者一覧を更新しました");
     Ok(())
@@ -549,7 +549,7 @@ async fn send_full_notification(
     channel
         .send_message(&ctx.http, message)
         .await
-        .map_err(AppError::Discord)?;
+        ?;
 
     Ok(())
 }
@@ -578,7 +578,7 @@ async fn send_decreased_notification(
     channel
         .send_message(&ctx.http, message)
         .await
-        .map_err(AppError::Discord)?;
+        ?;
 
     Ok(())
 }

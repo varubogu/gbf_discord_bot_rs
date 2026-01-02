@@ -247,7 +247,7 @@ impl DismissalTaskExecutor {
             .await
             .map_err(|e| {
                 error!(error = %e, "募集メッセージの編集に失敗しました");
-                AppError::Discord(e)
+                AppError::Discord(Box::new(e))
             })?;
 
         // 参加者リストを取得
@@ -307,7 +307,7 @@ impl DismissalTaskExecutor {
             .await
             .map_err(|e| {
                 error!(error = %e, "解散通知メッセージの送信に失敗しました");
-                AppError::Discord(e)
+                AppError::Discord(Box::new(e))
             })?;
 
         // 募集をキャンセル状態に更新

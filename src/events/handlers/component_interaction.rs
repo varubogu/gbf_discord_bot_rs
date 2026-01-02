@@ -47,7 +47,7 @@ pub async fn on_component_interaction(
         // 即座にdeferして処理時間を確保（DB操作があるため）
         interaction.defer_ephemeral(&ctx.http).await.map_err(|e| {
             error!(error = %e, "defer_ephemeralに失敗しました");
-            crate::types::AppError::Discord(e)
+            crate::types::AppError::Discord(Box::new(e))
         })?;
 
         info!(custom_id = %custom_id, "募集ボタンのクリックを検出");
