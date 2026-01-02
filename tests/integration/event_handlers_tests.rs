@@ -11,8 +11,7 @@ async fn test_database_environment_variables() {
     let (available, missing) = test_utils::check_database_availability();
     if !available {
         println!(
-            "Skipping event handler test: database connection info not set - missing: {:?}",
-            missing
+            "Skipping event handler test: database connection info not set - missing: {missing:?}"
         );
         return;
     }

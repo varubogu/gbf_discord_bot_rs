@@ -32,8 +32,7 @@ async fn test_date_parser_integration() {
     let hour = parsed_date.hour();
     assert!(
         hour == 15 || hour == 6,
-        "Expected hour to be 15 (JST) or 6 (UTC), got {}",
-        hour
+        "Expected hour to be 15 (JST) or 6 (UTC), got {hour}"
     );
     assert_eq!(parsed_date.minute(), 30);
 }

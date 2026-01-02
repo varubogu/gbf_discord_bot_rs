@@ -26,14 +26,14 @@ async fn test_bot_startup() {
     // Check if the process is still running
     let status = match child.try_wait() {
         Ok(Some(status)) => {
-            panic!("Bot process exited prematurely with status: {}", status);
+            panic!("Bot process exited prematurely with status: {status}");
         }
         Ok(None) => {
             println!("Bot started successfully and is still running");
             true
         }
         Err(e) => {
-            panic!("Error checking bot process status: {}", e);
+            panic!("Error checking bot process status: {e}");
         }
     };
 

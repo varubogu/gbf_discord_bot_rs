@@ -15,7 +15,7 @@ fn test_component_id_parse_join() {
 #[test]
 fn test_component_id_parse_join_element() {
     for i in 1..=6 {
-        let custom_id = format!("recruit_join_{}", i);
+        let custom_id = format!("recruit_join_{i}");
         let result = RecruitmentComponentId::parse(&custom_id);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), RecruitmentComponentId::JoinElement(i));
