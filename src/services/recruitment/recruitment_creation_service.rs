@@ -250,12 +250,14 @@ impl RecruitmentCreationService {
         let recruitment = battle_recruitment_repo
             .create_with_txn(
                 txn,
-                calculated_time.guild_id as u64,
-                recruitment_channel_id as u64,
-                message_id,
-                quest.id,
-                calculated_time.battle_style_id,
-                calculated_time.quest_start_at,
+                crate::repository::CreateBattleRecruitmentParams {
+                    guild_id: calculated_time.guild_id as u64,
+                    channel_id: recruitment_channel_id as u64,
+                    message_id,
+                    quest_id: quest.id,
+                    battle_style_id: calculated_time.battle_style_id,
+                    quest_start_at: calculated_time.quest_start_at,
+                },
             )
             .await?;
 

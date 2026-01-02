@@ -30,18 +30,23 @@ pub struct RecruitmentData {
     pub element_emojis: ElementEmojis,
 }
 
+/// 募集作成パラメータ
+pub struct RecruitmentParams<'a> {
+    pub quest_name_or_alias: &'a str,
+    pub battle_style_id: Option<i32>,
+    pub channel_id: u64,
+    pub guild_id: u64,
+    pub event_date: Option<DateTime<Utc>>,
+    pub timezone: chrono_tz::Tz,
+}
+
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
 pub async fn create_recruitment_data<'c, C, Q, B>(
     db: &'c C,
     quest_repository: &Q,
     battle_style_repository: &B,
     element_emojis: &ElementEmojis,
-    quest_name_or_alias: &str,
-    battle_style_id: Option<i32>,
-    channel_id: u64,
-    guild_id: u64,
-    event_date: Option<DateTime<Utc>>,
-    timezone: chrono_tz::Tz,
+    params: RecruitmentParams<'_>,
 ) -> types::Result<RecruitmentData>
 where
     C: sea_orm::ConnectionTrait,
@@ -50,13 +55,14 @@ where
 {
     // クエスト名またはエイリアスで検索
     let search_results = quest_repository
-        .search_by_name_or_alias(db, quest_name_or_alias)
+        .search_by_name_or_alias(db, params.quest_name_or_alias)
         .await?;
 
     // 最初にマッチしたクエストを使用
     let quest_search_result = search_results.first().ok_or_else(|| {
         types::AppError::NotFound(format!(
-            "クエスト '{quest_name_or_alias}' が見つかりませんでした"
+            "クエスト '{}' が見つかりませんでした",
+            params.quest_name_or_alias
         ))
     })?;
 
@@ -72,10 +78,14 @@ where
         })?;
 
     // イベント日時の決定（既にUTCで受け取っている）
-    let expiry_date = event_date.unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::days(7));
+    let expiry_date = params
+        .event_date
+        .unwrap_or_else(|| chrono::Utc::now() + chrono::Duration::days(7));
 
     // battle_style_idの決定：パラメータで指定されていればそれを使用、未指定ならquestのdefault_battle_style_idを使用
-    let actual_battle_style_id = battle_style_id.unwrap_or(quest.default_battle_style_id);
+    let actual_battle_style_id = params
+        .battle_style_id
+        .unwrap_or(quest.default_battle_style_id);
 
     // battle_stylesテーブルから攻略方法の詳細を取得
     let battle_style = battle_style_repository
@@ -105,22 +115,22 @@ where
         &quest.name,
         &battle_style.display_name,
         &expiry_date,
-        timezone,
-        Some(guild_id as i64),
+        params.timezone,
+        Some(params.guild_id as i64),
         None,
     )
     .await?;
 
     // 初期参加者一覧を作成
     let initial_participants_text =
-        create_initial_participants_text(db, &reactions, Some(guild_id as i64)).await?;
+        create_initial_participants_text(db, &reactions, Some(params.guild_id as i64)).await?;
 
     Ok(RecruitmentData {
         quest,
         battle_style_id: actual_battle_style_id,
         battle_style_name: battle_style.display_name,
-        channel_id,
-        guild_id,
+        channel_id: params.channel_id,
+        guild_id: params.guild_id,
         expiry_date,
         message_content,
         embed: poise::serenity_prelude::CreateEmbed::new()
@@ -174,12 +184,14 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     let recruitment = battle_recruitment_repo
         .create_with_txn(
             txn,
-            recruitment_data.guild_id,
-            recruitment_data.channel_id,
-            message_id,
-            recruitment_data.quest.id,
-            recruitment_data.battle_style_id,
-            recruitment_data.expiry_date,
+            crate::repository::CreateBattleRecruitmentParams {
+                guild_id: recruitment_data.guild_id,
+                channel_id: recruitment_data.channel_id,
+                message_id,
+                quest_id: recruitment_data.quest.id,
+                battle_style_id: recruitment_data.battle_style_id,
+                quest_start_at: recruitment_data.expiry_date,
+            },
         )
         .await?;
 
@@ -486,12 +498,7 @@ pub async fn send_recruitment_message_with_buttons(
 pub async fn create_recruitment_data_with_repos<'c, C>(
     db: &'c C,
     element_emojis: &ElementEmojis,
-    quest_name_or_alias: &str,
-    battle_style_id: Option<i32>,
-    channel_id: u64,
-    guild_id: u64,
-    event_date: Option<DateTime<Utc>>,
-    timezone: chrono_tz::Tz,
+    params: RecruitmentParams<'_>,
 ) -> types::Result<RecruitmentData>
 where
     C: sea_orm::ConnectionTrait,
@@ -507,12 +514,7 @@ where
         &quest_repository,
         &battle_style_repository,
         element_emojis,
-        quest_name_or_alias,
-        battle_style_id,
-        channel_id,
-        guild_id,
-        event_date,
-        timezone,
+        params,
     )
     .await
 }

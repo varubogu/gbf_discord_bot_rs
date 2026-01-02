@@ -32,20 +32,15 @@ impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
     async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        quest_id: i32,
-        battle_style_id: i32,
-        quest_start_at: DateTime<Utc>,
+        params: crate::repository::CreateBattleRecruitmentParams,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
-        active_model.guild_id = Set(guild_id as i64); // u64 → i64に変換
-        active_model.channel_id = Set(channel_id as i64); // u64 → i64に変換
-        active_model.message_id = Set(message_id as i64); // u64 → i64に変換
-        active_model.quest_id = Set(quest_id);
-        active_model.battle_style_id = Set(battle_style_id);
-        active_model.quest_start_at = Set(quest_start_at);
+        active_model.guild_id = Set(params.guild_id as i64); // u64 → i64に変換
+        active_model.channel_id = Set(params.channel_id as i64); // u64 → i64に変換
+        active_model.message_id = Set(params.message_id as i64); // u64 → i64に変換
+        active_model.quest_id = Set(params.quest_id);
+        active_model.battle_style_id = Set(params.battle_style_id);
+        active_model.quest_start_at = Set(params.quest_start_at);
 
         let result = active_model.insert(txn).await.map_err(AppError::Database)?;
 

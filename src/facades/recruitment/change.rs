@@ -148,12 +148,14 @@ pub async fn change_recruitment_information_internal(
         let recruitment_data = new::create_recruitment_data_with_repos(
             db,
             &element_emojis,
-            &quest.name,
-            Some(new_battle_style_id),
-            channel_id,
-            guild_id,
-            Some(new_expiry_date),
-            timezone,
+            new::RecruitmentParams {
+                quest_name_or_alias: &quest.name,
+                battle_style_id: Some(new_battle_style_id),
+                channel_id,
+                guild_id,
+                event_date: Some(new_expiry_date),
+                timezone,
+            },
         )
         .await?;
 

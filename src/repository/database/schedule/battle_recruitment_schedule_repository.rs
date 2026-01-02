@@ -9,6 +9,22 @@ use sea_orm::{
 };
 use tracing::{debug, error};
 
+/// スケジュール作成パラメータ
+pub struct CreateScheduleParams {
+    pub name: String,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub quest_id: i32,
+    pub battle_style_id: i32,
+    pub quest_start_time: TimeTime,
+    pub recruit_start_day_offset: i32,
+    pub recruit_start_time: Option<TimeTime>,
+    pub max_participants: Option<i32>,
+    pub note: Option<String>,
+    pub created_by: i64,
+    pub day_of_weeks: Vec<i32>,
+}
+
 /// マルチ募集スケジュールリポジトリ
 #[derive(Default)]
 pub struct BattleRecruitmentScheduleRepository;
@@ -198,27 +214,16 @@ impl BattleRecruitmentScheduleRepository {
     pub async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
-        name: String,
-        guild_id: i64,
-        channel_id: i64,
-        quest_id: i32,
-        battle_style_id: i32,
-        quest_start_time: TimeTime,
-        recruit_start_day_offset: i32,
-        recruit_start_time: Option<TimeTime>,
-        max_participants: Option<i32>,
-        note: Option<String>,
-        created_by: i64,
-        day_of_weeks: Vec<i32>,
+        params: CreateScheduleParams,
     ) -> Result<(
         battle_recruitment_schedules::Model,
         Vec<battle_recruitment_schedule_days::Model>,
     )> {
         debug!(
-            name = %name,
-            guild_id = %guild_id,
-            channel_id = %channel_id,
-            quest_id = %quest_id,
+            name = %params.name,
+            guild_id = %params.guild_id,
+            channel_id = %params.channel_id,
+            quest_id = %params.quest_id,
             "スケジュールを作成します"
         );
 
@@ -227,18 +232,18 @@ impl BattleRecruitmentScheduleRepository {
         // スケジュールを作成
         let schedule_active_model = battle_recruitment_schedules::ActiveModel {
             id: sea_orm::NotSet,
-            name: Set(name),
-            guild_id: Set(guild_id),
-            channel_id: Set(channel_id),
-            quest_id: Set(quest_id),
-            battle_style_id: Set(battle_style_id),
-            quest_start_time: Set(quest_start_time),
-            recruit_start_day_offset: Set(recruit_start_day_offset),
-            recruit_start_time: Set(recruit_start_time),
-            max_participants: Set(max_participants),
-            note: Set(note),
+            name: Set(params.name),
+            guild_id: Set(params.guild_id),
+            channel_id: Set(params.channel_id),
+            quest_id: Set(params.quest_id),
+            battle_style_id: Set(params.battle_style_id),
+            quest_start_time: Set(params.quest_start_time),
+            recruit_start_day_offset: Set(params.recruit_start_day_offset),
+            recruit_start_time: Set(params.recruit_start_time),
+            max_participants: Set(params.max_participants),
+            note: Set(params.note),
             is_enabled: Set(true),
-            created_by: Set(created_by),
+            created_by: Set(params.created_by),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -252,7 +257,7 @@ impl BattleRecruitmentScheduleRepository {
 
         // 曜日情報を作成
         let mut days = Vec::new();
-        for day_of_week in day_of_weeks {
+        for day_of_week in params.day_of_weeks {
             let day_active_model = battle_recruitment_schedule_days::ActiveModel {
                 id: sea_orm::NotSet,
                 schedule_id: Set(schedule.id),

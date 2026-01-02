@@ -10,7 +10,9 @@ pub mod quests_repository;
 pub mod recruitment_participants_repository;
 
 // 抽象インターフェースをre-export
-pub use battle_recruitments_repository::BattleRecruitmentsRepository;
+pub use battle_recruitments_repository::{
+    BattleRecruitmentsRepository, CreateBattleRecruitmentParams,
+};
 pub use guild_environments_repository::GuildEnvironmentRepository;
 pub use guild_message_texts_repository::GuildMessageTextRepository;
 pub use guild_quest_disable_repository::GuildQuestDisableRepository;

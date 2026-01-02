@@ -182,18 +182,20 @@ impl ScheduleCreateService {
         let (schedule, days) = schedule_repo
             .create_with_txn(
                 txn,
-                name.clone(),
-                guild_id,
-                channel_id,
-                quest_id,
-                final_battle_style_id,
-                quest_start_time_utc,
-                recruit_day_offset,
-                Some(recruit_start_time_utc),
-                None, // max_participants はクエストごとの設定を使用
-                note.clone(),
-                user_id,
-                utc_quest_days.clone(),
+                crate::repository::database::schedule::battle_recruitment_schedule_repository::CreateScheduleParams {
+                    name: name.clone(),
+                    guild_id,
+                    channel_id,
+                    quest_id,
+                    battle_style_id: final_battle_style_id,
+                    quest_start_time: quest_start_time_utc,
+                    recruit_start_day_offset: recruit_day_offset,
+                    recruit_start_time: Some(recruit_start_time_utc),
+                    max_participants: None, // max_participants はクエストごとの設定を使用
+                    note: note.clone(),
+                    created_by: user_id,
+                    day_of_weeks: utc_quest_days.clone(),
+                },
             )
             .await?;
 

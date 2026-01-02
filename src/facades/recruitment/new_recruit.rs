@@ -62,17 +62,19 @@ pub async fn new_recruitment(
         let element_emojis = guild_env_service.get_element_emojis(conn, ctx.http(), guild_id as i64).await?;
 
         // 1. 募集データ作成（Serviceラッパー関数を使用）
-        let mut recruitment_data =
-            new::create_recruitment_data_with_repos(
-                conn,
-                &element_emojis,
-                quest_alias,
+        let mut recruitment_data = new::create_recruitment_data_with_repos(
+            conn,
+            &element_emojis,
+            new::RecruitmentParams {
+                quest_name_or_alias: quest_alias,
                 battle_style_id,
                 channel_id,
                 guild_id,
                 event_date,
                 timezone,
-            ).await?;
+            },
+        )
+        .await?;
 
         // 1.5. ロールメンションを取得してメッセージの先頭に追加
         let role_service = RoleNotificationService::new();

@@ -4,6 +4,16 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::MessageId;
 
+/// バトル募集作成パラメータ
+pub struct CreateBattleRecruitmentParams {
+    pub guild_id: u64,
+    pub channel_id: u64,
+    pub message_id: u64,
+    pub quest_id: i32,
+    pub battle_style_id: i32,
+    pub quest_start_at: DateTime<Utc>,
+}
+
 /// バトル募集リポジトリの抽象インターフェース
 /// データベースアクセスの詳細を隠蔽し、「データを保存する何か」への依存のみ提供
 #[async_trait]
@@ -12,12 +22,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     async fn create_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
-        quest_id: i32,
-        battle_style_id: i32,
-        quest_start_at: DateTime<Utc>,
+        params: CreateBattleRecruitmentParams,
     ) -> Result<BattleRecruitments>;
 
     /// メッセージIDで募集を取得
