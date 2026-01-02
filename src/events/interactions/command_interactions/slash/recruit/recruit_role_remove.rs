@@ -6,20 +6,20 @@ use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Role;
 use std::collections::HashMap;
 
-use super::autocomplete::quest_auto_complete;
+use super::super::autocomplete::quest_auto_complete;
 
 #[poise::command(
     slash_command,
-    name_localized("ja", "募集ロール追加"),
+    name_localized("ja", "募集ロール削除"),
     check = "check_bot_control_role",
     ephemeral = true,
     description_localized(
         "ja",
-        "マルチバトル募集の通知ロールを追加します（gbf_bot_controlロール必須）"
+        "マルチバトル募集の通知ロールを削除します（gbf_bot_controlロール必須）"
     )
 )]
 #[allow(clippy::too_many_arguments)]
-pub async fn recruit_role_add(
+pub async fn recruit_role_remove(
     ctx: PoiseContext<'_>,
 
     #[autocomplete = "quest_auto_complete"]
@@ -82,21 +82,21 @@ pub async fn recruit_role_add(
     }
 
     // Facadeを呼び出し
-    let added_count =
-        role_management::add_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
+    let deleted_count =
+        role_management::remove_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
 
     // 結果をユーザーに通知
     let mut params = HashMap::new();
-    params.insert("count".to_string(), added_count.to_string());
+    params.insert("count".to_string(), deleted_count.to_string());
 
     let message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        MessageTextId::RecruitmentRoleAddSuccess,
+        MessageTextId::RecruitmentRoleRemoveSuccess,
         params,
     )
     .await
-    .unwrap_or_else(|_| format!("{added_count}個のロールを募集通知ロールとして登録しました。"));
+    .unwrap_or_else(|_| format!("{deleted_count}個のロールを募集通知ロールから削除しました。"));
 
     ctx.say(&message).await?;
 

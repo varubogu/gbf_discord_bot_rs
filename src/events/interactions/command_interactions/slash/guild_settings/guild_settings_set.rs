@@ -6,7 +6,7 @@ use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::autocomplete::{locale_auto_complete, timezone_auto_complete};
+use super::super::autocomplete::{locale_auto_complete, timezone_auto_complete};
 
 #[poise::command(
     slash_command,

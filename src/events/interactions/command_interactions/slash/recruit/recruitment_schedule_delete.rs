@@ -3,26 +3,26 @@ use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, Permissions};
 use tracing::info;
 
-use super::autocomplete::recruitment_schedule_auto_complete;
+use super::super::autocomplete::recruitment_schedule_auto_complete;
 
-/// マルチ募集スケジュールの有効/無効を切り替え
+/// マルチ募集スケジュールを削除
 ///
-/// 指定したIDのマルチ募集スケジュールの有効/無効を切り替えます。
-/// 自分が作成したスケジュールのみ切り替え可能です（管理者は全スケジュール切り替え可能）。
+/// 指定したIDのマルチ募集スケジュールを削除します。
+/// 自分が作成したスケジュールのみ削除可能です（管理者は全スケジュール削除可能）。
 #[poise::command(
     slash_command,
-    rename = "recruitment-schedule-toggle",
+    rename = "recruitment-schedule-delete",
     guild_only,
     ephemeral = true,
-    name_localized("ja", "定期募集切り替え"),
-    description_localized("ja", "指定したIDのマルチ募集スケジュールの有効/無効を切り替えます")
+    name_localized("ja", "定期募集削除"),
+    description_localized("ja", "指定したIDのマルチ募集スケジュールを削除します")
 )]
-pub async fn recruitment_schedule_toggle(
+pub async fn recruitment_schedule_delete(
     ctx: PoiseContext<'_>,
     #[autocomplete = "recruitment_schedule_auto_complete"]
     #[name_localized("ja", "スケジュール番号")]
     #[description = "Schedule ID"]
-    #[description_localized("ja", "切り替えるスケジュールのID")]
+    #[description_localized("ja", "削除するスケジュールのID")]
     schedule_id: i64,
 ) -> Result<()> {
     let guild_id = ctx
@@ -37,7 +37,7 @@ pub async fn recruitment_schedule_toggle(
         guild_id = guild_id.get(),
         user_id = user_id.get(),
         schedule_id = schedule_id,
-        "定期募集切り替えコマンドが実行されました"
+        "定期募集削除コマンドが実行されました"
     );
 
     ctx.defer_ephemeral().await?;
@@ -55,7 +55,7 @@ pub async fn recruitment_schedule_toggle(
     let app_state = &ctx.data().app_state;
     let facade = RecruitmentScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
     facade
-        .toggle_recruitment_schedule(
+        .delete_recruitment_schedule(
             guild_id.get() as i64,
             schedule_id as i32,
             user_id.get() as i64,
@@ -63,17 +63,19 @@ pub async fn recruitment_schedule_toggle(
         )
         .await?;
 
-    // 表示のみ（UI責務）
     info!(
         schedule_id = schedule_id,
         guild_id = guild_id.get(),
-        "定期募集スケジュールの有効/無効を切り替えました"
+        "定期募集スケジュールを削除しました"
     );
 
     let embed = CreateEmbed::default()
-        .title("🔄 定期募集スケジュールの有効/無効を切り替えました")
-        .description(format!("**スケジュールID**: {schedule_id}"))
-        .color(0x00aaff);
+        .title("✅ 定期募集スケジュールを削除しました")
+        .description(format!(
+            "**スケジュールID**: {schedule_id}\n\n\
+             このスケジュールは削除され、今後自動投稿されなくなります。"
+        ))
+        .color(0xff0000);
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;

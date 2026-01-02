@@ -8,7 +8,7 @@ use crate::utils::discord_helper;
 use poise::serenity_prelude::all::MessageId;
 use std::sync::Arc;
 
-use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
+use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
     slash_command,

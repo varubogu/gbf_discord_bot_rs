@@ -9,7 +9,7 @@ use poise::serenity_prelude::CreateEmbed;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
+use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 /// マルチ募集スケジュールを作成
 ///

@@ -6,7 +6,7 @@ use crate::services::unified_datetime_parser::{
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
 
-use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
+use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
     slash_command,

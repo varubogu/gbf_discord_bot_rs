@@ -10,7 +10,7 @@ use poise::serenity_prelude::Message;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
+use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
     // context_menu_command = "recruit_change",
