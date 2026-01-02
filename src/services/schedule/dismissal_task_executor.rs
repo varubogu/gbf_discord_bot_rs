@@ -218,11 +218,11 @@ impl DismissalTaskExecutor {
         let original_content = original_message.content.clone();
 
         // キャンセル済みメッセージを作成
-        let guild_id = Some(
-            task.guild_id
-                .unwrap_or_else(|| recruitment.guild_id.try_into().unwrap()),
-        );
-        let locale = self.get_guild_locale(txn, guild_id.unwrap()).await?;
+        let guild_id_value = task
+            .guild_id
+            .unwrap_or_else(|| recruitment.guild_id.try_into().unwrap());
+        let guild_id = Some(guild_id_value);
+        let locale = self.get_guild_locale(txn, guild_id_value).await?;
         let cancelled_suffix = self
             .message_service
             .get_message(

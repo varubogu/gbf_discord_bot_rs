@@ -5,6 +5,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use crate::errors::BusinessRuleError;
 
@@ -34,9 +35,10 @@ pub enum TableIO {
     Both,
 }
 
-impl TableIO {
-    /// 文字列から変換
-    pub fn from_str(s: &str) -> Result<Self, BusinessRuleError> {
+impl FromStr for TableIO {
+    type Err = BusinessRuleError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "in" => Ok(TableIO::In),
             "out" => Ok(TableIO::Out),
@@ -47,6 +49,9 @@ impl TableIO {
             }),
         }
     }
+}
+
+impl TableIO {
 
     /// 読み込み可能か
     pub fn can_import(&self) -> bool {
@@ -70,9 +75,10 @@ pub enum TableType {
     History,
 }
 
-impl TableType {
-    /// 文字列から変換
-    pub fn from_str(s: &str) -> Result<Self, BusinessRuleError> {
+impl FromStr for TableType {
+    type Err = BusinessRuleError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "reference" => Ok(TableType::Reference),
             "transaction" => Ok(TableType::Transaction),

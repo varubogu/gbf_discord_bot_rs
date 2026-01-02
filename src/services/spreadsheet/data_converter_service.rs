@@ -16,6 +16,7 @@ pub trait DataConverterServiceTrait: Send + Sync {
     fn to_spreadsheet_string(&self, value: &PostgresValue) -> Result<String, ValidationError>;
 
     /// スプレッドシート文字列をPostgreSQL値に変換
+    #[allow(clippy::wrong_self_convention)]
     fn from_spreadsheet_string(
         &self,
         value: &str,

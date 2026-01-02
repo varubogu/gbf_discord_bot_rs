@@ -481,11 +481,12 @@ fn parse_japanese_datetime(s: &str, timezone: Tz) -> Result<DateTime<Utc>> {
     Err("日本語形式のパースに失敗".to_string().into())
 }
 
-/// 数字のみのパターンをパース
+/// 数字パターンのパース（メタデータ付き）
+///
+/// 数字のみのパターンをパース:
 /// - 4桁: "1230" → 12時30分（当日、過ぎていたら翌日）
 /// - 8桁: "10111230" → 10月11日12時30分
 /// - 日+時刻: "30 1230" → 30日12時30分、"30 2:15" → 30日2時15分
-/// 数字パターンのパース（メタデータ付き）
 fn parse_numeric_patterns_with_components(s: &str, timezone: Tz) -> Result<ParsedDateTimeResult> {
     let now_tz = Utc::now().with_timezone(&timezone);
 
