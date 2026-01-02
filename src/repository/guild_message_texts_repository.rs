@@ -95,8 +95,7 @@ mod tests {
 
         match result {
             Ok(None) => {
-                // 期待される結果
-                assert!(true);
+                // 期待される結果（何もしない）
             }
             Ok(Some(message)) => {
                 println!("Found guild message: {}", message.message_jp);
