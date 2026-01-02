@@ -41,8 +41,8 @@ pub struct RecruitmentParams<'a> {
 }
 
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
-pub async fn create_recruitment_data<'c, C, Q, B>(
-    db: &'c C,
+pub async fn create_recruitment_data<C, Q, B>(
+    db: &C,
     quest_repository: &Q,
     battle_style_repository: &B,
     element_emojis: &ElementEmojis,
@@ -495,8 +495,8 @@ pub async fn send_recruitment_message_with_buttons(
 
 /// 募集データを作成する（Repository直接アクセス版）
 /// Facade層から呼び出すためのラッパー関数
-pub async fn create_recruitment_data_with_repos<'c, C>(
-    db: &'c C,
+pub async fn create_recruitment_data_with_repos<C>(
+    db: &C,
     element_emojis: &ElementEmojis,
     params: RecruitmentParams<'_>,
 ) -> types::Result<RecruitmentData>

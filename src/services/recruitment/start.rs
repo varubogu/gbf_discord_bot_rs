@@ -43,9 +43,9 @@ impl StartRecruitmentService {
     }
 
     /// DBから募集情報を取得
-    pub async fn get_recruitment_from_db<'c, C>(
+    pub async fn get_recruitment_from_db<C>(
         &self,
-        db: &'c C,
+        db: &C,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
@@ -188,9 +188,9 @@ impl StartRecruitmentService {
     /// 募集を開始済み状態に更新
     /// 注意: 現在のBattleRecruitmentRepositoryトレイトには開始済み状態更新メソッドがないため、
     /// set_end_messageを使用して終了メッセージIDを設定することで開始状態を表現します。
-    pub async fn mark_recruitment_as_started<'c, C>(
+    pub async fn mark_recruitment_as_started<C>(
         &self,
-        db: &'c C,
+        db: &C,
         recruitment_id: i64,
         end_message_id: u64,
     ) -> Result<()>

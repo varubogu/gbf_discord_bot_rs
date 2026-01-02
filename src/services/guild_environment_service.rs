@@ -90,9 +90,9 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
     /// - 環境変数が存在しない場合: デフォルト値を使用
     /// - 絵文字が不正な形式の場合: デフォルト値を使用してログ警告
     /// - カスタム絵文字がサーバーに存在しない場合: デフォルト値を使用してログ警告
-    pub async fn get_element_emojis<'c, C>(
+    pub async fn get_element_emojis<C>(
         &self,
-        db: &'c C,
+        db: &C,
         http: &Http,
         guild_id: i64,
     ) -> crate::types::Result<ElementEmojis>

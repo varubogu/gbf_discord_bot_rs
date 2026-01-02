@@ -24,9 +24,9 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
 
     /// クエスト名またはエイリアスで部分一致検索を行い、結果を返す
     /// Discord autocompleteの制限に合わせて最大25件まで返す
-    pub async fn search_for_autocomplete<'c, C>(
+    pub async fn search_for_autocomplete<C>(
         &self,
-        db: &'c C,
+        db: &C,
         partial: &str,
     ) -> Result<Vec<QuestAutocompleteItem>>
     where
@@ -63,9 +63,9 @@ impl<'a, R: QuestRepository> QuestSearchService<'a, R> {
     /// ギルド用のクエスト名またはエイリアスで部分一致検索を行い、結果を返す
     /// Discord autocompleteの制限に合わせて最大25件まで返す
     /// 空文字の場合はguild_questsで有効なクエストのみ、1文字以上の場合は全件対象
-    pub async fn search_for_autocomplete_for_guild<'c, C>(
+    pub async fn search_for_autocomplete_for_guild<C>(
         &self,
-        db: &'c C,
+        db: &C,
         guild_id: i64,
         partial: &str,
     ) -> Result<Vec<QuestAutocompleteItem>>

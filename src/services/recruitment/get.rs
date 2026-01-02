@@ -19,9 +19,9 @@ impl GetRecruitmentService {
     }
 
     /// メッセージIDから募集情報を取得する
-    pub async fn get_by_message<'c, C>(
+    pub async fn get_by_message<C>(
         &self,
-        db: &'c C,
+        db: &C,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
