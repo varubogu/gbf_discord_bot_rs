@@ -5,17 +5,17 @@ use tracing::{error, info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
 pub struct StartRecruitmentService {
-    repo: Arc<BattleRecruitmentsRepositoryImpl>,
+    repo: Arc<SeaOrmBattleRecruitmentsRepository>,
 }
 
 impl StartRecruitmentService {
     /// 新しいStartRecruitmentServiceを作成（依存性注入）
-    pub fn new(repo: Arc<BattleRecruitmentsRepositoryImpl>) -> Self {
+    pub fn new(repo: Arc<SeaOrmBattleRecruitmentsRepository>) -> Self {
         Self { repo }
     }
 

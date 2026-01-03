@@ -1,5 +1,5 @@
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
-use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 
 /// Repository層のコンテナ
 ///
@@ -7,8 +7,8 @@ use crate::repository::database::recruitment_participants_repository::Recruitmen
 /// Repositoryはフィールドを持たず、DB接続は呼び出し時にパラメータとして渡されます。
 #[derive(Debug)]
 pub struct RepositoryContainer {
-    battle_recruitment_repo: BattleRecruitmentsRepositoryImpl,
-    recruitment_participants_repo: RecruitmentParticipantsRepositoryImpl,
+    battle_recruitment_repo: SeaOrmBattleRecruitmentsRepository,
+    recruitment_participants_repo: SeaOrmRecruitmentParticipantsRepository,
     // 他のrepositoryも追加可能
 }
 
@@ -24,8 +24,8 @@ impl RepositoryContainer {
     /// # 戻り値
     /// 新しいRepositoryContainerインスタンス
     pub fn new() -> Self {
-        let battle_recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
-        let recruitment_participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+        let battle_recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+        let recruitment_participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
 
         Self {
             battle_recruitment_repo,
@@ -34,12 +34,12 @@ impl RepositoryContainer {
     }
 
     /// BattleRecruitmentRepositoryへの参照を取得
-    pub fn battle_recruitment(&self) -> &BattleRecruitmentsRepositoryImpl {
+    pub fn battle_recruitment(&self) -> &SeaOrmBattleRecruitmentsRepository {
         &self.battle_recruitment_repo
     }
 
     /// RecruitmentParticipantsRepositoryへの参照を取得
-    pub fn recruitment_participants(&self) -> &RecruitmentParticipantsRepositoryImpl {
+    pub fn recruitment_participants(&self) -> &SeaOrmRecruitmentParticipantsRepository {
         &self.recruitment_participants_repo
     }
 }

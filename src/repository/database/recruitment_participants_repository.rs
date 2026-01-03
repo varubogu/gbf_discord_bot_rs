@@ -11,22 +11,22 @@ use sea_orm::{
 
 /// SeaORM を使用した募集参加者リポジトリの実装
 #[derive(Debug)]
-pub struct RecruitmentParticipantsRepositoryImpl;
+pub struct SeaOrmRecruitmentParticipantsRepository;
 
-impl Default for RecruitmentParticipantsRepositoryImpl {
+impl Default for SeaOrmRecruitmentParticipantsRepository {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RecruitmentParticipantsRepositoryImpl {
+impl SeaOrmRecruitmentParticipantsRepository {
     pub fn new() -> Self {
         Self
     }
 }
 
 #[async_trait]
-impl RecruitmentParticipantsRepository for RecruitmentParticipantsRepositoryImpl {
+impl RecruitmentParticipantsRepository for SeaOrmRecruitmentParticipantsRepository {
     async fn insert_with_txn(
         &self,
         txn: &DatabaseTransaction,

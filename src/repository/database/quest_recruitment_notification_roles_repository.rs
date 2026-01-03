@@ -5,9 +5,9 @@ use tracing::{debug, error, info};
 
 /// quest_recruitment_notification_rolesテーブルのRepository
 #[derive(Default)]
-pub struct QuestRecruitmentNotificationRolesRepository;
+pub struct SeaOrmQuestRecruitmentNotificationRolesRepository;
 
-impl QuestRecruitmentNotificationRolesRepository {
+impl SeaOrmQuestRecruitmentNotificationRolesRepository {
     pub fn new() -> Self {
         Self
     }

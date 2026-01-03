@@ -1,6 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
-use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::services::recruitment::participants::ParticipantsService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
@@ -34,7 +34,7 @@ pub async fn update_participants(
 
     let result = async {
         // Service層のインスタンスを作成
-        let battle_recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new());
+        let battle_recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
         let query_service = RecruitmentQueryService::new();
         let quest_query_service = QuestQueryService::new();
@@ -74,9 +74,9 @@ pub async fn update_participants(
             };
 
             // DBに参加者を登録/削除（toggle）
-            let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+            let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
             let participants_svc =
-                RecruitmentParticipantsService::<RecruitmentParticipantsRepositoryImpl>::new(
+                RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
                     Arc::new(participants_repo),
                 );
 

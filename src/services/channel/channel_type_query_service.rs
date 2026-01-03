@@ -1,4 +1,4 @@
-use crate::repository::database::channel_type_repository::ChannelTypeRepository;
+use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
 use crate::types::Result;
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::ConnectionTrait;
@@ -18,7 +18,7 @@ impl ChannelTypeQueryService {
         &self,
         db: &C,
     ) -> Result<Vec<AutocompleteChoice>> {
-        let repo = ChannelTypeRepository::new();
+        let repo = SeaOrmChannelTypeRepository::new();
         let items = repo.get_all(db).await?;
 
         let mut choices: Vec<AutocompleteChoice> = items

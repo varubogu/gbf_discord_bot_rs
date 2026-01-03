@@ -9,7 +9,7 @@ use tracing::{debug, info, warn};
 use crate::models::entities::guild_master::battle_recruitment_schedules;
 use crate::models::entities::worker::last_process_times::LastProcessType;
 use crate::models::last_process_times::LastProcessTime;
-use crate::repository::database::last_process_time_repository::LastProcessTimeRepository;
+use crate::repository::database::last_process_time_repository::SeaOrmLastProcessTimeRepository;
 use crate::repository::database::schedule::{
     BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
     NotificationRepository, ScheduleRepository,
@@ -206,7 +206,7 @@ impl SchedulerService {
         db: &DatabaseConnection,
         process_type: LastProcessType,
     ) -> Result<Option<LastProcessTime>> {
-        let last_process_time_repo = LastProcessTimeRepository::new();
+        let last_process_time_repo = SeaOrmLastProcessTimeRepository::new();
         match process_type {
             LastProcessType::Schedule => {
                 last_process_time_repo
@@ -229,7 +229,7 @@ impl SchedulerService {
         process_type: LastProcessType,
         execute_time: chrono::DateTime<chrono::Utc>,
     ) -> Result<()> {
-        let last_process_time_repo = LastProcessTimeRepository::new();
+        let last_process_time_repo = SeaOrmLastProcessTimeRepository::new();
         last_process_time_repo
             .upsert_with_txn(txn, process_type, execute_time)
             .await

@@ -1,8 +1,8 @@
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::repository::database::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
@@ -78,8 +78,8 @@ impl DismissalTaskExecutor {
         let task_repo = ScheduledTaskRepository::new();
         let dismissal_repo = ScheduledTaskDismissalRepository::new();
         let dismissal_setting_repo = BattleRecruitmentDismissalRepository::new();
-        let recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
-        let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+        let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
         let quest_repo = SeaOrmQuestRepository::new();
 
         // タスクが存在し、未実行であることを確認

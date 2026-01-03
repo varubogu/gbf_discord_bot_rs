@@ -8,17 +8,17 @@ use tracing::{error, info};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 /// ParticipantsService - 募集参加者管理を行うサービス
 pub struct ParticipantsService {
-    battle_recruitment_repo: Arc<BattleRecruitmentsRepositoryImpl>,
+    battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>,
 }
 
 impl ParticipantsService {
     /// 新しいParticipantsServiceを作成（依存性注入）
-    pub fn new(battle_recruitment_repo: Arc<BattleRecruitmentsRepositoryImpl>) -> Self {
+    pub fn new(battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>) -> Self {
         Self {
             battle_recruitment_repo,
         }

@@ -5,9 +5,9 @@ use tracing::{debug, error};
 
 /// channel_typesテーブルのRepository
 #[derive(Default)]
-pub struct ChannelTypeRepository;
+pub struct SeaOrmChannelTypeRepository;
 
-impl ChannelTypeRepository {
+impl SeaOrmChannelTypeRepository {
     pub fn new() -> Self {
         Self
     }

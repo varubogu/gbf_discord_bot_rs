@@ -1,8 +1,8 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
 use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
@@ -85,10 +85,11 @@ pub async fn handle_recruitment_button(
         }
 
         // 4. Service層を使って参加/退出処理
-        let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
-        let service = RecruitmentParticipantsService::<RecruitmentParticipantsRepositoryImpl>::new(
-            Arc::new(participants_repo),
-        );
+        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
+        let service =
+            RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
+                Arc::new(participants_repo),
+            );
 
         let response_message: String = match component_id {
             RecruitmentComponentId::Join => {
@@ -175,8 +176,7 @@ pub async fn handle_recruitment_button(
                     "{response_message}\n\n現在の参加者数: **{participant_count}人**"
                 )),
             )
-            .await
-            ?;
+            .await?;
 
         Ok(())
     }
@@ -275,8 +275,7 @@ async fn update_recruitment_message(
     let channel = ChannelId::new(channel_id);
     let mut message = channel
         .message(&ctx.http, MessageId::new(message_id))
-        .await
-        ?;
+        .await?;
 
     // 既存のembedを取得（最初のembedを使用）
     let existing_embed = message.embeds.first().cloned();
@@ -310,8 +309,7 @@ async fn update_recruitment_message(
     // メッセージのembedを更新
     message
         .edit(&ctx.http, EditMessage::new().embed(new_embed))
-        .await
-        ?;
+        .await?;
 
     info!("募集メッセージの参加者一覧を更新しました");
     Ok(())
@@ -444,7 +442,7 @@ async fn check_and_notify_recruitment_full(
     );
 
     // リポジトリを作成
-    let recruitment_repo = BattleRecruitmentsRepositoryImpl::new();
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
 
     match (notification_sent, is_full) {
         (false, false) => {
@@ -546,10 +544,7 @@ async fn send_full_notification(
         .content(notification_message)
         .reference_message(reference);
 
-    channel
-        .send_message(&ctx.http, message)
-        .await
-        ?;
+    channel.send_message(&ctx.http, message).await?;
 
     Ok(())
 }
@@ -575,10 +570,7 @@ async fn send_decreased_notification(
         .content(notification_message)
         .reference_message(reference);
 
-    channel
-        .send_message(&ctx.http, message)
-        .await
-        ?;
+    channel.send_message(&ctx.http, message).await?;
 
     Ok(())
 }

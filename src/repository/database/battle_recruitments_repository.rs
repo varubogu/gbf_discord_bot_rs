@@ -13,22 +13,22 @@ use sea_orm::{
 
 /// SeaORM を使用したバトル募集リポジトリの実装
 #[derive(Debug)]
-pub struct BattleRecruitmentsRepositoryImpl;
+pub struct SeaOrmBattleRecruitmentsRepository;
 
-impl Default for BattleRecruitmentsRepositoryImpl {
+impl Default for SeaOrmBattleRecruitmentsRepository {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl BattleRecruitmentsRepositoryImpl {
+impl SeaOrmBattleRecruitmentsRepository {
     pub fn new() -> Self {
         Self
     }
 }
 
 #[async_trait]
-impl BattleRecruitmentsRepository for BattleRecruitmentsRepositoryImpl {
+impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
     async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,

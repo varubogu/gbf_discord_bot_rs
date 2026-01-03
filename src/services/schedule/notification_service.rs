@@ -1,7 +1,7 @@
 use crate::models::entities::worker::{battle_recruitments, notifications};
 use crate::repository::RecruitmentParticipantsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
@@ -220,7 +220,7 @@ impl NotificationService {
         let message_id = MessageId::new(recruitment.message_id as u64);
 
         // recruitment_participantsテーブルから参加者を取得
-        let participants_repo = RecruitmentParticipantsRepositoryImpl::new();
+        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
         let participant_user_ids = participants_repo
             .get_all_participant_user_ids(txn, recruit_id)
             .await?;

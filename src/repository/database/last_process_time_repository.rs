@@ -10,9 +10,9 @@ use tracing::{debug, error};
 
 /// last_process_timesリポジトリ
 #[derive(Default)]
-pub struct LastProcessTimeRepository;
+pub struct SeaOrmLastProcessTimeRepository;
 
-impl LastProcessTimeRepository {
+impl SeaOrmLastProcessTimeRepository {
     pub fn new() -> Self {
         Self
     }

@@ -3,8 +3,8 @@ use gbf_discord_bot_rs::events::{
     handler::event_handler,
 };
 use gbf_discord_bot_rs::repository::database::{
-    battle_recruitments_repository::BattleRecruitmentsRepositoryImpl,
-    recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl,
+    battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
+    recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
     schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository},
 };
 use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
@@ -248,8 +248,8 @@ async fn main() -> Result<()> {
     // SchedulerManagerの初期化と起動
     let task_repo = Arc::new(ScheduledTaskRepository::new());
     let dissolution_repo = Arc::new(ScheduledTaskDissolutionRepository::new());
-    let recruitment_repo = Arc::new(BattleRecruitmentsRepositoryImpl::new());
-    let participants_repo = Arc::new(RecruitmentParticipantsRepositoryImpl::new());
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
     let message_service = Arc::new(MessageService::new());
 
     let mut scheduler_manager = SchedulerManager::new(

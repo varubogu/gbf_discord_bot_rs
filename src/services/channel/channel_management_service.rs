@@ -1,7 +1,7 @@
 use crate::models::entities::{guild_master::guild_channels, master::channel_types};
-use crate::repository::database::channel_type_repository::ChannelTypeRepository;
+use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
-use crate::repository::database::guild_repository::GuildRepository;
+use crate::repository::database::guild_repository::SeaOrmGuildRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
 use tracing::{debug, info};
@@ -28,7 +28,7 @@ impl ChannelManagementService {
         guild_id: i64,
         guild_name: String,
     ) -> Result<()> {
-        let guild_repo = GuildRepository::new();
+        let guild_repo = SeaOrmGuildRepository::new();
         guild_repo
             .upsert_with_txn(txn, guild_id, guild_name)
             .await?;
@@ -43,7 +43,7 @@ impl ChannelManagementService {
         txn: &DatabaseTransaction,
         channel_type_id: i32,
     ) -> Result<channel_types::Model> {
-        let channel_type_repo = ChannelTypeRepository::new();
+        let channel_type_repo = SeaOrmChannelTypeRepository::new();
         let channel_type = channel_type_repo
             .get_by_id(txn, channel_type_id)
             .await?

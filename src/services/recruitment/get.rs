@@ -3,16 +3,16 @@ use tracing::error;
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
+use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 
 /// 募集情報取得サービス
 pub struct GetRecruitmentService {
-    battle_recruitment_repo: Arc<BattleRecruitmentsRepositoryImpl>,
+    battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>,
 }
 
 impl GetRecruitmentService {
     /// 依存性注入パターンに従ったコンストラクタ
-    pub fn new(battle_recruitment_repo: Arc<BattleRecruitmentsRepositoryImpl>) -> Self {
+    pub fn new(battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>) -> Self {
         Self {
             battle_recruitment_repo,
         }
