@@ -6,9 +6,9 @@ use tracing::{debug, error, info};
 
 /// guild_channelsテーブルのRepository
 #[derive(Default)]
-pub struct GuildChannelRepository;
+pub struct SeaOrmGuildChannelRepository;
 
-impl GuildChannelRepository {
+impl SeaOrmGuildChannelRepository {
     pub fn new() -> Self {
         Self
     }

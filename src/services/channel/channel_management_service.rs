@@ -1,6 +1,6 @@
 use crate::models::entities::{guild_master::guild_channels, master::channel_types};
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::guild_repository::GuildRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
@@ -70,7 +70,7 @@ impl ChannelManagementService {
         channel_type_id: i32,
         channel_id: i64,
     ) -> Result<()> {
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
         guild_channel_repo
             .upsert_with_txn(txn, guild_id, channel_type_id, channel_id)
             .await?;
@@ -92,7 +92,7 @@ impl ChannelManagementService {
         guild_id: i64,
         channel_type_id: i32,
     ) -> Result<Option<guild_channels::Model>> {
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
         let channel = guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, guild_id, channel_type_id)
             .await?;
@@ -114,7 +114,7 @@ impl ChannelManagementService {
         guild_id: i64,
         channel_type_id: i32,
     ) -> Result<()> {
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
         guild_channel_repo
             .delete_with_txn(txn, guild_id, channel_type_id)
             .await?;

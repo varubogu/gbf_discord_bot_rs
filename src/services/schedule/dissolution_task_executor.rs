@@ -1,4 +1,4 @@
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::schedule::{
     ScheduledTaskDissolutionRepository, ScheduledTaskRepository,
 };
@@ -41,7 +41,7 @@ pub struct DissolutionTaskExecutor<
     recruitment_repo: Arc<R>,
     participants_repo: Arc<P>,
     message_service: Arc<MessageService>,
-    guild_settings_repo: Arc<GuildSettingsRepository>,
+    guild_settings_repo: Arc<SeaOrmGuildSettingsRepository>,
 }
 
 impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
@@ -60,7 +60,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             recruitment_repo,
             participants_repo,
             message_service,
-            guild_settings_repo: Arc::new(GuildSettingsRepository::new()),
+            guild_settings_repo: Arc::new(SeaOrmGuildSettingsRepository::new()),
         }
     }
 

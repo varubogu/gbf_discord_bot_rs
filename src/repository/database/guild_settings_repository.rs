@@ -5,15 +5,15 @@ use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guild_settingsテーブルのRepository
-pub struct GuildSettingsRepository;
+pub struct SeaOrmGuildSettingsRepository;
 
-impl Default for GuildSettingsRepository {
+impl Default for SeaOrmGuildSettingsRepository {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GuildSettingsRepository {
+impl SeaOrmGuildSettingsRepository {
     pub fn new() -> Self {
         Self
     }

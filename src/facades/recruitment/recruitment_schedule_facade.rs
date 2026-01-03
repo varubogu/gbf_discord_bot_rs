@@ -1,5 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
 };
@@ -74,7 +74,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 1. タイムゾーン取得Service
-            let timezone_repo = Arc::new(GuildSettingsRepository::new());
+            let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
             let timezone_service = TimezoneService::new(timezone_repo);
             let timezone = timezone_service
                 .get_guild_timezone(conn, guild_id as i64)
@@ -148,7 +148,8 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // タイムゾーン取得
-            let timezone_service = TimezoneService::new(Arc::new(GuildSettingsRepository::new()));
+            let timezone_service =
+                TimezoneService::new(Arc::new(SeaOrmGuildSettingsRepository::new()));
             let tz = timezone_service.get_guild_timezone(conn, guild_id).await?;
 
             // 一覧取得
@@ -222,7 +223,10 @@ impl RecruitmentScheduleFacade {
         match result {
             Ok(_) => {
                 txn.commit().await?;
-                info!(schedule_id, guild_id, user_id, "募集スケジュールを削除しました");
+                info!(
+                    schedule_id,
+                    guild_id, user_id, "募集スケジュールを削除しました"
+                );
                 Ok(())
             }
             Err(e) => {

@@ -1,5 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
@@ -54,7 +54,7 @@ impl GuildSettingsFacade {
         info!(guild_id = guild_id, "タイムゾーン取得を開始します");
 
         let conn = self.app_state.guild_db();
-        let timezone_repo = Arc::new(GuildSettingsRepository::new());
+        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
 
         let timezone = timezone_service.get_guild_timezone(conn, guild_id).await?;
@@ -79,7 +79,7 @@ impl GuildSettingsFacade {
         info!(guild_id = guild_id, "ギルド設定取得を開始します");
 
         let conn = self.app_state.guild_db();
-        let settings_repo = Arc::new(GuildSettingsRepository::new());
+        let settings_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
 
         let settings = settings_repo.find_by_guild_id(conn, guild_id).await?;
 
@@ -131,7 +131,7 @@ impl GuildSettingsFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let timezone_repo = Arc::new(GuildSettingsRepository::new());
+            let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
             let timezone_service = TimezoneService::new(timezone_repo);
 
             // タイムゾーンとロケールをupsert

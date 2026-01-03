@@ -1,5 +1,5 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
@@ -59,7 +59,7 @@ pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<Autoco
     };
 
     // タイムゾーンを取得（トランザクション内）
-    let timezone_repo = GuildSettingsRepository::new();
+    let timezone_repo = SeaOrmGuildSettingsRepository::new();
     let timezone_service = TimezoneService::new(Arc::new(timezone_repo));
     let timezone = match timezone_service.get_guild_timezone(conn, guild_id).await {
         Ok(tz) => tz,

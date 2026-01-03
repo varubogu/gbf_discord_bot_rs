@@ -4,9 +4,9 @@ use crate::repository::battle_recruitments_repository::BattleRecruitmentsReposit
 use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,
 };
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quests_repository::QuestRepository;
@@ -60,7 +60,7 @@ impl RecruitmentCreationService {
         set_current_guild_id(txn, calculated_time.guild_id).await?;
 
         // 0. マルチ募集チャンネルを取得（channel_type = 2）
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
         let guild_channel = guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, calculated_time.guild_id, 2)
             .await?
@@ -80,7 +80,7 @@ impl RecruitmentCreationService {
         // 1. Quest, BattleStyle, タイムゾーンを取得
         let quest_repo = SeaOrmQuestRepository::new();
         let battle_style_repo = SeaOrmBattleStyleRepository::new();
-        let timezone_repo = Arc::new(GuildSettingsRepository::new());
+        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
         let timezone_service = TimezoneService::new(timezone_repo);
 
         let quest = quest_repo

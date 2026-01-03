@@ -1,5 +1,5 @@
 use crate::repository::database::channel_type_repository::ChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::types::Result;
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ impl ChannelDisplayService {
         guild_id: i64,
     ) -> Result<ChannelSettingsDisplay> {
         let channel_type_repo = ChannelTypeRepository::new();
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
 
         // 全チャンネル種別を取得
         let all_channel_types = channel_type_repo.get_all(txn).await?;

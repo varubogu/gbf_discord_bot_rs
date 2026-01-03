@@ -2,7 +2,7 @@ use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,
 };
-use crate::repository::database::guild_channel_repository::GuildChannelRepository;
+use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
@@ -298,7 +298,7 @@ impl ScheduleCreateService {
         txn: &DatabaseTransaction,
         guild_id: i64,
     ) -> Result<i64> {
-        let guild_channel_repo = GuildChannelRepository::new();
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
         let guild_channel = guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, guild_id, 2)
             .await?

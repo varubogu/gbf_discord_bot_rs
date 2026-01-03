@@ -1,6 +1,6 @@
 use crate::models::entities::worker::{battle_recruitments, notifications};
 use crate::repository::RecruitmentParticipantsRepository;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
@@ -20,7 +20,7 @@ use tracing::{debug, error, info};
 pub struct NotificationService {
     notification_repo: NotificationRepository,
     rel_repo: NotificationRelBattleRecruitmentRepository,
-    guild_timezone_repo: GuildSettingsRepository,
+    guild_timezone_repo: SeaOrmGuildSettingsRepository,
     message_service: MessageService,
     http: Arc<Http>,
 }
@@ -29,7 +29,7 @@ impl NotificationService {
     pub fn new(http: Arc<Http>) -> Self {
         let notification_repo = NotificationRepository::new();
         let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-        let guild_timezone_repo = GuildSettingsRepository::new();
+        let guild_timezone_repo = SeaOrmGuildSettingsRepository::new();
         let message_service = MessageService::new();
         Self {
             notification_repo,

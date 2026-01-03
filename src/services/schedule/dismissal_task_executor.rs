@@ -1,6 +1,6 @@
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::BattleRecruitmentsRepositoryImpl;
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::RecruitmentParticipantsRepositoryImpl;
 use crate::repository::database::schedule::{
@@ -35,14 +35,14 @@ pub enum DismissalExecutionResult {
 /// 解散タスク実行サービス
 pub struct DismissalTaskExecutor {
     message_service: Arc<MessageService>,
-    guild_settings_repo: Arc<GuildSettingsRepository>,
+    guild_settings_repo: Arc<SeaOrmGuildSettingsRepository>,
 }
 
 impl DismissalTaskExecutor {
     pub fn new(message_service: Arc<MessageService>) -> Self {
         Self {
             message_service,
-            guild_settings_repo: Arc::new(GuildSettingsRepository::new()),
+            guild_settings_repo: Arc::new(SeaOrmGuildSettingsRepository::new()),
         }
     }
 

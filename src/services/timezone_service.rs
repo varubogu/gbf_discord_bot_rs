@@ -1,4 +1,4 @@
-use crate::repository::database::guild_settings_repository::GuildSettingsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::types::{AppError, Result};
 use chrono::{Offset, TimeZone, Utc};
 use chrono_tz::Tz;
@@ -100,11 +100,11 @@ lazy_static! {
 
 /// タイムゾーン取得・設定サービス
 pub struct TimezoneService {
-    repository: Arc<GuildSettingsRepository>,
+    repository: Arc<SeaOrmGuildSettingsRepository>,
 }
 
 impl TimezoneService {
-    pub fn new(repository: Arc<GuildSettingsRepository>) -> Self {
+    pub fn new(repository: Arc<SeaOrmGuildSettingsRepository>) -> Self {
         Self { repository }
     }
 
