@@ -3,6 +3,10 @@ use crate::repository::database::schedule::{
     SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
     SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRepository,
 };
+use crate::repository::schedule::{
+    NotificationRelBattleRecruitmentRepository, NotificationRepository,
+    ScheduledTaskNotificationRepository, ScheduledTaskRepository,
+};
 use crate::services::message::MessageTextId;
 use crate::types::Result;
 use chrono::{DateTime, Utc};

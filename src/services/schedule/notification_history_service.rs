@@ -1,5 +1,6 @@
 use crate::models::entities::worker::notifications;
 use crate::repository::database::schedule::SeaOrmNotificationRepository;
+use crate::repository::schedule::NotificationRepository;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};
 use sea_orm::DatabaseConnection;

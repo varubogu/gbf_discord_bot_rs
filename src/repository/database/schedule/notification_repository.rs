@@ -1,5 +1,7 @@
 use crate::models::entities::worker::notifications;
+use crate::repository::schedule::NotificationRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
@@ -8,13 +10,11 @@ use tracing::{debug, error};
 #[derive(Default)]
 pub struct SeaOrmNotificationRepository;
 
-impl SeaOrmNotificationRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl NotificationRepository for SeaOrmNotificationRepository {
 
     /// 指定した日時範囲内の未送信通知を取得
-    pub async fn find_by_datetime_range<C>(
+    async fn find_by_datetime_range<C>(
         &self,
         db: &C,
         from: DateTime<Utc>,
@@ -45,7 +45,7 @@ impl SeaOrmNotificationRepository {
     }
 
     /// 指定した日時範囲内の未送信通知を取得（トランザクション内）
-    pub async fn find_by_datetime_range_with_txn(
+    async fn find_by_datetime_range_with_txn(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -73,7 +73,7 @@ impl SeaOrmNotificationRepository {
     }
 
     /// 通知を作成（トランザクション付き）
-    pub async fn create_with_txn(
+    async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
         schedule_datetime: DateTime<Utc>,
@@ -188,7 +188,7 @@ impl SeaOrmNotificationRepository {
     // }
 
     /// 通知IDで通知を削除（トランザクション付き）
-    pub async fn delete_by_id_with_txn(
+    async fn delete_by_id_with_txn(
         &self,
         txn: &DatabaseTransaction,
         notification_id: i32,
@@ -208,7 +208,7 @@ impl SeaOrmNotificationRepository {
     }
 
     /// すべての通知を削除（トランザクション付き）
-    pub async fn delete_all_with_txn(&self, txn: &DatabaseTransaction) -> Result<u64> {
+    async fn delete_all_with_txn(&self, txn: &DatabaseTransaction) -> Result<u64> {
         debug!("すべての通知を削除します");
 
         let result = notifications::Entity::delete_many()
@@ -224,7 +224,7 @@ impl SeaOrmNotificationRepository {
     }
 
     /// 通知を送信済みとしてマーク（トランザクション付き）
-    pub async fn mark_as_sent_with_txn(
+    async fn mark_as_sent_with_txn(
         &self,
         txn: &DatabaseTransaction,
         notification_id: i32,
@@ -256,5 +256,11 @@ impl SeaOrmNotificationRepository {
 
         debug!(notification_id = %notification_id, "通知を送信済みとしてマークしました");
         Ok(updated)
+    }
+}
+
+impl SeaOrmNotificationRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

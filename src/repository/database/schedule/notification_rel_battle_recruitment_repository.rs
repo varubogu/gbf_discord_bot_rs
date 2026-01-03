@@ -1,5 +1,7 @@
 use crate::models::entities::worker::notification_rel_battle_recruitments;
+use crate::repository::schedule::NotificationRelBattleRecruitmentRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 
@@ -7,13 +9,11 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 #[derive(Default)]
 pub struct SeaOrmNotificationRelBattleRecruitmentRepository;
 
-impl SeaOrmNotificationRelBattleRecruitmentRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl NotificationRelBattleRecruitmentRepository for SeaOrmNotificationRelBattleRecruitmentRepository {
 
     /// 通知IDからマルチ募集との関連を取得
-    pub async fn find_by_notification_id<C>(
+    async fn find_by_notification_id<C>(
         &self,
         db: &C,
         notification_id: i32,
@@ -45,7 +45,7 @@ impl SeaOrmNotificationRelBattleRecruitmentRepository {
     // }
 
     /// 募集IDから通知との関連を取得（トランザクション内）
-    pub async fn find_by_recruit_id_with_txn(
+    async fn find_by_recruit_id_with_txn(
         &self,
         txn: &DatabaseTransaction,
         recruit_id: i32,
@@ -59,7 +59,7 @@ impl SeaOrmNotificationRelBattleRecruitmentRepository {
     }
 
     /// リレーションを作成（トランザクション内）
-    pub async fn create_with_txn(
+    async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
         recruit_id: i32,
@@ -76,7 +76,7 @@ impl SeaOrmNotificationRelBattleRecruitmentRepository {
     }
 
     /// 通知IDに紐づくリレーションを削除（トランザクション内）
-    pub async fn delete_by_notification_id_with_txn(
+    async fn delete_by_notification_id_with_txn(
         &self,
         txn: &DatabaseTransaction,
         notification_id: i32,
@@ -104,4 +104,10 @@ impl SeaOrmNotificationRelBattleRecruitmentRepository {
 
     //     Ok(result.rows_affected)
     // }
+}
+
+impl SeaOrmNotificationRelBattleRecruitmentRepository {
+    pub fn new() -> Self {
+        Self
+    }
 }

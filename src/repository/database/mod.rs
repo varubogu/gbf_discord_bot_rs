@@ -25,3 +25,14 @@ pub use guild_repository::SeaOrmGuildRepository;
 pub use guild_settings_repository::SeaOrmGuildSettingsRepository;
 pub use last_process_time_repository::SeaOrmLastProcessTimeRepository;
 pub use quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository;
+
+// schedule配下の実装型をre-export
+pub use schedule::{
+    SeaOrmBattleRecruitmentDismissalRepository, SeaOrmBattleRecruitmentScheduleDismissalRepository,
+    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmNotificationRelBattleRecruitmentRepository,
+    SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
+    SeaOrmScheduleRepository, SeaOrmScheduledTaskCleanupRepository,
+    SeaOrmScheduledTaskDismissalRepository, SeaOrmScheduledTaskDissolutionRepository,
+    SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRecurringRecruitmentRepository,
+    SeaOrmScheduledTaskRepository,
+};

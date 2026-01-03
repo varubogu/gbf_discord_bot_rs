@@ -1,32 +1,28 @@
 use crate::models::entities::worker::{scheduled_task_recurring_recruitments, scheduled_tasks};
+use crate::repository::schedule::{
+    RecurringRecruitmentWithTask, ScheduledTaskRecurringRecruitmentRepository as ScheduledTaskRecurringRecruitmentRepositoryTrait,
+    ScheduledTaskRepository,
+};
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
-/// 定期募集タスクと定期募集スケジュールの関連情報
-#[derive(Debug, Clone)]
-pub struct SeaOrmRecurringRecruitmentWithTask {
-    pub task: scheduled_tasks::Model,
-    pub recurring_recruitment_rel: scheduled_task_recurring_recruitments::Model,
-}
-
 /// 定期募集タスクリポジトリ
 #[derive(Default)]
-pub struct ScheduledTaskRecurringRecruitmentRepository;
+pub struct SeaOrmScheduledTaskRecurringRecruitmentRepository;
 
-impl ScheduledTaskRecurringRecruitmentRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskRecurringRecruitmentRepositoryTrait for SeaOrmScheduledTaskRecurringRecruitmentRepository {
 
     /// 指定範囲内の未実行定期募集タスクをJOIN済みで取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<SeaOrmRecurringRecruitmentWithTask>> {
+    ) -> Result<Vec<RecurringRecruitmentWithTask>> {
         debug!(
             from = %from,
             to = %to,
@@ -57,7 +53,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
                     e
                 })?
             {
-                results.push(SeaOrmRecurringRecruitmentWithTask { task, recurring_recruitment_rel });
+                results.push(RecurringRecruitmentWithTask { task, recurring_recruitment_rel });
             }
         }
 
@@ -66,7 +62,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     }
 
     /// scheduled_task_idで定期募集関連情報を取得
-    pub async fn find_by_scheduled_task_id(
+    async fn find_by_scheduled_task_id(
         &self,
         txn: &DatabaseTransaction,
         scheduled_task_id: i32,
@@ -94,7 +90,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     }
 
     /// recruitment_schedule_idで定期募集関連情報を取得
-    pub async fn find_by_recruitment_schedule_id(
+    async fn find_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_schedule_id: i32,
@@ -125,7 +121,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     }
 
     /// 定期募集タスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         scheduled_task_id: i32,
@@ -154,7 +150,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     }
 
     /// recruitment_schedule_idで定期募集タスクを削除
-    pub async fn delete_by_recruitment_schedule_id(
+    async fn delete_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_schedule_id: i32,
@@ -188,7 +184,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
     ///
     /// 定期募集スケジュールの削除・無効化時に、まだ実行されていないタスクを削除する
     /// 既に実行済み（is_executed=true）のタスクは削除しない（募集は独立して存在するため）
-    pub async fn delete_pending_tasks_by_recruitment_schedule_id(
+    async fn delete_pending_tasks_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_schedule_id: i32,
@@ -259,3 +255,10 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         Ok(deleted_count)
     }
 }
+
+impl SeaOrmScheduledTaskRecurringRecruitmentRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+

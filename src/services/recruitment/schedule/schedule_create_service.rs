@@ -5,9 +5,12 @@ use crate::repository::database::battle_style_repository::{
 use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
-    ScheduledTaskRecurringRecruitmentRepository,
     SeaOrmBattleRecruitmentScheduleDismissalRepository, SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmScheduledTaskRepository,
+    SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
+};
+use crate::repository::schedule::{
+    BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
+    ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
 use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::schedule::DaysParserService;
@@ -183,7 +186,7 @@ impl ScheduleCreateService {
         let (schedule, days) = schedule_repo
             .create_with_txn(
                 txn,
-                crate::repository::database::schedule::battle_recruitment_schedule_repository::CreateScheduleParams {
+                crate::repository::schedule::CreateScheduleParams {
                     name: name.clone(),
                     guild_id,
                     channel_id,
@@ -367,7 +370,7 @@ impl ScheduleCreateService {
                         .await?;
 
                     // scheduled_task_recurring_recruitmentsに関連付けを登録
-                    let recurring_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+                    let recurring_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
                     recurring_repo.create(txn, task.id, schedule.id).await?;
 
                     info!(

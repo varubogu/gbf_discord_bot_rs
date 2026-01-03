@@ -1,5 +1,7 @@
 use crate::models::entities::worker::battle_recruitment_dismissals;
+use crate::repository::schedule::BattleRecruitmentDismissalRepository;
 use crate::types::{AppError, Result};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
@@ -8,13 +10,10 @@ use tracing::{debug, error};
 #[derive(Default)]
 pub struct SeaOrmBattleRecruitmentDismissalRepository;
 
-impl SeaOrmBattleRecruitmentDismissalRepository {
-    pub fn new() -> Self {
-        Self
-    }
-
+#[async_trait]
+impl BattleRecruitmentDismissalRepository for SeaOrmBattleRecruitmentDismissalRepository {
     /// 解散時刻を作成（絶対日時）
-    pub async fn create_absolute(
+    async fn create_absolute(
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
@@ -52,7 +51,7 @@ impl SeaOrmBattleRecruitmentDismissalRepository {
     }
 
     /// 解散時刻を作成（相対時刻）
-    pub async fn create_relative(
+    async fn create_relative(
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
@@ -94,7 +93,7 @@ impl SeaOrmBattleRecruitmentDismissalRepository {
     }
 
     /// recruitment_idで解散時刻を取得
-    pub async fn find_by_recruitment_id(
+    async fn find_by_recruitment_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
@@ -119,7 +118,7 @@ impl SeaOrmBattleRecruitmentDismissalRepository {
     }
 
     /// idで解散時刻を取得
-    pub async fn find_by_id(
+    async fn find_by_id(
         &self,
         txn: &DatabaseTransaction,
         id: i32,
@@ -139,7 +138,7 @@ impl SeaOrmBattleRecruitmentDismissalRepository {
     }
 
     /// recruitment_idで解散時刻を削除
-    pub async fn delete_by_recruitment_id(
+    async fn delete_by_recruitment_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
@@ -161,5 +160,11 @@ impl SeaOrmBattleRecruitmentDismissalRepository {
             "解散時刻を削除しました"
         );
         Ok(result.rows_affected)
+    }
+}
+
+impl SeaOrmBattleRecruitmentDismissalRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

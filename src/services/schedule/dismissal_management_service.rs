@@ -3,6 +3,9 @@ use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentDismissalRepository, SeaOrmScheduledTaskDismissalRepository,
     SeaOrmScheduledTaskRepository,
 };
+use crate::repository::schedule::{
+    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
+};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};

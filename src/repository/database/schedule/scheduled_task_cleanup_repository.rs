@@ -1,26 +1,19 @@
 use crate::models::entities::worker::{scheduled_task_cleanups, scheduled_tasks};
+use crate::repository::schedule::{CleanupWithTask, ScheduledTaskCleanupRepository};
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
-/// クリーンアップタスクと募集の関連情報
-#[derive(Debug, Clone)]
-pub struct CleanupWithTask {
-    pub task: scheduled_tasks::Model,
-    pub cleanup: scheduled_task_cleanups::Model,
-}
-
 /// クリーンアップタスクリポジトリ
 pub struct SeaOrmScheduledTaskCleanupRepository;
 
-impl SeaOrmScheduledTaskCleanupRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskCleanupRepository for SeaOrmScheduledTaskCleanupRepository {
 
     /// 指定範囲内の未実行クリーンアップタスクをJOIN済みで取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -68,7 +61,7 @@ impl SeaOrmScheduledTaskCleanupRepository {
     }
 
     /// task_idでクリーンアップ情報を取得
-    pub async fn find_by_task_id(
+    async fn find_by_task_id(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -87,7 +80,7 @@ impl SeaOrmScheduledTaskCleanupRepository {
     }
 
     /// クリーンアップタスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -123,8 +116,15 @@ impl SeaOrmScheduledTaskCleanupRepository {
     }
 }
 
+impl SeaOrmScheduledTaskCleanupRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 impl Default for SeaOrmScheduledTaskCleanupRepository {
     fn default() -> Self {
         Self::new()
     }
 }
+

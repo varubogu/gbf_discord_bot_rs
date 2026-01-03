@@ -1,27 +1,20 @@
 use crate::models::entities::worker::{scheduled_task_notifications, scheduled_tasks};
+use crate::repository::schedule::{NotificationWithTask, ScheduledTaskNotificationRepository};
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
-
-/// 通知タスクと通知の関連情報
-#[derive(Debug, Clone)]
-pub struct NotificationWithTask {
-    pub task: scheduled_tasks::Model,
-    pub notification_rel: scheduled_task_notifications::Model,
-}
 
 /// 通知タスクリポジトリ
 #[derive(Default)]
 pub struct SeaOrmScheduledTaskNotificationRepository;
 
-impl SeaOrmScheduledTaskNotificationRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskNotificationRepository for SeaOrmScheduledTaskNotificationRepository {
 
     /// 指定範囲内の未実行通知タスクをJOIN済みで取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -70,7 +63,7 @@ impl SeaOrmScheduledTaskNotificationRepository {
     }
 
     /// task_idで通知関連情報を取得
-    pub async fn find_by_task_id(
+    async fn find_by_task_id(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -94,7 +87,7 @@ impl SeaOrmScheduledTaskNotificationRepository {
     }
 
     /// notification_idで通知関連情報を取得
-    pub async fn find_by_notification_id(
+    async fn find_by_notification_id(
         &self,
         txn: &DatabaseTransaction,
         notification_id: i32,
@@ -119,7 +112,7 @@ impl SeaOrmScheduledTaskNotificationRepository {
     }
 
     /// 通知タスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -142,7 +135,7 @@ impl SeaOrmScheduledTaskNotificationRepository {
     }
 
     /// notification_idで通知タスクを削除
-    pub async fn delete_by_notification_id(
+    async fn delete_by_notification_id(
         &self,
         txn: &DatabaseTransaction,
         notification_id: i32,
@@ -166,3 +159,10 @@ impl SeaOrmScheduledTaskNotificationRepository {
         Ok(result.rows_affected)
     }
 }
+
+impl SeaOrmScheduledTaskNotificationRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+

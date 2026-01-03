@@ -1,26 +1,19 @@
 use crate::models::entities::worker::{scheduled_task_dissolutions, scheduled_tasks};
+use crate::repository::schedule::{DissolutionWithTask, ScheduledTaskDissolutionRepository};
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
-/// 解散タスクと募集の関連情報
-#[derive(Debug, Clone)]
-pub struct DissolutionWithTask {
-    pub task: scheduled_tasks::Model,
-    pub dissolution: scheduled_task_dissolutions::Model,
-}
-
 /// 解散タスクリポジトリ
 pub struct SeaOrmScheduledTaskDissolutionRepository;
 
-impl SeaOrmScheduledTaskDissolutionRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskDissolutionRepository for SeaOrmScheduledTaskDissolutionRepository {
 
     /// 指定範囲内の未実行解散タスクをJOIN済みで取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -65,7 +58,7 @@ impl SeaOrmScheduledTaskDissolutionRepository {
     }
 
     /// task_idで解散情報を取得
-    pub async fn find_by_task_id(
+    async fn find_by_task_id(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -84,7 +77,7 @@ impl SeaOrmScheduledTaskDissolutionRepository {
     }
 
     /// 解散タスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -107,7 +100,7 @@ impl SeaOrmScheduledTaskDissolutionRepository {
     }
 
     /// recruit_idで解散タスクを取得
-    pub async fn find_by_recruit_id(
+    async fn find_by_recruit_id(
         &self,
         txn: &DatabaseTransaction,
         recruit_id: i32,
@@ -132,8 +125,15 @@ impl SeaOrmScheduledTaskDissolutionRepository {
     }
 }
 
+impl SeaOrmScheduledTaskDissolutionRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 impl Default for SeaOrmScheduledTaskDissolutionRepository {
     fn default() -> Self {
         Self::new()
     }
 }
+

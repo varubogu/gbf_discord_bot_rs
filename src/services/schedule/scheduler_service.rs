@@ -14,6 +14,11 @@ use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmNotificationRelEventScheduleRepository,
     SeaOrmNotificationRepository, SeaOrmScheduleRepository,
 };
+use crate::repository::schedule::{
+    BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
+    NotificationRepository, ScheduleRepository, ScheduledTaskNotificationRepository,
+    ScheduledTaskRepository,
+};
 use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;

@@ -1,7 +1,11 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    ScheduledTaskRecurringRecruitmentRepository, SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmScheduledTaskRepository,
+    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskRepository,
+    SeaOrmScheduledTaskRecurringRecruitmentRepository,
+};
+use crate::repository::schedule::{
+    BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
+    ScheduledTaskRepository,
 };
 use crate::services::schedule::RecruitmentScheduleService;
 use crate::types::Result;
@@ -96,7 +100,7 @@ impl ScheduleCommandService {
             ))
         })?;
 
-        let recurring_task_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+        let recurring_task_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
 
         // 未実行の scheduled_tasks を削除
         recurring_task_repo
@@ -170,7 +174,7 @@ impl ScheduleCommandService {
                         .await?;
 
                     // scheduled_task_recurring_recruitmentsに関連付けを登録
-                    let recurring_repo = ScheduledTaskRecurringRecruitmentRepository::new();
+                    let recurring_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
                     recurring_repo.create(txn, task.id, schedule.id).await?;
 
                     info!(

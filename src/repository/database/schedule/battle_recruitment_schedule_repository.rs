@@ -1,41 +1,24 @@
 use crate::models::entities::guild_master::{
     battle_recruitment_schedule_days, battle_recruitment_schedules,
 };
+use crate::repository::schedule::{BattleRecruitmentScheduleRepository, CreateScheduleParams};
 use crate::types::Result;
-use sea_orm::prelude::TimeTime;
+use async_trait::async_trait;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
     QueryFilter, Set,
 };
 use tracing::{debug, error};
 
-/// スケジュール作成パラメータ
-pub struct CreateScheduleParams {
-    pub name: String,
-    pub guild_id: i64,
-    pub channel_id: i64,
-    pub quest_id: i32,
-    pub battle_style_id: i32,
-    pub quest_start_time: TimeTime,
-    pub recruit_start_day_offset: i32,
-    pub recruit_start_time: Option<TimeTime>,
-    pub max_participants: Option<i32>,
-    pub note: Option<String>,
-    pub created_by: i64,
-    pub day_of_weeks: Vec<i32>,
-}
-
 /// マルチ募集スケジュールリポジトリ
 #[derive(Default)]
 pub struct SeaOrmBattleRecruitmentScheduleRepository;
 
-impl SeaOrmBattleRecruitmentScheduleRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl BattleRecruitmentScheduleRepository for SeaOrmBattleRecruitmentScheduleRepository {
 
     /// 有効な全スケジュールと曜日情報を取得
-    pub async fn find_all_enabled_schedules_with_days(
+    async fn find_all_enabled_schedules_with_days(
         &self,
         db: &DatabaseConnection,
     ) -> Result<
@@ -81,7 +64,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     }
 
     /// ギルドIDでスケジュール取得
-    pub async fn find_by_guild_id<C>(
+    async fn find_by_guild_id<C>(
         &self,
         db: &C,
         guild_id: i64,
@@ -125,7 +108,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     }
 
     /// 作成者IDでスケジュール取得
-    pub async fn find_by_created_by<C>(
+    async fn find_by_created_by<C>(
         &self,
         db: &C,
         created_by: i64,
@@ -169,7 +152,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     }
 
     /// IDでスケジュール取得
-    pub async fn find_by_id<C>(
+    async fn find_by_id<C>(
         &self,
         db: &C,
         id: i32,
@@ -211,7 +194,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     }
 
     /// スケジュールと曜日を作成（トランザクション使用）
-    pub async fn create_with_txn(
+    async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
         params: CreateScheduleParams,
@@ -394,7 +377,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     // }
 
     /// スケジュール削除（トランザクション使用、CASCADE により曜日も削除）
-    pub async fn delete_with_txn(&self, txn: &DatabaseTransaction, id: i32) -> Result<()> {
+    async fn delete_with_txn(&self, txn: &DatabaseTransaction, id: i32) -> Result<()> {
         debug!(id = %id, "スケジュールを削除します");
 
         let result = battle_recruitment_schedules::Entity::delete_by_id(id)
@@ -417,7 +400,7 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
     }
 
     /// 有効/無効の切り替え（トランザクション使用）
-    pub async fn toggle_enabled_with_txn(
+    async fn toggle_enabled_with_txn(
         &self,
         txn: &DatabaseTransaction,
         id: i32,
@@ -450,5 +433,11 @@ impl SeaOrmBattleRecruitmentScheduleRepository {
 
         debug!(id = %id, is_enabled = %is_enabled, "スケジュールの有効/無効を切り替えました");
         Ok(updated_schedule)
+    }
+}
+
+impl SeaOrmBattleRecruitmentScheduleRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

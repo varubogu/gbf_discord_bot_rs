@@ -1,5 +1,7 @@
 use crate::models::entities::worker::notification_rel_event_schedules;
+use crate::repository::schedule::NotificationRelEventScheduleRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use uuid::Uuid;
@@ -8,10 +10,8 @@ use uuid::Uuid;
 #[derive(Default)]
 pub struct SeaOrmNotificationRelEventScheduleRepository;
 
-impl SeaOrmNotificationRelEventScheduleRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl NotificationRelEventScheduleRepository for SeaOrmNotificationRelEventScheduleRepository {
 
     // /// 通知IDからイベントスケジュールとの関連を取得
     // pub async fn find_by_notification_id(
@@ -40,7 +40,7 @@ impl SeaOrmNotificationRelEventScheduleRepository {
     // }
 
     /// リレーションを作成（トランザクション内）
-    pub async fn create_with_txn(
+    async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
         event_schedule_id: Uuid,
@@ -71,11 +71,17 @@ impl SeaOrmNotificationRelEventScheduleRepository {
     // }
 
     /// すべてのリレーションを削除（トランザクション内）
-    pub async fn delete_all_with_txn(&self, txn: &DatabaseTransaction) -> Result<u64> {
+    async fn delete_all_with_txn(&self, txn: &DatabaseTransaction) -> Result<u64> {
         let result = notification_rel_event_schedules::Entity::delete_many()
             .exec(txn)
             .await?;
 
         Ok(result.rows_affected)
+    }
+}
+
+impl SeaOrmNotificationRelEventScheduleRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

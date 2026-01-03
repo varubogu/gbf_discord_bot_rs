@@ -1,6 +1,9 @@
 use crate::repository::database::schedule::{
-    ScheduledTaskRecurringRecruitmentRepository, SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository,
+    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
+    SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
+};
+use crate::repository::schedule::{
+    ScheduledTaskNotificationRepository, ScheduledTaskRepository,
 };
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
@@ -273,7 +276,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         // RecurringRecruitment
                         info!(task_id = task.id, "定期募集タスクを実行します");
                         let recurring_repo =
-                            Arc::new(ScheduledTaskRecurringRecruitmentRepository::new());
+                            Arc::new(SeaOrmScheduledTaskRecurringRecruitmentRepository::new());
                         let schedule_repo =
                             Arc::new(SeaOrmBattleRecruitmentScheduleRepository::new());
                         let schedule_service = Arc::new(RecruitmentScheduleService::new());

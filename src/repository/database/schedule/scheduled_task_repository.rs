@@ -1,5 +1,7 @@
 use crate::models::entities::worker::{scheduled_task_dissolutions, scheduled_tasks};
+use crate::repository::schedule::ScheduledTaskRepository as ScheduledTaskRepositoryTrait;
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
@@ -7,13 +9,11 @@ use tracing::{debug, error};
 /// スケジュールタスクリポジトリ
 pub struct SeaOrmScheduledTaskRepository;
 
-impl SeaOrmScheduledTaskRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
     /// 指定した日時範囲内の未実行タスクを取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -41,7 +41,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// 指定した日時以前の未実行タスクを取得
-    pub async fn find_pending_to(
+    async fn find_pending_to(
         &self,
         txn: &DatabaseTransaction,
         to: DateTime<Utc>,
@@ -66,7 +66,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// IDでタスクを取得（DB再確認用）
-    pub async fn find_by_id(
+    async fn find_by_id(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -85,7 +85,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// タスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         schedule_datetime: DateTime<Utc>,
@@ -121,7 +121,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// タスクを実行済みにマーク
-    pub async fn mark_as_executed(
+    async fn mark_as_executed(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -156,7 +156,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// IDでタスクを削除
-    pub async fn delete_by_id(&self, txn: &DatabaseTransaction, task_id: i32) -> Result<u64> {
+    async fn delete_by_id(&self, txn: &DatabaseTransaction, task_id: i32) -> Result<u64> {
         debug!(task_id, "タスクを削除します");
 
         let delete_result = scheduled_tasks::Entity::delete_by_id(task_id)
@@ -177,7 +177,7 @@ impl SeaOrmScheduledTaskRepository {
     }
 
     /// recruit_idに紐づく解散タスクを削除
-    pub async fn delete_dissolutions_by_recruit_id(
+    async fn delete_dissolutions_by_recruit_id(
         &self,
         txn: &DatabaseTransaction,
         recruit_id: i32,
@@ -224,5 +224,11 @@ impl SeaOrmScheduledTaskRepository {
 impl Default for SeaOrmScheduledTaskRepository {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl SeaOrmScheduledTaskRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

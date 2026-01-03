@@ -1,7 +1,11 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    ScheduledTaskRecurringRecruitmentRepository, SeaOrmBattleRecruitmentScheduleRepository,
+    SeaOrmBattleRecruitmentScheduleRepository,
     SeaOrmScheduledTaskRepository,
+};
+use crate::repository::schedule::{
+    BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
+    ScheduledTaskRepository,
 };
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;
 use crate::services::schedule::{CalculatedRecruitmentTime, RecruitmentScheduleService};
@@ -31,7 +35,7 @@ pub enum RecurringRecruitmentExecutionResult {
 /// マルチ募集を作成して、次回実行タスクをscheduled_tasksに登録する
 pub struct RecurringRecruitmentTaskExecutor {
     task_repo: Arc<SeaOrmScheduledTaskRepository>,
-    recurring_repo: Arc<ScheduledTaskRecurringRecruitmentRepository>,
+    recurring_repo: Arc<dyn ScheduledTaskRecurringRecruitmentRepository>,
     schedule_repo: Arc<SeaOrmBattleRecruitmentScheduleRepository>,
     schedule_service: Arc<RecruitmentScheduleService>,
     recruitment_creation_service: Arc<RecruitmentCreationService>,
@@ -40,7 +44,7 @@ pub struct RecurringRecruitmentTaskExecutor {
 impl RecurringRecruitmentTaskExecutor {
     pub fn new(
         task_repo: Arc<SeaOrmScheduledTaskRepository>,
-        recurring_repo: Arc<ScheduledTaskRecurringRecruitmentRepository>,
+        recurring_repo: Arc<dyn ScheduledTaskRecurringRecruitmentRepository>,
         schedule_repo: Arc<SeaOrmBattleRecruitmentScheduleRepository>,
         schedule_service: Arc<RecruitmentScheduleService>,
         recruitment_creation_service: Arc<RecruitmentCreationService>,

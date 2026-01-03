@@ -9,6 +9,9 @@ use crate::repository::database::schedule::{
 };
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
+use crate::repository::schedule::{
+    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
+};
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
 use crate::types::{AppError, Result};

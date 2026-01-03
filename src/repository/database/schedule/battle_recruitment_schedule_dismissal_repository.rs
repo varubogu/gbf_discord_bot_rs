@@ -1,5 +1,7 @@
 use crate::models::entities::guild_master::battle_recruitment_schedule_dismissals;
+use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::types::{AppError, Result};
+use async_trait::async_trait;
 use sea_orm::entity::prelude::TimeTime;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
@@ -8,13 +10,11 @@ use tracing::{debug, error};
 #[derive(Default)]
 pub struct SeaOrmBattleRecruitmentScheduleDismissalRepository;
 
-impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl BattleRecruitmentScheduleDismissalRepository for SeaOrmBattleRecruitmentScheduleDismissalRepository {
 
     /// 解散時刻を作成（絶対時刻）
-    pub async fn create_absolute(
+    async fn create_absolute(
         &self,
         txn: &DatabaseTransaction,
         schedule_id: i32,
@@ -52,7 +52,7 @@ impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
     }
 
     /// 解散時刻を作成（相対時刻）
-    pub async fn create_relative(
+    async fn create_relative(
         &self,
         txn: &DatabaseTransaction,
         schedule_id: i32,
@@ -94,7 +94,7 @@ impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
     }
 
     /// schedule_idで解散時刻を取得
-    pub async fn find_by_schedule_id(
+    async fn find_by_schedule_id(
         &self,
         txn: &DatabaseTransaction,
         schedule_id: i32,
@@ -119,7 +119,7 @@ impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
     }
 
     /// schedule_idで解散時刻を削除
-    pub async fn delete_by_schedule_id(
+    async fn delete_by_schedule_id(
         &self,
         txn: &DatabaseTransaction,
         schedule_id: i32,
@@ -141,5 +141,11 @@ impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
             "定期募集の解散時刻を削除しました"
         );
         Ok(result.rows_affected)
+    }
+}
+
+impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

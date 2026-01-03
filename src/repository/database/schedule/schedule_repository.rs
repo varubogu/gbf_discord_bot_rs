@@ -1,5 +1,7 @@
 use crate::models::entities::master::{event_schedule_details, event_schedules};
+use crate::repository::schedule::ScheduleRepository as ScheduleRepositoryTrait;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
@@ -7,10 +9,8 @@ use tracing::{debug, error};
 #[derive(Default)]
 pub struct SeaOrmScheduleRepository;
 
-impl SeaOrmScheduleRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduleRepositoryTrait for SeaOrmScheduleRepository {
 
     // /// 現在有効なイベントスケジュールを取得
     // pub async fn find_active_event_schedules(
@@ -54,7 +54,7 @@ impl SeaOrmScheduleRepository {
     // }
 
     /// すべてのイベントスケジュール詳細を取得
-    pub async fn find_all_event_schedule_details<C>(
+    async fn find_all_event_schedule_details<C>(
         &self,
         db: &C,
     ) -> Result<Vec<event_schedule_details::Model>>
@@ -99,7 +99,7 @@ impl SeaOrmScheduleRepository {
     // }
 
     /// すべてのイベントスケジュールを取得
-    pub async fn find_all_event_schedules<C>(&self, db: &C) -> Result<Vec<event_schedules::Model>>
+    async fn find_all_event_schedules<C>(&self, db: &C) -> Result<Vec<event_schedules::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -115,5 +115,11 @@ impl SeaOrmScheduleRepository {
             "イベントスケジュールを取得しました"
         );
         Ok(schedules)
+    }
+}
+
+impl SeaOrmScheduleRepository {
+    pub fn new() -> Self {
+        Self
     }
 }

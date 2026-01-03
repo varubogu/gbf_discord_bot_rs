@@ -1,5 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
 };

@@ -3,6 +3,7 @@ use crate::repository::database::schedule::{
     SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository,
 };
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
+use crate::repository::schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository};
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     create_cancel_notification_text, create_cancelled_message_content,

@@ -1,27 +1,20 @@
 use crate::models::entities::worker::{scheduled_task_dismissals, scheduled_tasks};
+use crate::repository::schedule::{DismissalWithTask, ScheduledTaskDismissalRepository};
 use crate::types::{AppError, Result};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
-
-/// 解散タスクと解散設定の関連情報
-#[derive(Debug, Clone)]
-pub struct DismissalWithTask {
-    pub task: scheduled_tasks::Model,
-    pub dismissal_rel: scheduled_task_dismissals::Model,
-}
 
 /// 解散タスクリポジトリ
 #[derive(Default)]
 pub struct SeaOrmScheduledTaskDismissalRepository;
 
-impl SeaOrmScheduledTaskDismissalRepository {
-    pub fn new() -> Self {
-        Self
-    }
+#[async_trait]
+impl ScheduledTaskDismissalRepository for SeaOrmScheduledTaskDismissalRepository {
 
     /// 指定範囲内の未実行解散タスクをJOIN済みで取得
-    pub async fn find_pending_in_range(
+    async fn find_pending_in_range(
         &self,
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
@@ -69,7 +62,7 @@ impl SeaOrmScheduledTaskDismissalRepository {
     }
 
     /// task_idで解散関連情報を取得
-    pub async fn find_by_task_id(
+    async fn find_by_task_id(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -93,7 +86,7 @@ impl SeaOrmScheduledTaskDismissalRepository {
     }
 
     /// recruitment_dismissal_idで解散関連情報を取得
-    pub async fn find_by_recruitment_dismissal_id(
+    async fn find_by_recruitment_dismissal_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_dismissal_id: i32,
@@ -124,7 +117,7 @@ impl SeaOrmScheduledTaskDismissalRepository {
     }
 
     /// 解散タスクを作成
-    pub async fn create(
+    async fn create(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
@@ -155,7 +148,7 @@ impl SeaOrmScheduledTaskDismissalRepository {
     }
 
     /// recruitment_dismissal_idで解散タスクを削除
-    pub async fn delete_by_recruitment_dismissal_id(
+    async fn delete_by_recruitment_dismissal_id(
         &self,
         txn: &DatabaseTransaction,
         recruitment_dismissal_id: i32,
@@ -182,3 +175,10 @@ impl SeaOrmScheduledTaskDismissalRepository {
         Ok(result.rows_affected)
     }
 }
+
+impl SeaOrmScheduledTaskDismissalRepository {
+    pub fn new() -> Self {
+        Self
+    }
+}
+

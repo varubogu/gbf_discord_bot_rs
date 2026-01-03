@@ -19,19 +19,9 @@ pub use notification_rel_battle_recruitment_repository::SeaOrmNotificationRelBat
 pub use notification_rel_event_schedule_repository::SeaOrmNotificationRelEventScheduleRepository;
 pub use notification_repository::SeaOrmNotificationRepository;
 pub use schedule_repository::SeaOrmScheduleRepository;
-pub use scheduled_task_cleanup_repository::{
-    CleanupWithTask, SeaOrmScheduledTaskCleanupRepository,
-};
-pub use scheduled_task_dismissal_repository::{
-    DismissalWithTask, SeaOrmScheduledTaskDismissalRepository,
-};
-pub use scheduled_task_dissolution_repository::{
-    DissolutionWithTask, SeaOrmScheduledTaskDissolutionRepository,
-};
-pub use scheduled_task_notification_repository::{
-    NotificationWithTask, SeaOrmScheduledTaskNotificationRepository,
-};
-pub use scheduled_task_recurring_recruitment_repository::{
-    ScheduledTaskRecurringRecruitmentRepository, SeaOrmRecurringRecruitmentWithTask,
-};
+pub use scheduled_task_cleanup_repository::SeaOrmScheduledTaskCleanupRepository;
+pub use scheduled_task_dismissal_repository::SeaOrmScheduledTaskDismissalRepository;
+pub use scheduled_task_dissolution_repository::SeaOrmScheduledTaskDissolutionRepository;
+pub use scheduled_task_notification_repository::SeaOrmScheduledTaskNotificationRepository;
+pub use scheduled_task_recurring_recruitment_repository::SeaOrmScheduledTaskRecurringRecruitmentRepository;
 pub use scheduled_task_repository::SeaOrmScheduledTaskRepository;
