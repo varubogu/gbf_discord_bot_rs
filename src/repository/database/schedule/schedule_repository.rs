@@ -5,9 +5,9 @@ use tracing::{debug, error};
 
 /// スケジュールリポジトリ
 #[derive(Default)]
-pub struct ScheduleRepository;
+pub struct SeaOrmScheduleRepository;
 
-impl ScheduleRepository {
+impl SeaOrmScheduleRepository {
     pub fn new() -> Self {
         Self
     }
@@ -99,10 +99,7 @@ impl ScheduleRepository {
     // }
 
     /// すべてのイベントスケジュールを取得
-    pub async fn find_all_event_schedules<C>(
-        &self,
-        db: &C,
-    ) -> Result<Vec<event_schedules::Model>>
+    pub async fn find_all_event_schedules<C>(&self, db: &C) -> Result<Vec<event_schedules::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {

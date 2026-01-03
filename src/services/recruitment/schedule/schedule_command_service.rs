@@ -1,7 +1,7 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
-    ScheduledTaskRepository,
+    ScheduledTaskRecurringRecruitmentRepository, SeaOrmBattleRecruitmentScheduleRepository,
+    SeaOrmScheduledTaskRepository,
 };
 use crate::services::schedule::RecruitmentScheduleService;
 use crate::types::Result;
@@ -28,7 +28,7 @@ impl ScheduleCommandService {
         self.disable_schedule(txn, schedule_id).await?;
 
         // 2. battle_recruitment_schedules を削除
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
         schedule_repo.delete_with_txn(txn, schedule_id).await?;
 
         Ok(())
@@ -42,7 +42,7 @@ impl ScheduleCommandService {
         txn: &DatabaseTransaction,
         schedule_id: i32,
     ) -> Result<bool> {
-        let repo = BattleRecruitmentScheduleRepository::new();
+        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
 
         let (schedule, _) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
             crate::types::AppError::NotFound(format!(
@@ -58,7 +58,7 @@ impl ScheduleCommandService {
     /// 次回実行タスクをscheduled_tasksに登録する
     /// RLS設定は呼び出し元のFacade層で既に行われている前提
     pub async fn enable_schedule(&self, txn: &DatabaseTransaction, schedule_id: i32) -> Result<()> {
-        let repo = BattleRecruitmentScheduleRepository::new();
+        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
 
         // スケジュールを取得
         let (schedule, days) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
@@ -87,7 +87,7 @@ impl ScheduleCommandService {
         txn: &DatabaseTransaction,
         schedule_id: i32,
     ) -> Result<()> {
-        let repo = BattleRecruitmentScheduleRepository::new();
+        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
 
         // スケジュールが存在することを確認
         repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
@@ -158,7 +158,7 @@ impl ScheduleCommandService {
             if let Some(next_time) = next_times.first() {
                 if next_time.recruit_start_at > now {
                     // 未来日時が見つかった場合、scheduled_tasksに登録
-                    let task_repo = ScheduledTaskRepository::new();
+                    let task_repo = SeaOrmScheduledTaskRepository::new();
                     let task = task_repo
                         .create(
                             txn,

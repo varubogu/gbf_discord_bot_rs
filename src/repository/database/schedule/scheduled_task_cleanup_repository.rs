@@ -12,9 +12,9 @@ pub struct CleanupWithTask {
 }
 
 /// クリーンアップタスクリポジトリ
-pub struct ScheduledTaskCleanupRepository;
+pub struct SeaOrmScheduledTaskCleanupRepository;
 
-impl ScheduledTaskCleanupRepository {
+impl SeaOrmScheduledTaskCleanupRepository {
     pub fn new() -> Self {
         Self
     }
@@ -123,7 +123,7 @@ impl ScheduledTaskCleanupRepository {
     }
 }
 
-impl Default for ScheduledTaskCleanupRepository {
+impl Default for SeaOrmScheduledTaskCleanupRepository {
     fn default() -> Self {
         Self::new()
     }

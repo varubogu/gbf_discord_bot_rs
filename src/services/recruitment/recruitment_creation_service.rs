@@ -8,7 +8,7 @@ use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRep
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::BattleRecruitmentScheduleDismissalRepository;
+use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quest_repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new::{
@@ -114,7 +114,7 @@ impl RecruitmentCreationService {
             .await?;
 
         // 2.5. 定期募集スケジュールの解散時刻を取得
-        let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+        let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
         let schedule_dismissals = dismissal_repo
             .find_by_schedule_id(txn, calculated_time.schedule_id)
             .await?;

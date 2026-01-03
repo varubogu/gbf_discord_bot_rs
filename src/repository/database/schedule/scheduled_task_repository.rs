@@ -5,9 +5,9 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// スケジュールタスクリポジトリ
-pub struct ScheduledTaskRepository;
+pub struct SeaOrmScheduledTaskRepository;
 
-impl ScheduledTaskRepository {
+impl SeaOrmScheduledTaskRepository {
     pub fn new() -> Self {
         Self
     }
@@ -221,7 +221,7 @@ impl ScheduledTaskRepository {
     }
 }
 
-impl Default for ScheduledTaskRepository {
+impl Default for SeaOrmScheduledTaskRepository {
     fn default() -> Self {
         Self::new()
     }

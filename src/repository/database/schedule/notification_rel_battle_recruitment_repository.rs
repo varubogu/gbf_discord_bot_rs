@@ -5,9 +5,9 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 
 /// notification_rel_battle_recruitmentsテーブルのRepository
 #[derive(Default)]
-pub struct NotificationRelBattleRecruitmentRepository;
+pub struct SeaOrmNotificationRelBattleRecruitmentRepository;
 
-impl NotificationRelBattleRecruitmentRepository {
+impl SeaOrmNotificationRelBattleRecruitmentRepository {
     pub fn new() -> Self {
         Self
     }

@@ -27,9 +27,9 @@ pub struct CreateScheduleParams {
 
 /// マルチ募集スケジュールリポジトリ
 #[derive(Default)]
-pub struct BattleRecruitmentScheduleRepository;
+pub struct SeaOrmBattleRecruitmentScheduleRepository;
 
-impl BattleRecruitmentScheduleRepository {
+impl SeaOrmBattleRecruitmentScheduleRepository {
     pub fn new() -> Self {
         Self
     }

@@ -1,6 +1,7 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
+    SeaOrmBattleRecruitmentDismissalRepository, SeaOrmScheduledTaskDismissalRepository,
+    SeaOrmScheduledTaskRepository,
 };
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
@@ -47,9 +48,9 @@ impl DismissalManagementService {
             "マルチ募集の解散時刻を登録します"
         );
 
-        let dismissal_repo = BattleRecruitmentDismissalRepository::new();
-        let scheduled_task_repo = ScheduledTaskRepository::new();
-        let task_dismissal_repo = ScheduledTaskDismissalRepository::new();
+        let dismissal_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
+        let task_dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
 
         for dismissal_time in &dismissal_times {
             // 1. 解散日時を計算
@@ -146,9 +147,9 @@ impl DismissalManagementService {
     ) -> Result<usize> {
         use tracing::debug;
 
-        let dismissal_repo = BattleRecruitmentDismissalRepository::new();
-        let scheduled_task_repo = ScheduledTaskRepository::new();
-        let task_dismissal_repo = ScheduledTaskDismissalRepository::new();
+        let dismissal_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
+        let task_dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
 
         debug!(
             recruitment_id,

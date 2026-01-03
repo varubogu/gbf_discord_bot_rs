@@ -12,9 +12,9 @@ pub struct DissolutionWithTask {
 }
 
 /// 解散タスクリポジトリ
-pub struct ScheduledTaskDissolutionRepository;
+pub struct SeaOrmScheduledTaskDissolutionRepository;
 
-impl ScheduledTaskDissolutionRepository {
+impl SeaOrmScheduledTaskDissolutionRepository {
     pub fn new() -> Self {
         Self
     }
@@ -132,7 +132,7 @@ impl ScheduledTaskDissolutionRepository {
     }
 }
 
-impl Default for ScheduledTaskDissolutionRepository {
+impl Default for SeaOrmScheduledTaskDissolutionRepository {
     fn default() -> Self {
         Self::new()
     }

@@ -4,7 +4,8 @@ use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsR
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
+    SeaOrmBattleRecruitmentDismissalRepository, SeaOrmScheduledTaskDismissalRepository,
+    SeaOrmScheduledTaskRepository,
 };
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
@@ -75,9 +76,9 @@ impl DismissalTaskExecutor {
     ) -> Result<DismissalExecutionResult> {
         info!(task_id, "解散タスク実行開始");
 
-        let task_repo = ScheduledTaskRepository::new();
-        let dismissal_repo = ScheduledTaskDismissalRepository::new();
-        let dismissal_setting_repo = BattleRecruitmentDismissalRepository::new();
+        let task_repo = SeaOrmScheduledTaskRepository::new();
+        let dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
+        let dismissal_setting_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
         let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
         let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
         let quest_repo = SeaOrmQuestRepository::new();

@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 /// notification_rel_event_schedulesテーブルのRepository
 #[derive(Default)]
-pub struct NotificationRelEventScheduleRepository;
+pub struct SeaOrmNotificationRelEventScheduleRepository;
 
-impl NotificationRelEventScheduleRepository {
+impl SeaOrmNotificationRelEventScheduleRepository {
     pub fn new() -> Self {
         Self
     }

@@ -5,8 +5,9 @@ use crate::repository::database::battle_style_repository::{
 use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
-    ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
+    ScheduledTaskRecurringRecruitmentRepository,
+    SeaOrmBattleRecruitmentScheduleDismissalRepository, SeaOrmBattleRecruitmentScheduleRepository,
+    SeaOrmScheduledTaskRepository,
 };
 use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::schedule::DaysParserService;
@@ -178,7 +179,7 @@ impl ScheduleCreateService {
         let channel_id = self.get_recruitment_channel(txn, guild_id).await?;
 
         // 8. スケジュール保存
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
         let (schedule, days) = schedule_repo
             .create_with_txn(
                 txn,
@@ -354,7 +355,7 @@ impl ScheduleCreateService {
             if let Some(next_time) = next_times.first() {
                 if next_time.recruit_start_at > now {
                     // 未来日時が見つかった場合、scheduled_tasksに登録
-                    let task_repo = ScheduledTaskRepository::new();
+                    let task_repo = SeaOrmScheduledTaskRepository::new();
                     let task = task_repo
                         .create(
                             txn,
@@ -424,7 +425,7 @@ impl ScheduleCreateService {
         let parsed_dismissal_times = parse_datetime(dismissal_times_str, &options)?;
 
         // データベースに保存
-        let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+        let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
 
         // 元の入力値を分割（トリムして空文字除去）
         let input_values: Vec<&str> = dismissal_times_str

@@ -3,7 +3,7 @@ use crate::repository::RecruitmentParticipantsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::repository::database::schedule::{
-    NotificationRelBattleRecruitmentRepository, NotificationRepository,
+    SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
 };
 use crate::services::message::MessageService;
 use crate::types::Result;
@@ -18,8 +18,8 @@ use tracing::{debug, error, info};
 /// - DatabaseConnection を保持しない
 /// - すべてのDB操作はFacade層から渡されたトランザクション経由で実行する
 pub struct NotificationService {
-    notification_repo: NotificationRepository,
-    rel_repo: NotificationRelBattleRecruitmentRepository,
+    notification_repo: SeaOrmNotificationRepository,
+    rel_repo: SeaOrmNotificationRelBattleRecruitmentRepository,
     guild_timezone_repo: SeaOrmGuildSettingsRepository,
     message_service: MessageService,
     http: Arc<Http>,
@@ -27,8 +27,8 @@ pub struct NotificationService {
 
 impl NotificationService {
     pub fn new(http: Arc<Http>) -> Self {
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
+        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
         let guild_timezone_repo = SeaOrmGuildSettingsRepository::new();
         let message_service = MessageService::new();
         Self {

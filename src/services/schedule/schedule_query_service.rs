@@ -1,7 +1,7 @@
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
-    NotificationRepository,
+    SeaOrmBattleRecruitmentScheduleDismissalRepository, SeaOrmBattleRecruitmentScheduleRepository,
+    SeaOrmNotificationRepository,
 };
 use crate::repository::quest_repository::QuestRepository;
 use crate::services::schedule::convert_utc_days_and_time_to_local;
@@ -65,7 +65,7 @@ impl ScheduleQueryService {
             Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
         schedule_repo.find_by_created_by(txn, user_id).await
     }
 
@@ -90,7 +90,7 @@ impl ScheduleQueryService {
         show_all: bool,
         timezone: Tz,
     ) -> Result<Vec<ScheduleListItem>> {
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
         let quest_repo = SeaOrmQuestRepository::new();
 
         // スケジュールを取得
@@ -142,7 +142,7 @@ impl ScheduleQueryService {
             };
 
             // 解散時刻を取得
-            let dismissal_repo = BattleRecruitmentScheduleDismissalRepository::new();
+            let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
             let dismissals = dismissal_repo.find_by_schedule_id(txn, schedule.id).await?;
 
             let dismissal_times = if dismissals.is_empty() {
@@ -193,7 +193,7 @@ impl ScheduleQueryService {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<ScheduleStats> {
-        let notification_repo = NotificationRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
 
         // 統計を取得
         let all_notifications = notification_repo

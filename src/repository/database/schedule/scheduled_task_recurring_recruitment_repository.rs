@@ -6,7 +6,7 @@ use tracing::{debug, error};
 
 /// 定期募集タスクと定期募集スケジュールの関連情報
 #[derive(Debug, Clone)]
-pub struct RecurringRecruitmentWithTask {
+pub struct SeaOrmRecurringRecruitmentWithTask {
     pub task: scheduled_tasks::Model,
     pub recurring_recruitment_rel: scheduled_task_recurring_recruitments::Model,
 }
@@ -26,7 +26,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         txn: &DatabaseTransaction,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<RecurringRecruitmentWithTask>> {
+    ) -> Result<Vec<SeaOrmRecurringRecruitmentWithTask>> {
         debug!(
             from = %from,
             to = %to,
@@ -57,7 +57,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
                     e
                 })?
             {
-                results.push(RecurringRecruitmentWithTask { task, recurring_recruitment_rel });
+                results.push(SeaOrmRecurringRecruitmentWithTask { task, recurring_recruitment_rel });
             }
         }
 
@@ -193,7 +193,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         txn: &DatabaseTransaction,
         recruitment_schedule_id: i32,
     ) -> Result<u64> {
-        use crate::repository::database::schedule::ScheduledTaskRepository;
+        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 
         debug!(
             recruitment_schedule_id,
@@ -224,7 +224,7 @@ impl ScheduledTaskRecurringRecruitmentRepository {
         }
 
         // 2. 未実行のscheduled_tasksのみを削除
-        let task_repo = ScheduledTaskRepository::new();
+        let task_repo = SeaOrmScheduledTaskRepository::new();
         let mut deleted_count = 0;
 
         for task_id in task_ids {

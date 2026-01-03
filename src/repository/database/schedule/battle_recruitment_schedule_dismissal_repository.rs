@@ -6,9 +6,9 @@ use tracing::{debug, error};
 
 /// 定期募集解散リポジトリ
 #[derive(Default)]
-pub struct BattleRecruitmentScheduleDismissalRepository;
+pub struct SeaOrmBattleRecruitmentScheduleDismissalRepository;
 
-impl BattleRecruitmentScheduleDismissalRepository {
+impl SeaOrmBattleRecruitmentScheduleDismissalRepository {
     pub fn new() -> Self {
         Self
     }

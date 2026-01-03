@@ -198,8 +198,8 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 権限チェック：スケジュールの作成者を確認
-            use crate::repository::database::schedule::battle_recruitment_schedule_repository::BattleRecruitmentScheduleRepository;
-            let schedule_repo = BattleRecruitmentScheduleRepository::new();
+            use crate::repository::database::schedule::battle_recruitment_schedule_repository::SeaOrmBattleRecruitmentScheduleRepository;
+            let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {
@@ -262,8 +262,8 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 権限チェック：スケジュールの作成者を確認
-            use crate::repository::database::schedule::battle_recruitment_schedule_repository::BattleRecruitmentScheduleRepository;
-            let schedule_repo = BattleRecruitmentScheduleRepository::new();
+            use crate::repository::database::schedule::battle_recruitment_schedule_repository::SeaOrmBattleRecruitmentScheduleRepository;
+            let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {

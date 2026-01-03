@@ -1,5 +1,5 @@
 use crate::models::entities::worker::notifications;
-use crate::repository::database::schedule::NotificationRepository;
+use crate::repository::database::schedule::SeaOrmNotificationRepository;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};
 use sea_orm::DatabaseConnection;
@@ -8,7 +8,7 @@ use tracing::{debug, info};
 /// 通知履歴サービス
 /// 送信済み通知の管理を担当
 pub struct NotificationHistoryService {
-    notification_repo: NotificationRepository,
+    notification_repo: SeaOrmNotificationRepository,
 }
 
 impl Default for NotificationHistoryService {
@@ -19,7 +19,7 @@ impl Default for NotificationHistoryService {
 
 impl NotificationHistoryService {
     pub fn new() -> Self {
-        let notification_repo = NotificationRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
         Self { notification_repo }
     }
 

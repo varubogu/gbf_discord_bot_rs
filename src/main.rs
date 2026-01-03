@@ -5,7 +5,7 @@ use gbf_discord_bot_rs::events::{
 use gbf_discord_bot_rs::repository::database::{
     battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
     recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
-    schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository},
+    schedule::{SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository},
 };
 use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
@@ -246,8 +246,8 @@ async fn main() -> Result<()> {
     info!("Discord client created, starting bot...");
 
     // SchedulerManagerの初期化と起動
-    let task_repo = Arc::new(ScheduledTaskRepository::new());
-    let dissolution_repo = Arc::new(ScheduledTaskDissolutionRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let dissolution_repo = Arc::new(SeaOrmScheduledTaskDissolutionRepository::new());
     let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
     let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
     let message_service = Arc::new(MessageService::new());

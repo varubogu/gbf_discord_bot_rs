@@ -6,9 +6,9 @@ use tracing::{debug, error};
 
 /// 通知リポジトリ
 #[derive(Default)]
-pub struct NotificationRepository;
+pub struct SeaOrmNotificationRepository;
 
-impl NotificationRepository {
+impl SeaOrmNotificationRepository {
     pub fn new() -> Self {
         Self
     }

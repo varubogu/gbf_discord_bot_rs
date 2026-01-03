@@ -1,6 +1,6 @@
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, ScheduledTaskDissolutionRepository,
-    ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
+    ScheduledTaskRecurringRecruitmentRepository, SeaOrmBattleRecruitmentScheduleRepository,
+    SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository,
 };
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
@@ -27,8 +27,8 @@ pub struct SchedulerManager<
     scheduler: JobScheduler,
     db: Arc<DatabaseConnection>,
     http: Arc<Http>,
-    task_repo: Arc<ScheduledTaskRepository>,
-    dissolution_repo: Arc<ScheduledTaskDissolutionRepository>,
+    task_repo: Arc<SeaOrmScheduledTaskRepository>,
+    dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
     recruitment_repo: Arc<R>,
     participants_repo: Arc<P>,
     message_service: Arc<MessageService>,
@@ -41,8 +41,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     pub async fn new(
         db: Arc<DatabaseConnection>,
         http: Arc<Http>,
-        task_repo: Arc<ScheduledTaskRepository>,
-        dissolution_repo: Arc<ScheduledTaskDissolutionRepository>,
+        task_repo: Arc<SeaOrmScheduledTaskRepository>,
+        dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: Arc<R>,
         participants_repo: Arc<P>,
         message_service: Arc<MessageService>,
@@ -134,8 +134,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     async fn preload_and_execute_tasks(
         db: &Arc<DatabaseConnection>,
         http: &Arc<Http>,
-        task_repo: &Arc<ScheduledTaskRepository>,
-        dissolution_repo: &Arc<ScheduledTaskDissolutionRepository>,
+        task_repo: &Arc<SeaOrmScheduledTaskRepository>,
+        dissolution_repo: &Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: &Arc<R>,
         participants_repo: &Arc<P>,
         message_service: &Arc<MessageService>,
@@ -165,10 +165,11 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
 
         // scheduled_tasksを実行
         use crate::models::entities::worker::notifications;
-        use crate::repository::database::schedule::ScheduledTaskNotificationRepository;
+        use crate::repository::database::schedule::SeaOrmScheduledTaskNotificationRepository;
 
         let notification_service = NotificationService::new(Arc::clone(http));
-        let scheduled_task_notification_repo = Arc::new(ScheduledTaskNotificationRepository::new());
+        let scheduled_task_notification_repo =
+            Arc::new(SeaOrmScheduledTaskNotificationRepository::new());
 
         for task in tasks {
             if task.schedule_datetime <= now {
@@ -273,7 +274,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         info!(task_id = task.id, "定期募集タスクを実行します");
                         let recurring_repo =
                             Arc::new(ScheduledTaskRecurringRecruitmentRepository::new());
-                        let schedule_repo = Arc::new(BattleRecruitmentScheduleRepository::new());
+                        let schedule_repo =
+                            Arc::new(SeaOrmBattleRecruitmentScheduleRepository::new());
                         let schedule_service = Arc::new(RecruitmentScheduleService::new());
                         let recruitment_creation_service =
                             Arc::new(RecruitmentCreationService::new());

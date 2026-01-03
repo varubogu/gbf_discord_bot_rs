@@ -1,7 +1,7 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    NotificationRelBattleRecruitmentRepository, NotificationRepository,
-    ScheduledTaskNotificationRepository, ScheduledTaskRepository,
+    SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
+    SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRepository,
 };
 use crate::services::message::MessageTextId;
 use crate::types::Result;
@@ -37,10 +37,10 @@ impl NotificationManagementService {
         channel_id: i64,
         recruitment_id: i32,
     ) -> Result<()> {
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-        let scheduled_task_repo = ScheduledTaskRepository::new();
-        let scheduled_task_notification_repo = ScheduledTaskNotificationRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
+        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
+        let scheduled_task_notification_repo = SeaOrmScheduledTaskNotificationRepository::new();
 
         let now = Utc::now();
         let five_minutes_before = departure_time - chrono::Duration::minutes(5);
@@ -134,10 +134,10 @@ impl NotificationManagementService {
     ) -> Result<usize> {
         use tracing::debug;
 
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelBattleRecruitmentRepository::new();
-        let scheduled_task_notification_repo = ScheduledTaskNotificationRepository::new();
-        let scheduled_task_repo = ScheduledTaskRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
+        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
+        let scheduled_task_notification_repo = SeaOrmScheduledTaskNotificationRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
 
         // 募集に紐づく通知を検索
         let relations = rel_repo

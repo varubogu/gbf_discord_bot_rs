@@ -11,8 +11,8 @@ use crate::models::entities::worker::last_process_times::LastProcessType;
 use crate::models::last_process_times::LastProcessTime;
 use crate::repository::database::last_process_time_repository::SeaOrmLastProcessTimeRepository;
 use crate::repository::database::schedule::{
-    BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
-    NotificationRepository, ScheduleRepository,
+    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmNotificationRelEventScheduleRepository,
+    SeaOrmNotificationRepository, SeaOrmScheduleRepository,
 };
 use sea_orm::DatabaseConnection;
 
@@ -36,9 +36,9 @@ impl SchedulerService {
         txn: &DatabaseTransaction,
         app_state: &AppState,
     ) -> Result<()> {
-        let schedule_repo = ScheduleRepository::new();
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelEventScheduleRepository::new();
+        let schedule_repo = SeaOrmScheduleRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
+        let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
         let calculator = ScheduleCalculator::new();
 
         // 既存のスケジュールとリレーションをクリア
@@ -128,14 +128,14 @@ impl SchedulerService {
     ) -> Result<()> {
         use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
         use crate::repository::database::schedule::{
-            ScheduledTaskNotificationRepository, ScheduledTaskRepository,
+            SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRepository,
         };
         use chrono::Utc;
 
-        let notification_repo = NotificationRepository::new();
-        let rel_repo = NotificationRelEventScheduleRepository::new();
-        let scheduled_task_repo = ScheduledTaskRepository::new();
-        let scheduled_task_notification_repo = ScheduledTaskNotificationRepository::new();
+        let notification_repo = SeaOrmNotificationRepository::new();
+        let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
+        let scheduled_task_notification_repo = SeaOrmScheduledTaskNotificationRepository::new();
         let now = Utc::now();
 
         let mut created_count = 0;
@@ -246,7 +246,7 @@ impl SchedulerService {
             Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
-        let schedule_repo = BattleRecruitmentScheduleRepository::new();
+        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
         schedule_repo.find_all_enabled_schedules_with_days(db).await
     }
 }

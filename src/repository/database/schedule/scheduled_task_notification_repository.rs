@@ -13,9 +13,9 @@ pub struct NotificationWithTask {
 
 /// 通知タスクリポジトリ
 #[derive(Default)]
-pub struct ScheduledTaskNotificationRepository;
+pub struct SeaOrmScheduledTaskNotificationRepository;
 
-impl ScheduledTaskNotificationRepository {
+impl SeaOrmScheduledTaskNotificationRepository {
     pub fn new() -> Self {
         Self
     }

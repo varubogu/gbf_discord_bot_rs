@@ -13,9 +13,9 @@ pub struct DismissalWithTask {
 
 /// 解散タスクリポジトリ
 #[derive(Default)]
-pub struct ScheduledTaskDismissalRepository;
+pub struct SeaOrmScheduledTaskDismissalRepository;
 
-impl ScheduledTaskDismissalRepository {
+impl SeaOrmScheduledTaskDismissalRepository {
     pub fn new() -> Self {
         Self
     }
