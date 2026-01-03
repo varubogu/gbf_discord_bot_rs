@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'  # v1.0.0 のようなバージョンタグのみ
-    branches:
-      - main  # main ブランチのタグのみ対象
   workflow_dispatch:  # 手動トリガーも可能にする
 
 env:
