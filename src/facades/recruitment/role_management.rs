@@ -1,6 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::quests_repository::QuestRepository;
+use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;

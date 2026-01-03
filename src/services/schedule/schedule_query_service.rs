@@ -3,7 +3,7 @@ use crate::repository::database::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     NotificationRepository,
 };
-use crate::repository::quests_repository::QuestRepository;
+use crate::repository::quest_repository::QuestRepository;
 use crate::services::schedule::convert_utc_days_and_time_to_local;
 use crate::types::Result;
 use chrono::{DateTime, Timelike, Utc};

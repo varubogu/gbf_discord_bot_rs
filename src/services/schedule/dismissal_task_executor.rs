@@ -6,7 +6,7 @@ use crate::repository::database::recruitment_participants_repository::Recruitmen
 use crate::repository::database::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
-use crate::repository::quests_repository::QuestRepository;
+use crate::repository::quest_repository::QuestRepository;
 use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;

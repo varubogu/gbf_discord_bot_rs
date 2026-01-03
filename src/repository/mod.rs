@@ -2,14 +2,14 @@ pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod database;
 pub mod guild_channel_repository;
-pub mod guild_environments_repository;
-pub mod guild_message_texts_repository;
+pub mod guild_environment_repository;
+pub mod guild_message_text_repository;
 pub mod guild_quest_disable_repository;
 pub mod guild_settings_repository;
 pub mod guild_spreadsheet_config_repository;
-pub mod message_texts_repository;
+pub mod message_text_repository;
 pub mod quest_aliases_repository;
-pub mod quests_repository;
+pub mod quest_repository;
 pub mod recruitment_participants_repository;
 
 // 抽象インターフェースをre-export
@@ -18,17 +18,17 @@ pub use battle_recruitments_repository::{
 };
 pub use battle_style_repository::BattleStyleRepository;
 pub use guild_channel_repository::GuildChannelRepository;
-pub use guild_environments_repository::GuildEnvironmentRepository;
-pub use guild_message_texts_repository::GuildMessageTextRepository;
+pub use guild_environment_repository::GuildEnvironmentRepository;
+pub use guild_message_text_repository::GuildMessageTextRepository;
 pub use guild_quest_disable_repository::GuildQuestDisableRepository;
 pub use guild_settings_repository::GuildSettingsRepository;
-pub use message_texts_repository::MessageTextRepository;
+pub use message_text_repository::MessageTextRepository;
 pub use recruitment_participants_repository::RecruitmentParticipantsRepository;
 // pub use environments_repository::EnvironmentRepository;
 pub use guild_spreadsheet_config_repository::{
     GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait,
 };
-pub use quests_repository::QuestRepository;
+pub use quest_repository::QuestRepository;
 
 // /// リポジトリファクトリ
 // /// データベース実装の詳細を隠蔽し、抽象インターフェースのみ公開

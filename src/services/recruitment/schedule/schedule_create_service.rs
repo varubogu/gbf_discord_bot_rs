@@ -8,7 +8,7 @@ use crate::repository::database::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
-use crate::repository::quests_repository::QuestRepository;
+use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::schedule::DaysParserService;
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::services::unified_datetime_parser::{

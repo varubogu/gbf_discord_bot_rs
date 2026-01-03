@@ -5,7 +5,7 @@ use crate::models::entities::master::{
 };
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
-use crate::repository::quests_repository::QuestSearchResult;
+use crate::repository::quest_repository::QuestSearchResult;
 use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};

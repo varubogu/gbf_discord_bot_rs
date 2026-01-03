@@ -1,5 +1,5 @@
 use crate::repository::QuestRepository;
-use crate::repository::quests_repository::QuestSearchResult;
+use crate::repository::quest_repository::QuestSearchResult;
 use crate::types::Result;
 
 /// オートコンプリート用のクエスト情報
