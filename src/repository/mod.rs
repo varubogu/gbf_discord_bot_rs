@@ -15,6 +15,7 @@ pub mod quest_aliases_repository;
 pub mod quest_recruitment_notification_roles_repository;
 pub mod quest_repository;
 pub mod recruitment_participants_repository;
+pub mod schedule;
 
 // 抽象インターフェースをre-export
 pub use all_recruitment_notification_roles_repository::AllRecruitmentNotificationRolesRepository;
@@ -36,6 +37,18 @@ pub use message_text_repository::MessageTextRepository;
 pub use quest_recruitment_notification_roles_repository::QuestRecruitmentNotificationRolesRepository;
 pub use quest_repository::QuestRepository;
 pub use recruitment_participants_repository::RecruitmentParticipantsRepository;
+
+// schedule配下のtraitをre-export
+pub use schedule::{
+    BattleRecruitmentDismissalRepository, BattleRecruitmentScheduleDismissalRepository,
+    BattleRecruitmentScheduleRepository, CleanupWithTask, CreateScheduleParams,
+    DismissalWithTask, DissolutionWithTask, NotificationRelBattleRecruitmentRepository,
+    NotificationRelEventScheduleRepository, NotificationRepository, NotificationWithTask,
+    RecurringRecruitmentWithTask, ScheduleRepository, ScheduledTaskCleanupRepository,
+    ScheduledTaskDismissalRepository, ScheduledTaskDissolutionRepository,
+    ScheduledTaskNotificationRepository, ScheduledTaskRecurringRecruitmentRepository,
+    ScheduledTaskRepository,
+};
 
 // /// リポジトリファクトリ
 // /// データベース実装の詳細を隠蔽し、抽象インターフェースのみ公開
