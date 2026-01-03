@@ -1,8 +1,11 @@
 pub mod battle_recruitments_repository;
+pub mod battle_style_repository;
 pub mod database;
+pub mod guild_channel_repository;
 pub mod guild_environments_repository;
 pub mod guild_message_texts_repository;
 pub mod guild_quest_disable_repository;
+pub mod guild_settings_repository;
 pub mod guild_spreadsheet_config_repository;
 pub mod message_texts_repository;
 pub mod quest_aliases_repository;
@@ -13,9 +16,12 @@ pub mod recruitment_participants_repository;
 pub use battle_recruitments_repository::{
     BattleRecruitmentsRepository, CreateBattleRecruitmentParams,
 };
+pub use battle_style_repository::BattleStyleRepository;
+pub use guild_channel_repository::GuildChannelRepository;
 pub use guild_environments_repository::GuildEnvironmentRepository;
 pub use guild_message_texts_repository::GuildMessageTextRepository;
 pub use guild_quest_disable_repository::GuildQuestDisableRepository;
+pub use guild_settings_repository::GuildSettingsRepository;
 pub use message_texts_repository::MessageTextRepository;
 pub use recruitment_participants_repository::RecruitmentParticipantsRepository;
 // pub use environments_repository::EnvironmentRepository;
