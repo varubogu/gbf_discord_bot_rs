@@ -18,6 +18,10 @@ pub mod recruitment_participants_repository;
 pub mod schedule;
 
 // 実装型をre-export
+pub use all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
 pub use battle_style_repository::SeaOrmBattleStyleRepository;
 pub use guild_channel_repository::SeaOrmGuildChannelRepository;
+pub use guild_repository::SeaOrmGuildRepository;
 pub use guild_settings_repository::SeaOrmGuildSettingsRepository;
+pub use last_process_time_repository::SeaOrmLastProcessTimeRepository;
+pub use quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository;
