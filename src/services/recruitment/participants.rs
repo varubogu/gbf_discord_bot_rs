@@ -1,5 +1,5 @@
 use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateEmbed, CreateMessage, EditMessage, MessageId, ReactionType,
+    ChannelId, Context, CreateEmbed, EditMessage, MessageId, ReactionType,
 };
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
@@ -10,6 +10,7 @@ use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
+use crate::utils::discord_helper::send_message_with_optional_reply;
 
 /// ParticipantsService - 募集参加者管理を行うサービス
 pub struct ParticipantsService {
@@ -312,15 +313,16 @@ impl ParticipantsService {
         let channel = ChannelId::from(channel_id);
         let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
-        // メッセージIDから参照を作成
-        use poise::serenity_prelude::all::MessageReference;
-        let reference = MessageReference::from((channel, MessageId::from(message_id)));
-
-        let message = CreateMessage::new()
-            .content(notification_message)
-            .reference_message(reference);
-
-        match channel.send_message(&ctx.http, message).await {
+        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        match send_message_with_optional_reply(
+            &ctx.http,
+            channel,
+            MessageId::from(message_id),
+            notification_message,
+            Some("規定人数到達通知".to_string()),
+        )
+        .await
+        {
             Ok(_) => {
                 info!("規定人数到達通知送信成功");
                 Ok(())

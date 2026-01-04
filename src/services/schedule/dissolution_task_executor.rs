@@ -10,6 +10,7 @@ use crate::services::recruitment::cancel::{
     create_cancel_notification_text, create_cancelled_message_content,
 };
 use crate::types::{AppError, Result};
+use crate::utils::discord_helper::send_message_with_optional_reply;
 use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
@@ -252,24 +253,23 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         )
         .await?;
 
-        // 通知メッセージを送信（元のメッセージに返信）
-        use poise::serenity_prelude::{CreateMessage, MessageReference};
-        let message_ref = MessageReference::from((channel_id, message_id));
-        let create_builder = CreateMessage::new()
-            .content(notification_text)
-            .reference_message(message_ref);
-
-        channel_id
-            .send_message(http, create_builder)
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    recruitment_id = recruitment.id,
-                    "通知メッセージの送信に失敗しました"
-                );
-                e
-            })?;
+        // 通知メッセージを送信（元のメッセージに返信、失敗時は文脈情報付きで送信）
+        send_message_with_optional_reply(
+            http,
+            channel_id,
+            message_id,
+            notification_text,
+            Some("解散タスク通知".to_string()),
+        )
+        .await
+        .map_err(|e| {
+            error!(
+                error = %e,
+                recruitment_id = recruitment.id,
+                "通知メッセージの送信に失敗しました"
+            );
+            e
+        })?;
 
         // タスクを実行済みにマーク
         self.task_repo.mark_as_executed(txn, task_id).await?;

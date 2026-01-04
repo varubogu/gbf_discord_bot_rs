@@ -9,6 +9,7 @@ use crate::repository::schedule::{NotificationRelBattleRecruitmentRepository, No
 use crate::repository::GuildSettingsRepository;
 use crate::services::message::MessageService;
 use crate::types::Result;
+use crate::utils::discord_helper::send_message_with_optional_reply;
 use chrono::Utc;
 use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
@@ -243,11 +244,16 @@ impl NotificationService {
             format!("{mentions}\n{message_text}")
         };
 
-        let message = CreateMessage::new()
-            .content(content)
-            .reference_message((channel_id, message_id));
-
-        match channel_id.send_message(&self.http, message).await {
+        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        match send_message_with_optional_reply(
+            &self.http,
+            channel_id,
+            message_id,
+            content,
+            Some("スケジュール通知".to_string()),
+        )
+        .await
+        {
             Ok(sent_message) => {
                 info!(
                     notification_id = notification.id,

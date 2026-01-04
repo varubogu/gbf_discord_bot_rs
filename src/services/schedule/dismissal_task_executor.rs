@@ -16,6 +16,7 @@ use crate::repository::GuildSettingsRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
 use crate::types::{AppError, Result};
+use crate::utils::discord_helper::send_message_with_optional_reply;
 use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
@@ -302,18 +303,19 @@ impl DismissalTaskExecutor {
             format!("{base_message}: {participants_str}")
         };
 
-        channel_id
-            .send_message(
-                http,
-                poise::serenity_prelude::CreateMessage::new()
-                    .content(dismissal_notification)
-                    .reference_message(&original_message),
-            )
-            .await
-            .map_err(|e| {
-                error!(error = %e, "解散通知メッセージの送信に失敗しました");
-                AppError::Discord(Box::new(e))
-            })?;
+        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        send_message_with_optional_reply(
+            http,
+            channel_id,
+            message_id,
+            dismissal_notification,
+            Some("解散通知".to_string()),
+        )
+        .await
+        .map_err(|e| {
+            error!(error = %e, "解散通知メッセージの送信に失敗しました");
+            AppError::Discord(Box::new(e))
+        })?;
 
         // 募集をキャンセル状態に更新
         recruitment_repo

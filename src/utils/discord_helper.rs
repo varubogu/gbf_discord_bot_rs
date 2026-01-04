@@ -1,5 +1,6 @@
 use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{GuildId, Message, User, UserId};
+use poise::serenity_prelude::all::{ChannelId, CreateMessage, GuildId, Message, MessageId, MessageReference, User, UserId};
+use poise::serenity_prelude::Http;
 use std::collections::{HashMap, HashSet};
 
 pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {
@@ -168,6 +169,66 @@ pub async fn update_embed_with_participants(
     }
 
     Ok(())
+}
+
+/// 返信付きメッセージを送信し、失敗時は文脈情報を付加して通常メッセージとして送信
+///
+/// # 引数
+/// * `http` - Discord HTTPクライアント
+/// * `channel_id` - 送信先チャンネルID
+/// * `message_id` - 返信対象メッセージID
+/// * `content` - 送信するメッセージ内容
+/// * `fallback_context` - 返信失敗時に付加する文脈情報（オプション）
+///
+/// # 戻り値
+/// 送信されたメッセージ
+///
+/// # エラー
+/// メッセージ送信に失敗した場合
+pub async fn send_message_with_optional_reply(
+    http: impl AsRef<Http>,
+    channel_id: ChannelId,
+    message_id: MessageId,
+    content: String,
+    fallback_context: Option<String>,
+) -> Result<Message, poise::serenity_prelude::Error> {
+    let http = http.as_ref();
+    // まず返信形式で送信を試みる
+    let reference = MessageReference::from((channel_id, message_id));
+    let message_with_reply = CreateMessage::new()
+        .content(&content)
+        .reference_message(reference);
+
+    match channel_id.send_message(http, message_with_reply).await {
+        Ok(sent_message) => {
+            tracing::debug!(
+                channel_id = %channel_id,
+                message_id = %message_id,
+                "返信形式でメッセージを送信しました"
+            );
+            Ok(sent_message)
+        }
+        Err(e) => {
+            // 返信失敗をログに記録
+            tracing::warn!(
+                error = %e,
+                channel_id = %channel_id,
+                message_id = %message_id,
+                "返信形式でのメッセージ送信に失敗しました。通常メッセージとして再送信します"
+            );
+
+            // 文脈情報を付加して通常メッセージとして送信
+            let fallback_content = if let Some(context) = fallback_context {
+                format!("【{}】\n{}", context, content)
+            } else {
+                content
+            };
+
+            let message_without_reply = CreateMessage::new().content(fallback_content);
+
+            channel_id.send_message(http, message_without_reply).await
+        }
+    }
 }
 
 #[cfg(test)]

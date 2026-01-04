@@ -1,4 +1,4 @@
-use poise::serenity_prelude::all::{ChannelId, Context, CreateMessage, MessageId};
+use poise::serenity_prelude::all::{ChannelId, Context, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{error, info, warn};
@@ -7,6 +7,7 @@ use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
+use crate::utils::discord_helper::send_message_with_optional_reply;
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
 pub struct StartRecruitmentService {
@@ -169,11 +170,16 @@ impl StartRecruitmentService {
         let channel = ChannelId::from(channel_id);
         let original_message = MessageId::from(original_message_id);
 
-        let reply_message = CreateMessage::new()
-            .content(content)
-            .reference_message((channel, original_message));
-
-        match channel.send_message(&ctx.http, reply_message).await {
+        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        match send_message_with_optional_reply(
+            &ctx.http,
+            channel,
+            original_message,
+            content.to_string(),
+            Some("募集開始通知".to_string()),
+        )
+        .await
+        {
             Ok(sent_message) => {
                 info!("開始返信送信成功: sent_message_id={}", sent_message.id);
                 Ok(())

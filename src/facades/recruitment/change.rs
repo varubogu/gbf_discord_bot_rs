@@ -11,6 +11,7 @@ use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
+use crate::utils::discord_helper::send_message_with_optional_reply;
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
@@ -234,14 +235,15 @@ pub async fn change_recruitment_information_internal(
             format!("{}\n募集内容が更新されました。", parts.join(" "))
         };
 
-        use poise::serenity_prelude::CreateMessage;
-        let notification_message = CreateMessage::new()
-            .content(update_notification)
-            .reference_message((channel_id_obj, message_id_obj));
-
-        channel_id_obj
-            .send_message(http, notification_message)
-            .await?;
+        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        send_message_with_optional_reply(
+            http,
+            channel_id_obj,
+            message_id_obj,
+            update_notification,
+            Some("募集内容変更通知".to_string()),
+        )
+        .await?;
 
         // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
         if event_date.is_some() {
