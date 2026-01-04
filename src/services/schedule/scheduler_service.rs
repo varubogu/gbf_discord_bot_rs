@@ -19,6 +19,7 @@ use crate::repository::schedule::{
     NotificationRepository, ScheduleRepository, ScheduledTaskNotificationRepository,
     ScheduledTaskRepository,
 };
+use crate::repository::LastProcessTimeRepository;
 use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;

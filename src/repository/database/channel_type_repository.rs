@@ -1,5 +1,7 @@
 use crate::models::entities::master::channel_types;
+use crate::repository::ChannelTypeRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
@@ -11,9 +13,12 @@ impl SeaOrmChannelTypeRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl ChannelTypeRepository for SeaOrmChannelTypeRepository {
     /// すべてのチャンネル種別を取得
-    pub async fn get_all<C>(&self, db: &C) -> Result<Vec<channel_types::Model>>
+    async fn get_all<C>(&self, db: &C) -> Result<Vec<channel_types::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -29,7 +34,7 @@ impl SeaOrmChannelTypeRepository {
     }
 
     /// IDでチャンネル種別を取得
-    pub async fn get_by_id<C>(&self, db: &C, id: i32) -> Result<Option<channel_types::Model>>
+    async fn get_by_id<C>(&self, db: &C, id: i32) -> Result<Option<channel_types::Model>>
     where
         C: sea_orm::ConnectionTrait,
     {

@@ -1,5 +1,6 @@
 use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
+use crate::repository::{ChannelTypeRepository, GuildChannelRepository};
 use crate::types::Result;
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;

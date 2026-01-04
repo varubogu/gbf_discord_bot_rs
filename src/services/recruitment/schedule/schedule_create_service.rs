@@ -13,6 +13,7 @@ use crate::repository::schedule::{
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
 use crate::repository::quest_repository::QuestRepository;
+use crate::repository::GuildChannelRepository;
 use crate::services::recruitment::schedule::DaysParserService;
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::services::unified_datetime_parser::{

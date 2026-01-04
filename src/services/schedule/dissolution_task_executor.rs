@@ -4,6 +4,7 @@ use crate::repository::database::schedule::{
 };
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::repository::schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository};
+use crate::repository::GuildSettingsRepository;
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     create_cancel_notification_text, create_cancelled_message_content,

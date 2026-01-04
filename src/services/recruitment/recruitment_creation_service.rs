@@ -11,6 +11,7 @@ use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsR
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quest_repository::QuestRepository;
+use crate::repository::GuildChannelRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new::{
     create_initial_participants_text_for_buttons, create_message_content,

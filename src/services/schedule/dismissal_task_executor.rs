@@ -12,6 +12,7 @@ use crate::repository::recruitment_participants_repository::RecruitmentParticipa
 use crate::repository::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
+use crate::repository::GuildSettingsRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
 use crate::types::{AppError, Result};

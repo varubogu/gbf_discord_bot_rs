@@ -1,5 +1,8 @@
 use crate::repository::database::all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
 use crate::repository::database::quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository;
+use crate::repository::{
+    AllRecruitmentNotificationRolesRepository, QuestRecruitmentNotificationRolesRepository,
+};
 use crate::types::Result;
 use sea_orm::DatabaseTransaction;
 use tracing::{debug, info};

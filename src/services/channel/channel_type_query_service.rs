@@ -1,4 +1,5 @@
 use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
+use crate::repository::ChannelTypeRepository;
 use crate::types::Result;
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::ConnectionTrait;

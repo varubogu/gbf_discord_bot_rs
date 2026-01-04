@@ -2,6 +2,7 @@ use crate::models::entities::{guild_master::guild_channels, master::channel_type
 use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
 use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::database::guild_repository::SeaOrmGuildRepository;
+use crate::repository::{ChannelTypeRepository, GuildChannelRepository, GuildRepository};
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
 use tracing::{debug, info};

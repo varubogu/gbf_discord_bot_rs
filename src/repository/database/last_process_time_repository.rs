@@ -3,7 +3,9 @@ use crate::models::entities::worker::{
     last_process_times::LastProcessType,
 };
 use crate::models::last_process_times::LastProcessTime;
+use crate::repository::LastProcessTimeRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
@@ -16,15 +18,18 @@ impl SeaOrmLastProcessTimeRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl LastProcessTimeRepository for SeaOrmLastProcessTimeRepository {
     // /// すべてのlast_process_timesを取得
-    // pub async fn find_all(&self) -> Result<Vec<LastProcessTime>> {
+    // async fn find_all(&self) -> Result<Vec<LastProcessTime>> {
     //     let models = LastProcessTimeEntity::find().all(&self.db).await?;
     //     Ok(models.into_iter().map(|model| model.into()).collect())
     // }
 
     /// process_typeでlast_process_timeを取得
-    pub async fn find_by_type<C>(
+    async fn find_by_type<C>(
         &self,
         db: &C,
         process_type: LastProcessType,
@@ -41,7 +46,7 @@ impl SeaOrmLastProcessTimeRepository {
     }
 
     // /// IDでlast_process_timeを取得
-    // pub async fn find_by_id(&self, process_type: i32) -> Result<Option<LastProcessTime>> {
+    // async fn find_by_id(&self, process_type: i32) -> Result<Option<LastProcessTime>> {
     //     let last_process_time = LastProcessTimeEntity::find_by_id(process_type)
     //         .one(&self.db)
     //         .await?;
@@ -50,7 +55,7 @@ impl SeaOrmLastProcessTimeRepository {
     // }
 
     /// スケジュール処理のlast_process_timeを取得
-    pub async fn find_schedule_last_process_time<C>(
+    async fn find_schedule_last_process_time<C>(
         &self,
         db: &C,
     ) -> Result<Option<LastProcessTime>>
@@ -61,14 +66,14 @@ impl SeaOrmLastProcessTimeRepository {
     }
 
     // /// スプレッドシート読み込みのlast_process_timeを取得
-    // pub async fn find_spreadsheet_load_last_process_time(
+    // async fn find_spreadsheet_load_last_process_time(
     //     &self,
     // ) -> Result<Option<LastProcessTime>> {
     //     self.find_by_type(LastProcessType::SpreadsheetLoad).await
     // }
 
     // /// スプレッドシート書き込みのlast_process_timeを取得
-    // pub async fn find_spreadsheet_push_last_process_time(
+    // async fn find_spreadsheet_push_last_process_time(
     //     &self,
     // ) -> Result<Option<LastProcessTime>> {
     //     self.find_by_type(LastProcessType::SpreadsheetPush).await
@@ -76,7 +81,7 @@ impl SeaOrmLastProcessTimeRepository {
 
     /// last_process_timeを更新（トランザクション付き）
     /// レコードが存在しない場合は新規作成、存在する場合は更新
-    pub async fn upsert_with_txn(
+    async fn upsert_with_txn(
         &self,
         txn: &DatabaseTransaction,
         process_type: LastProcessType,

@@ -1,5 +1,7 @@
 use crate::models::entities::guild_master::guild_channels;
+use crate::repository::GuildChannelRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error, info};
@@ -12,9 +14,12 @@ impl SeaOrmGuildChannelRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl GuildChannelRepository for SeaOrmGuildChannelRepository {
     /// ギルドチャンネルを登録または更新（トランザクション内）
-    pub async fn upsert_with_txn(
+    async fn upsert_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -85,7 +90,7 @@ impl SeaOrmGuildChannelRepository {
     }
 
     /// ギルドIDとチャンネル種別でギルドチャンネルを取得（トランザクション内）
-    pub async fn get_by_guild_and_type_with_txn(
+    async fn get_by_guild_and_type_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -114,7 +119,7 @@ impl SeaOrmGuildChannelRepository {
     }
 
     /// ギルドIDでギルドチャンネル一覧を取得（トランザクション内）
-    pub async fn get_all_by_guild_with_txn(
+    async fn get_all_by_guild_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -141,7 +146,7 @@ impl SeaOrmGuildChannelRepository {
     }
 
     /// ギルドチャンネルを削除（トランザクション内）
-    pub async fn delete_with_txn(
+    async fn delete_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,

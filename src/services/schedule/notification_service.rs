@@ -6,6 +6,7 @@ use crate::repository::database::schedule::{
     SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
 };
 use crate::repository::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
+use crate::repository::GuildSettingsRepository;
 use crate::services::message::MessageService;
 use crate::types::Result;
 use chrono::Utc;

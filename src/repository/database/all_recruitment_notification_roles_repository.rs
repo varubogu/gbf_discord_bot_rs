@@ -1,5 +1,7 @@
 use crate::models::entities::guild_master::all_recruitment_notification_roles;
+use crate::repository::AllRecruitmentNotificationRolesRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, Set};
 use tracing::{debug, error, info};
 
@@ -11,9 +13,12 @@ impl SeaOrmAllRecruitmentNotificationRolesRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl AllRecruitmentNotificationRolesRepository for SeaOrmAllRecruitmentNotificationRolesRepository {
     /// 全募集通知ロールを登録（トランザクション内）
-    pub async fn create_with_txn(
+    async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -59,7 +64,7 @@ impl SeaOrmAllRecruitmentNotificationRolesRepository {
     }
 
     /// 全募集通知ロールを削除（トランザクション内）
-    pub async fn delete_with_txn(
+    async fn delete_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -97,7 +102,7 @@ impl SeaOrmAllRecruitmentNotificationRolesRepository {
     }
 
     /// ギルドIDで全募集通知ロール一覧を取得（トランザクション内、seq昇順）
-    pub async fn find_by_guild_with_txn(
+    async fn find_by_guild_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -131,7 +136,7 @@ impl SeaOrmAllRecruitmentNotificationRolesRepository {
     }
 
     /// 全募集通知ロールが存在するかチェック（トランザクション内）
-    pub async fn exists_with_txn(
+    async fn exists_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,

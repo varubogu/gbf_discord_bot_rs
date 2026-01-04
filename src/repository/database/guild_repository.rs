@@ -1,5 +1,7 @@
 use crate::models::entities::guild_master::guilds;
+use crate::repository::GuildRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
@@ -11,10 +13,13 @@ impl SeaOrmGuildRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl GuildRepository for SeaOrmGuildRepository {
     /// ギルドを登録または更新（トランザクション内）
     /// ギルドが既に存在する場合は名前のみ更新
-    pub async fn upsert_with_txn(
+    async fn upsert_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,

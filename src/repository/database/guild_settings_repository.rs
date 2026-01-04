@@ -1,5 +1,7 @@
 use crate::models::entities::guild_master::guild_settings;
+use crate::repository::GuildSettingsRepository;
 use crate::types::Result;
+use async_trait::async_trait;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
@@ -17,9 +19,12 @@ impl SeaOrmGuildSettingsRepository {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[async_trait]
+impl GuildSettingsRepository for SeaOrmGuildSettingsRepository {
     /// ギルド設定（タイムゾーンとロケール）を登録または更新（トランザクション内）
-    pub async fn upsert_with_txn(
+    async fn upsert_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
@@ -87,7 +92,7 @@ impl SeaOrmGuildSettingsRepository {
     }
 
     /// ギルドIDで設定を取得（トランザクションなし）
-    pub async fn find_by_guild_id(
+    async fn find_by_guild_id(
         &self,
         db: &DatabaseConnection,
         guild_id: i64,
@@ -110,7 +115,7 @@ impl SeaOrmGuildSettingsRepository {
     }
 
     /// ギルドIDで設定を取得（トランザクション内）
-    pub async fn find_by_guild_id_with_txn(
+    async fn find_by_guild_id_with_txn(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
