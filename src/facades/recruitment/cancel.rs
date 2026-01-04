@@ -2,8 +2,9 @@ use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
-use crate::repository::{GuildSettingsRepository, RecruitmentParticipantsRepository};
+use crate::repository::{GuildSettingsRepository, QuestRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
@@ -570,9 +571,24 @@ pub async fn cancel_on_message_deleted(
         )
         .await?;
 
+        // クエスト情報を取得して通知メッセージに追加
+        let quest_repo = SeaOrmQuestRepository::new();
+        let final_notification_text = match quest_repo.get_by_target_id(&txn, recruitment.quest_id).await? {
+            Some(quest) => {
+                let quest_start_at_jst = recruitment.quest_start_at.with_timezone(&chrono_tz::Asia::Tokyo);
+                format!(
+                    "【メッセージ削除によるキャンセル - {} / {}】\n{}",
+                    quest.name,
+                    quest_start_at_jst.format("%Y/%m/%d %H:%M"),
+                    notification_text
+                )
+            }
+            None => notification_text,
+        };
+
         // 募集チャンネルに通知を送信
         let channel_id_obj = ChannelId::from(channel_id);
-        let notification_message = CreateMessage::new().content(notification_text);
+        let notification_message = CreateMessage::new().content(final_notification_text);
 
         channel_id_obj
             .send_message(&ctx.http, notification_message)
