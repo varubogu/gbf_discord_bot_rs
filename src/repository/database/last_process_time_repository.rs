@@ -55,10 +55,7 @@ impl LastProcessTimeRepository for SeaOrmLastProcessTimeRepository {
     // }
 
     /// スケジュール処理のlast_process_timeを取得
-    async fn find_schedule_last_process_time<C>(
-        &self,
-        db: &C,
-    ) -> Result<Option<LastProcessTime>>
+    async fn find_schedule_last_process_time<C>(&self, db: &C) -> Result<Option<LastProcessTime>>
     where
         C: sea_orm::ConnectionTrait,
     {

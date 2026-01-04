@@ -16,7 +16,9 @@ impl SeaOrmQuestRecruitmentNotificationRolesRepository {
 }
 
 #[async_trait]
-impl QuestRecruitmentNotificationRolesRepository for SeaOrmQuestRecruitmentNotificationRolesRepository {
+impl QuestRecruitmentNotificationRolesRepository
+    for SeaOrmQuestRecruitmentNotificationRolesRepository
+{
     /// クエスト別募集通知ロールを登録（トランザクション内）
     async fn create_with_txn(
         &self,

@@ -16,7 +16,6 @@ pub struct SeaOrmBattleRecruitmentScheduleRepository;
 
 #[async_trait]
 impl BattleRecruitmentScheduleRepository for SeaOrmBattleRecruitmentScheduleRepository {
-
     /// 有効な全スケジュールと曜日情報を取得
     async fn find_all_enabled_schedules_with_days(
         &self,

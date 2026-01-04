@@ -17,9 +17,7 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
     let entities_dir = Path::new("src/models/entities");
 
     if !entities_dir.exists() {
-        eprintln!(
-            "エラー: エンティティディレクトリが見つかりません: {entities_dir:?}"
-        );
+        eprintln!("エラー: エンティティディレクトリが見つかりません: {entities_dir:?}");
         return schema_map;
     }
 

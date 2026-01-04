@@ -12,7 +12,6 @@ pub struct SeaOrmScheduledTaskDismissalRepository;
 
 #[async_trait]
 impl ScheduledTaskDismissalRepository for SeaOrmScheduledTaskDismissalRepository {
-
     /// 指定範囲内の未実行解散タスクをJOIN済みで取得
     async fn find_pending_in_range(
         &self,
@@ -181,4 +180,3 @@ impl SeaOrmScheduledTaskDismissalRepository {
         Self
     }
 }
-

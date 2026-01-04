@@ -1,6 +1,8 @@
-use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{ChannelId, CreateMessage, GuildId, Message, MessageId, MessageReference, User, UserId};
 use poise::serenity_prelude::Http;
+use poise::serenity_prelude::ReactionType;
+use poise::serenity_prelude::all::{
+    ChannelId, CreateMessage, GuildId, Message, MessageId, MessageReference, User, UserId,
+};
 use std::collections::{HashMap, HashSet};
 
 pub async fn guild_id_url_str(guild_id: Option<GuildId>) -> String {

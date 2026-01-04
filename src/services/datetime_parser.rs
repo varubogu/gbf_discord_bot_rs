@@ -850,19 +850,13 @@ mod tests {
         println!("has_time: {}", result.components.has_time);
 
         // 「28 1000」は日と時刻のみのパターン
-        assert!(
-            !result.components.has_year,
-            "年フラグが間違っています"
-        );
+        assert!(!result.components.has_year, "年フラグが間違っています");
         assert!(
             !result.components.has_month,
             "月フラグが間違っています（★月補正のキー）"
         );
         assert!(result.components.has_day, "日フラグが間違っています");
-        assert!(
-            result.components.has_time,
-            "時刻フラグが間違っています"
-        );
+        assert!(result.components.has_time, "時刻フラグが間違っています");
     }
 
     #[test]

@@ -2,9 +2,7 @@ use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
 };
-use crate::repository::schedule::{
-    ScheduledTaskNotificationRepository, ScheduledTaskRepository,
-};
+use crate::repository::schedule::{ScheduledTaskNotificationRepository, ScheduledTaskRepository};
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;

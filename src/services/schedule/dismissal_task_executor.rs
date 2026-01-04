@@ -1,3 +1,4 @@
+use crate::repository::GuildSettingsRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -12,7 +13,6 @@ use crate::repository::recruitment_participants_repository::RecruitmentParticipa
 use crate::repository::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
-use crate::repository::GuildSettingsRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
 use crate::types::{AppError, Result};

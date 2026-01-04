@@ -43,8 +43,8 @@ pub use recruitment_participants_repository::RecruitmentParticipantsRepository;
 // schedule配下のtraitをre-export
 pub use schedule::{
     BattleRecruitmentDismissalRepository, BattleRecruitmentScheduleDismissalRepository,
-    BattleRecruitmentScheduleRepository, CleanupWithTask, CreateScheduleParams,
-    DismissalWithTask, DissolutionWithTask, NotificationRelBattleRecruitmentRepository,
+    BattleRecruitmentScheduleRepository, CleanupWithTask, CreateScheduleParams, DismissalWithTask,
+    DissolutionWithTask, NotificationRelBattleRecruitmentRepository,
     NotificationRelEventScheduleRepository, NotificationRepository, NotificationWithTask,
     RecurringRecruitmentWithTask, ScheduleRepository, ScheduledTaskCleanupRepository,
     ScheduledTaskDismissalRepository, ScheduledTaskDissolutionRepository,

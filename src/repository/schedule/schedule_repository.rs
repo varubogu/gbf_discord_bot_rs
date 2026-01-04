@@ -14,10 +14,7 @@ pub trait ScheduleRepository: Send + Sync {
         C: sea_orm::ConnectionTrait;
 
     /// すべてのイベントスケジュールを取得
-    async fn find_all_event_schedules<C>(
-        &self,
-        db: &C,
-    ) -> Result<Vec<event_schedules::Model>>
+    async fn find_all_event_schedules<C>(&self, db: &C) -> Result<Vec<event_schedules::Model>>
     where
         C: sea_orm::ConnectionTrait;
 }

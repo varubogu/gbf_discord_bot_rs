@@ -10,8 +10,9 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 pub struct SeaOrmNotificationRelBattleRecruitmentRepository;
 
 #[async_trait]
-impl NotificationRelBattleRecruitmentRepository for SeaOrmNotificationRelBattleRecruitmentRepository {
-
+impl NotificationRelBattleRecruitmentRepository
+    for SeaOrmNotificationRelBattleRecruitmentRepository
+{
     /// 通知IDからマルチ募集との関連を取得
     async fn find_by_notification_id<C>(
         &self,

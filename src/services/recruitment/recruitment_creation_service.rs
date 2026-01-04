@@ -1,6 +1,6 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
+use crate::repository::GuildChannelRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,
@@ -11,7 +11,7 @@ use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsR
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismissalRepository;
 use crate::repository::quest_repository::QuestRepository;
-use crate::repository::GuildChannelRepository;
+use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new::{
     create_initial_participants_text_for_buttons, create_message_content,

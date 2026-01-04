@@ -9,6 +9,7 @@ use tracing::{debug, info, warn};
 use crate::models::entities::guild_master::battle_recruitment_schedules;
 use crate::models::entities::worker::last_process_times::LastProcessType;
 use crate::models::last_process_times::LastProcessTime;
+use crate::repository::LastProcessTimeRepository;
 use crate::repository::database::last_process_time_repository::SeaOrmLastProcessTimeRepository;
 use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmNotificationRelEventScheduleRepository,
@@ -19,7 +20,6 @@ use crate::repository::schedule::{
     NotificationRepository, ScheduleRepository, ScheduledTaskNotificationRepository,
     ScheduledTaskRepository,
 };
-use crate::repository::LastProcessTimeRepository;
 use sea_orm::DatabaseConnection;
 
 pub struct SchedulerService;

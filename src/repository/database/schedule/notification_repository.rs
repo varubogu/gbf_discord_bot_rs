@@ -12,7 +12,6 @@ pub struct SeaOrmNotificationRepository;
 
 #[async_trait]
 impl NotificationRepository for SeaOrmNotificationRepository {
-
     /// 指定した日時範囲内の未送信通知を取得
     async fn find_by_datetime_range<C>(
         &self,

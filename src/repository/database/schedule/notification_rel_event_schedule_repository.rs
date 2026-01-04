@@ -12,7 +12,6 @@ pub struct SeaOrmNotificationRelEventScheduleRepository;
 
 #[async_trait]
 impl NotificationRelEventScheduleRepository for SeaOrmNotificationRelEventScheduleRepository {
-
     // /// 通知IDからイベントスケジュールとの関連を取得
     // pub async fn find_by_notification_id(
     //     &self,

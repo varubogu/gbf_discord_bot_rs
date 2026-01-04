@@ -97,10 +97,7 @@ pub async fn check_bot_control_role(
         })?;
 
     // Send制約を満たすため、guild()を使わずにHTTP経由でロール情報を取得
-    let roles = ctx
-        .http()
-        .get_guild_roles(guild_id)
-        .await?;
+    let roles = ctx.http().get_guild_roles(guild_id).await?;
 
     let control_role = roles
         .iter()

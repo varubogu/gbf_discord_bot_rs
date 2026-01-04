@@ -1,12 +1,14 @@
 use crate::models::entities::worker::{battle_recruitments, notifications};
+use crate::repository::GuildSettingsRepository;
 use crate::repository::RecruitmentParticipantsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 use crate::repository::database::schedule::{
     SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
 };
-use crate::repository::schedule::{NotificationRelBattleRecruitmentRepository, NotificationRepository};
-use crate::repository::GuildSettingsRepository;
+use crate::repository::schedule::{
+    NotificationRelBattleRecruitmentRepository, NotificationRepository,
+};
 use crate::services::message::MessageService;
 use crate::types::Result;
 use crate::utils::discord_helper::send_message_with_optional_reply;

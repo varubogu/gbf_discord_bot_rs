@@ -11,7 +11,6 @@ pub struct SeaOrmScheduledTaskRepository;
 
 #[async_trait]
 impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
-
     /// 指定した日時範囲内の未実行タスクを取得
     async fn find_pending_in_range(
         &self,

@@ -11,7 +11,6 @@ pub struct SeaOrmScheduledTaskCleanupRepository;
 
 #[async_trait]
 impl ScheduledTaskCleanupRepository for SeaOrmScheduledTaskCleanupRepository {
-
     /// 指定範囲内の未実行クリーンアップタスクをJOIN済みで取得
     async fn find_pending_in_range(
         &self,
@@ -127,4 +126,3 @@ impl Default for SeaOrmScheduledTaskCleanupRepository {
         Self::new()
     }
 }
-

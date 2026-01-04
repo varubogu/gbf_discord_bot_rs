@@ -1,7 +1,6 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmScheduledTaskRepository,
+    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskRepository,
 };
 use crate::repository::schedule::{
     BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,

@@ -12,7 +12,6 @@ pub struct SeaOrmScheduledTaskNotificationRepository;
 
 #[async_trait]
 impl ScheduledTaskNotificationRepository for SeaOrmScheduledTaskNotificationRepository {
-
     /// 指定範囲内の未実行通知タスクをJOIN済みで取得
     async fn find_pending_in_range(
         &self,
@@ -165,4 +164,3 @@ impl SeaOrmScheduledTaskNotificationRepository {
         Self
     }
 }
-

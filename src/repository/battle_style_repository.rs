@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::entities::master::battle_styles;
 use crate::types;
+use async_trait::async_trait;
 
 /// BattleStyleRepositoryトレイト
 #[async_trait]

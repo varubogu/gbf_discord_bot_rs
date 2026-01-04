@@ -11,7 +11,6 @@ pub struct SeaOrmScheduleRepository;
 
 #[async_trait]
 impl ScheduleRepositoryTrait for SeaOrmScheduleRepository {
-
     // /// 現在有効なイベントスケジュールを取得
     // pub async fn find_active_event_schedules(
     //     &self,

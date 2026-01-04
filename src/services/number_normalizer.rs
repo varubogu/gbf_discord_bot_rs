@@ -46,7 +46,8 @@ pub fn normalize_numbers(input: &str) -> String {
                     // さらにその次が一桁の漢数字かチェック（例: 二十八 → 28）
                     if i + 2 < chars.len() {
                         match chars[i + 2] {
-                            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九' => {
+                            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九' =>
+                            {
                                 let ones_digit = match chars[i + 2] {
                                     '一' => '1',
                                     '二' => '2',

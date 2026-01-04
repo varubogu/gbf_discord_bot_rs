@@ -11,8 +11,9 @@ use tracing::{debug, error};
 pub struct SeaOrmBattleRecruitmentScheduleDismissalRepository;
 
 #[async_trait]
-impl BattleRecruitmentScheduleDismissalRepository for SeaOrmBattleRecruitmentScheduleDismissalRepository {
-
+impl BattleRecruitmentScheduleDismissalRepository
+    for SeaOrmBattleRecruitmentScheduleDismissalRepository
+{
     /// 解散時刻を作成（絶対時刻）
     async fn create_absolute(
         &self,

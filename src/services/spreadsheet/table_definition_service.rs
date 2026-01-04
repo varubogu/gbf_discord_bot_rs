@@ -52,7 +52,6 @@ impl FromStr for TableIO {
 }
 
 impl TableIO {
-
     /// 読み込み可能か
     pub fn can_import(&self) -> bool {
         matches!(self, TableIO::In | TableIO::Both)

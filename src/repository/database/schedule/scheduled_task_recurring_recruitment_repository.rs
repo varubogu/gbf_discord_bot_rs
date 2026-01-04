@@ -1,6 +1,7 @@
 use crate::models::entities::worker::{scheduled_task_recurring_recruitments, scheduled_tasks};
 use crate::repository::schedule::{
-    RecurringRecruitmentWithTask, ScheduledTaskRecurringRecruitmentRepository as ScheduledTaskRecurringRecruitmentRepositoryTrait,
+    RecurringRecruitmentWithTask,
+    ScheduledTaskRecurringRecruitmentRepository as ScheduledTaskRecurringRecruitmentRepositoryTrait,
     ScheduledTaskRepository,
 };
 use crate::types::Result;
@@ -14,8 +15,9 @@ use tracing::{debug, error};
 pub struct SeaOrmScheduledTaskRecurringRecruitmentRepository;
 
 #[async_trait]
-impl ScheduledTaskRecurringRecruitmentRepositoryTrait for SeaOrmScheduledTaskRecurringRecruitmentRepository {
-
+impl ScheduledTaskRecurringRecruitmentRepositoryTrait
+    for SeaOrmScheduledTaskRecurringRecruitmentRepository
+{
     /// 指定範囲内の未実行定期募集タスクをJOIN済みで取得
     async fn find_pending_in_range(
         &self,
@@ -261,4 +263,3 @@ impl SeaOrmScheduledTaskRecurringRecruitmentRepository {
         Self
     }
 }
-
