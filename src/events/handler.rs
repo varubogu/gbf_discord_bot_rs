@@ -58,6 +58,20 @@ pub async fn event_handler(
                 }
             }
         }
+        poise::serenity_prelude::FullEvent::MessageDelete {
+            channel_id,
+            deleted_message_id,
+            guild_id,
+        } => {
+            handlers::message_delete::on_message_delete(
+                ctx,
+                *channel_id,
+                *deleted_message_id,
+                *guild_id,
+                data,
+            )
+            .await?;
+        }
         _ => {}
     }
     Ok(())

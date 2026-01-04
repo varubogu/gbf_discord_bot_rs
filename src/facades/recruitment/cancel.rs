@@ -1,5 +1,10 @@
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
+use crate::repository::{GuildSettingsRepository, RecruitmentParticipantsRepository};
+use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
     delete_cancelling_message, delete_confirmation_message, get_participants_from_reactions,
@@ -8,11 +13,11 @@ use crate::services::recruitment::cancel::{
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
 use crate::types::domain_interface_result::CanCancelResult;
-use crate::types::{AppError, PoiseContext};
+use crate::types::{AppError, AppState, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, CreateActionRow,
-    CreateButton, EditInteractionResponse, Message, MessageId,
+    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
+    CreateActionRow, CreateButton, CreateMessage, EditInteractionResponse, Message, MessageId,
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -437,4 +442,175 @@ async fn send_result_response(
         )
         .await?;
     Ok(())
+}
+
+/// メッセージ削除時の募集キャンセル処理（公開関数）
+///
+/// メッセージは既に削除されていますが、DBに保存された参加者情報を使用して
+/// キャンセル通知を送信します。
+///
+/// # 実行内容
+/// - DBを `is_canceled=true` に更新
+/// - 関連する通知スケジュールを削除
+/// - DBから参加者情報を取得
+/// - 参加者へのメンション付きキャンセル通知を募集チャンネルに送信
+///
+/// # 戻り値
+/// - `Ok(true)`: 募集メッセージのキャンセル処理を実行した
+/// - `Ok(false)`: 募集メッセージではなかった（処理不要）
+/// - `Err`: 処理中にエラーが発生
+#[instrument(
+    level = "debug",
+    skip(ctx, app_state),
+    fields(
+        guild_id = %guild_id,
+        channel_id = %channel_id,
+        message_id = %message_id
+    )
+)]
+pub async fn cancel_on_message_deleted(
+    ctx: &Context,
+    guild_id: u64,
+    channel_id: u64,
+    message_id: u64,
+    app_state: &AppState,
+) -> types::Result<bool> {
+    info!("cancel_on_message_deleted - メッセージ削除に伴う募集キャンセル処理を開始します");
+
+    let conn = app_state.guild_db();
+    let txn = conn.begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let result = async {
+        // RepositoryContainerとRepositoryの取得
+        let repos = RepositoryContainer::new();
+        let battle_recruitment_repo = repos.battle_recruitment();
+
+        // 募集メッセージかどうか確認
+        let recruitment_opt = battle_recruitment_repo
+            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+            .await?;
+
+        let recruitment = match recruitment_opt {
+            Some(r) => r,
+            None => {
+                // 募集メッセージではない
+                info!(
+                    message_id = %message_id,
+                    "削除されたメッセージは募集メッセージではありませんでした"
+                );
+                return Ok::<bool, AppError>(false);
+            }
+        };
+
+        // 既にキャンセル済みの場合はスキップ
+        if recruitment.is_canceled {
+            info!(
+                recruitment_id = recruitment.id,
+                "既にキャンセル済みの募集のため処理をスキップします"
+            );
+            return Ok(false);
+        }
+
+        info!(
+            recruitment_id = recruitment.id,
+            "募集メッセージの削除を検出、キャンセル処理を実行します"
+        );
+
+        // DBを is_canceled=true に更新
+        // メッセージ削除時は元の募集メッセージIDをrecruit_end_message_idに設定
+        cancel_recruitment_by_message(
+            &txn,
+            battle_recruitment_repo,
+            guild_id,
+            channel_id,
+            message_id,
+            MessageId::from(message_id),
+        )
+        .await?;
+
+        // 関連通知スケジュールを削除
+        let notification_management_service = NotificationManagementService::new();
+        notification_management_service
+            .delete_recruitment_notifications(&txn, recruitment.id)
+            .await?;
+
+        // DBから参加者情報を取得
+        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
+        let participant_user_ids = participants_repo
+            .get_all_participant_user_ids(&txn, recruitment.id)
+            .await?;
+
+        // 参加者メンションを作成
+        let participant_mentions: Vec<String> = participant_user_ids
+            .into_iter()
+            .map(|user_id| format!("<@{user_id}>"))
+            .collect();
+
+        // ギルド設定からロケールを取得
+        let guild_settings_repo = SeaOrmGuildSettingsRepository::new();
+        let locale = match guild_settings_repo
+            .find_by_guild_id_with_txn(&txn, guild_id as i64)
+            .await?
+        {
+            Some(settings) => settings.locale,
+            None => "ja".to_string(),
+        };
+
+        // キャンセル通知メッセージを作成
+        let message_service = MessageService::new();
+        let notification_text = create_cancel_notification_text(
+            &txn,
+            &message_service,
+            Some(guild_id as i64),
+            Some(&locale),
+            &participant_mentions,
+        )
+        .await?;
+
+        // 募集チャンネルに通知を送信
+        let channel_id_obj = ChannelId::from(channel_id);
+        let notification_message = CreateMessage::new().content(notification_text);
+
+        channel_id_obj
+            .send_message(&ctx.http, notification_message)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    recruitment_id = recruitment.id,
+                    "キャンセル通知メッセージの送信に失敗しました"
+                );
+                AppError::Discord(Box::new(e))
+            })?;
+
+        info!(
+            recruitment_id = recruitment.id,
+            participants_count = participant_mentions.len(),
+            "メッセージ削除に伴うキャンセル処理が完了しました"
+        );
+
+        Ok::<bool, AppError>(true)
+    }
+    .await;
+
+    match result {
+        Ok(processed) => {
+            txn.commit().await?;
+            Ok(processed)
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            error!(
+                error = %e,
+                guild_id = %guild_id,
+                channel_id = %channel_id,
+                message_id = %message_id,
+                "メッセージ削除に伴うキャンセル処理でエラーが発生しました"
+            );
+            Err(e)
+        }
+    }
 }
