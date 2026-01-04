@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::error;
 
 use sea_orm::TransactionTrait;
 
@@ -33,7 +33,6 @@ impl GuildManagementFacade {
             service
                 .register_guild(&txn, guild_id, guild_name.to_string())
                 .await?;
-            info!(guild_id, guild_name, "ギルドを登録または更新しました");
             Ok::<_, AppError>(())
         }
         .await;

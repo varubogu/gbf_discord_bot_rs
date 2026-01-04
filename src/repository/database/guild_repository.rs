@@ -3,7 +3,7 @@ use crate::repository::GuildRepository;
 use crate::types::Result;
 use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 /// guildsテーブルのRepository
 #[derive(Default)]
@@ -67,8 +67,6 @@ impl GuildRepository for SeaOrmGuildRepository {
                 e
             })?
         };
-
-        info!(guild_id = guild_id, name = %name, "ギルドを登録または更新しました");
 
         Ok(model)
     }
