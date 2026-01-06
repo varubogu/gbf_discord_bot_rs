@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `guild_event_schedule_details`
+**スキーマ名**: `guild_master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -62,5 +64,6 @@
 - schedulesテーブルに展開される際に具体的な日時に変換される
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_event_schedule_details.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/guild_master/guild_event_schedule_details.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_event_schedule_details.rs`
+- **実装状況**: ✅ 実装済み

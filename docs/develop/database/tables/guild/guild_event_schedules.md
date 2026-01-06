@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `guild_event_schedules`
+**スキーマ名**: `guild_master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -60,5 +62,6 @@
 - ギルドごとに独自のイベント期間や有利属性を設定可能
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_event_schedules.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/guild_master/guild_event_schedules.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_event_schedules.rs`
+- **実装状況**: ✅ 実装済み

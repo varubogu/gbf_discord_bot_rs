@@ -1,71 +1,129 @@
-# 通知スケジュール（schedules）
+# 通知スケジュール（notifications）
 
 ## 概要
 
-**テーブル物理名**: `schedules`
+**テーブル物理名**: `notifications`
+**スキーマ名**: `worker`
 **テーブルタイプ**: Transaction
-**テーブルスコープ**: All
+**テーブルスコープ**: All（全ギルド共通）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
-実際に通知を送信するスケジュールを管理します。event_schedule_detailsから具体的な日時に展開されたスケジュールで、通知処理の実行対象となります。
+実際に通知を送信するスケジュールを管理します。イベントスケジュールから具体的な日時に展開された通知で、通知処理の実行対象となります。
 
 ## カラム定義
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|-----|------|------|
-| row_id | UUID | PK, NOT NULL, default=uuid_v4 | 行ID（プライマリキー） |
-| parent_schedule_id | UUID | NULLABLE, FK(event_schedules.row_id) | 作成元イベントスケジュールID |
-| parent_schedule_detail_id | UUID | NULLABLE, FK(event_schedule_details.row_id) | 作成元詳細スケジュールID |
-| schedule_datetime | DateTime | NOT NULL | 通知送信日時 |
-| guild_id | BigInteger | NOT NULL | 対象ギルドID |
-| channel_id | BigInteger | NOT NULL | 通知先チャンネルID |
-| message_id | String | NULLABLE, FK(messages.message_id) | 送信メッセージID |
+| id | SERIAL | PK, NOT NULL | 通知ID（主キー、自動採番） |
+| schedule_datetime | TIMESTAMPTZ | NOT NULL | 通知送信日時（UTC） |
+| guild_id | BIGINT | NOT NULL | 対象ギルドID（Discord Guild ID） |
+| channel_id | BIGINT | NOT NULL | 通知先チャンネルID（Discord Channel ID） |
+| message_text_id | TEXT | NOT NULL | 送信メッセージテンプレートID（message_texts.idを参照） |
+| is_sent | BOOLEAN | NOT NULL, DEFAULT false | 送信済みフラグ |
+| created_at | TIMESTAMPTZ | NOT NULL | 作成日時（UTC） |
+| updated_at | TIMESTAMPTZ | NOT NULL | 更新日時（UTC） |
 
 ## 制約
 
 ### プライマリキー
-- `row_id`
+- `id`
 
 ### 外部キー
-- `parent_schedule_id` → `event_schedules(row_id)`
-- `parent_schedule_detail_id` → `event_schedule_details(row_id)`
-- `message_id` → `messages(message_id)`
+実装では外部キー制約は定義されていません（相互参照の問題を避けるため）
 
 ### UNIQUE制約
 なし
 
+### NOT NULL制約
+- `id`, `schedule_datetime`, `guild_id`, `channel_id`, `message_text_id`, `is_sent`, `created_at`, `updated_at`
+
 ## インデックス
 
-- PK: `row_id`（自動作成）
-- FK: `parent_schedule_id`（外部キー制約で自動作成）
-- FK: `parent_schedule_detail_id`（外部キー制約で自動作成）
-- FK: `message_id`（外部キー制約で自動作成）
-- 推奨追加インデックス: `schedule_datetime`, `guild_id`（検索性能向上）
+- **プライマリキーインデックス**: `id`（自動作成）
+- **推奨追加インデックス**: `schedule_datetime`, `guild_id`（検索性能向上のため）
 
 ## データサンプル
 
-| row_id | parent_schedule_id | parent_schedule_detail_id | schedule_datetime | guild_id | channel_id | message_id |
-|--------|-------------------|--------------------------|------------------|----------|-----------|-----------|
-| uuid-1 | uuid-s1 | uuid-d1 | 2025-10-15 05:00:00 | 123456789 | 987654321 | DAILY_MISSION |
-| uuid-2 | uuid-s1 | uuid-d2 | 2025-10-15 23:59:00 | 123456789 | 987654321 | BORDER_UPDATE |
+| id | schedule_datetime | guild_id | channel_id | message_text_id | is_sent |
+|----|------------------|----------|-----------|----------------|---------|
+| 1 | 2025-10-15 05:00:00+00 | 123456789 | 987654321 | DAILY_MISSION | false |
+| 2 | 2025-10-15 23:59:00+00 | 123456789 | 987654321 | BORDER_UPDATE | true |
 
 ## 関連テーブル
 
-- **参照元**: `battle_recruitment_schedules`（parent_idで参照）
-- **参照先**: `event_schedules`（parent_schedule_idで参照）
-- **参照先**: `event_schedule_details`（parent_schedule_detail_idで参照）
-- **参照先**: `messages`（message_idで参照）
+### 参照先テーブル（論理的な関連）
 
-## 備考
+- **master.message_texts**: `message_text_id` で参照（多対1）
+- **guild_master.guilds**: `guild_id` で参照（多対1）
 
-- row_idはUUID v4で自動生成
-- event_schedule_detailsの相対日時を具体的な日時に展開したもの
-- 通知バッチ処理がschedule_datetimeを基準に実行
-- parent_schedule_idとparent_schedule_detail_idで元のイベント情報を追跡可能
-- 通知処理後も履歴として保持される
+### 参照元テーブル
+
+- **worker.notification_rel_event_schedules**: 通知とイベントスケジュールの関連（1対多）
+- **worker.notification_rel_battle_recruitments**: 通知とマルチバトル募集の関連（1対多）
+
+## タイムスタンプ自動更新
+
+このテーブルは SeaORM の `ActiveModelBehavior` を使用して、以下のタイムスタンプが自動設定されます:
+
+- **created_at**: レコード作成時に自動設定
+- **updated_at**: レコード作成時・更新時に自動設定
+
+詳細は [sea_orm_timestamp_automation.md](../../design/database/sea_orm_timestamp_automation.md) を参照してください。
 
 ## Rust実装
 
-- **エンティティ**: `src/models/entities/notifications.rs`（schedulesから移行）
-- **実装状況**: 実装済み（notificationsとして）
+- **エンティティファイル**: `src/models/entities/worker/notifications.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_notifications.rs`
+- **実装状況**: ✅ 実装済み
+
+### エンティティ定義（抜粋）
+
+```rust
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(schema_name = "worker", table_name = "notifications")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub schedule_datetime: DateTimeUtc,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_text_id: String,
+    pub is_sent: bool,
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
+}
+```
+
+## 備考
+
+- **テーブル名変更**: 以前の設計では `schedules` という名称でしたが、実装では `notifications` に変更されました
+- **設計変更**: 以前の設計から大幅に変更されました:
+  - 主キー: UUID (`row_id`) → SERIAL (`id`)
+  - 削除されたカラム: `parent_schedule_id`, `parent_schedule_detail_id`（別テーブル `notification_rel_*` に分離）
+  - カラム名変更: `message_id` → `message_text_id`（メッセージテンプレートIDを参照）
+  - 追加されたカラム: `is_sent`（送信済みフラグ）
+
+- **通知状態管理**:
+  - `is_sent`: 通知が送信済みかどうか（false=未送信、true=送信済み）
+  - デフォルト値は false
+
+- **イベントスケジュールとの関連**:
+  - イベントスケジュールとの関連は `notification_rel_event_schedules` テーブルで管理
+  - マルチバトル募集との関連は `notification_rel_battle_recruitments` テーブルで管理
+
+- **通知バッチ処理**:
+  - `schedule_datetime` を基準に定期的に実行
+  - `is_sent = false` のレコードが処理対象
+  - 送信完了後、`is_sent = true` に更新
+
+- **外部キー制約なし**:
+  - 相互参照の問題を避けるため、外部キー制約は定義されていません
+  - 必要に応じて手動でJOINクエリを実装
+
+## データクリーンアップ
+
+古い通知データは定期的にクリーンアップされます。詳細は [data_cleanup_system.md](../../design/features/data_cleanup_system.md) を参照してください。

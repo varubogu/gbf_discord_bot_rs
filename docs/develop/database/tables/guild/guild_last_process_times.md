@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `guild_last_process_times`
+**スキーマ名**: `worker`
 **テーブルタイプ**: History
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -51,5 +53,6 @@
 - グローバルのlast_process_timesと独立して管理
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_last_process_times.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/worker/guild_last_process_times.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_last_process_times.rs`
+- **実装状況**: ✅ 実装済み

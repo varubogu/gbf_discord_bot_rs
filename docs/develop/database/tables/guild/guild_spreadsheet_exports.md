@@ -2,9 +2,11 @@
 
 ## 概要
 
-**テーブル物理名**: `guild_spreadsheet_exports`  
-**テーブルタイプ**: Reference  
-**テーブルスコープ**: Guild
+**テーブル物理名**: `guild_spreadsheet_exports`
+**スキーマ名**: `guild_master`
+**テーブルタイプ**: Reference
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -48,5 +50,6 @@
 - `/gspread_push`実行前に必須チェックを行い、未登録ならエラー応答
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_spreadsheet_exports.rs`（未実装）
-- **Repository**: `GuildSpreadsheetExportRepository`（新規実装予定）
+- **エンティティファイル**: `src/models/entities/guild_master/guild_spreadsheet_exports.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_spreadsheet_exports.rs`
+- **実装状況**: ✅ 実装済み

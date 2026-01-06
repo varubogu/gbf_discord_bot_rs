@@ -2,9 +2,11 @@
 
 ## 概要
 
-**テーブル物理名**: `guild_spreadsheet_imports`  
-**テーブルタイプ**: Reference  
-**テーブルスコープ**: Guild
+**テーブル物理名**: `guild_spreadsheet_imports`
+**スキーマ名**: `guild_master`
+**テーブルタイプ**: Reference
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -48,5 +50,6 @@
 - `/gspread_load`では必須依存。未登録の場合はPresentation層でエラー表示
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_spreadsheet_imports.rs`（未実装）
-- **Repository**: `GuildSpreadsheetImportRepository`（新規実装予定）
+- **エンティティファイル**: `src/models/entities/guild_master/guild_spreadsheet_imports.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_spreadsheet_imports.rs`
+- **実装状況**: ✅ 実装済み

@@ -2,9 +2,11 @@
 
 ## 概要
 
-**テーブル物理名**: `guild_messages`
+**テーブル物理名**: `guild_message_texts`
+**スキーマ名**: `guild_master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -52,5 +54,6 @@
 - ギルドごとに独自の表現や絵文字を使用可能
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_messages.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/guild_master/guild_message_texts.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_message_texts.rs`
+- **実装状況**: ✅ 実装済み

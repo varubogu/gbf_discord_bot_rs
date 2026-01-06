@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `guild_environments`
+**スキーマ名**: `guild_master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -50,5 +52,6 @@
 - keyはenvironmentsテーブルと同じキー名を使用
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_environments.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/guild_master/guild_environments.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_environments.rs`
+- **実装状況**: ✅ 実装済み

@@ -38,17 +38,17 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 
 | テーブル物理名 | テーブル日本語名 | テーブルタイプ | 設計書 |
 |-------------|--------------|------------|-------|
-| battle_types | マルチバトル戦術 | Reference | [battle_types.md](tables/global/battle_types.md) |
+| battle_styles | マルチバトル戦術 | Reference | [battle_types.md](tables/global/battle_types.md) |
 | quests | クエスト情報 | Reference | [quests.md](tables/global/quests.md) |
 | quest_aliases | クエスト別名 | Reference | [quest_aliases.md](tables/global/quest_aliases.md) |
 | elements | 属性定義 | Reference | [elements.md](tables/global/elements.md) |
 | channel_types | チャンネル種類 | Reference | [channel_types.md](tables/global/channel_types.md) |
 | environments | 環境変数 | Reference | [environments.md](tables/global/environments.md) |
-| messages | メッセージ定義 | Reference | [messages.md](tables/global/messages.md) |
+| message_texts | メッセージ定義 | Reference | [messages.md](tables/global/messages.md) |
 | event_schedules | イベントスケジュール | Reference | [event_schedules.md](tables/global/event_schedules.md) |
 | event_schedule_details | イベント詳細スケジュール | Reference | [event_schedule_details.md](tables/global/event_schedule_details.md) |
 | last_process_times | 最終処理実行日時 | History | [last_process_times.md](tables/global/last_process_times.md) |
-| schedules | 通知スケジュール | Transaction | [schedules.md](tables/global/schedules.md) |
+| notifications | 通知スケジュール | Transaction | [schedules.md](tables/global/schedules.md) |
 | battle_recruitment_schedules | マルチ募集スケジュール | Transaction | [battle_recruitment_schedules.md](tables/global/battle_recruitment_schedules.md) |
 
 ### ギルドテーブル（Guild Scope）
@@ -76,13 +76,13 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 
 ```
 [グローバル参照データ]
-battle_types ──→ quests ──→ quest_aliases
+battle_styles ──→ quests ──→ quest_aliases
                    │
                    ├──→ battle_recruitments (Community)
                    │
-elements ──→ event_schedules ──→ event_schedule_details ──→ schedules ──→ battle_recruitment_schedules
+elements ──→ event_schedules ──→ event_schedule_details ──→ notifications
                                                                 │
-                                                                └──→ notifications (予定)
+message_texts ──→ notifications ──→ battle_recruitment_schedules
 
 [ギルド固有データ]
 guild_environments
@@ -108,31 +108,37 @@ Application Layer
 
 ### 実装済みエンティティ（src/models/entities/）
 
-- battle_types
+- battle_styles（旧名: battle_types）
 - quests
 - quest_aliases
 - battle_recruitments
 - event_schedules
 - event_schedule_details
-- message_texts（messagesに相当）
-- environments
-- guilds
-- notifications（schedulesから移行）
-- notification_rel_battle_recruitments
-- notification_rel_event_schedules
-- last_process_times
-
-### 未実装エンティティ（Pythonには存在、Rustで未実装）
-
+- message_texts（旧名: messages）
 - elements
 - channel_types
+- environments
+- guilds
 - guild_channels
 - guild_environments
+- guild_message_texts
 - guild_event_schedules
 - guild_event_schedule_details
 - guild_last_process_times
-- guild_messages
-- battle_recruitment_schedules（notificationsに統合済みの可能性）
+- guild_spreadsheet_imports
+- guild_spreadsheet_exports
+- notifications（旧名: schedules）
+- notification_rel_battle_recruitments
+- notification_rel_event_schedules
+- last_process_times
+- battle_recruitment_schedules
+- all_recruitment_notification_roles
+- quest_recruitment_notification_roles
+
+### 備考
+
+- 以前の設計では `battle_types`, `messages`, `schedules` という名称でしたが、実装では `battle_styles`, `message_texts`, `notifications` に変更されました
+- すべての主要なテーブルは実装済みです
 
 ## データ移行とスプレッドシート連携
 

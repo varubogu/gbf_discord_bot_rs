@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `guild_channels`
+**スキーマ名**: `guild_master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: Guild
+**テーブルスコープ**: Guild（ギルド固有）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -52,5 +54,6 @@
 - ギルド管理者が設定可能
 
 ## Rust実装
-- **エンティティ**: `src/models/entities/guild_channels.rs`
-- **実装状況**: 未実装
+- **エンティティファイル**: `src/models/entities/guild_master/guild_channels.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_guild_channels.rs`
+- **実装状況**: ✅ 実装済み
