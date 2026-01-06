@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `event_schedule_details`
+**スキーマ名**: `master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: All
+**テーブルスコープ**: All（全ギルド共通）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -14,57 +16,97 @@
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|-----|------|------|
-| row_id | UUID | PK, NOT NULL, default=uuid_v4 | 行ID（プライマリキー） |
-| profile | String | NOT NULL | イベントスケジュールとの紐づけプロファイル |
-| start_day_relative | String | NOT NULL | 開始日からの相対日（例: "1", "1-5", "final"） |
-| time | String | NOT NULL | イベント時間（例: "23:59", "05:00"） |
-| schedule_name | String | NOT NULL | スケジュール名（例: デイリーミッション、ボーダー更新） |
-| message_id | String | NULLABLE, FK(messages.message_id) | 通知メッセージID |
-| guild_id | BigInteger | NULLABLE | 対象ギルドID（グローバルの場合NULL） |
-| channel_id | BigInteger | NULLABLE | 通知先チャンネルID |
-| reactions | String | NULLABLE | 通知メッセージに付与するリアクション |
+| id | UUID | PK, NOT NULL | 行ID（プライマリキー、auto_increment = false） |
+| profile | TEXT | NOT NULL | イベントスケジュールとの紐づけプロファイル |
+| start_day_relative | TEXT | NOT NULL | 開始日からの相対日（例: "1", "1-5", "final"） |
+| time | TEXT | NOT NULL | イベント時間（例: "23:59", "05:00"） |
+| schedule_name | TEXT | NOT NULL | スケジュール名（例: デイリーミッション、ボーダー更新） |
+| message_text_id | TEXT | NOT NULL | 通知メッセージID（message_texts.idを参照） |
+| notification_channel_type | INTEGER | NOT NULL | 通知先チャンネル種類（channel_types.idを参照） |
+| reactions | TEXT | NOT NULL | 通知メッセージに付与するリアクション（絵文字） |
+| created_at | TIMESTAMPTZ | NOT NULL | 作成日時（UTC） |
+| updated_at | TIMESTAMPTZ | NOT NULL | 更新日時（UTC） |
 
 ## 制約
 
 ### プライマリキー
-- `row_id`
+- `id`（auto_increment = false）
 
 ### 外部キー
-- `message_id` → `messages(message_id)`
+なし（論理的には `message_text_id` と `notification_channel_type` が参照関係あり）
 
 ### UNIQUE制約
 なし
 
+### NOT NULL制約
+- `id`, `profile`, `start_day_relative`, `time`, `schedule_name`, `message_text_id`, `notification_channel_type`, `reactions`, `created_at`, `updated_at`
+
 ## インデックス
 
-- PK: `row_id`（自動作成）
-- FK: `message_id`（外部キー制約で自動作成）
+- **プライマリキーインデックス**: `id`（自動作成）
 
 ## データサンプル
 
-| row_id | profile | start_day_relative | time | schedule_name | message_id | guild_id | channel_id | reactions |
-|--------|---------|-------------------|------|--------------|-----------|----------|-----------|-----------|
-| uuid-1 | unite_fight | 1 | 05:00 | デイリーミッション | DAILY_MISSION | NULL | NULL | ✅ |
-| uuid-2 | unite_fight | 1-5 | 23:59 | ボーダー更新 | BORDER_UPDATE | NULL | NULL | 📊 |
-| uuid-3 | xeno_clash | 1 | 00:00 | イベント開始 | EVENT_START | NULL | NULL | 🎉 |
+| id | profile | start_day_relative | time | schedule_name | message_text_id | notification_channel_type | reactions |
+|----|---------|-------------------|------|--------------|----------------|--------------------------|-----------|
+| uuid-1 | unite_fight | 1 | 05:00 | デイリーミッション | DAILY_MISSION | 2 | ✅ |
+| uuid-2 | unite_fight | 1-5 | 23:59 | ボーダー更新 | BORDER_UPDATE | 2 | 📊 |
+| uuid-3 | xeno_clash | 1 | 00:00 | イベント開始 | EVENT_START | 2 | 🎉 |
 
 ## 関連テーブル
 
-- **参照元**: `schedules`（parent_schedule_detail_idで参照）
-- **参照先**: `messages`（message_idで参照）
-- **関連**: `event_schedules`（profileで論理的に紐づけ）
-- **関連**: `guild_event_schedule_details`（ギルド固有の詳細スケジュール）
+### 関連テーブル
 
-## 備考
+- **master.event_schedules**: `profile` で論理的に紐づけ（外部キー制約なし）
+- **master.message_texts**: `message_text_id` で論理的に参照（外部キー制約なし）
+- **master.channel_types**: `notification_channel_type` で論理的に参照（外部キー制約なし）
 
-- row_idはUUID v4で自動生成
-- profileでevent_schedulesと紐づけ
-- start_day_relativeは相対日を示し、"1"は初日、"1-5"は1日目から5日目まで、"final"は最終日
-- timeは時刻を示し、"HH:MM"形式
-- guild_idがNULLの場合は全ギルド共通、値がある場合は特定ギルド専用
-- schedulesテーブルに展開される際に具体的な日時に変換される
+## タイムスタンプ自動更新
+
+このテーブルは SeaORM の `ActiveModelBehavior` を使用して、以下のタイムスタンプが自動設定されます:
+
+- **created_at**: レコード作成時に自動設定
+- **updated_at**: レコード作成時・更新時に自動設定
+
+詳細は [sea_orm_timestamp_automation.md](../../design/database/sea_orm_timestamp_automation.md) を参照してください。
 
 ## Rust実装
 
-- **エンティティ**: `src/models/entities/event_schedule_details.rs`
-- **実装状況**: 実装済み
+- **エンティティファイル**: `src/models/entities/master/event_schedule_details.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_event_schedule_details.rs`
+- **実装状況**: ✅ 実装済み
+
+### エンティティ定義（抜粋）
+
+```rust
+use sea_orm::entity::prelude::*;
+use uuid::Uuid;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(schema_name = "master", table_name = "event_schedule_details")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: Uuid,
+    pub profile: String,
+    pub start_day_relative: String,
+    pub time: String,
+    pub schedule_name: String,
+    pub message_text_id: String,
+    pub notification_channel_type: i32,
+    pub reactions: String,
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
+}
+```
+
+## 備考
+
+- **カラム名変更**: `row_id` → `id`, `message_id` → `message_text_id` に変更
+- **カラム削除**: `guild_id`, `channel_id` が削除され、代わりに `notification_channel_type` が追加されました
+- **設計変更**: 個別の guild_id/channel_id 指定から、channel_type による通知先指定に変更されました
+- **NOT NULL変更**: `message_text_id`, `notification_channel_type`, `reactions` が NULLABLE から NOT NULL に変更されました
+- 主キーは UUID で、`auto_increment = false` として定義されています
+- `profile` で event_schedules と紐づけ
+- `start_day_relative` は相対日を示し、"1"は初日、"1-5"は1日目から5日目まで、"final"は最終日
+- `time` は時刻を示し、"HH:MM"形式
+- `notification_channel_type` で通知先のチャンネル種類を指定（全ギルドの該当チャンネルに通知）

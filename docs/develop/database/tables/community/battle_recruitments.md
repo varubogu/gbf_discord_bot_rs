@@ -3,72 +3,141 @@
 ## 概要
 
 **テーブル物理名**: `battle_recruitments`
+**スキーマ名**: `worker`
 **テーブルタイプ**: Transaction
-**テーブルスコープ**: Community
+**テーブルスコープ**: Community（ギルド内のユーザー活動データ）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
-ユーザーが作成したマルチバトル募集を管理します。Discord上のメッセージと1対1で紐づき、募集状態、クエスト情報、部屋ID、有効期限などを保持します。
+ユーザーが作成したマルチバトル募集を管理します。Discord上のメッセージと1対1で紐づき、募集状態、クエスト情報、出発時刻などを保持します。
 
 ## カラム定義
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|-----|------|------|
-| row_id | UUID | PK, NOT NULL, default=uuid_v4 | 行ID（プライマリキー） |
-| guild_id | BigInteger | NOT NULL, UNIQUE(guild_id, channel_id, message_id) | ギルドID（Discord Guild ID） |
-| channel_id | BigInteger | NOT NULL, UNIQUE(guild_id, channel_id, message_id) | チャンネルID（Discord Channel ID） |
-| message_id | BigInteger | NOT NULL, UNIQUE(guild_id, channel_id, message_id) | メッセージID（Discord Message ID） |
-| target_id | Integer | NOT NULL, FK(quests.target_id) | 対象クエストID |
-| battle_type_id | Integer | NOT NULL, FK(battle_types.type_id) | バトル種類ID |
-| room_id | String | NULLABLE | 共闘部屋ID（グラブルのルームID） |
-| expiry_date | DateTime | NOT NULL, default=現在+1日 | 有効期限 |
-| recruit_end_message_id | BigInteger | NULLABLE | 募集終了メッセージID |
+| id | SERIAL | PK, NOT NULL | 募集ID（主キー、自動採番） |
+| guild_id | BIGINT | NOT NULL, FK | ギルドID（Discord Guild ID） |
+| channel_id | BIGINT | NOT NULL | チャンネルID（Discord Channel ID） |
+| message_id | BIGINT | NOT NULL | メッセージID（Discord Message ID） |
+| quest_id | INTEGER | NOT NULL, FK | 対象クエストID |
+| battle_style_id | INTEGER | NOT NULL, FK | バトル戦術ID |
+| quest_start_at | TIMESTAMPTZ | NOT NULL | クエスト出発時刻（UTC） |
+| is_recruiting | BOOLEAN | NOT NULL, DEFAULT true | 募集中フラグ |
+| is_canceled | BOOLEAN | NOT NULL, DEFAULT false | キャンセルフラグ |
+| recruit_end_message_id | BIGINT | NULLABLE | 募集終了メッセージID |
+| full_notification_sent | BOOLEAN | NOT NULL, DEFAULT false | 満員通知送信済みフラグ |
+| created_at | TIMESTAMPTZ | NOT NULL | 作成日時（UTC） |
+| updated_at | TIMESTAMPTZ | NOT NULL | 更新日時（UTC） |
 
 ## 制約
 
 ### プライマリキー
-- `row_id`
+- `id`
 
 ### 外部キー
-- `target_id` → `quests(target_id)`
-- `battle_type_id` → `battle_types(type_id)`
+- `quest_id` → `master.quests(id)`
+- `battle_style_id` → `master.battle_styles(id)`
+- `guild_id` → `guild_master.guilds(guild_id)`
 
 ### UNIQUE制約
-- UNIQUE(`guild_id`, `channel_id`, `message_id`) - 制約名: unique_battle_recruitment_message
+なし（以前の設計では guild_id, channel_id, message_id の複合UNIQUEがあったが、実装では削除）
+
+### NOT NULL制約
+- `id`, `guild_id`, `channel_id`, `message_id`, `quest_id`, `battle_style_id`, `quest_start_at`, `is_recruiting`, `is_canceled`, `full_notification_sent`, `created_at`, `updated_at`
 
 ## インデックス
 
-- PK: `row_id`（自動作成）
-- UNIQUE: `guild_id`, `channel_id`, `message_id`（自動作成）
-- FK: `target_id`（外部キー制約で自動作成）
-- FK: `battle_type_id`（外部キー制約で自動作成）
-- 推奨追加インデックス: `expiry_date`（期限チェック用）
-- 推奨追加インデックス: `guild_id`, `channel_id`（検索性能向上）
+- **プライマリキーインデックス**: `id`（自動作成）
+- **外部キーインデックス**: `quest_id`, `battle_style_id`, `guild_id`（外部キー制約で自動作成）
 
 ## データサンプル
 
-| row_id | guild_id | channel_id | message_id | target_id | battle_type_id | room_id | expiry_date | recruit_end_message_id |
-|--------|----------|-----------|-----------|----------|---------------|---------|-------------|----------------------|
-| uuid-1 | 123456789 | 987654321 | 1234567890123456 | 1 | 1 | ABC123 | 2025-10-24 12:00:00 | NULL |
-| uuid-2 | 123456789 | 987654321 | 2345678901234567 | 2 | 2 | DEF456 | 2025-10-24 15:00:00 | 3456789012345678 |
+| id | guild_id | channel_id | message_id | quest_id | battle_style_id | quest_start_at | is_recruiting | is_canceled |
+|----|----------|-----------|-----------|----------|----------------|---------------|--------------|------------|
+| 1 | 123456789 | 987654321 | 1234567890123456 | 1 | 1 | 2025-10-24 12:00:00+00 | true | false |
+| 2 | 123456789 | 987654321 | 2345678901234567 | 2 | 2 | 2025-10-24 15:00:00+00 | false | false |
 
 ## 関連テーブル
 
-- **参照先**: `quests`（target_idで参照）
-- **参照先**: `battle_types`（battle_type_idで参照）
-- **関連**: `battle_recruitment_schedules`（message_idで論理的に関連）
+### 参照先テーブル
 
-## 備考
+- **master.quests**: `quest_id` で参照（多対1）
+- **master.battle_styles**: `battle_style_id` で参照（多対1）
+- **guild_master.guilds**: `guild_id` で参照（多対1）
 
-- row_idはUUID v4で自動生成
-- Discord上のメッセージと1対1で紐づく（guild_id、channel_id、message_idの組み合わせで一意）
-- room_idはグラブルのマルチバトルルームIDを保持
-- expiry_dateはデフォルトで作成時刻+24時間に設定
-- recruit_end_message_idは募集終了時に送信されるメッセージIDを保持（募集完了時に設定）
-- 有効期限切れの募集は定期バッチ処理で自動的にクローズ
-- ユーザーのリアクションで参加者を管理（別途participant管理機能が必要な場合は拡張）
+### 参照元テーブル
+
+- **worker.recruitment_participants**: 参加者情報（1対多）
+- **worker.notification_rel_battle_recruitments**: 通知との関連（1対多）
+- **worker.scheduled_task_dismissals**: 解散タスク（1対多）
+- **worker.scheduled_task_dissolutions**: 強制解散タスク（1対多）
+
+## タイムスタンプ自動更新
+
+このテーブルは SeaORM の `ActiveModelBehavior` を使用して、以下のタイムスタンプが自動設定されます:
+
+- **created_at**: レコード作成時に自動設定
+- **updated_at**: レコード作成時・更新時に自動設定
+
+詳細は [sea_orm_timestamp_automation.md](../../design/database/sea_orm_timestamp_automation.md) を参照してください。
 
 ## Rust実装
 
-- **エンティティ**: `src/models/entities/battle_recruitments.rs`
-- **実装状況**: 実装済み
+- **エンティティファイル**: `src/models/entities/worker/battle_recruitments.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_battle_recruitments.rs`
+- **実装状況**: ✅ 実装済み
+
+### エンティティ定義（抜粋）
+
+```rust
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "battle_recruitments", schema_name = "worker")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub quest_id: i32,
+    pub battle_style_id: i32,
+    pub quest_start_at: DateTimeUtc,
+    pub is_recruiting: bool,
+    pub is_canceled: bool,
+    pub recruit_end_message_id: Option<i64>,
+    pub full_notification_sent: bool,
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
+}
+```
+
+## 備考
+
+- **設計変更**: 以前の設計から大幅に変更されました:
+  - 主キー: UUID (`row_id`) → SERIAL (`id`)
+  - 削除されたカラム: `room_id`, `expiry_date`
+  - 追加されたカラム: `quest_start_at`, `is_recruiting`, `is_canceled`, `full_notification_sent`
+  - UNIQUE制約の削除: `(guild_id, channel_id, message_id)` の複合UNIQUE制約は実装では存在しない
+
+- **募集状態管理**:
+  - `is_recruiting`: 募集中かどうか（true=募集中、false=締め切り）
+  - `is_canceled`: キャンセルされたかどうか
+  - `full_notification_sent`: 満員通知を送信済みかどうか
+
+- **Discord メッセージとの紐づけ**:
+  - `guild_id`, `channel_id`, `message_id` の組み合わせでDiscordメッセージを特定
+  - メッセージ削除時に自動的に募集がキャンセルされる仕組みあり
+
+- **有効期限管理**:
+  - 以前の設計にあった `expiry_date` は削除され、代わりに `quest_start_at`（クエスト出発時刻）で管理
+  - クエスト出発時刻を過ぎた募集は、scheduled_task_dissolutions（強制解散タスク）により自動的にクローズ
+
+- **参加者管理**:
+  - 別テーブル `worker.recruitment_participants` で参加者情報を管理
+  - Discordリアクションによる参加/離脱を記録
+
+## データクリーンアップ
+
+古い募集データは定期的にクリーンアップされます。詳細は [data_cleanup_system.md](../../design/features/data_cleanup_system.md) を参照してください。

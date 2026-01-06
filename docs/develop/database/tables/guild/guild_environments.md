@@ -31,11 +31,9 @@
 なし
 
 ## インデックス
-
 - PK: `guild_id`, `key`（自動作成）
 
 ## データサンプル
-
 | guild_id | key | value | memo |
 |----------|-----|-------|------|
 | 123456789 | RECRUITMENT_EXPIRY_HOURS | 48 | 募集の有効期限（時間） |
@@ -43,17 +41,14 @@
 | 987654321 | LOG_LEVEL | DEBUG | ログレベル設定 |
 
 ## 関連テーブル
-
 - **関連**: `environments`（グローバル環境変数）
 
 ## 備考
-
 - ギルド固有の設定としてグローバル設定を上書き
 - データ参照時は guild_environments → environments の順で検索
 - ギルド管理者（gbf_bot_controlロール）が設定可能
 - keyはenvironmentsテーブルと同じキー名を使用
 
 ## Rust実装
-
 - **エンティティ**: `src/models/entities/guild_environments.rs`
 - **実装状況**: 未実装

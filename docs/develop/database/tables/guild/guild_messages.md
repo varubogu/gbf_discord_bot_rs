@@ -32,23 +32,19 @@
 なし
 
 ## インデックス
-
 - PK: `guild_id`, `message_id`（自動作成）
 
 ## データサンプル
-
 | guild_id | message_id | message_jp | reactions | memo |
 |----------|-----------|-----------|-----------|------|
 | 123456789 | RECRUITMENT_START | 【募集開始】マルチバトル募集を開始しました！ | ✅🎯 | 独自の募集開始メッセージ |
 | 123456789 | EVENT_REMINDER | 【重要】イベント終了まであと1時間です！ | ⏰🚨 | 強調したリマインダー |
 
 ## 関連テーブル
-
 - **参照元**: `guild_event_schedule_details`（message_idで参照）
 - **関連**: `messages`（グローバルメッセージ定義）
 
 ## 備考
-
 - ギルド固有のメッセージとしてグローバルメッセージを上書き
 - データ参照時は guild_messages → messages の順で検索
 - ギルド管理者（gbf_bot_controlロール）が設定可能
@@ -56,6 +52,5 @@
 - ギルドごとに独自の表現や絵文字を使用可能
 
 ## Rust実装
-
 - **エンティティ**: `src/models/entities/guild_messages.rs`
 - **実装状況**: 未実装

@@ -34,7 +34,6 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 ## テーブル一覧
 
 ### グローバルテーブル（All Scope）
-
 全ギルド共通の参照データおよびトランザクションデータ。
 
 | テーブル物理名 | テーブル日本語名 | テーブルタイプ | 設計書 |
@@ -53,7 +52,6 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 | battle_recruitment_schedules | マルチ募集スケジュール | Transaction | [battle_recruitment_schedules.md](tables/global/battle_recruitment_schedules.md) |
 
 ### ギルドテーブル（Guild Scope）
-
 ギルド単位でカスタマイズ可能なデータ。グローバルテーブルの対応テーブルが存在する場合、ギルド固有データが優先される。
 
 | テーブル物理名 | テーブル日本語名 | テーブルタイプ | 設計書 |
@@ -68,7 +66,6 @@ GBF Discord Botのデータベーステーブル設計を定義します。Postg
 | guild_spreadsheet_exports | ギルドスプレッドシート出力設定 | Reference | [guild_spreadsheet_exports.md](tables/guild/guild_spreadsheet_exports.md) |
 
 ### コミュニティテーブル（Community Scope）
-
 ギルド内のユーザー活動データ。ギルド固有だがグローバルテーブルとの対応関係はない。
 
 | テーブル物理名 | テーブル日本語名 | テーブルタイプ | 設計書 |
@@ -107,7 +104,6 @@ Application Layer
 ```
 
 ## Rustとの対応
-
 現在のRust実装（SeaORM）では、以下のエンティティが存在：
 
 ### 実装済みエンティティ（src/models/entities/）

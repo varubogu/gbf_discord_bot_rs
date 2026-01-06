@@ -3,8 +3,10 @@
 ## 概要
 
 **テーブル物理名**: `event_schedules`
+**スキーマ名**: `master`
 **テーブルタイプ**: Reference
-**テーブルスコープ**: All
+**テーブルスコープ**: All（全ギルド共通）
+**実装状況**: ✅ 実装済み
 
 ## 用途
 
@@ -14,54 +16,92 @@
 
 | カラム名 | 型 | 制約 | 説明 |
 |---------|-----|------|------|
-| row_id | UUID | PK, NOT NULL, default=uuid_v4 | 行ID（プライマリキー） |
-| event_type | String | NOT NULL, UNIQUE(event_type, event_count) | イベント種類（例: 古戦場、ゼノ撃滅戦） |
-| event_count | BigInteger | NOT NULL, UNIQUE(event_type, event_count) | イベント開催回数（第N回） |
-| profile | String | NULLABLE | イベント詳細スケジュールとの紐づけプロファイル |
-| weak_attribute | Integer | NULLABLE, FK(elements.element_id) | 有利属性ID |
-| start_at | DateTime | NOT NULL | 開始日時 |
-| end_at | DateTime | NOT NULL | 終了日時 |
+| id | UUID | PK, NOT NULL | 行ID（プライマリキー、auto_increment = false） |
+| event_type | TEXT | NOT NULL, UNIQUE(event_type, event_count) | イベント種類（例: 古戦場、ゼノ撃滅戦） |
+| event_count | BIGINT | NOT NULL, UNIQUE(event_type, event_count) | イベント開催回数（第N回） |
+| profile | TEXT | NOT NULL | イベント詳細スケジュールとの紐づけプロファイル |
+| weak_attribute | INTEGER | NOT NULL | 有利属性ID（外部キー制約なし） |
+| start_at | TIMESTAMP | NOT NULL | 開始日時（タイムゾーンなし、JST想定） |
+| end_at | TIMESTAMP | NOT NULL | 終了日時（タイムゾーンなし、JST想定） |
+| created_at | TIMESTAMPTZ | NOT NULL | 作成日時（UTC） |
+| updated_at | TIMESTAMPTZ | NOT NULL | 更新日時（UTC） |
 
 ## 制約
 
 ### プライマリキー
-- `row_id`
+- `id`（auto_increment = false）
 
 ### 外部キー
-- `weak_attribute` → `elements(element_id)`
+なし（`weak_attribute` は外部キー制約なし）
 
 ### UNIQUE制約
 - UNIQUE(`event_type`, `event_count`) - 制約名: unique_event_schedule
 
+### NOT NULL制約
+- `id`, `event_type`, `event_count`, `profile`, `weak_attribute`, `start_at`, `end_at`, `created_at`, `updated_at`
+
 ## インデックス
 
-- PK: `row_id`（自動作成）
-- UNIQUE: `event_type`, `event_count`（自動作成）
-- FK: `weak_attribute`（外部キー制約で自動作成）
+- **プライマリキーインデックス**: `id`（自動作成）
+- **ユニークインデックス**: `event_type`, `event_count`（自動作成）
 
 ## データサンプル
 
-| row_id | event_type | event_count | profile | weak_attribute | start_at | end_at |
-|--------|-----------|------------|---------|----------------|----------|--------|
+| id | event_type | event_count | profile | weak_attribute | start_at | end_at |
+|----|-----------|------------|---------|----------------|----------|--------|
 | uuid-1 | 古戦場 | 65 | unite_fight | 1 | 2025-10-15 19:00:00 | 2025-10-22 23:59:00 |
 | uuid-2 | ゼノ撃滅戦 | 30 | xeno_clash | 2 | 2025-10-20 17:00:00 | 2025-10-27 16:59:00 |
 
 ## 関連テーブル
 
-- **参照元**: `schedules`（parent_schedule_idで参照）
-- **参照先**: `elements`（weak_attributeで参照）
-- **関連**: `event_schedule_details`（profileで論理的に紐づけ）
-- **関連**: `guild_event_schedules`（ギルド固有のイベントスケジュール）
+### 関連テーブル
 
-## 備考
+- **master.event_schedule_details**: `profile` で論理的に紐づけ（外部キー制約なし）
 
-- row_idはUUID v4で自動生成
-- event_typeとevent_countの組み合わせで一意に識別
-- profileは event_schedule_details との紐づけに使用
-- weak_attributeでイベントの有利属性を管理
-- guild_event_schedulesで上書き可能
+## タイムスタンプ自動更新
+
+このテーブルは SeaORM の `ActiveModelBehavior` を使用して、以下のタイムスタンプが自動設定されます:
+
+- **created_at**: レコード作成時に自動設定
+- **updated_at**: レコード作成時・更新時に自動設定
+
+詳細は [sea_orm_timestamp_automation.md](../../design/database/sea_orm_timestamp_automation.md) を参照してください。
 
 ## Rust実装
 
-- **エンティティ**: `src/models/entities/event_schedules.rs`
-- **実装状況**: 実装済み
+- **エンティティファイル**: `src/models/entities/master/event_schedules.rs`
+- **マイグレーションファイル**: `migration/src/m*_create_event_schedules.rs`
+- **実装状況**: ✅ 実装済み
+
+### エンティティ定義（抜粋）
+
+```rust
+use sea_orm::entity::prelude::*;
+use uuid::Uuid;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(schema_name = "master", table_name = "event_schedules")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: Uuid,
+    pub event_type: String,
+    pub event_count: i64,
+    pub profile: String,
+    pub weak_attribute: i32,
+    pub start_at: DateTime,  // タイムゾーンなし
+    pub end_at: DateTime,    // タイムゾーンなし
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
+}
+```
+
+## 備考
+
+- **カラム名変更**: `row_id` → `id` に変更
+- **NOT NULL変更**: `profile`, `weak_attribute` が NULLABLE から NOT NULL に変更されました
+- **外部キー削除**: `weak_attribute` の外部キー制約は削除されました（論理的には elements.id を参照）
+- **タイムゾーン**: `start_at`, `end_at` はタイムゾーンなし型（TIMESTAMP）を使用。これはスプレッドシート（JST）と一致させるためです
+- 主キーは UUID で、`auto_increment = false` として定義されています
+- `event_type` と `event_count` の組み合わせで一意に識別
+- `profile` は `event_schedule_details` との紐づけに使用
+- `weak_attribute` でイベントの有利属性を管理（外部キー制約はないが、論理的には elements テーブルを参照）
