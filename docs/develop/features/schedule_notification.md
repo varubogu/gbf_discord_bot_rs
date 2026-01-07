@@ -1,5 +1,21 @@
 # スケジュール通知機能 設計書
 
+> **⚠️ 警告: このドキュメントは古くなっています**
+>
+> このドキュメントに記載されているデータモデルとアーキテクチャは、大幅に変更されており、実装と乖離しています。
+>
+> **主な変更点:**
+> - `Schedules` テーブル → `scheduled_tasks` テーブルに変更
+> - `ScheduleTimer` → `SchedulerManager` に変更
+> - テーブル構造とスケジュール管理方法が大きく変更
+>
+> **現在の実装:**
+> - エンティティ: `src/models/entities/worker/scheduled_tasks.rs`
+> - スケジューラー: `src/services/schedule/scheduler_manager.rs`
+> - 詳細は [scheduler_manager_integration.md](../plans/scheduler_manager_integration.md) を参照してください
+>
+> このドキュメントは将来の改訂が必要です。
+
 ## 概要
 
 Googleスプレッドシートの「イベントスケジュール」「イベントスケジュール詳細」シートを基に、定期的なスケジュール通知を実行する機能です。最大10秒程度の誤差が生じるため、秒単位でシビアな用途には他の手段を推奨します。

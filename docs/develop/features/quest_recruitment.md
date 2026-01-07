@@ -8,7 +8,7 @@ Discordサーバー内でマルチバトルの参加者を募集する機能で�
 
 ### 基本機能
 - スラッシュコマンド `/recruit` による募集作成
-- スラッシュコマンド `/recruit_change` による募集内容変更（実装中）
+- スラッシュコマンド `/recruit_change` による募集内容変更
 - スラッシュコマンド `/recruit_cancel` による募集キャンセル
 - `gbf_bot_control` ロール保持者による募集の代理操作
 - 募集主の引き継ぎ（募集変更でホストを再指定）
@@ -18,11 +18,23 @@ Discordサーバー内でマルチバトルの参加者を募集する機能で�
 - バトル種類に応じたリアクション自動付与
 - リアクションによる参加者管理
 - 募集メッセージの自動更新
+- **募集メッセージ削除時の自動キャンセル** - メッセージが削除されると募集も自動的にキャンセル状態になる
+
+### 定期募集機能
+- スラッシュコマンド `/定期募集作成` による定期募集スケジュールの作成
+- スラッシュコマンド `/定期募集削除` による定期募集スケジュールの削除
+- スラッシュコマンド `/定期募集一覧` による現在の定期募集スケジュール表示
+- 毎週特定の曜日・時刻に自動的に募集メッセージを作成
+- 募集開始日時と出発日時を個別に設定可能
+- 定期募集の有効/無効の切り替え
+- `gbf_bot_control` ロール保持者のみ設定変更可能
 
 ### 拡張機能
 - 募集開始時の通知機能
 - 参加者一覧の表示
 - 募集終了時の自動処理
+- クエスト出発時刻による自動解散（dissolution）
+- 人数不足による自動解散（dismissal）
 
 ### ロールメンション機能
 - スラッシュコマンド `/recruit_role_add` による通知ロール登録
@@ -44,6 +56,10 @@ src/events/interactions/command_interactions/slash/recruit_change.rs
 src/events/interactions/command_interactions/slash/recruit_cancel.rs
 src/events/interactions/command_interactions/slash/recruit_role_add.rs
 src/events/interactions/command_interactions/slash/recruit_role_remove.rs
+src/events/interactions/command_interactions/slash/recurring_recruitment_create.rs
+src/events/interactions/command_interactions/slash/recurring_recruitment_delete.rs
+src/events/interactions/command_interactions/slash/recurring_recruitment_list.rs
+src/events/message_delete.rs  # メッセージ削除イベントのハンドリング
 ```
 - Discord API操作の実装
 - スラッシュコマンドの定義
@@ -51,6 +67,8 @@ src/events/interactions/command_interactions/slash/recruit_role_remove.rs
 - エラーハンドリング
 - 変更・キャンセル時の確認UI制御
 - ロール設定コマンドの権限チェック
+- 定期募集コマンドの権限チェック
+- メッセージ削除イベントの検知と募集キャンセル処理
 
 #### Facade層（facades/）
 ```

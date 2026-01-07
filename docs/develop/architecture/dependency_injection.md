@@ -1,5 +1,16 @@
 # 依存性注入（DI）設計書
 
+> **⚠️ 注意: これは設計提案ドキュメントです**
+>
+> このドキュメントに記載されている `DIContainer` パターンは設計提案であり、**実際には実装されていません**。
+>
+> 現在の実装では、`AppState` パターンを採用しており、以下の構造になっています:
+> - `AppState` 構造体がアプリケーションの共有状態を保持
+> - 3つのDB接続（`guild_db`, `system_db`, `global_db`）とサービス（`MessageService`）を管理
+> - `PoiseData` 構造体内に `AppState` を格納し、全コマンドからアクセス可能
+>
+> 実装の詳細は [rust_optimized_architecture.md](rust_optimized_architecture.md) を参照してください。
+
 ## 1. 概要
 
 本設計書では、Discord Bot（Rust + poise）における依存性注入（Dependency Injection）パターンの設計方針について詳述します。

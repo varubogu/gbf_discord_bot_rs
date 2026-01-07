@@ -64,18 +64,52 @@ DIコンテナの代わりに、Rustの慣習的なAppStateパターンを使用
 
 ```rust
 pub struct AppState {
-    db: Arc<SeaOrmDatabase>,
-    repos: RepositoryContainer,
-    config: &'static Config,
+    /// Guild ロール用DB接続（通常のコマンド実行用、RLS適用）
+    pub guild_db: Arc<DatabaseConnection>,
+    /// System ロール用DB接続（スケジューラー用、RLS適用なし）
+    pub system_db: Arc<DatabaseConnection>,
+    /// Global ロール用DB接続（マスターデータ更新用、RLS適用なし）
+    pub global_db: Arc<DatabaseConnection>,
+    pub config: AppConfig,
+    pub message_service: Arc<MessageService>,
 }
 
 impl AppState {
-    pub fn new(db: Arc<SeaOrmDatabase>, config: &'static Config) -> Self {
-        let repos = RepositoryContainer::new(&*db);
-        Self { db, repos, config }
+    pub fn new(
+        guild_db: DatabaseConnection,
+        system_db: DatabaseConnection,
+        global_db: DatabaseConnection,
+        config: AppConfig,
+    ) -> Self {
+        Self {
+            guild_db: Arc::new(guild_db),
+            system_db: Arc::new(system_db),
+            global_db: Arc::new(global_db),
+            config,
+            message_service: Arc::new(MessageService::new()),
+        }
+    }
+
+    pub fn guild_db(&self) -> &DatabaseConnection {
+        &self.guild_db
+    }
+
+    pub fn system_db(&self) -> &DatabaseConnection {
+        &self.system_db
+    }
+
+    pub fn global_db(&self) -> &DatabaseConnection {
+        &self.global_db
     }
 }
 ```
+
+**特徴**:
+- **3つのDB接続**: 異なるPostgreSQLロールを使用して権限分離を実現
+  - `guild_db`: 通常のコマンド実行用（Row Level Securityでギルドデータのみアクセス可能）
+  - `system_db`: スケジューラーなどのシステム処理用（RLS適用なし、全データアクセス可能）
+  - `global_db`: マスターデータ更新用（グローバルデータへの書き込み権限あり）
+- **MessageService**: メッセージテンプレート管理サービスを共有
 
 #### 3.1.2 利点
 
@@ -115,11 +149,16 @@ pub type Result<T> = std::result::Result<T, AppError>;
 - **明確性**: エラーの原因が一目瞭然
 - **効率性**: ゼロコストエラー伝播
 
-### 3.3 Builder Patternの導入
+### 3.3 Builder Patternについて
 
-#### 3.3.1 募集作成のBuilder
+**現状**: Builder Patternは現在の実装では採用されていません。
+
+**将来の拡張案**: 複雑なエンティティの構築が必要になった場合、以下のようなBuilder Patternの導入を検討できます。
+
+#### 3.3.1 募集作成のBuilder（例）
 
 ```rust
+// 将来の拡張案
 pub struct BattleRecruitmentBuilder<'a> {
     ctx: &'a PoiseContext<'a>,
     quest: Option<&'a str>,

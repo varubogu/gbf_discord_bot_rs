@@ -10,9 +10,11 @@
 
 ### 静的ディスパッチによる関数切り替え
 
-- **必須**: パフォーマンス最優先で静的ディスパッチを使用
+- **原則**: パフォーマンス最優先で静的ディスパッチを使用
 - **関数切り替え**: テスト用の処理差し替えを関数レベルで実装
-- **禁止**: 動的ディスパッチ（`Arc<dyn Trait>`）の使用
+- **動的ディスパッチ**: 必要最小限の場合のみ許可（例: 複数の実装を切り替える必要がある場合）
+  - 基本的には静的ディスパッチを優先
+  - テスト可能性のために `Arc<dyn Trait>` を使用することは許容される
 
 **実装例**:
 
@@ -33,9 +35,10 @@ pub async fn execute_global_load_test(ctx: &PoiseContext<'_>) -> Result<()> {
     // ...
 }
 
-// ❌ 間違い: 動的ディスパッチ
-pub async fn execute_global_load_wrong(ctx: &PoiseContext<'_>) -> Result<()> {
-    let loader_service = Arc::new(GlobalLoaderServiceImpl::new()); // 禁止
+// ⚠️ 使用可能だが静的ディスパッチを優先: 動的ディスパッチ
+pub async fn execute_global_load_dynamic(ctx: &PoiseContext<'_>) -> Result<()> {
+    let loader_service: Arc<dyn GlobalLoaderService> = Arc::new(GlobalLoaderServiceImpl::new());
+    // テスト可能性のために使用することは許容されるが、パフォーマンスの観点から静的ディスパッチを優先
     // ...
 }
 ```
@@ -61,19 +64,20 @@ pub async fn handle_command(ctx: PoiseContext) -> Result<(), PoiseError> {
 - 1つのオペレーションを担当するクラスとして実装
 
 ```rust
+// 実装例: 静的ディスパッチを使用（推奨）
 pub struct BattleRecruitmentFacade {
     tx_manager: Arc<TransactionManager>,
-    new_service: Arc<dyn NewRecruitmentService>,
-    update_service: Arc<dyn UpdateRecruitmentService>,
 }
 
 impl BattleRecruitmentFacade {
-    pub fn new(
-        tx_manager: Arc<TransactionManager>,
-        new_service: Arc<dyn NewRecruitmentService>,
-        update_service: Arc<dyn UpdateRecruitmentService>,
-    ) -> Self {
-        Self { tx_manager, new_service, update_service }
+    pub fn new(tx_manager: Arc<TransactionManager>) -> Self {
+        Self { tx_manager }
+    }
+
+    pub async fn create_new_recruitment(&self, params: NewRecruitmentParams) -> Result<()> {
+        // Serviceは直接インスタンス化（静的ディスパッチ）
+        let new_service = NewRecruitmentService::new(/* ... */);
+        new_service.execute(params).await
     }
 }
 ```
@@ -84,11 +88,23 @@ impl BattleRecruitmentFacade {
 - 単一責任の原則に従う
 
 ```rust
-pub struct NewRecruitmentService {
+// 実装例: Repositoryを直接受け取る（静的ディスパッチ推奨）
+pub struct NewRecruitmentService<R: BattleRecruitmentRepository> {
+    repo: Arc<R>,
+}
+
+impl<R: BattleRecruitmentRepository> NewRecruitmentService<R> {
+    pub fn new(repo: Arc<R>) -> Self {
+        Self { repo }
+    }
+}
+
+// または、テスト可能性のために動的ディスパッチも許容される
+pub struct NewRecruitmentServiceDyn {
     repo: Arc<dyn BattleRecruitmentRepository>,
 }
 
-impl NewRecruitmentService {
+impl NewRecruitmentServiceDyn {
     pub fn new(repo: Arc<dyn BattleRecruitmentRepository>) -> Self {
         Self { repo }
     }

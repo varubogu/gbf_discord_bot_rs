@@ -1,16 +1,18 @@
-# タイムゾーン設定機能 設計書
+# サーバー設定機能（タイムゾーン・ロケール） 設計書
 
 ## 概要
 
-Discordサーバー（Guild）ごとにタイムゾーンを設定し、日時入力および表示を現地時間で行う機能です。ユーザーがスラッシュコマンドでタイムゾーンを設定すると、以降の募集コマンドやスプレッドシート読み込みで指定したタイムゾーンが適用されます。
+Discordサーバー（Guild）ごとにタイムゾーンとロケール（言語設定）を設定する機能です。タイムゾーン設定により日時入力および表示を現地時間で行い、ロケール設定によりボットの応答言語を選択できます。
 
 ## 機能要件
 
 ### 基本機能
-- スラッシュコマンド `/タイムゾーン設定` によるタイムゾーン設定
-- スラッシュコマンド `/タイムゾーン確認` による現在設定の確認
+- スラッシュコマンド `/サーバー設定` によるタイムゾーンとロケールの設定
 - IANAタイムゾーンデータベース準拠のタイムゾーン名指定（例: `Asia/Tokyo`, `America/New_York`）
-- デフォルトタイムゾーン: `Asia/Tokyo`
+- ロケール設定（例: `ja`, `en`）
+- デフォルト値:
+  - タイムゾーン: `Asia/Tokyo`
+  - ロケール: `ja`
 - `gbf_bot_control` ロール保持者のみ設定変更可能
 
 ### タイムゾーン設定の影響範囲
@@ -42,19 +44,17 @@ Discordサーバー（Guild）ごとにタイムゾーンを設定し、日時�
 
 #### プレゼンテーション層（events/）
 ```
-src/events/interactions/command_interactions/slash/timezone_set.rs
-src/events/interactions/command_interactions/slash/timezone_show.rs
+src/events/interactions/command_interactions/slash/guild_settings.rs
 ```
 - Discord API操作の実装
-- スラッシュコマンドの定義
+- スラッシュコマンド `/サーバー設定` の定義
 - 権限チェック（`gbf_bot_control` ロール）
 - エラーハンドリング
 - 設定完了メッセージ表示
 
 #### Facade層（facades/）
 ```
-src/facades/timezone/set_timezone.rs
-src/facades/timezone/show_timezone.rs
+src/facades/guild_settings/update_guild_settings.rs
 ```
 - サービス層の協調
 - トランザクション境界管理
@@ -62,17 +62,18 @@ src/facades/timezone/show_timezone.rs
 
 #### Service層（services/）
 ```
-src/services/timezone_service.rs
+src/services/guild_settings/guild_settings_service.rs
 ```
-- タイムゾーン取得・設定のビジネスロジック
+- タイムゾーン・ロケール取得・設定のビジネスロジック
 - タイムゾーン名のバリデーション（chrono-tzでパース可能か）
-- デフォルトタイムゾーンの返却（未設定時）
+- ロケールのバリデーション
+- デフォルト設定値の返却（未設定時）
 
 #### Repository層（repository/）
 ```
-src/repository/database/guild_timezone_repository.rs
+src/repository/database/guild_settings_repository.rs
 ```
-- タイムゾーン設定の永続化
+- ギルド設定の永続化
 - ギルドIDによる検索
 - UPSERT処理
 
@@ -80,24 +81,31 @@ src/repository/database/guild_timezone_repository.rs
 
 ### 主要エンティティ
 
-#### GuildTimezones
+#### GuildSettings
 ```rust
 pub struct Model {
     pub guild_id: i64,           // Discord Guild ID
     pub timezone: String,        // IANAタイムゾーン名
+    pub locale: String,          // ロケール（言語設定）
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 ```
 
+**データベーステーブル**: `guild_settings`
+**詳細**: [database/tables/guild/guild_timezones.md](../database/tables/guild/guild_timezones.md) (※ファイル名は `guild_timezones.md` ですが、内容は `guild_settings` テーブルの説明です)
+
 ## コマンド仕様
 
-### `/タイムゾーン設定` コマンド
+### `/サーバー設定` コマンド
 
 #### パラメータ
 | パラメータ名 | 型 | 必須 | 説明 | 例 |
 |-------------|-----|------|------|-----|
-| timezone | String | ✅ | IANAタイムゾーン名（オートコンプリート対応） | `Asia/Tokyo`, `America/New_York`, `Europe/London` |
+| timezone | String | ⚪ | IANAタイムゾーン名（オートコンプリート対応） | `Asia/Tokyo`, `America/New_York`, `Europe/London` |
+| locale | String | ⚪ | ロケール（言語設定） | `ja`, `en` |
+
+※ `timezone` と `locale` のいずれかは必須
 
 #### オートコンプリート機能
 - 入力時に主要なタイムゾーンの候補が表示される
@@ -112,23 +120,28 @@ pub struct Model {
 
 #### 動作フロー
 1. コマンド実行者の権限チェック（`gbf_bot_control` ロール保持確認）
-2. タイムゾーン名のバリデーション（chrono-tzでパース可能か）
+2. パラメータのバリデーション
+   - タイムゾーン名のバリデーション（chrono-tzでパース可能か）
+   - ロケールのバリデーション（サポートされているロケールか）
 3. DB保存（UPSERT）
 4. 完了メッセージ表示（ephemeral）
 
 #### 成功時の表示例
 ```
-タイムゾーンを Asia/Tokyo に設定しました。
+サーバー設定を更新しました。
+- タイムゾーン: Asia/Tokyo
+- ロケール: ja
 ```
 
 #### エラー例
 - 権限不足: `このコマンドは管理者（gbf_bot_controlロール）のみ実行できます。`
 - 無効なタイムゾーン: `無効なタイムゾーン名です。IANAタイムゾーン名を指定してください。（例: Asia/Tokyo, America/New_York）`
+- 無効なロケール: `無効なロケールです。サポートされているロケール: ja, en`
+- パラメータ不足: `timezone または locale のいずれかを指定してください。`
 
-### `/タイムゾーン確認` コマンド
+## 現在の設定確認
 
-#### パラメータ
-なし
+現在のサーバー設定は `/サーバー設定` コマンドのパラメータを省略して実行することで確認できます（または別途確認用コマンドを実装）。
 
 #### 動作フロー
 1. 現在のギルド設定を取得

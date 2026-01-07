@@ -245,18 +245,22 @@ impl DataCleanupService {
 
 ## データモデル
 
-### テーブル構成の変更
+### テーブル構成
 
-**scheduled_task_cleanups テーブルは使用しません**
+**scheduled_task_cleanups テーブルについて**
 
-- メンテナンスコンテナは scheduled_tasks テーブルに依存せず、完全に独立して動作
-- 削除基準日時は実行時に計算（`Utc::now() - Duration::days(30)`）
-- scheduled_tasks テーブルへのタスク登録は不要（cron起動のため）
+- `scheduled_task_cleanups` テーブルは実装されており、クリーンアップタスクの詳細を保持します
+- エンティティ: `src/models/entities/worker/scheduled_task_cleanups.rs`
+- カラム構成:
+  - `task_id`: タスクID（主キー）
+  - `target_schema`: 対象スキーマ名
+  - `target_table`: 対象テーブル名
+  - `cleanup_before`: クリーンアップ基準日時
+- CASCADE削除により、親タスク（`scheduled_tasks`）の削除時に自動削除されます
 
-この設計により、以下のメリットがあります：
-- Bot本体とメンテナンスバッチが完全に独立
-- scheduled_tasks テーブルの肥大化を防ぐ
-- シンプルな実装（テーブル登録・削除の処理が不要）
+> **注意**: 本ドキュメントで説明する独立したメンテナンスコンテナ（cron起動方式）を採用する場合、
+> `scheduled_task_cleanups` テーブルは不要になります。ただし、テーブル自体は実装されているため、
+> scheduled_tasks と統合されたクリーンアップ方式に切り替えることも可能です。
 
 ## 削除対象テーブルとデータ
 

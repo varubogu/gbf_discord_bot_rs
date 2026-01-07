@@ -228,7 +228,10 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 #### 許可事項
 
 - **PoiseContext、Serenity Contextのアクセス** - poiseフレームワークを最大限活用するため、Discord固有のコンテキストオブジェクトの利用を許可
-- **外部システム操作** - Discord Botとしての機能実装を優先し、必要な外部システム操作を許可
+- **Discord API操作** - Discord Botとしての機能実装を優先し、Contextを通じたDiscord API操作を許可
+  - メッセージ送信、リアクション追加、チャンネル情報取得など
+  - ただし、複雑な操作はServiceに委譲することを推奨
+- **外部システム操作** - 必要な外部システム操作を許可（スプレッドシートAPI等）
 
 #### 詳細責務
 
@@ -240,10 +243,10 @@ pub async fn slash_command_handler(ctx: PoiseContext) -> Result<(), PoiseError> 
 
 **禁止事項**:
 
-- Discord API操作（serviceにContextを渡し、serviceに処理させる）
-- Repository層への直接アクセス
-- データベース固有の操作
-- 複数のユースケースを1つのクラスで処理
+- Repository層への直接アクセス（Service層を経由すること）
+- データベース固有の操作（Repository層に委譲すること）
+- 複数のユースケースを1つの関数で処理（単一責任の原則）
+- ビジネスロジックの実装（Service層に委譲すること）
 
 **実装パターン**:
 

@@ -1,5 +1,14 @@
 # スプレッドシート機能 Service層設計書
 
+> **⚠️ 注意: 実装との差異について**
+>
+> このドキュメントに記載されているトレイト定義は理想的な設計を示していますが、実際の実装では構造体ベースの実装になっています。
+>
+> 実装の詳細:
+> - トレイト名は `*ServiceTrait` という命名規則に従っています（例: `SpreadsheetReaderServiceTrait`）
+> - 構造体実装は `SpreadsheetReaderService<T, D>` のようにジェネリックパラメータを持つ場合があります
+> - 実装ファイル: `src/services/spreadsheet/` ディレクトリ
+
 ## 概要
 
 本設計書では、Googleスプレッドシート連携機能におけるService層の責務、Service一覧、各Serviceの詳細設計を定義します。Service層は単一の業務処理を担当し、ドメインルールを実装します。
