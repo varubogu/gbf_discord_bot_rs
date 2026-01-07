@@ -1,5 +1,18 @@
 # データベースユーザー設計書
 
+> **✅ 実装状況: 実装済み**
+>
+> このドキュメントに記載されているDBロール設計は実装されています。
+>
+> **実装の確認:**
+> - 環境変数: `.env`, `.env.app`, `.env.db` に各ロールのユーザー名・パスワードを設定
+> - 実装ファイル: `src/types/app_state.rs` で3つのDB接続を管理
+> - ロール構成:
+>   - `GUILD_DB_USER` (guild_user): ギルド固有データアクセス、RLS適用
+>   - `SYSTEM_DB_USER` (system_user): スケジューラー用、RLS適用なし
+>   - `GLOBAL_DB_USER` (global_user): マスターデータ更新用
+>   - `ADMIN_DB_USER` (admin_user): マイグレーション用
+
 ## 1. 概要
 
 本設計書では、Granblue Fantasy向けDiscord Botが利用するPostgreSQLデータベースにおけるユーザーアカウントの分類・権限・運用指針を定義する。環境ごとの接続手段と秘密情報の扱いを統一し、最小権限に基づく安全な運用を実現する。

@@ -1,5 +1,19 @@
 # スケジュール処理システム実装サマリー
 
+> **✅ 実装完了レポート**
+>
+> **実装完了日**: 2025-12-25
+>
+> **完了した実装:**
+> - SchedulerManager の実装とスケジュール処理基盤
+> - DissolutionTaskExecutor（解散タスク）の実装
+> - DismissalTaskExecutor（人数不足による解散）の実装
+> - scheduled_tasks テーブルとリポジトリ層の実装
+>
+> **DissolutionとDismissalの違い:**
+> - **Dissolution (task_type=2)**: クエスト開始時刻による強制解散
+> - **Dismissal (task_type=5)**: 人数不足による自動解散
+
 ## 実装完了日
 2025-12-25
 

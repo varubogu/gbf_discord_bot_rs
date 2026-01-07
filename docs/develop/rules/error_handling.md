@@ -1,5 +1,16 @@
 # エラーハンドリングルール
 
+> **📝 注意: 実装はよりシンプルです**
+>
+> このドキュメントに記載されているエラー変換パターンは理想的な設計を示していますが、
+> 実際の実装はより単純化されています。
+>
+> **実装の詳細:**
+> - エラー型: `src/errors/` ディレクトリ
+> - `ServiceError`, `FacadeError`, `RepositoryError`, `PresentationError` に分類
+> - エラー変換は `From` トレイトと `#[from]` 属性で実装
+> - SeaORM の `DbErr` は直接 `ServiceError::Database(String)` に変換
+
 ## 基本方針
 
 - **構造化エラー**: 各層で適切なエラー型を定義

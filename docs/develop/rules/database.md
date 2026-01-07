@@ -1,5 +1,30 @@
 # データベースコーディングルール
 
+> **📝 注意: Repositoryメソッドシグネチャについて**
+>
+> このドキュメントに記載されているコード例は概念を示すものです。
+> 実際の実装では、Repositoryメソッドはパラメータ構造体を使用しています。
+>
+> **実装例:**
+> ```rust
+> // パラメータ構造体
+> pub struct CreateBattleRecruitmentParams {
+>     pub guild_id: u64,
+>     pub channel_id: u64,
+>     pub message_id: u64,
+>     pub quest_id: i32,
+>     pub battle_style_id: i32,
+>     pub quest_start_at: DateTime<Utc>,
+> }
+>
+> // Repositoryメソッド
+> async fn create_with_txn(
+>     &self,
+>     txn: &DatabaseTransaction,
+>     params: CreateBattleRecruitmentParams,
+> ) -> Result<BattleRecruitments>
+> ```
+
 このドキュメントでは、プロジェクトにおけるデータベース操作のコーディングルールとベストプラクティスを定義します。
 
 ## 基本原則

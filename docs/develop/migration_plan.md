@@ -1,8 +1,19 @@
 # SchedulerService → SchedulerManager 移行計画
 
+> **✅ 移行完了レポート**
+>
+> **完了日**: 2025-12-26
+>
+> **完了した移行:**
+> - SchedulerManager への移行完了
+> - DissolutionTaskExecutor と DismissalTaskExecutor の統合完了
+> - ScheduleNotificationTimer は完全に削除済み
+>
+> このドキュメントは、移行プロセスの記録として保持されています。
+
 ## 現状分析
 
-### 既存のSchedulerService（廃止予定）
+### 既存のSchedulerService（廃止済み）
 
 **役割:**
 1. イベント通知スケジュールの生成（generate_schedules）

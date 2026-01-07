@@ -1,5 +1,16 @@
 # データベースロール使用ガイド
 
+> **✅ 実装状況: 実装済み**
+>
+> **実装の確認:**
+> - `DbRole` enum: `src/types/db_role.rs` で定義
+> - `AppConfig::database_url(DbRole)`: `src/types/app_config.rs` で実装
+> - `AppState`: `src/types/app_state.rs` で3つのDB接続を保持
+>   - `guild_db` (Guild ロール、RLS適用)
+>   - `system_db` (System ロール、RLS適用なし)
+>   - `global_db` (Global ロール、RLS適用なし)
+> - 環境変数: `.env`, `.env.app`, `.env.db` でロールごとのユーザー名・パスワードを設定
+
 ## 概要
 
 このプロジェクトでは、PostgreSQLのRow Level Security (RLS)とデータベースロールを使用して、セキュリティとデータ分離を実現しています。
@@ -200,38 +211,49 @@ match use_case {
 }
 ```
 
-### AppStateでの実装例
+### AppStateでの実装（実装済み）
 
-将来的にAppStateに複数のDB接続を保持する場合:
+`AppState` は3つのDB接続を保持しています:
 
 ```rust
+// src/types/app_state.rs
 pub struct AppState {
-    pub guild_db: DatabaseConnection,   // DbRole::Guild
-    pub system_db: DatabaseConnection,  // DbRole::System
-    pub global_db: DatabaseConnection,  // DbRole::Global
+    pub guild_db: Arc<DatabaseConnection>,   // DbRole::Guild
+    pub system_db: Arc<DatabaseConnection>,  // DbRole::System
+    pub global_db: Arc<DatabaseConnection>,  // DbRole::Global
     pub config: AppConfig,
+    pub message_service: Arc<MessageService>,
 }
 
 impl AppState {
-    pub async fn new(config: AppConfig) -> Result<Self> {
-        let guild_db = Database::connect(
-            config.database_url(DbRole::Guild)?
-        ).await?;
-
-        let system_db = Database::connect(
-            config.database_url(DbRole::System)?
-        ).await?;
-
-        let global_db = Database::connect(
-            config.database_url(DbRole::Global)?
-        ).await?;
-
-        Ok(Self {
-            guild_db,
-            system_db,
-            global_db,
+    pub fn new(
+        guild_db: DatabaseConnection,
+        system_db: DatabaseConnection,
+        global_db: DatabaseConnection,
+        config: AppConfig,
+    ) -> Self {
+        Self {
+            guild_db: Arc::new(guild_db),
+            system_db: Arc::new(system_db),
+            global_db: Arc::new(global_db),
             config,
-        })
+            message_service: Arc::new(MessageService::new()),
+        }
+    }
+
+    /// Guild ロール用DB接続を取得（通常のコマンド実行用）
+    pub fn guild_db(&self) -> &DatabaseConnection {
+        &self.guild_db
+    }
+
+    /// System ロール用DB接続を取得（スケジューラー用）
+    pub fn system_db(&self) -> &DatabaseConnection {
+        &self.system_db
+    }
+
+    /// Global ロール用DB接続を取得（マスターデータ更新用）
+    pub fn global_db(&self) -> &DatabaseConnection {
+        &self.global_db
     }
 }
 ```

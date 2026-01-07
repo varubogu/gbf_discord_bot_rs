@@ -7,10 +7,8 @@
 ├── .junie   # junieの設定フォルダ
 ├── .tmp     # 一時的な作業用。この中身はコミットしないので検証用に自由に使って良い。
 ├── docs/    # ドキュメント格納先
-├── locales/  # 翻訳ファイルを格納
-│   ├── ja.json  # SvelteコンポーネントのE2Eテスト
-│   ├── design/    # 設計書
-│   └── features/  # 一般の人向けの説明書。使用できるコマンドなどもここに含む
+├── locales/  # 多言語対応メッセージファイルを格納
+│   └── messages.yml  # 日本語メッセージ定義（rust-i18n用）
 ├── src
 │   ├── events/            # discord botのイベント・インタラクション全般
 │   │   ├── handlers/      # discord botのイベント（on_messageやon_reaction_add）を定義
