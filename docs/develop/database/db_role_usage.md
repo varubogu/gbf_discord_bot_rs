@@ -1,16 +1,5 @@
 # データベースロール使用ガイド
 
-> **✅ 実装状況: 実装済み**
->
-> **実装の確認:**
-> - `DbRole` enum: `src/types/db_role.rs` で定義
-> - `AppConfig::database_url(DbRole)`: `src/types/app_config.rs` で実装
-> - `AppState`: `src/types/app_state.rs` で3つのDB接続を保持
->   - `guild_db` (Guild ロール、RLS適用)
->   - `system_db` (System ロール、RLS適用なし)
->   - `global_db` (Global ロール、RLS適用なし)
-> - 環境変数: `.env`, `.env.app`, `.env.db` でロールごとのユーザー名・パスワードを設定
-
 ## 概要
 
 このプロジェクトでは、PostgreSQLのRow Level Security (RLS)とデータベースロールを使用して、セキュリティとデータ分離を実現しています。
@@ -211,9 +200,9 @@ match use_case {
 }
 ```
 
-### AppStateでの実装（実装済み）
+### AppStateでの実装例
 
-`AppState` は3つのDB接続を保持しています:
+`AppState` は3つのDB接続を保持します:
 
 ```rust
 // src/types/app_state.rs

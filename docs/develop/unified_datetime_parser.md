@@ -1,26 +1,8 @@
-# 統一日時パーサー
-
-> **✅ 実装状況: 実装完了**
->
-> **実装完了日**: 2026-01-04
->
-> **既存パーサーの状況**:
-> - `datetime_parser` - ✅ 現在も使用中（`unified_datetime_parser` 内部で絶対日時解析に使用）
-> - `TimeParserService` - ⚠️ 廃止済み（`unified_datetime_parser` に統合）
-> - `DismissalTimeParserService` - ⚠️ 廃止済み（`unified_datetime_parser` に統合）
->
-> **確認方法**:
-> ```bash
-> # unified_datetime_parser の使用箇所を確認
-> grep -r "unified_datetime_parser" src/
->
-> # 旧パーサーが残っているか確認
-> grep -r "TimeParserService\|DismissalTimeParserService" src/
-> ```
+# 統一日時パーサー設計書
 
 ## 概要
 
-`unified_datetime_parser`は、ビットフラグベースの柔軟な日時解析システムです。既存の複数のパーサー（`datetime_parser`, `TimeParserService`, `DismissalTimeParserService`）を統合し、一貫したインターフェースを提供します。
+`unified_datetime_parser`は、ビットフラグベースの柔軟な日時解析システムです。複数のパーサー（`datetime_parser`, `TimeParserService`, `DismissalTimeParserService`）を統合し、一貫したインターフェースを提供します。
 
 ## 設計思想
 
@@ -386,12 +368,11 @@ let results = parse_datetime(input, &options)?;
 // resultsは Vec<ParsedDateTime> として使用
 ```
 
-## 今後の拡張
+## 拡張可能性
 
-- [ ] より詳細なエラーメッセージ（どのパターンを試したか）
-- [ ] パターン無効化時の詳細エラー
-- [ ] パフォーマンス最適化（無効なパターンのスキップ）
-- [x] ~~既存パーサーの完全廃止~~ → `datetime_parser` は内部で使用中のため廃止しない
+- より詳細なエラーメッセージ（どのパターンを試したか）
+- パターン無効化時の詳細エラー
+- パフォーマンス最適化（無効なパターンのスキップ）
 
 ## 関連ファイル
 

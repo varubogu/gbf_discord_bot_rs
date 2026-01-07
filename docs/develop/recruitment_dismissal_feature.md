@@ -1,24 +1,8 @@
 # マルチ募集解散機能 設計書
 
-> **✅ 実装完了レポート**
->
-> **実装完了日**: 2025-12-26
->
-> **完了した実装:**
-> - 人数不足による自動解散機能（Dismissal）の実装完了
-> - DismissalTaskExecutor の実装完了
-> - task_type=5 (Dismissal) と task_type=2 (Dissolution) の違いを明確化
->
-> **DismissalとDissolutionの違い:**
-> - **Dismissal (task_type=5)**: 人数不足による自動解散（このドキュメントの機能）
-> - **Dissolution (task_type=2)**: クエスト開始時刻による強制解散
->
-> **設計変更:**
-> - `DismissalTimeParserService` は `unified_datetime_parser` に統合されました
-
 ## 概要
 
-マルチ募集において、出発時刻より前に人数が集まらなかった場合に自動的に解散（キャンセル）する機能です（実装完了）。
+マルチ募集において、出発時刻より前に人数が集まらなかった場合に自動的に解散（キャンセル）する機能の設計書です。
 
 ### 目的
 

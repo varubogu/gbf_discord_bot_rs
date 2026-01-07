@@ -1,25 +1,8 @@
-# スケジュール処理システム実装サマリー
+# スケジュール処理システム 設計書
 
-> **✅ 実装完了レポート**
->
-> **実装完了日**: 2025-12-25
->
-> **完了した実装:**
-> - SchedulerManager の実装とスケジュール処理基盤
-> - DissolutionTaskExecutor（解散タスク）の実装
-> - DismissalTaskExecutor（人数不足による解散）の実装
-> - scheduled_tasks テーブルとリポジトリ層の実装
->
-> **DissolutionとDismissalの違い:**
-> - **Dissolution (task_type=2)**: クエスト開始時刻による強制解散
-> - **Dismissal (task_type=5)**: 人数不足による自動解散
+## 概要
 
-## 実装完了日
-2025-12-25
-
-## 実装概要
-
-スケジュール処理システムの基盤実装（Phase 0〜2）が完了しました。このシステムは、tokio-cron-schedulerを使用して定期的にタスクをプリロードし、実行するものです。
+tokio-cron-schedulerを使用してスケジュールタスクを定期的にプリロードし実行するシステムの設計書です。
 
 ## 実装したコンポーネント
 
@@ -196,35 +179,31 @@
 - エラー時のロールバックを保証
 - Repository層での一貫したトランザクション対応
 
-## 実装完了部分（2025-12-25更新）
-
-以下の機能が実装完了しています:
+## 主要機能
 
 1. **Bot起動時の過去タスク処理**
-   - ✅ `find_pending_to`により過去の未実行タスクも自動的に処理される
-   - Bot停止中に実行できなかったタスクは起動後の最初のプリロードサイクルで実行される
+   - `find_pending_to`により過去の未実行タスクも自動的に処理
+   - Bot停止中に実行できなかったタスクは起動後の最初のプリロードサイクルで実行
 
 2. **通知処理との統合**
-   - ✅ scheduled_tasks（task_type=1）+ scheduled_task_notificationsでnotificationsを管理
-   - ✅ SchedulerService::save_calculated_schedulesでscheduled_tasks + scheduled_task_notificationsを作成
-   - ✅ NotificationManagementServiceでも同様に作成・削除を実装
-   - ✅ SchedulerManagerで通知を実行
+   - scheduled_tasks（task_type=1）+ scheduled_task_notificationsでnotificationsを管理
+   - SchedulerService::save_calculated_schedulesでscheduled_tasks + scheduled_task_notificationsを作成
+   - NotificationManagementServiceでも同様に作成・削除を実装
+   - SchedulerManagerで通知を実行
 
 3. **解散タスク処理**
-   - ✅ DissolutionTaskExecutorによる解散処理
-   - ✅ 募集キャンセル + Discordメッセージ更新 + 通知送信
+   - DissolutionTaskExecutorによる解散処理
+   - 募集キャンセル + Discordメッセージ更新 + 通知送信
 
-## 未実装部分
-
-以下の機能は今後の拡張ポイント:
+## 拡張ポイント
 
 1. **DataCleanupTaskExecutor**
    - データ整理タスクの実行ロジック
    - 古いレコードの削除処理
 
 2. **Facade層での統合**
-   - 募集作成時に解散タスクを自動作成（現在は手動実装が必要）
-   - 募集削除時に解散タスクも削除（現在は手動実装が必要）
+   - 募集作成時に解散タスクを自動作成
+   - 募集削除時に解散タスクも削除
 
 3. **テストコード**
    - モックを使った単体テスト

@@ -54,19 +54,9 @@ active_model
     .map_err(|e| AppError::Database(e))?;
 ```
 
-## 適用済みエンティティ
+## 適用対象エンティティ
 
-> **実装状況: ほぼ全エンティティに適用済み**
->
-> `created_at` と `updated_at` を持つエンティティには、`ActiveModelBehavior` トレイトの実装により
-> タイムスタンプの自動設定が適用されています。
->
-> **確認方法:**
-> ```bash
-> grep -r "impl ActiveModelBehavior for ActiveModel" src/models/entities/
-> ```
->
-> 現在、38個のエンティティに適用されています（2025-01時点）。
+`created_at` と `updated_at` フィールドを持つ全エンティティに適用されます。
 
 ## 使用方法
 

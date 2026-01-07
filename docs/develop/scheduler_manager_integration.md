@@ -1,20 +1,8 @@
 # SchedulerManager統合ガイド
 
-> **✅ 統合完了レポート**
->
-> **完了日**: 2025-12-26
->
-> **完了した統合:**
-> - SchedulerManager の統合完了
-> - ScheduleNotificationTimer の削除完了
-> - scheduled_tasks と notifications の統一スケジューラーとして稼働中
->
-> このドキュメントは、統合プロセスの記録として保持されています。
-
 ## 概要
 
 SchedulerManagerは、scheduled_tasksとnotificationsの両方を処理する統一スケジューラーです。
-既存のScheduleNotificationTimerを置き換えています（完了済み）。
 
 ## Bot起動時の統合方法
 

@@ -1,15 +1,4 @@
-# SchedulerService → SchedulerManager 移行計画
-
-> **✅ 移行完了レポート**
->
-> **完了日**: 2025-12-26
->
-> **完了した移行:**
-> - SchedulerManager への移行完了
-> - DissolutionTaskExecutor と DismissalTaskExecutor の統合完了
-> - ScheduleNotificationTimer は完全に削除済み
->
-> このドキュメントは、移行プロセスの記録として保持されています。
+# SchedulerService → SchedulerManager 移行設計書
 
 ## 現状分析
 
@@ -171,16 +160,14 @@ scheduler_manager.start().await?;
 6. 定期募集のscheduled_tasks化
 7. DataCleanupTaskExecutorの実装
 
-## 実装状況（2025-12-25更新）
-
-### ✅ 完了した項目
+## 実装タスク
 
 1. **NotificationRepositoryの拡張**
-   - `find_by_datetime_range_with_txn()`メソッドが既に存在（利用可能）
+   - `find_by_datetime_range_with_txn()`メソッドの実装
 
 2. **SchedulerManagerの拡張**
-   - notificationsテーブルも処理するように実装完了
-   - NotificationServiceと統合完了
+   - notificationsテーブルも処理するように実装
+   - NotificationServiceとの統合
 
 3. **既存コードの廃止予定マーク**
    - `SchedulerFacade::execute_notifications()` - `#[deprecated]`追加
@@ -188,19 +175,10 @@ scheduler_manager.start().await?;
    - `SchedulerService::get_last_process_time()` - 注釈追加（定期募集では継続使用）
    - `SchedulerService::update_last_process_time()` - 注釈追加（定期募集では継続使用）
 
-### ⏳ 残りのタスク
-
-4. **Bot起動処理への統合**（次のステップ）
+4. **Bot起動処理への統合**
    - main.rsまたはBot初期化処理でSchedulerManagerを起動
    - ScheduleNotificationTimerの起動を削除
 
 5. **テストと検証**
    - SchedulerManagerの動作確認
    - 通知が正しく実行されることを確認
-
-## 次のアクション
-
-1. Bot起動処理（src/main.rsまたはsrc/bot.rs）を確認
-2. SchedulerManagerの初期化と起動を追加
-3. ScheduleNotificationTimerの起動を削除または無効化
-4. ビルド確認とテスト
