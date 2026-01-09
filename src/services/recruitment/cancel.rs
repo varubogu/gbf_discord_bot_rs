@@ -48,7 +48,13 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
             if recruitment.is_canceled {
                 CanCancelResult::AlreadyCancelled
             } else {
-                CanCancelResult::Success
+                // 開催日時を過ぎているかチェック
+                let now = chrono::Utc::now();
+                if recruitment.quest_start_at <= now {
+                    CanCancelResult::EventDatePassed
+                } else {
+                    CanCancelResult::Success
+                }
             }
         }
         // DBあり + メッセージなし

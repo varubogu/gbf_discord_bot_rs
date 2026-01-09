@@ -167,6 +167,9 @@ recruitment.command.cancel_message_deleted:
 recruitment.command.cancel_not_found:
   ja: "指定された募集が見つかりません。"
   en: "The specified recruitment was not found."
+recruitment.command.cancel_event_date_passed:
+  ja: "開催日時を過ぎているためキャンセルできません。"
+  en: "Cannot cancel because the event date has passed."
 recruitment.command.cancel_notification_no_participants:
   ja: "募集がキャンセルされました。"
   en: "The recruitment has been cancelled."

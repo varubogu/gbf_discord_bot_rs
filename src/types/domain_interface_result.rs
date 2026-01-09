@@ -11,4 +11,19 @@ pub enum CanCancelResult {
     NotRecruitMessage,
     /// 募集がなく、メッセージもない
     NotFound,
+    /// 開催日時を過ぎているためキャンセル対象外
+    EventDatePassed,
+}
+
+/// メッセージ削除時のキャンセル処理結果
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CancelOnDeleteResult {
+    /// キャンセル処理完了
+    Cancelled,
+    /// 募集メッセージではない
+    NotRecruitmentMessage,
+    /// 既にキャンセル済み
+    AlreadyCancelled,
+    /// 開催日時を過ぎているためキャンセル対象外
+    EventDatePassed,
 }

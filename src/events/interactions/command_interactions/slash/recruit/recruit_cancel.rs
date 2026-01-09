@@ -102,6 +102,24 @@ pub async fn recruit_cancel(
             .await?;
             Ok(())
         }
+        Ok(CanCancelResult::EventDatePassed) => {
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentCommandCancelEventDatePassed,
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "開催日時を過ぎているためキャンセルできません。".to_string());
+
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(message)
+                    .ephemeral(true),
+            )
+            .await?;
+            Ok(())
+        }
         Err(e) => {
             // システムエラーを想定
             error!("{:?}", e);

@@ -14,5 +14,6 @@ pub use app_state::AppState;
 pub use constants::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
 pub use db_role::DbRole;
 pub use discord_operation::{DiscordOperation, DiscordOperationError, DiscordOperationResult};
+pub use domain_interface_result::{CanCancelResult, CancelOnDeleteResult};
 pub use poise_data::{PoiseContext, PoiseData};
 pub use recruitment_component_id::RecruitmentComponentId;

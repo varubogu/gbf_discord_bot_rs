@@ -1,5 +1,5 @@
 use crate::facades::recruitment::cancel::cancel_on_message_deleted;
-use crate::types::{PoiseData, Result};
+use crate::types::{CancelOnDeleteResult, PoiseData, Result};
 use poise::serenity_prelude::{ChannelId, Context, GuildId, MessageId};
 use tracing::{debug, info, warn};
 
@@ -38,7 +38,7 @@ pub async fn on_message_delete(
     )
     .await
     {
-        Ok(true) => {
+        Ok(CancelOnDeleteResult::Cancelled) => {
             info!(
                 guild_id = %guild_id_value,
                 channel_id = %channel_id,
@@ -46,10 +46,22 @@ pub async fn on_message_delete(
                 "募集メッセージ削除に伴うキャンセル処理が完了しました"
             );
         }
-        Ok(false) => {
+        Ok(CancelOnDeleteResult::NotRecruitmentMessage) => {
             debug!(
                 message_id = %deleted_message_id,
                 "削除されたメッセージは募集メッセージではありませんでした"
+            );
+        }
+        Ok(CancelOnDeleteResult::AlreadyCancelled) => {
+            debug!(
+                message_id = %deleted_message_id,
+                "既にキャンセル済みの募集のため処理をスキップしました"
+            );
+        }
+        Ok(CancelOnDeleteResult::EventDatePassed) => {
+            info!(
+                message_id = %deleted_message_id,
+                "開催日時を過ぎているためキャンセル対象外です"
             );
         }
         Err(e) => {

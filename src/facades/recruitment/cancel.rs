@@ -13,8 +13,7 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
-use crate::types::domain_interface_result::CanCancelResult;
-use crate::types::{AppError, AppState, PoiseContext};
+use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
@@ -23,8 +22,6 @@ use poise::serenity_prelude::{
 use sea_orm::TransactionTrait;
 use std::time::Duration;
 use tracing::{error, info, instrument, warn};
-
-// 未使用の構造体を削除（必要に応じて後で追加）
 
 /// 募集をキャンセルできるか確認（公開関数）
 #[instrument(
@@ -140,6 +137,22 @@ async fn cancel_recruitment_internal(
             "キャンセル処理開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id
         );
+
+        // 0. DBから募集情報を取得して開催日時をチェック
+        let recruitment = battle_recruitment_repo
+            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+            .await?
+            .ok_or_else(|| AppError::Business {
+                message: "募集情報が見つかりません".to_string(),
+            })?;
+
+        // 開催日時を過ぎている場合はキャンセル不可
+        let now = chrono::Utc::now();
+        if recruitment.quest_start_at <= now {
+            return Err(AppError::Business {
+                message: "開催日時を過ぎているためキャンセルできません".to_string(),
+            });
+        }
 
         // 1. 募集メッセージを取得して内容を保存
         let channel_id_obj = ChannelId::from(channel_id);
@@ -351,8 +364,17 @@ async fn handle_confirm_cancel(
             delete_cancelling_message(ctx, &interaction).await
         }
         Err(e) => {
-            // エラーをユーザーに表示してから伝播
-            let error_msg = format!("キャンセル処理中にエラーが発生しました: {e}");
+            // エラーをユーザーに表示
+            let error_msg = match &e {
+                AppError::Business { message } => {
+                    // ビジネスエラーの場合はメッセージのみ表示
+                    message.clone()
+                }
+                _ => {
+                    // その他のエラーの場合は詳細を含める
+                    format!("キャンセル処理中にエラーが発生しました: {e}")
+                }
+            };
             interaction
                 .edit_response(
                     &ctx.http(),
@@ -396,6 +418,10 @@ async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> 
             "指定されたメッセージは募集メッセージではありません。".to_string(),
         ),
         CanCancelResult::NotFound => (true, "指定された募集が見つかりません。".to_string()),
+        CanCancelResult::EventDatePassed => (
+            true,
+            "開催日時を過ぎているためキャンセルできません。".to_string(),
+        ),
     }
 }
 
@@ -457,8 +483,7 @@ async fn send_result_response(
 /// - 参加者へのメンション付きキャンセル通知を募集チャンネルに送信
 ///
 /// # 戻り値
-/// - `Ok(true)`: 募集メッセージのキャンセル処理を実行した
-/// - `Ok(false)`: 募集メッセージではなかった（処理不要）
+/// - `Ok(CancelOnDeleteResult)`: 処理結果
 /// - `Err`: 処理中にエラーが発生
 #[instrument(
     level = "debug",
@@ -475,7 +500,7 @@ pub async fn cancel_on_message_deleted(
     channel_id: u64,
     message_id: u64,
     app_state: &AppState,
-) -> types::Result<bool> {
+) -> types::Result<CancelOnDeleteResult> {
     info!("cancel_on_message_deleted - メッセージ削除に伴う募集キャンセル処理を開始します");
 
     let conn = app_state.guild_db();
@@ -502,7 +527,7 @@ pub async fn cancel_on_message_deleted(
                     message_id = %message_id,
                     "削除されたメッセージは募集メッセージではありませんでした"
                 );
-                return Ok::<bool, AppError>(false);
+                return Ok::<CancelOnDeleteResult, AppError>(CancelOnDeleteResult::NotRecruitmentMessage);
             }
         };
 
@@ -512,7 +537,18 @@ pub async fn cancel_on_message_deleted(
                 recruitment_id = recruitment.id,
                 "既にキャンセル済みの募集のため処理をスキップします"
             );
-            return Ok(false);
+            return Ok(CancelOnDeleteResult::AlreadyCancelled);
+        }
+
+        // 開催日時を過ぎている場合はキャンセル不要
+        let now = chrono::Utc::now();
+        if recruitment.quest_start_at <= now {
+            info!(
+                recruitment_id = recruitment.id,
+                quest_start_at = %recruitment.quest_start_at,
+                "開催日時を過ぎているためキャンセル対象外です"
+            );
+            return Ok(CancelOnDeleteResult::EventDatePassed);
         }
 
         info!(
@@ -608,7 +644,7 @@ pub async fn cancel_on_message_deleted(
             "メッセージ削除に伴うキャンセル処理が完了しました"
         );
 
-        Ok::<bool, AppError>(true)
+        Ok::<CancelOnDeleteResult, AppError>(CancelOnDeleteResult::Cancelled)
     }
     .await;
 

@@ -137,6 +137,8 @@ pub mod keys {
     pub const RECRUITMENT_COMMAND_CANCEL_INVALID_MESSAGE: &str =
         "recruitment.command.cancel_invalid_message";
     pub const RECRUITMENT_COMMAND_CANCEL_NOT_FOUND: &str = "recruitment.command.cancel_not_found";
+    pub const RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED: &str =
+        "recruitment.command.cancel_event_date_passed";
     pub const RECRUITMENT_COMMAND_CANCEL_ERROR: &str = "recruitment.command.cancel_error";
     pub const RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX: &str =
         "recruitment.command.cancelled_message_suffix";
@@ -285,6 +287,7 @@ pub enum MessageTextId {
     RecruitmentCommandCancelMessageDeleted,
     RecruitmentCommandCancelInvalidMessage,
     RecruitmentCommandCancelNotFound,
+    RecruitmentCommandCancelEventDatePassed,
     RecruitmentCommandCancelError,
     RecruitmentCommandCancelledMessageSuffix,
     RecruitmentCommandCancelNotificationNoParticipants,
@@ -479,6 +482,9 @@ impl MessageTextId {
             MessageTextId::RecruitmentCommandCancelNotFound => {
                 keys::RECRUITMENT_COMMAND_CANCEL_NOT_FOUND
             }
+            MessageTextId::RecruitmentCommandCancelEventDatePassed => {
+                keys::RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED
+            }
             MessageTextId::RecruitmentCommandCancelError => keys::RECRUITMENT_COMMAND_CANCEL_ERROR,
             MessageTextId::RecruitmentCommandCancelledMessageSuffix => {
                 keys::RECRUITMENT_COMMAND_CANCELLED_MESSAGE_SUFFIX
@@ -665,6 +671,7 @@ mod tests {
             MessageTextId::RecruitmentCommandCancelMessageDeleted,
             MessageTextId::RecruitmentCommandCancelInvalidMessage,
             MessageTextId::RecruitmentCommandCancelNotFound,
+            MessageTextId::RecruitmentCommandCancelEventDatePassed,
             MessageTextId::RecruitmentCommandCancelError,
             MessageTextId::RecruitmentCommandCancelledMessageSuffix,
             MessageTextId::RecruitmentCommandCancelNotificationNoParticipants,
