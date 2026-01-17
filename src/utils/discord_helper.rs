@@ -221,7 +221,7 @@ pub async fn send_message_with_optional_reply(
 
             // 文脈情報を付加して通常メッセージとして送信
             let fallback_content = if let Some(context) = fallback_context {
-                format!("【{}】\n{}", context, content)
+                format!("【{context}】\n{content}")
             } else {
                 content
             };
