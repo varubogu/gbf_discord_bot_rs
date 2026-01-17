@@ -39,7 +39,6 @@ async fn test_data_cleanup_integration() {
 
     // テストデータ作成（31日前の送信済み通知）
     let old_notification = notifications::ActiveModel {
-        schedule_datetime: Set(Utc::now() - Duration::days(31)),
         guild_id: Set(123456789),
         channel_id: Set(987654321),
         message_text_id: Set("test_message".to_string()),
@@ -163,7 +162,6 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
 
     // テストデータ作成（31日前だが未送信の通知）
     let unsent_notification = notifications::ActiveModel {
-        schedule_datetime: Set(Utc::now() - Duration::days(31)),
         guild_id: Set(123456789),
         channel_id: Set(987654321),
         message_text_id: Set("test_message".to_string()),
