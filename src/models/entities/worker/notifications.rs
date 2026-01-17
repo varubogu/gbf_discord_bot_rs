@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub task_id: i32,
     pub schedule_datetime: DateTimeUtc,
     pub guild_id: i64,
     pub channel_id: i64,
@@ -26,6 +27,7 @@ impl ActiveModelBehavior for ActiveModel {
         let now = chrono::Utc::now();
         Self {
             id: sea_orm::NotSet,
+            task_id: sea_orm::NotSet,
             schedule_datetime: sea_orm::NotSet,
             guild_id: sea_orm::NotSet,
             channel_id: sea_orm::NotSet,

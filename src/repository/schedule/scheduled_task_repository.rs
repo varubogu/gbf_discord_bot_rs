@@ -55,4 +55,8 @@ pub trait ScheduledTaskRepository: Send + Sync {
         txn: &DatabaseTransaction,
         recruit_id: i32,
     ) -> Result<u64>;
+
+    /// 指定したtask_typeのタスクを全て削除
+    async fn delete_all_by_task_type(&self, txn: &DatabaseTransaction, task_type: i32)
+        -> Result<u64>;
 }

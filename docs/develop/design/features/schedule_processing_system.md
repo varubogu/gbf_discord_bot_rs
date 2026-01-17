@@ -17,7 +17,7 @@
 - キャッシュ無効化などの複雑な仕組みは不要
 
 ### 3. 既存資産の活用
-- `notifications`テーブルは変更せず、そのまま通知処理に使用
+- `notifications`テーブルは`scheduled_tasks`の子テーブルとして統合
 - 既存のトランザクション管理とエラーハンドリングを維持
 
 ### 4. 拡張性
@@ -43,7 +43,6 @@ Services
 Repository
   ├─ NotificationRepository
   ├─ ScheduledTaskRepository
-  ├─ ScheduledTaskNotificationRepository
   ├─ ScheduledTaskDissolutionRepository
   ├─ ScheduledTaskRecurringRecruitmentRepository
   ├─ ScheduledTaskCleanupRepository
@@ -170,27 +169,34 @@ pub enum ScheduledTaskType {
 ```
 
 **注:**
-- 通知（task_type=1）はscheduled_tasksテーブルをベースとし、scheduled_task_notificationsテーブル経由でnotificationsテーブルと紐付けられます。
+- 通知（task_type=1）はscheduled_tasksテーブルをベースとし、notificationsテーブルはtask_idで直接参照します（1対1関係）。
 - 定期募集（task_type=4）はscheduled_tasksテーブルをベースとし、scheduled_task_recurring_recruitmentsテーブル経由でbattle_recruitment_schedulesテーブルと紐付けられます。
 
 ### 関連テーブル
 
-#### 通知タスク（scheduled_task_notifications）
+#### 通知（notifications）
 
 ```sql
-CREATE TABLE worker.scheduled_task_notifications (
-    task_id INT NOT NULL REFERENCES worker.scheduled_tasks(id) ON DELETE CASCADE,
-    notification_id INT NOT NULL REFERENCES worker.notifications(id) ON DELETE CASCADE,
-    PRIMARY KEY (task_id)
+CREATE TABLE worker.notifications (
+    id SERIAL PRIMARY KEY,
+    task_id INT NOT NULL UNIQUE REFERENCES worker.scheduled_tasks(id) ON DELETE CASCADE,
+    schedule_datetime TIMESTAMPTZ NOT NULL,
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    message_text_id VARCHAR NOT NULL,
+    is_sent BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_scheduled_task_notifications_notification
-    ON worker.scheduled_task_notifications(notification_id);
+CREATE INDEX idx_notifications_task_id ON worker.notifications(task_id);
+CREATE INDEX idx_notifications_datetime ON worker.notifications(schedule_datetime);
 ```
 
 **用途:**
-- scheduled_tasks（task_type=1）とnotificationsテーブルの紐付け
-- scheduled_tasksを母テーブルとして、通知も統一的なスケジュール処理で管理
+- scheduled_tasks（task_type=1）と1対1の関係で通知情報を保持
+- task_idで親のscheduled_tasksを参照（CASCADE削除）
+- scheduled_tasksを削除すると自動的にnotificationsも削除される
 
 #### 解散タスク（scheduled_task_dissolutions）
 
@@ -245,12 +251,12 @@ CREATE INDEX idx_scheduled_task_recurring_recruitments_schedule
 
 ### 既存テーブルとの関係
 
-#### notifications（既存・変更なし）
+#### notifications（scheduled_tasksと1対1関係）
 
 ```sql
--- 既存テーブル（変更なし）
 CREATE TABLE worker.notifications (
     id SERIAL PRIMARY KEY,
+    task_id INT NOT NULL UNIQUE REFERENCES worker.scheduled_tasks(id) ON DELETE CASCADE,
     schedule_datetime TIMESTAMPTZ NOT NULL,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
@@ -261,7 +267,7 @@ CREATE TABLE worker.notifications (
 );
 ```
 
-**役割:** 既存の通知処理をそのまま継続。
+**役割:** scheduled_tasksの子テーブルとして通知情報を保持。CASCADE削除により整合性を保証。
 
 ## 処理フロー
 
@@ -312,8 +318,7 @@ SchedulerManager::preload_and_execute_tasks()
     └─ task_typeに応じた処理を実行
         │
         ├─ [task_type = 1: 通知処理]
-        │   ├─ scheduled_task_notificationsから notification_id を取得
-        │   ├─ notificationsテーブルから通知情報を取得
+        │   ├─ task_idでnotificationsテーブルから通知情報を取得
         │   ├─ NotificationService::send_single_notification() を実行
         │   └─ scheduled_tasks.is_executed = true に更新
         │
@@ -350,13 +355,7 @@ async fn save_calculated_schedules(&self, schedules: Vec<CalculatedSchedule>) ->
     let txn = self.db.begin().await?;
 
     for schedule in schedules {
-        // 1. notificationを作成
-        let notification = notification_repo.create_with_txn(&txn, ...).await?;
-
-        // 2. notification_relを作成
-        rel_repo.create_with_txn(&txn, ...).await?;
-
-        // 3. scheduled_taskを作成（task_type=1: Notification）
+        // 1. scheduled_taskを作成（task_type=1: Notification）
         let scheduled_task = scheduled_task_repo.create(
             &txn,
             schedule.schedule_datetime,
@@ -365,12 +364,18 @@ async fn save_calculated_schedules(&self, schedules: Vec<CalculatedSchedule>) ->
             Some(schedule.channel_id)
         ).await?;
 
-        // 4. scheduled_task_notificationを作成（紐付け）
-        scheduled_task_notification_repo.create(
+        // 2. notificationを作成（task_idを指定）
+        let notification = notification_repo.create_with_txn(
             &txn,
             scheduled_task.id,
-            notification.id
+            schedule.schedule_datetime,
+            schedule.guild_id,
+            schedule.channel_id,
+            schedule.message_text_id
         ).await?;
+
+        // 3. notification_relを作成
+        rel_repo.create_with_txn(&txn, ..., notification.id).await?;
     }
 
     txn.commit().await?;

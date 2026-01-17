@@ -33,6 +33,5 @@ pub use schedule::{
     SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
     SeaOrmScheduleRepository, SeaOrmScheduledTaskCleanupRepository,
     SeaOrmScheduledTaskDismissalRepository, SeaOrmScheduledTaskDissolutionRepository,
-    SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRecurringRecruitmentRepository,
-    SeaOrmScheduledTaskRepository,
+    SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
 };

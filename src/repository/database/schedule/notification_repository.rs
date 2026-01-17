@@ -75,12 +75,14 @@ impl NotificationRepository for SeaOrmNotificationRepository {
     async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
+        task_id: i32,
         schedule_datetime: DateTime<Utc>,
         guild_id: i64,
         channel_id: i64,
         message_text_id: String,
     ) -> Result<notifications::Model> {
         debug!(
+            task_id = %task_id,
             schedule_datetime = %schedule_datetime,
             guild_id = %guild_id,
             channel_id = %channel_id,
@@ -91,6 +93,7 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         let now = Utc::now();
         let active_model = notifications::ActiveModel {
             id: sea_orm::NotSet,
+            task_id: Set(task_id),
             schedule_datetime: Set(schedule_datetime),
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
@@ -105,8 +108,33 @@ impl NotificationRepository for SeaOrmNotificationRepository {
             e
         })?;
 
-        debug!(id = model.id, "通知を作成しました");
+        debug!(id = model.id, task_id = %task_id, "通知を作成しました");
         Ok(model)
+    }
+
+    /// task_idで通知を取得（トランザクション付き）
+    async fn find_by_task_id(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<Option<notifications::Model>> {
+        debug!(task_id = %task_id, "task_idで通知を取得します");
+
+        let notification = notifications::Entity::find()
+            .filter(notifications::Column::TaskId.eq(task_id))
+            .one(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, task_id = %task_id, "通知の取得に失敗しました");
+                e
+            })?;
+
+        debug!(
+            task_id = %task_id,
+            found = notification.is_some(),
+            "通知を取得しました"
+        );
+        Ok(notification)
     }
 
     // /// 通知を一括作成（トランザクション付き）

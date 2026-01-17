@@ -2,7 +2,7 @@ use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
 };
-use crate::repository::schedule::{ScheduledTaskNotificationRepository, ScheduledTaskRepository};
+use crate::repository::schedule::ScheduledTaskRepository;
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::message::MessageService;
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;
@@ -13,7 +13,7 @@ use crate::services::schedule::{NotificationService, RecruitmentScheduleService}
 use crate::types::Result;
 use chrono::{Duration, Utc};
 use poise::serenity_prelude::Http;
-use sea_orm::{DatabaseConnection, EntityTrait, TransactionTrait};
+use sea_orm::{DatabaseConnection, TransactionTrait};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::{debug, error, info, warn};
@@ -165,12 +165,12 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         info!(tasks = tasks.len(), "タスクをプリロードしました");
 
         // scheduled_tasksを実行
-        use crate::models::entities::worker::notifications;
-        use crate::repository::database::schedule::SeaOrmScheduledTaskNotificationRepository;
+        
+        use crate::repository::database::schedule::SeaOrmNotificationRepository;
+        use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
         let notification_service = NotificationService::new(Arc::clone(http));
-        let scheduled_task_notification_repo =
-            Arc::new(SeaOrmScheduledTaskNotificationRepository::new());
+        let notification_repo = SeaOrmNotificationRepository::new();
 
         for task in tasks {
             if task.schedule_datetime <= now {
@@ -180,67 +180,44 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         // Notification
                         info!(task_id = task.id, "通知タスクを実行します");
 
-                        // scheduled_task_notificationsから notification_id を取得
-                        match scheduled_task_notification_repo
-                            .find_by_task_id(&txn, task.id)
-                            .await
-                        {
-                            Ok(Some(notification_rel)) => {
-                                // notificationsテーブルから通知を取得
-                                match notifications::Entity::find_by_id(
-                                    notification_rel.notification_id,
-                                )
-                                .one(&txn)
-                                .await
+                        // task_idからnotificationsテーブルを検索
+                        match notification_repo.find_by_task_id(&txn, task.id).await {
+                            Ok(Some(notification)) => {
+                                // 通知を送信
+                                match notification_service
+                                    .send_single_notification(&txn, &notification)
+                                    .await
                                 {
-                                    Ok(Some(notification)) => {
-                                        // 通知を送信
-                                        match notification_service
-                                            .send_single_notification(&txn, &notification)
-                                            .await
+                                    Ok(_) => {
+                                        // タスクを完了としてマーク
+                                        if let Err(e) =
+                                            task_repo.mark_as_executed(&txn, task.id).await
                                         {
-                                            Ok(_) => {
-                                                // タスクを完了としてマーク
-                                                if let Err(e) =
-                                                    task_repo.mark_as_executed(&txn, task.id).await
-                                                {
-                                                    error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
-                                                }
-                                                info!(
-                                                    task_id = task.id,
-                                                    "通知タスクを実行しました"
-                                                );
-                                            }
-                                            Err(e) => {
-                                                error!(task_id = task.id, error = %e, "通知の送信中にエラーが発生しました");
-                                            }
+                                            error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                         }
-                                    }
-                                    Ok(None) => {
-                                        error!(
+                                        info!(
                                             task_id = task.id,
-                                            notification_id = notification_rel.notification_id,
-                                            "通知が見つかりません"
+                                            "通知タスクを実行しました"
                                         );
                                     }
                                     Err(e) => {
-                                        error!(task_id = task.id, error = %e, "通知の取得に失敗しました");
+                                        error!(task_id = task.id, error = %e, "通知の送信中にエラーが発生しました");
                                     }
                                 }
                             }
                             Ok(None) => {
-                                // データ不整合：scheduled_task_notificationsに紐付けがない
+                                // データ不整合：notificationsテーブルに通知がない
                                 // このタスクは実行不可能なため、実行済みとしてマークして次回以降スキップ
                                 warn!(
                                     task_id = task.id,
-                                    "通知タスク関連情報が見つかりません（データ不整合）。タスクを実行済みとしてマークします"
+                                    "通知が見つかりません（データ不整合）。タスクを実行済みとしてマークします"
                                 );
                                 if let Err(e) = task_repo.mark_as_executed(&txn, task.id).await {
                                     error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                 }
                             }
                             Err(e) => {
-                                error!(task_id = task.id, error = %e, "通知タスク関連情報の取得に失敗しました");
+                                error!(task_id = task.id, error = %e, "通知の取得に失敗しました");
                             }
                         }
                     }

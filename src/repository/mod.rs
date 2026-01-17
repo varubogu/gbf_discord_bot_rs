@@ -45,11 +45,10 @@ pub use schedule::{
     BattleRecruitmentDismissalRepository, BattleRecruitmentScheduleDismissalRepository,
     BattleRecruitmentScheduleRepository, CleanupWithTask, CreateScheduleParams, DismissalWithTask,
     DissolutionWithTask, NotificationRelBattleRecruitmentRepository,
-    NotificationRelEventScheduleRepository, NotificationRepository, NotificationWithTask,
+    NotificationRelEventScheduleRepository, NotificationRepository,
     RecurringRecruitmentWithTask, ScheduleRepository, ScheduledTaskCleanupRepository,
     ScheduledTaskDismissalRepository, ScheduledTaskDissolutionRepository,
-    ScheduledTaskNotificationRepository, ScheduledTaskRecurringRecruitmentRepository,
-    ScheduledTaskRepository,
+    ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
 
 // /// リポジトリファクトリ

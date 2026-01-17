@@ -8,7 +8,6 @@ pub mod schedule_repository;
 pub mod scheduled_task_cleanup_repository;
 pub mod scheduled_task_dismissal_repository;
 pub mod scheduled_task_dissolution_repository;
-pub mod scheduled_task_notification_repository;
 pub mod scheduled_task_recurring_recruitment_repository;
 pub mod scheduled_task_repository;
 
@@ -28,9 +27,6 @@ pub use scheduled_task_dismissal_repository::{
 };
 pub use scheduled_task_dissolution_repository::{
     DissolutionWithTask, ScheduledTaskDissolutionRepository,
-};
-pub use scheduled_task_notification_repository::{
-    NotificationWithTask, ScheduledTaskNotificationRepository,
 };
 pub use scheduled_task_recurring_recruitment_repository::{
     RecurringRecruitmentWithTask, ScheduledTaskRecurringRecruitmentRepository,

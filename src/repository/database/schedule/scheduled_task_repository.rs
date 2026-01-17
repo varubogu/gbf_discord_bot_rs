@@ -218,6 +218,32 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
         Ok(delete_result.rows_affected)
     }
+
+    /// 指定したtask_typeのタスクを全て削除
+    async fn delete_all_by_task_type(
+        &self,
+        txn: &DatabaseTransaction,
+        task_type: i32,
+    ) -> Result<u64> {
+        debug!(task_type, "指定したtask_typeのタスクを全て削除します");
+
+        let delete_result = scheduled_tasks::Entity::delete_many()
+            .filter(scheduled_tasks::Column::TaskType.eq(task_type))
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, task_type, "タスクの削除に失敗しました");
+                e
+            })?;
+
+        debug!(
+            task_type,
+            deleted_count = delete_result.rows_affected,
+            "タスクを削除しました"
+        );
+
+        Ok(delete_result.rows_affected)
+    }
 }
 
 impl Default for SeaOrmScheduledTaskRepository {

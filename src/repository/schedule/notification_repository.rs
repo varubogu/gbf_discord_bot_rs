@@ -29,11 +29,19 @@ pub trait NotificationRepository: Send + Sync {
     async fn create_with_txn(
         &self,
         txn: &DatabaseTransaction,
+        task_id: i32,
         schedule_datetime: DateTime<Utc>,
         guild_id: i64,
         channel_id: i64,
         message_text_id: String,
     ) -> Result<notifications::Model>;
+
+    /// task_idで通知を取得（トランザクション付き）
+    async fn find_by_task_id(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<Option<notifications::Model>>;
 
     /// 通知IDで通知を削除（トランザクション付き）
     async fn delete_by_id_with_txn(

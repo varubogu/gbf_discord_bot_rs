@@ -17,8 +17,7 @@ use crate::repository::database::schedule::{
 };
 use crate::repository::schedule::{
     BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
-    NotificationRepository, ScheduleRepository, ScheduledTaskNotificationRepository,
-    ScheduledTaskRepository,
+    NotificationRepository, ScheduleRepository, ScheduledTaskRepository,
 };
 use sea_orm::DatabaseConnection;
 
@@ -42,15 +41,29 @@ impl SchedulerService {
         txn: &DatabaseTransaction,
         app_state: &AppState,
     ) -> Result<()> {
+        use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
+
         let schedule_repo = SeaOrmScheduleRepository::new();
-        let notification_repo = SeaOrmNotificationRepository::new();
         let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
+        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
         let calculator = ScheduleCalculator::new();
 
         // 既存のスケジュールとリレーションをクリア
         debug!("既存のスケジュールを削除します");
+
+        // 1. notification_rel_event_schedulesを削除
         rel_repo.delete_all_with_txn(txn).await?;
-        notification_repo.delete_all_with_txn(txn).await?;
+
+        // 2. 通知タイプのscheduled_tasksを削除（CASCADE でnotificationsも削除される）
+        let deleted_tasks = scheduled_task_repo
+            .delete_all_by_task_type(txn, ScheduledTaskType::Notification.as_i32())
+            .await?;
+
+        debug!(
+            deleted_tasks = deleted_tasks,
+            "通知タイプのscheduled_tasksとnotificationsを削除しました"
+        );
 
         // イベントスケジュールと詳細を取得
         let event_schedules = schedule_repo
@@ -133,15 +146,12 @@ impl SchedulerService {
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
         use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-        use crate::repository::database::schedule::{
-            SeaOrmScheduledTaskNotificationRepository, SeaOrmScheduledTaskRepository,
-        };
+        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
         use chrono::Utc;
 
         let notification_repo = SeaOrmNotificationRepository::new();
         let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
         let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-        let scheduled_task_notification_repo = SeaOrmScheduledTaskNotificationRepository::new();
         let now = Utc::now();
 
         let mut created_count = 0;
@@ -153,28 +163,7 @@ impl SchedulerService {
                 continue;
             }
 
-            // 1. notificationを作成
-            let notification = notification_repo
-                .create_with_txn(
-                    txn,
-                    schedule.schedule_datetime,
-                    schedule.guild_id,
-                    schedule.channel_id,
-                    schedule.message_text_id,
-                )
-                .await?;
-
-            // 2. notification_relを作成
-            rel_repo
-                .create_with_txn(
-                    txn,
-                    schedule.event_schedule_id,
-                    schedule.event_schedule_detail_id,
-                    notification.id,
-                )
-                .await?;
-
-            // 3. scheduled_taskを作成（task_type=1: Notification）
+            // 1. scheduled_taskを作成（task_type=1: Notification）
             let scheduled_task = scheduled_task_repo
                 .create(
                     txn,
@@ -185,9 +174,26 @@ impl SchedulerService {
                 )
                 .await?;
 
-            // 4. scheduled_task_notificationを作成（紐付け）
-            scheduled_task_notification_repo
-                .create(txn, scheduled_task.id, notification.id)
+            // 2. notificationを作成（task_idを指定）
+            let notification = notification_repo
+                .create_with_txn(
+                    txn,
+                    scheduled_task.id,
+                    schedule.schedule_datetime,
+                    schedule.guild_id,
+                    schedule.channel_id,
+                    schedule.message_text_id,
+                )
+                .await?;
+
+            // 3. notification_relを作成
+            rel_repo
+                .create_with_txn(
+                    txn,
+                    schedule.event_schedule_id,
+                    schedule.event_schedule_detail_id,
+                    notification.id,
+                )
                 .await?;
 
             created_count += 1;
