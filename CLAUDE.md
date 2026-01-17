@@ -73,12 +73,12 @@ See `docs/schema_management.md` for details.
 
 ## Quality Assurance
 
-When you modify code, always run the following commands to ensure quality:
+When code modifications are required, follow this workflow in order:
 
-```bash
-cargo clippy    # Check for common mistakes and improvements
-cargo fmt       # Format code according to Rust standards
-cargo test      # Run all tests to verify functionality
-```
+1. **Documentation** - Update relevant documentation first
+2. **Code** - Implement the code changes
+3. **Lint** - Run `cargo clippy` to check for issues
+4. **Format** - Run `cargo fmt` to format code
+5. **Test** - Run targeted tests for modified code with `cargo test <test_name>`, then run full test suite with `cargo test`
 
-These checks must be performed before considering the changes complete.
+All steps must be completed before considering the changes complete.
