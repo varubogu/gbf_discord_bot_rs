@@ -45,7 +45,7 @@ impl NotificationScheduleFacade {
                 s.push_str(&format!(
                     "{}. <#{}> {}\n",
                     i + 1,
-                    n.channel_id,
+                    n.notification.channel_id,
                     n.schedule_datetime
                 ));
             }
@@ -95,9 +95,9 @@ impl NotificationScheduleFacade {
                 s.push_str(&format!(
                     "{}. <#{}> {} {}\n",
                     i + 1,
-                    n.channel_id,
+                    n.notification.channel_id,
                     n.schedule_datetime,
-                    if n.is_sent { "✓" } else { "-" }
+                    if n.notification.is_sent { "✓" } else { "-" }
                 ));
             }
 

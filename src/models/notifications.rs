@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notification {
     pub id: i32,
-    pub schedule_datetime: chrono::DateTime<chrono::Utc>,
+    pub task_id: i32,
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
@@ -18,7 +18,7 @@ impl From<notifications::Model> for Notification {
     fn from(model: notifications::Model) -> Self {
         Self {
             id: model.id,
-            schedule_datetime: model.schedule_datetime,
+            task_id: model.task_id,
             guild_id: model.guild_id,
             channel_id: model.channel_id,
             message_text_id: model.message_text_id,

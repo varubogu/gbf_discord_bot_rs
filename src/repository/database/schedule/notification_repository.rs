@@ -1,9 +1,11 @@
-use crate::models::entities::worker::notifications;
+use crate::models::entities::worker::{notifications, scheduled_tasks};
 use crate::repository::schedule::NotificationRepository;
 use crate::types::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set,
+};
 use tracing::{debug, error};
 
 /// 通知リポジトリ
@@ -28,9 +30,26 @@ impl NotificationRepository for SeaOrmNotificationRepository {
             "指定範囲内の未送信通知を取得します"
         );
 
+        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを取得
+        let tasks = scheduled_tasks::Entity::find()
+            .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
+            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
+            .filter(scheduled_tasks::Column::TaskType.eq(1)) // Notification
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "タスクの取得に失敗しました");
+                e
+            })?;
+
+        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
+
+        if task_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let notifications = notifications::Entity::find()
-            .filter(notifications::Column::ScheduleDatetime.gte(from))
-            .filter(notifications::Column::ScheduleDatetime.lt(to))
+            .filter(notifications::Column::TaskId.is_in(task_ids))
             .filter(notifications::Column::IsSent.eq(false))
             .all(db)
             .await
@@ -56,9 +75,26 @@ impl NotificationRepository for SeaOrmNotificationRepository {
             "指定範囲内の未送信通知を取得します（トランザクション内）"
         );
 
+        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを取得
+        let tasks = scheduled_tasks::Entity::find()
+            .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
+            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
+            .filter(scheduled_tasks::Column::TaskType.eq(1)) // Notification
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "タスクの取得に失敗しました");
+                e
+            })?;
+
+        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
+
+        if task_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let notifications = notifications::Entity::find()
-            .filter(notifications::Column::ScheduleDatetime.gte(from))
-            .filter(notifications::Column::ScheduleDatetime.lt(to))
+            .filter(notifications::Column::TaskId.is_in(task_ids))
             .filter(notifications::Column::IsSent.eq(false))
             .all(txn)
             .await
@@ -76,14 +112,12 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
-        schedule_datetime: DateTime<Utc>,
         guild_id: i64,
         channel_id: i64,
         message_text_id: String,
     ) -> Result<notifications::Model> {
         debug!(
             task_id = %task_id,
-            schedule_datetime = %schedule_datetime,
             guild_id = %guild_id,
             channel_id = %channel_id,
             message_text_id = %message_text_id,
@@ -94,7 +128,6 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         let active_model = notifications::ActiveModel {
             id: sea_orm::NotSet,
             task_id: Set(task_id),
-            schedule_datetime: Set(schedule_datetime),
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
             message_text_id: Set(message_text_id),

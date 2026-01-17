@@ -180,7 +180,6 @@ pub enum ScheduledTaskType {
 CREATE TABLE worker.notifications (
     id SERIAL PRIMARY KEY,
     task_id INT NOT NULL UNIQUE REFERENCES worker.scheduled_tasks(id) ON DELETE CASCADE,
-    schedule_datetime TIMESTAMPTZ NOT NULL,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
     message_text_id VARCHAR NOT NULL,
@@ -190,8 +189,11 @@ CREATE TABLE worker.notifications (
 );
 
 CREATE INDEX idx_notifications_task_id ON worker.notifications(task_id);
-CREATE INDEX idx_notifications_datetime ON worker.notifications(schedule_datetime);
 ```
+
+**注:**
+- `schedule_datetime`は`scheduled_tasks`テーブルに存在するため、`notifications`テーブルには不要
+- 通知の実行日時は`scheduled_tasks.schedule_datetime`を参照する
 
 **用途:**
 - scheduled_tasks（task_type=1）と1対1の関係で通知情報を保持
@@ -257,7 +259,6 @@ CREATE INDEX idx_scheduled_task_recurring_recruitments_schedule
 CREATE TABLE worker.notifications (
     id SERIAL PRIMARY KEY,
     task_id INT NOT NULL UNIQUE REFERENCES worker.scheduled_tasks(id) ON DELETE CASCADE,
-    schedule_datetime TIMESTAMPTZ NOT NULL,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
     message_text_id VARCHAR NOT NULL,
@@ -268,6 +269,10 @@ CREATE TABLE worker.notifications (
 ```
 
 **役割:** scheduled_tasksの子テーブルとして通知情報を保持。CASCADE削除により整合性を保証。
+
+**注:**
+- `schedule_datetime`は`scheduled_tasks`テーブルに存在するため、`notifications`テーブルには不要
+- 通知の実行日時は`scheduled_tasks.schedule_datetime`を参照する
 
 ## 処理フロー
 
@@ -364,11 +369,10 @@ async fn save_calculated_schedules(&self, schedules: Vec<CalculatedSchedule>) ->
             Some(schedule.channel_id)
         ).await?;
 
-        // 2. notificationを作成（task_idを指定）
+        // 2. notificationを作成（task_idを指定、schedule_datetimeは不要）
         let notification = notification_repo.create_with_txn(
             &txn,
             scheduled_task.id,
-            schedule.schedule_datetime,
             schedule.guild_id,
             schedule.channel_id,
             schedule.message_text_id
@@ -574,9 +578,8 @@ CREATE INDEX idx_scheduled_tasks_datetime_not_executed
     ON worker.scheduled_tasks(schedule_datetime)
     WHERE is_executed = false;
 
-CREATE INDEX idx_notifications_datetime_not_sent
-    ON worker.notifications(schedule_datetime)
-    WHERE is_sent = false;
+-- notificationsテーブルにはschedule_datetimeカラムが存在しないため、
+-- scheduled_tasksテーブルのインデックスを使用する
 ```
 
 ### 2. プリロード戦略

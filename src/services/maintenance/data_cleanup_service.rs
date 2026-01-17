@@ -153,9 +153,23 @@ impl DataCleanupService {
         cleanup_before: DateTime<Utc>,
     ) -> Result<u64, ServiceError> {
         use notifications::{Column, Entity};
+        use scheduled_tasks::{Column as ScheduledTaskColumn, Entity as ScheduledTaskEntity};
+
+        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを削除
+        let tasks = ScheduledTaskEntity::find()
+            .filter(ScheduledTaskColumn::ScheduleDatetime.lt(cleanup_before))
+            .filter(ScheduledTaskColumn::TaskType.eq(1)) // Notification
+            .all(txn)
+            .await?;
+
+        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
+
+        if task_ids.is_empty() {
+            return Ok(0);
+        }
 
         let result = Entity::delete_many()
-            .filter(Column::ScheduleDatetime.lt(cleanup_before))
+            .filter(Column::TaskId.is_in(task_ids))
             .exec(txn)
             .await?;
 

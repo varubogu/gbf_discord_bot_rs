@@ -30,7 +30,6 @@ pub trait NotificationRepository: Send + Sync {
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
-        schedule_datetime: DateTime<Utc>,
         guild_id: i64,
         channel_id: i64,
         message_text_id: String,

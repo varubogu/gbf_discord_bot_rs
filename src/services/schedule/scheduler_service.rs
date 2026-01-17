@@ -179,7 +179,6 @@ impl SchedulerService {
                 .create_with_txn(
                     txn,
                     scheduled_task.id,
-                    schedule.schedule_datetime,
                     schedule.guild_id,
                     schedule.channel_id,
                     schedule.message_text_id,

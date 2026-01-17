@@ -1,10 +1,17 @@
-use crate::models::entities::worker::notifications;
+use crate::models::entities::worker::{notifications, scheduled_tasks};
 use crate::repository::database::schedule::SeaOrmNotificationRepository;
 use crate::repository::schedule::NotificationRepository;
 use crate::types::Result;
 use chrono::{DateTime, Duration, Utc};
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use tracing::{debug, info};
+
+/// 通知とスケジュールタスクの結合結果
+#[derive(Debug, Clone)]
+pub struct NotificationWithSchedule {
+    pub notification: notifications::Model,
+    pub schedule_datetime: DateTime<Utc>,
+}
 
 /// 通知履歴サービス
 /// 送信済み通知の管理を担当
@@ -31,7 +38,7 @@ impl NotificationHistoryService {
         db: &DatabaseConnection,
         guild_id: i64,
         days: i64,
-    ) -> Result<Vec<notifications::Model>> {
+    ) -> Result<Vec<NotificationWithSchedule>> {
         let now = Utc::now();
         let from = now - Duration::days(days);
 
@@ -53,9 +60,23 @@ impl NotificationHistoryService {
             .filter(|n| n.guild_id == guild_id)
             .collect();
 
-        info!(count = guild_notifications.len(), "通知履歴を取得しました");
+        // scheduled_tasksとJOINしてschedule_datetimeを取得
+        let mut results = Vec::new();
+        for notification in guild_notifications {
+            if let Some(task) = scheduled_tasks::Entity::find_by_id(notification.task_id)
+                .one(db)
+                .await?
+            {
+                results.push(NotificationWithSchedule {
+                    notification,
+                    schedule_datetime: task.schedule_datetime,
+                });
+            }
+        }
 
-        Ok(guild_notifications)
+        info!(count = results.len(), "通知履歴を取得しました");
+
+        Ok(results)
     }
 
     /// 今後予定されている通知を取得
@@ -64,7 +85,7 @@ impl NotificationHistoryService {
         db: &DatabaseConnection,
         guild_id: i64,
         days: i64,
-    ) -> Result<Vec<notifications::Model>> {
+    ) -> Result<Vec<NotificationWithSchedule>> {
         let now = Utc::now();
         let to = now + Duration::days(days);
 
@@ -86,12 +107,26 @@ impl NotificationHistoryService {
             .filter(|n| n.guild_id == guild_id)
             .collect();
 
+        // scheduled_tasksとJOINしてschedule_datetimeを取得
+        let mut results = Vec::new();
+        for notification in guild_notifications {
+            if let Some(task) = scheduled_tasks::Entity::find_by_id(notification.task_id)
+                .one(db)
+                .await?
+            {
+                results.push(NotificationWithSchedule {
+                    notification,
+                    schedule_datetime: task.schedule_datetime,
+                });
+            }
+        }
+
         info!(
-            count = guild_notifications.len(),
+            count = results.len(),
             "今後の通知予定を取得しました"
         );
 
-        Ok(guild_notifications)
+        Ok(results)
     }
 
     /// 特定期間の通知統計を取得

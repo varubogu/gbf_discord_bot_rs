@@ -17,7 +17,7 @@
 | カラム名 | 型 | 制約 | 説明 |
 |---------|-----|------|------|
 | id | SERIAL | PK, NOT NULL | 通知ID（主キー、自動採番） |
-| schedule_datetime | TIMESTAMPTZ | NOT NULL | 通知送信日時（UTC） |
+| task_id | INT | NOT NULL, UNIQUE, FK | スケジュールタスクID（scheduled_tasks.idを参照） |
 | guild_id | BIGINT | NOT NULL | 対象ギルドID（Discord Guild ID） |
 | channel_id | BIGINT | NOT NULL | 通知先チャンネルID（Discord Channel ID） |
 | message_text_id | TEXT | NOT NULL | 送信メッセージテンプレートID（message_texts.idを参照） |
@@ -37,19 +37,26 @@
 なし
 
 ### NOT NULL制約
-- `id`, `schedule_datetime`, `guild_id`, `channel_id`, `message_text_id`, `is_sent`, `created_at`, `updated_at`
+- `id`, `task_id`, `guild_id`, `channel_id`, `message_text_id`, `is_sent`, `created_at`, `updated_at`
 
 ## インデックス
 
 - **プライマリキーインデックス**: `id`（自動作成）
-- **推奨追加インデックス**: `schedule_datetime`, `guild_id`（検索性能向上のため）
+- **外部キーインデックス**: `task_id`（scheduled_tasksとのJOIN用）
+- **推奨追加インデックス**: `guild_id`（検索性能向上のため）
+
+**注:**
+- `schedule_datetime`は`scheduled_tasks`テーブルに存在するため、`notifications`テーブルには不要
+- 通知の実行日時は`scheduled_tasks.schedule_datetime`を参照する
 
 ## データサンプル
 
-| id | schedule_datetime | guild_id | channel_id | message_text_id | is_sent |
-|----|------------------|----------|-----------|----------------|---------|
-| 1 | 2025-10-15 05:00:00+00 | 123456789 | 987654321 | DAILY_MISSION | false |
-| 2 | 2025-10-15 23:59:00+00 | 123456789 | 987654321 | BORDER_UPDATE | true |
+| id | task_id | guild_id | channel_id | message_text_id | is_sent |
+|----|---------|----------|-----------|----------------|---------|
+| 1 | 100 | 123456789 | 987654321 | DAILY_MISSION | false |
+| 2 | 101 | 123456789 | 987654321 | BORDER_UPDATE | true |
+
+**注:** `schedule_datetime`は`scheduled_tasks`テーブル（task_id=100, 101）を参照
 
 ## 関連テーブル
 
@@ -88,7 +95,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub schedule_datetime: DateTimeUtc,
+    pub task_id: i32,
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
@@ -97,6 +104,10 @@ pub struct Model {
     pub updated_at: DateTimeUtc,
 }
 ```
+
+**注:**
+- `schedule_datetime`は`scheduled_tasks`テーブルに存在するため、`notifications`テーブルには不要
+- 通知の実行日時は`scheduled_tasks.schedule_datetime`を参照する
 
 ## 備考
 
@@ -116,7 +127,7 @@ pub struct Model {
   - マルチバトル募集との関連は `notification_rel_battle_recruitments` テーブルで管理
 
 - **通知バッチ処理**:
-  - `schedule_datetime` を基準に定期的に実行
+  - `scheduled_tasks.schedule_datetime` を基準に定期的に実行
   - `is_sent = false` のレコードが処理対象
   - 送信完了後、`is_sent = true` に更新
 

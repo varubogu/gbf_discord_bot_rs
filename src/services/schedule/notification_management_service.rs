@@ -65,7 +65,6 @@ impl NotificationManagementService {
                 .create_with_txn(
                     txn,
                     scheduled_task.id,
-                    five_minutes_before,
                     guild_id,
                     channel_id,
                     MessageTextId::RecruitmentNotificationBefore5Minutes
@@ -101,7 +100,6 @@ impl NotificationManagementService {
             .create_with_txn(
                 txn,
                 scheduled_task.id,
-                departure_time,
                 guild_id,
                 channel_id,
                 MessageTextId::RecruitmentNotificationStart

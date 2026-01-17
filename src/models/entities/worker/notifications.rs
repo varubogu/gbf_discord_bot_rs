@@ -7,7 +7,6 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub task_id: i32,
-    pub schedule_datetime: DateTimeUtc,
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
@@ -28,7 +27,6 @@ impl ActiveModelBehavior for ActiveModel {
         Self {
             id: sea_orm::NotSet,
             task_id: sea_orm::NotSet,
-            schedule_datetime: sea_orm::NotSet,
             guild_id: sea_orm::NotSet,
             channel_id: sea_orm::NotSet,
             message_text_id: sea_orm::NotSet,
