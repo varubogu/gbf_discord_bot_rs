@@ -23,6 +23,8 @@ use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let version = env!("CARGO_PKG_VERSION");
+    println!("Starting Granblue Fantasy Discord Bot... version: {version}");
     initialize_logging();
     info!("Starting Granblue Fantasy Discord Bot...");
 
