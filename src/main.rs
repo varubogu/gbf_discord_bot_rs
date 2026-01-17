@@ -21,12 +21,160 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
-async fn initialize_database(
-    database_url: &str,
-    run_migration: bool,
-) -> Result<sea_orm::DatabaseConnection> {
-    info!("Initializing optimized database connection...");
 
+#[tokio::main]
+async fn main() -> Result<()> {
+    initialize_logging();
+    info!("Starting Granblue Fantasy Discord Bot...");
+
+    load_environment();
+    let config = load_and_validate_config().await?;
+
+    run_migrations(&config).await?;
+
+    if is_migrate_only() {
+        info!("Migration completed successfully, exiting");
+        return Ok(());
+    }
+
+    let app_state = create_app_state(config).await?;
+
+    // タイムゾーンキャッシュを初期化
+    info!("Initializing timezone cache...");
+    gbf_discord_bot_rs::services::timezone_service::TimezoneService::initialize_timezone_cache();
+
+    let mut client = create_discord_client(&app_state).await?;
+
+    start_scheduler(&app_state, client.http.clone()).await?;
+
+    info!("Starting bot...");
+    if let Err(e) = client.start().await {
+        error!("Error starting bot: {:?}", e);
+        return Err(AppError::Discord(Box::new(e)));
+    }
+
+    Ok(())
+}
+
+/// ロギングシステムを初期化
+/// RUST_LOG環境変数でログレベルを制御可能（デフォルト: info）
+fn initialize_logging() {
+    let log_level = env::var("RUST_LOG")
+        .unwrap_or_else(|_| "info".to_string())
+        .parse::<tracing::Level>()
+        .unwrap_or(tracing::Level::INFO);
+
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .with_target(false)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .init();
+}
+
+/// 環境変数ファイルを読み込む
+fn load_environment() {
+    let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
+    let dotenv_path = Path::new(&config_folder).join(".env.app");
+    dotenv::from_path(dotenv_path).ok();
+}
+
+/// スタートアップ時の環境変数・ファイル検証を実行し、設定を読み込む
+async fn load_and_validate_config() -> Result<AppConfig> {
+    info!("Running startup validation...");
+    match StartupValidator::validate_all().await {
+        Ok(validator) => {
+            validator.display_results();
+            info!("✅ All startup validations passed");
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            error!("❌ Startup validation failed, exiting");
+            std::process::exit(1);
+        }
+    }
+
+    let config = AppConfig::from_env()?;
+    info!("Configuration loaded successfully");
+    Ok(config)
+}
+
+/// migrate-onlyオプションが指定されているか確認
+fn is_migrate_only() -> bool {
+    env::args().any(|arg| arg == "migrate-only")
+}
+
+/// マイグレーションを実行する
+async fn run_migrations(config: &AppConfig) -> Result<()> {
+    info!("Running database migrations with Admin role...");
+    let admin_url = config.database_url(DbRole::Admin).map_err(|e| {
+        error!("Admin DB接続設定の取得に失敗: {}", e);
+        e
+    })?;
+    info!("Admin role: {}", DbRole::Admin.description());
+
+    let admin_db = create_database_connection(&admin_url).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&admin_url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })?;
+
+    // マイグレーション実行
+    info!("Running database migrations...");
+    Migrator::up(&admin_db, None).await.map_err(|e| {
+        error!("Migration failed: {:?}", e);
+        AppError::Database(e)
+    })?;
+    info!("Database migrations completed successfully");
+
+    Ok(())
+}
+
+/// 各ロール用のDB接続を作成してAppStateを構築する
+async fn create_app_state(config: AppConfig) -> Result<AppState> {
+    info!("Initializing database connections for all roles...");
+
+    // Guild ロール（通常のコマンド実行用、RLS適用）
+    let guild_db = create_role_connection(&config, DbRole::Guild).await?;
+
+    // System ロール（スケジューラー用、RLS適用なし）
+    let system_db = create_role_connection(&config, DbRole::System).await?;
+
+    // Global ロール（マスターデータ更新用、RLS適用なし）
+    let global_db = create_role_connection(&config, DbRole::Global).await?;
+
+    info!("All database connection pools initialised successfully");
+
+    let app_state = AppState::new(guild_db, system_db, global_db, config);
+    info!("AppState initialized with all role connections");
+
+    Ok(app_state)
+}
+
+/// 指定されたロールのDB接続を作成する
+async fn create_role_connection(
+    config: &AppConfig,
+    role: DbRole,
+) -> Result<sea_orm::DatabaseConnection> {
+    let url = config.database_url(role).map_err(|e| {
+        error!("{} DB接続設定の取得に失敗: {}", role.description(), e);
+        e
+    })?;
+    info!("{:?} role: {}", role, role.description());
+
+    create_database_connection(&url).await.map_err(|e| {
+        if let AppError::Database(ref db_err) = e {
+            let masked_url = ErrorFormatter::mask_database_url(&url);
+            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
+        }
+        e
+    })
+}
+
+/// DB接続プールを作成する
+async fn create_database_connection(database_url: &str) -> Result<sea_orm::DatabaseConnection> {
     // SeaORMコネクションプールの最適化設定
     let mut opt = ConnectOptions::new(database_url);
     opt.max_connections(100)
@@ -41,151 +189,22 @@ async fn initialize_database(
     let db = Database::connect(opt).await?;
     info!("Database connection pool initialised successfully");
 
-    // マイグレーションの実行（必要な場合のみ）
-    if run_migration {
-        info!("Running database migrations...");
-        Migrator::up(&db, None).await.map_err(|e| {
-            error!("Migration failed: {:?}", e);
-            AppError::Database(e)
-        })?;
-        info!("Database migrations completed successfully");
-    }
-
     Ok(db)
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Initialize logging with proper configuration
-    // RUST_LOG環境変数でログレベルを制御可能
-    let log_level = env::var("RUST_LOG")
-        .unwrap_or_else(|_| "info".to_string())
-        .parse::<tracing::Level>()
-        .unwrap_or(tracing::Level::INFO);
-
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_target(false)
-        .with_thread_ids(true)
-        .with_thread_names(true)
-        .init();
-    info!("Starting Granblue Fantasy Discord Bot...");
-
-    // Load environment variables
-    let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
-    let dotenv_path = Path::new(&config_folder).join(".env.app");
-    dotenv::from_path(dotenv_path).ok();
-
-    // Startup validation - check all required environment variables and files
-    info!("Running startup validation...");
-    match StartupValidator::validate_all().await {
-        Ok(validator) => {
-            validator.display_results();
-            info!("✅ All startup validations passed");
-        }
-        Err(e) => {
-            eprintln!("{e}");
-            error!("❌ Startup validation failed, exiting");
-            std::process::exit(1);
-        }
-    }
-
-    // Load configuration using a structured approach
-    let config = AppConfig::from_env()?;
-    info!("Configuration loaded successfully");
-
-    // Check if we should only run migrations
-    let args: Vec<String> = env::args().collect();
-    let migrate_only = args.iter().any(|arg| arg == "migrate-only");
-
-    // マイグレーション実行（Adminロールを使用）
-    info!("Running database migrations with Admin role...");
-    let admin_url = config.database_url(DbRole::Admin).map_err(|e| {
-        error!("Admin DB接続設定の取得に失敗: {}", e);
-        e
-    })?;
-    info!("Admin role: {}", DbRole::Admin.description());
-    let _admin_db = initialize_database(&admin_url, true).await.map_err(|e| {
-        if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&admin_url);
-            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-        }
-        e
-    })?;
-
-    // If migrate_only flag is set, exit after migrations
-    if migrate_only {
-        info!("Migration completed successfully, exiting");
-        return Ok(());
-    }
-
-    // Initialise database connections for different roles (without migration)
-    info!("Initializing database connections for all roles...");
-
-    // Guild ロール（通常のコマンド実行用、RLS適用）
-    let guild_url = config.database_url(DbRole::Guild).map_err(|e| {
-        error!("Guild DB接続設定の取得に失敗: {}", e);
-        e
-    })?;
-    info!("Guild role: {}", DbRole::Guild.description());
-    let guild_db = initialize_database(&guild_url, false).await.map_err(|e| {
-        if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&guild_url);
-            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-        }
-        e
-    })?;
-
-    // System ロール（スケジューラー用、RLS適用なし）
-    let system_url = config.database_url(DbRole::System).map_err(|e| {
-        error!("System DB接続設定の取得に失敗: {}", e);
-        e
-    })?;
-    info!("System role: {}", DbRole::System.description());
-    let system_db = initialize_database(&system_url, false).await.map_err(|e| {
-        if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&system_url);
-            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-        }
-        e
-    })?;
-
-    // Global ロール（マスターデータ更新用、RLS適用なし）
-    let global_url = config.database_url(DbRole::Global).map_err(|e| {
-        error!("Global DB接続設定の取得に失敗: {}", e);
-        e
-    })?;
-    info!("Global role: {}", DbRole::Global.description());
-    let global_db = initialize_database(&global_url, false).await.map_err(|e| {
-        if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&global_url);
-            eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
-        }
-        e
-    })?;
-
-    info!("All database connection pools initialised successfully");
-
-    // タイムゾーンキャッシュを初期化（プログラム起動時に計算）
-    info!("Initializing timezone cache...");
-    gbf_discord_bot_rs::services::timezone_service::TimezoneService::initialize_timezone_cache();
-
-    // Create AppState with all DB connections
-    let app_state = AppState::new(guild_db, system_db, global_db, config);
-    info!("AppState initialized with all role connections");
-
-    // Set up Discord intents
-    let intents = GatewayIntents::GUILD_MESSAGES
+/// Discord用のGatewayIntentsを設定する
+fn create_gateway_intents() -> GatewayIntents {
+    GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::GUILD_MESSAGE_REACTIONS
         | GatewayIntents::GUILDS
-        | GatewayIntents::MESSAGE_CONTENT;
+        | GatewayIntents::MESSAGE_CONTENT
+}
 
-    // Create Discord client (clone discord_token before the move)
-    let discord_token = app_state.config.discord_token.clone();
-
-    // Create a poise framework with AppState
-    let app_state_for_framework = app_state.clone();
-    let framework = poise::Framework::builder()
+/// Poiseフレームワークを構築する
+fn build_framework(
+    app_state: AppState,
+) -> poise::Framework<PoiseData, AppError> {
+    poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
             event_handler: |ctx, event, framework, data| {
@@ -202,50 +221,68 @@ async fn main() -> Result<()> {
                 info!("Registered {} global commands", global_cmds.len());
 
                 // 管理サーバー専用コマンドを特定ギルドにのみ登録
-                match env::var("BOT_ADMIN_SERVER_ID") {
-                    Ok(admin_server_id) => match admin_server_id.parse::<u64>() {
-                        Ok(guild_id_u64) => {
-                            let guild_id = serenity::GuildId::new(guild_id_u64);
-                            let admin_cmds = admin_commands();
-                            poise::builtins::register_in_guild(ctx, &admin_cmds, guild_id).await?;
-                            info!(
-                                "Registered {} admin commands in guild {} ({})",
-                                admin_cmds.len(),
-                                guild_id,
-                                admin_server_id
-                            );
-                        }
-                        Err(e) => {
-                            error!(
-                                "BOT_ADMIN_SERVER_ID '{}' is not a valid number: {}",
-                                admin_server_id, e
-                            );
-                        }
-                    },
-                    Err(_) => {
-                        error!(
-                            "⚠️ BOT_ADMIN_SERVER_ID not set - admin commands will not be registered"
-                        );
-                    }
-                }
+                register_admin_commands(ctx).await?;
 
                 // PoiseDataにAppStateを設定
-                let data = PoiseData {
-                    app_state: app_state_for_framework,
-                };
+                let data = PoiseData { app_state };
                 info!("Poise framework initialized with AppState");
 
                 Ok(data)
             })
         })
-        .build();
-    let mut client = serenity::ClientBuilder::new(&discord_token, intents)
+        .build()
+}
+
+/// 管理サーバー専用コマンドを登録する
+async fn register_admin_commands(ctx: &serenity::Context) -> std::result::Result<(), serenity::Error> {
+    match env::var("BOT_ADMIN_SERVER_ID") {
+        Ok(admin_server_id) => match admin_server_id.parse::<u64>() {
+            Ok(guild_id_u64) => {
+                let guild_id = serenity::GuildId::new(guild_id_u64);
+                let admin_cmds = admin_commands();
+                poise::builtins::register_in_guild(ctx, &admin_cmds, guild_id).await?;
+                info!(
+                    "Registered {} admin commands in guild {} ({})",
+                    admin_cmds.len(),
+                    guild_id,
+                    admin_server_id
+                );
+            }
+            Err(e) => {
+                error!(
+                    "BOT_ADMIN_SERVER_ID '{}' is not a valid number: {}",
+                    admin_server_id, e
+                );
+            }
+        },
+        Err(_) => {
+            error!("⚠️ BOT_ADMIN_SERVER_ID not set - admin commands will not be registered");
+        }
+    }
+    Ok(())
+}
+
+/// Discordクライアントを作成する
+async fn create_discord_client(
+    app_state: &AppState,
+) -> Result<serenity::Client> {
+    let discord_token = app_state.config.discord_token.clone();
+    let intents = create_gateway_intents();
+    let framework = build_framework(app_state.clone());
+
+    let client = serenity::ClientBuilder::new(&discord_token, intents)
         .framework(framework)
         .await?;
 
-    info!("Discord client created, starting bot...");
+    info!("Discord client created");
+    Ok(client)
+}
 
-    // SchedulerManagerの初期化と起動
+/// SchedulerManagerを初期化してバックグラウンドで起動する
+async fn start_scheduler(
+    app_state: &AppState,
+    http: Arc<serenity::Http>,
+) -> Result<()> {
     let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
     let dissolution_repo = Arc::new(SeaOrmScheduledTaskDissolutionRepository::new());
     let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
@@ -254,7 +291,7 @@ async fn main() -> Result<()> {
 
     let mut scheduler_manager = SchedulerManager::new(
         Arc::new(app_state.system_db().clone()),
-        client.http.clone(),
+        http,
         task_repo,
         dissolution_repo,
         recruitment_repo,
@@ -275,14 +312,9 @@ async fn main() -> Result<()> {
     });
     info!("SchedulerManagerを起動しました");
 
-    // Start the bot
-    if let Err(e) = client.start().await {
-        error!("Error starting bot: {:?}", e);
-        return Err(AppError::Discord(Box::new(e)));
-    }
-
     Ok(())
 }
+
 
 async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
     use poise::FrameworkError;
