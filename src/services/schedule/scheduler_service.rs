@@ -47,7 +47,7 @@ impl SchedulerService {
         let schedule_repo = SeaOrmScheduleRepository::new();
         let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
         let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(app_state.config.max_schedule_days_outside_event);
 
         // 既存のスケジュールとリレーションをクリア
         debug!("既存のスケジュールを削除します");

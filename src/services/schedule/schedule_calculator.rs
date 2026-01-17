@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use tracing::{debug, error, warn};
 
 /// スケジュール計算サービス
-pub struct ScheduleCalculator;
+pub struct ScheduleCalculator {
+    /// イベント期間外のスケジュール作成を許可する最大日数
+    max_schedule_days_outside_event: i64,
+}
 
 /// スケジュール計算結果
 #[derive(Debug, Clone)]
@@ -19,8 +22,10 @@ pub struct CalculatedSchedule {
 }
 
 impl ScheduleCalculator {
-    pub fn new() -> Self {
-        Self
+    pub fn new(max_schedule_days_outside_event: i64) -> Self {
+        Self {
+            max_schedule_days_outside_event,
+        }
     }
 
     /// イベントスケジュールと詳細から具体的なスケジュールを計算
@@ -179,6 +184,10 @@ impl ScheduleCalculator {
     /// - "end": 終了日のみ
     /// - "0-30" または "0 to 30": 範囲指定（0日目から30日目まで）
     /// - "5" または "-1": 単一の日数
+    ///
+    /// # 範囲外チェック
+    /// イベント期間外（開始日前・終了日後）のスケジュールは、
+    /// max_schedule_days_outside_eventで設定された日数以内のみ許可されます。
     fn parse_start_day_relative(
         &self,
         relative_day: &str,
@@ -186,6 +195,7 @@ impl ScheduleCalculator {
         end_at: chrono::NaiveDateTime,
     ) -> Result<Vec<i64>> {
         let trimmed = relative_day.trim();
+        let event_duration_days = (end_at - start_at).num_days();
 
         // "*" または "all": 全日
         if trimmed == "*" || trimmed == "all" {
@@ -229,12 +239,16 @@ impl ScheduleCalculator {
                 }
             })?;
 
-            return Ok((start_day..=end_day).collect());
+            let days: Vec<i64> = (start_day..=end_day).collect();
+            self.validate_days_range(&days, event_duration_days)?;
+            return Ok(days);
         }
 
         // 単一の数値: "5" または "-1"
         if let Ok(day) = trimmed.parse::<i64>() {
-            return Ok(vec![day]);
+            let days = vec![day];
+            self.validate_days_range(&days, event_duration_days)?;
+            return Ok(days);
         }
 
         error!(
@@ -244,6 +258,55 @@ impl ScheduleCalculator {
         Err(crate::types::AppError::Validation {
             field: format!("start_day_relative: {relative_day}"),
         })
+    }
+
+    /// 日数オフセットのリストがイベント期間外の制限範囲内かチェック
+    ///
+    /// # Arguments
+    /// * `days` - 日数オフセットのリスト
+    /// * `event_duration_days` - イベント期間の日数（終了日 - 開始日）
+    ///
+    /// # Errors
+    /// イベント期間外のオフセットがmax_schedule_days_outside_eventを超える場合、エラーを返す
+    fn validate_days_range(&self, days: &[i64], event_duration_days: i64) -> Result<()> {
+        for &day in days {
+            // 開始日前のチェック（負の値）
+            if day < 0 && day.abs() > self.max_schedule_days_outside_event {
+                error!(
+                    day_offset = day,
+                    max_days = self.max_schedule_days_outside_event,
+                    "イベント開始日前のスケジュールが許可範囲を超えています"
+                );
+                return Err(crate::types::AppError::Validation {
+                    field: format!(
+                        "開始日の{}日前のスケジュールは許可されていません（最大: {}日前まで）",
+                        day.abs(),
+                        self.max_schedule_days_outside_event
+                    ),
+                });
+            }
+
+            // 終了日後のチェック
+            if day > event_duration_days {
+                let days_after_end = day - event_duration_days;
+                if days_after_end > self.max_schedule_days_outside_event {
+                    error!(
+                        day_offset = day,
+                        event_duration = event_duration_days,
+                        days_after_end = days_after_end,
+                        max_days = self.max_schedule_days_outside_event,
+                        "イベント終了日後のスケジュールが許可範囲を超えています"
+                    );
+                    return Err(crate::types::AppError::Validation {
+                        field: format!(
+                            "終了日の{}日後のスケジュールは許可されていません（最大: {}日後まで）",
+                            days_after_end, self.max_schedule_days_outside_event
+                        ),
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     /// 範囲指定文字列から開始と終了を抽出
@@ -293,7 +356,7 @@ impl ScheduleCalculator {
 
 impl Default for ScheduleCalculator {
     fn default() -> Self {
-        Self::new()
+        Self::new(365) // デフォルトは365日
     }
 }
 
@@ -304,7 +367,7 @@ mod tests {
 
     #[test]
     fn test_parse_start_day_relative_single() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
         let start = NaiveDate::from_ymd_opt(2025, 1, 15)
             .unwrap()
             .and_hms_opt(0, 0, 0)
@@ -342,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_parse_start_day_relative_range() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
         let start = NaiveDate::from_ymd_opt(2025, 1, 15)
             .unwrap()
             .and_hms_opt(0, 0, 0)
@@ -369,7 +432,7 @@ mod tests {
 
     #[test]
     fn test_parse_start_day_relative_keywords() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
         let start = NaiveDate::from_ymd_opt(2025, 1, 15)
             .unwrap()
             .and_hms_opt(0, 0, 0)
@@ -414,7 +477,7 @@ mod tests {
 
     #[test]
     fn test_parse_time() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let time1 = calculator.parse_time("05:00:00").unwrap();
         assert_eq!(time1.format("%H").to_string(), "05");
@@ -431,7 +494,7 @@ mod tests {
 
     #[test]
     fn test_calculate_datetimes_single() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let event_schedule = event_schedules::Model {
             id: uuid::Uuid::new_v4(),
@@ -481,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_calculate_datetimes_range() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let event_schedule = event_schedules::Model {
             id: uuid::Uuid::new_v4(),
@@ -540,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_calculate_datetimes_before_start() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let event_schedule = event_schedules::Model {
             id: uuid::Uuid::new_v4(),
@@ -589,7 +652,7 @@ mod tests {
 
     #[test]
     fn test_calculate_datetimes_after_end() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let event_schedule = event_schedules::Model {
             id: uuid::Uuid::new_v4(),
@@ -639,7 +702,7 @@ mod tests {
 
     #[test]
     fn test_calculate_datetimes_range_including_before_and_after() {
-        let calculator = ScheduleCalculator::new();
+        let calculator = ScheduleCalculator::new(365);
 
         let event_schedule = event_schedules::Model {
             id: uuid::Uuid::new_v4(),
@@ -705,5 +768,161 @@ mod tests {
             results[4].format("%Y-%m-%d %H:%M").to_string(),
             "2025-01-17 20:00" // 3日目
         );
+    }
+
+    #[test]
+    fn test_validate_days_range_within_limit() {
+        // 最大31日の制限でテスト
+        let calculator = ScheduleCalculator::new(31);
+        let start = NaiveDate::from_ymd_opt(2025, 1, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let end = NaiveDate::from_ymd_opt(2025, 1, 20)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+
+        // 開始日の31日前は許可される
+        let result = calculator.parse_start_day_relative("-31", start, end);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), vec![-31]);
+
+        // 終了日の31日後は許可される（開始日から36日後）
+        let result = calculator.parse_start_day_relative("36", start, end);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), vec![36]);
+
+        // 期間内は当然許可される
+        let result = calculator.parse_start_day_relative("0-4", start, end);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 5);
+    }
+
+    #[test]
+    fn test_validate_days_range_exceeds_limit_before_start() {
+        // 最大31日の制限でテスト
+        let calculator = ScheduleCalculator::new(31);
+        let start = NaiveDate::from_ymd_opt(2025, 1, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let end = NaiveDate::from_ymd_opt(2025, 1, 20)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+
+        // 開始日の32日前は拒否される
+        let result = calculator.parse_start_day_relative("-32", start, end);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("32日前"));
+        assert!(err_msg.contains("31日前まで"));
+    }
+
+    #[test]
+    fn test_validate_days_range_exceeds_limit_after_end() {
+        // 最大31日の制限でテスト
+        let calculator = ScheduleCalculator::new(31);
+        let start = NaiveDate::from_ymd_opt(2025, 1, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let end = NaiveDate::from_ymd_opt(2025, 1, 20)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+
+        // イベント期間は5日間（0-4日目）
+        // 終了日の32日後は拒否される（開始日から37日後）
+        let result = calculator.parse_start_day_relative("37", start, end);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("32日後"));
+        assert!(err_msg.contains("31日後まで"));
+    }
+
+    #[test]
+    fn test_validate_days_range_with_range_specification() {
+        // 最大10日の制限でテスト
+        let calculator = ScheduleCalculator::new(10);
+        let start = NaiveDate::from_ymd_opt(2025, 1, 15)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+        let end = NaiveDate::from_ymd_opt(2025, 1, 20)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap();
+
+        // -10から15の範囲（終了日は4日目なので、15日目は終了日の11日後）
+        // 11日後は制限を超えるため拒否される
+        let result = calculator.parse_start_day_relative("-10-16", start, end);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("11日後"));
+
+        // -10から15の範囲（終了日の10日後まで）は許可される
+        let result = calculator.parse_start_day_relative("-10-15", start, end);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 26); // -10から15まで
+    }
+
+    #[test]
+    fn test_calculate_datetimes_exceeds_limit() {
+        // 最大5日の制限でテスト
+        let calculator = ScheduleCalculator::new(5);
+
+        let event_schedule = event_schedules::Model {
+            id: uuid::Uuid::new_v4(),
+            event_type: "test".to_string(),
+            event_count: 1,
+            profile: "test_profile".to_string(),
+            weak_attribute: 1,
+            start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            end_at: NaiveDate::from_ymd_opt(2025, 1, 20)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        // 開始日の10日前（制限超過）
+        let detail_before = event_schedule_details::Model {
+            id: uuid::Uuid::new_v4(),
+            profile: "test_profile".to_string(),
+            start_day_relative: "-10".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "test_before".to_string(),
+            message_text_id: "msg_before".to_string(),
+            notification_channel_type: 1,
+            reactions: "".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let result = calculator.calculate_datetimes(&event_schedule, &detail_before);
+        assert!(result.is_err());
+
+        // 終了日の10日後（制限超過）
+        let detail_after = event_schedule_details::Model {
+            id: uuid::Uuid::new_v4(),
+            profile: "test_profile".to_string(),
+            start_day_relative: "15".to_string(), // 終了日（4日目）の11日後
+            time: "05:00:00".to_string(),
+            schedule_name: "test_after".to_string(),
+            message_text_id: "msg_after".to_string(),
+            notification_channel_type: 1,
+            reactions: "".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let result = calculator.calculate_datetimes(&event_schedule, &detail_after);
+        assert!(result.is_err());
     }
 }

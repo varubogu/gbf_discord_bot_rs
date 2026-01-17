@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub db_host: String,
     pub db_port: u16,
     pub db_name: String,
+    /// イベント期間外のスケジュール作成を許可する最大日数（デフォルト: 365日）
+    pub max_schedule_days_outside_event: i64,
 }
 
 impl AppConfig {
@@ -32,11 +34,39 @@ impl AppConfig {
             message: "DB_NAME not set".to_string(),
         })?;
 
+        // イベント期間外のスケジュール作成を許可する最大日数
+        // 環境変数がない場合は365日をデフォルトとする
+        let max_schedule_days_outside_event = std::env::var("MAX_SCHEDULE_DAYS_OUTSIDE_EVENT")
+            .ok()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(365);
+
+        // 最大日数の妥当性チェック（365日を超える場合はエラー）
+        if max_schedule_days_outside_event > 365 {
+            return Err(AppError::Config {
+                message: format!(
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be 365 or less, but got: {}",
+                    max_schedule_days_outside_event
+                ),
+            });
+        }
+
+        // 負の値もエラーとする
+        if max_schedule_days_outside_event < 0 {
+            return Err(AppError::Config {
+                message: format!(
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be non-negative, but got: {}",
+                    max_schedule_days_outside_event
+                ),
+            });
+        }
+
         Ok(Self {
             discord_token,
             db_host,
             db_port,
             db_name,
+            max_schedule_days_outside_event,
         })
     }
 
