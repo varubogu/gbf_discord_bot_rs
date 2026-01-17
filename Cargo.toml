@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 poise = "0.6.1"
-tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.49", features = ["macros", "rt-multi-thread", "signal"] }
 dotenv = "0.15"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
 sea-orm = { version = "1.1", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
@@ -19,24 +19,24 @@ chrono-tz = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 lazy_static = "1.4"
-regex = "1.11.1"
-log = { version = "0.4.27" }
-logcall = { version = "0.1.11"}
-rust-i18n = "3.1.5"
-futures = "0.3.31"
-thiserror = "1.0"
+regex = "1.11"
+log = { version = "0.4" }
+logcall = { version = "0.1"}
+rust-i18n = "3.1"
+futures = "0.3"
+thiserror = "2.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
-tokio-cron-scheduler = "0.15.0"
+tokio-cron-scheduler = "0.15"
 google-sheets4 = "5.0"
-hyper = "0.14"
-hyper-rustls = "0.24"
+hyper = "1.8"
+hyper-rustls = "0.27"
 
 
 [dev-dependencies]
 tokio-test = "0.4"
-mockall = "0.13"
+mockall = "0.14"
 test-log = { version = "0.2", features = ["trace"] }
-env_logger = "0.10"
+env_logger = "0.11"
 tempfile = "3.13"
 serial_test = "3.2"
 
