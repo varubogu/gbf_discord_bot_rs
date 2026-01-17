@@ -799,6 +799,180 @@ debug!(recruit_id = dissolution.recruit_id, participants = count, "参加者数�
    }
    ```
 
+## スケジュール期間外制限
+
+### 概要
+
+イベント開始日前や終了日後のスケジュール作成に制限を設けることで、無制限なスケジュール作成を防止します。
+
+### 設定
+
+環境変数`MAX_SCHEDULE_DAYS_OUTSIDE_EVENT`でイベント期間外のスケジュール作成を許可する最大日数を設定できます。
+
+**デフォルト値**: 365日（環境変数未設定時）
+**最大値**: 365日
+**推奨値**: 31日
+
+### 設定例
+
+```.env
+# イベント期間外のスケジュール作成を許可する最大日数
+# デフォルト: 365日（環境変数未設定時）
+# 最大値: 365日（これを超える値を設定するとエラーになります）
+# 推奨値: 31日（イベント開始1ヶ月前から終了1ヶ月後まで）
+MAX_SCHEDULE_DAYS_OUTSIDE_EVENT=31
+```
+
+### 実装
+
+#### AppConfig
+
+環境変数のロードと検証を行います（`src/types/app_config.rs`）。
+
+```rust
+pub struct AppConfig {
+    pub discord_token: String,
+    pub db_host: String,
+    pub db_port: u16,
+    pub db_name: String,
+    /// イベント期間外のスケジュール作成を許可する最大日数（デフォルト: 365日）
+    pub max_schedule_days_outside_event: i64,
+}
+
+impl AppConfig {
+    pub fn from_env() -> Result<Self, AppError> {
+        // ...
+
+        // イベント期間外のスケジュール作成を許可する最大日数
+        // 環境変数がない場合は365日をデフォルトとする
+        let max_schedule_days_outside_event = std::env::var("MAX_SCHEDULE_DAYS_OUTSIDE_EVENT")
+            .ok()
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(365);
+
+        // 最大日数の妥当性チェック（365日を超える場合はエラー）
+        if max_schedule_days_outside_event > 365 {
+            return Err(AppError::Config {
+                message: format!(
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be 365 or less, but got: {}",
+                    max_schedule_days_outside_event
+                ),
+            });
+        }
+
+        // 負の値もエラーとする
+        if max_schedule_days_outside_event < 0 {
+            return Err(AppError::Config {
+                message: format!(
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be non-negative, but got: {}",
+                    max_schedule_days_outside_event
+                ),
+            });
+        }
+
+        Ok(Self {
+            // ...
+            max_schedule_days_outside_event,
+        })
+    }
+}
+```
+
+#### ScheduleCalculator
+
+スケジュール計算時に範囲外チェックを実施します（`src/services/schedule/schedule_calculator.rs`）。
+
+```rust
+pub struct ScheduleCalculator {
+    /// イベント期間外のスケジュール作成を許可する最大日数
+    max_schedule_days_outside_event: i64,
+}
+
+impl ScheduleCalculator {
+    pub fn new(max_schedule_days_outside_event: i64) -> Self {
+        Self {
+            max_schedule_days_outside_event,
+        }
+    }
+
+    /// 日数オフセットのリストがイベント期間外の制限範囲内かチェック
+    fn validate_days_range(&self, days: &[i64], event_duration_days: i64) -> Result<()> {
+        for &day in days {
+            // 開始日前のチェック（負の値）
+            if day < 0 && day.abs() > self.max_schedule_days_outside_event {
+                error!(
+                    day_offset = day,
+                    max_days = self.max_schedule_days_outside_event,
+                    "イベント開始日前のスケジュールが許可範囲を超えています"
+                );
+                return Err(crate::types::AppError::Validation {
+                    field: format!(
+                        "開始日の{}日前のスケジュールは許可されていません（最大: {}日前まで）",
+                        day.abs(),
+                        self.max_schedule_days_outside_event
+                    ),
+                });
+            }
+
+            // 終了日後のチェック
+            if day > event_duration_days {
+                let days_after_end = day - event_duration_days;
+                if days_after_end > self.max_schedule_days_outside_event {
+                    error!(
+                        day_offset = day,
+                        event_duration = event_duration_days,
+                        days_after_end = days_after_end,
+                        max_days = self.max_schedule_days_outside_event,
+                        "イベント終了日後のスケジュールが許可範囲を超えています"
+                    );
+                    return Err(crate::types::AppError::Validation {
+                        field: format!(
+                            "終了日の{}日後のスケジュールは許可されていません（最大: {}日後まで）",
+                            days_after_end, self.max_schedule_days_outside_event
+                        ),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+}
+```
+
+### 動作例
+
+#### 許可されるケース（MAX_SCHEDULE_DAYS_OUTSIDE_EVENT=31）
+
+- イベント開始31日前のスケジュール: ✅ 許可
+- イベント終了31日後のスケジュール: ✅ 許可
+- イベント期間内のスケジュール: ✅ 許可
+
+#### 拒否されるケース（MAX_SCHEDULE_DAYS_OUTSIDE_EVENT=31）
+
+- イベント開始32日前のスケジュール: ❌ エラー
+  ```
+  開始日の32日前のスケジュールは許可されていません（最大: 31日前まで）
+  ```
+
+- イベント終了32日後のスケジュール: ❌ エラー
+  ```
+  終了日の32日後のスケジュールは許可されていません（最大: 31日後まで）
+  ```
+
+### エラーハンドリング
+
+スケジュール作成時に範囲外の日数が指定された場合、`AppError::Validation`エラーが返されます。エラーメッセージには具体的な日数情報が含まれます。
+
+```rust
+Err(AppError::Validation {
+    field: format!(
+        "開始日の{}日前のスケジュールは許可されていません（最大: {}日前まで）",
+        day.abs(),
+        self.max_schedule_days_outside_event
+    ),
+})
+```
+
 ## 技術スタック
 
 - **スケジューラー**: tokio-cron-scheduler（メモリベース、persistence機能は不使用）
