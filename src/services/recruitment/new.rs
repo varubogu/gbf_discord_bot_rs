@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ButtonStyle;
 use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed};
+use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption};
 use std::collections::HashMap;
 use tracing::info;
 
@@ -394,6 +394,39 @@ pub fn create_initial_participants_text_for_buttons(
     }
 }
 
+/// 属性セレクトメニュー（複数選択可能）を作成する
+///
+/// # 引数
+/// * `element_emojis` - カスタム属性絵文字
+///
+/// # 戻り値
+/// CreateActionRow（セレクトメニュー）
+pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> CreateActionRow {
+    use crate::types::ELEMENT_NAMES;
+
+    let emojis_array = element_emojis.as_array();
+    let mut options = Vec::new();
+
+    // 属性1-6のオプション
+    for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
+        let option = CreateSelectMenuOption::new(
+            format!("{emoji} {name}"),
+            format!("{}", i + 1),
+        );
+        options.push(option);
+    }
+
+    let select_menu = CreateSelectMenu::new(
+        "recruit_select_elements",
+        CreateSelectMenuKind::String { options },
+    )
+    .placeholder("複数の属性を選択する")
+    .min_values(1)
+    .max_values(6); // 6属性
+
+    CreateActionRow::SelectMenu(select_menu)
+}
+
 /// 募集用ボタンを作成する（ボタン版募集用）
 ///
 /// # 引数
@@ -463,10 +496,25 @@ pub async fn send_recruitment_message_with_buttons(
     use poise::serenity_prelude::CreateEmbed;
 
     // ボタンを生成
-    let buttons = create_recruitment_buttons(
+    let mut components = create_recruitment_buttons(
         &recruitment_data.battle_style_name,
         &recruitment_data.element_emojis,
     );
+
+    // 6属性の場合のみ、セレクトメニューを最後の行（全属性可能＋全て取り消し）の直前に挿入
+    if recruitment_data.battle_style_name == "6属性" {
+        // 最後の行（全属性可能＋全て取り消し）を取り出す
+        let last_row = components.pop();
+
+        // セレクトメニューを追加（選択時に即座に参加処理が実行される）
+        let select_menu_row = create_element_select_menu(&recruitment_data.element_emojis);
+        components.push(select_menu_row);
+
+        // 最後の行を戻す
+        if let Some(row) = last_row {
+            components.push(row);
+        }
+    }
 
     // ボタン版用の初期参加者一覧を作成
     let initial_text = create_initial_participants_text_for_buttons(
@@ -487,7 +535,7 @@ pub async fn send_recruitment_message_with_buttons(
     let reply = CreateReply::default()
         .content(recruitment_data.message_content.clone())
         .embed(embed)
-        .components(buttons);
+        .components(components);
 
     let message = ctx.send(reply).await?;
     Ok(message.message().await?.id.get())

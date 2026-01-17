@@ -12,6 +12,10 @@ pub enum RecruitmentComponentId {
     JoinAllElements,
     /// すべて取り消しボタン（`recruit_leave_all`）
     LeaveAll,
+    /// 属性セレクトメニュー（`recruit_select_elements`）
+    SelectElements,
+    /// セレクトメニューからの参加ボタン（`recruit_join_selected`）
+    JoinSelected,
 }
 
 impl RecruitmentComponentId {
@@ -44,6 +48,8 @@ impl RecruitmentComponentId {
         match custom_id {
             "recruit_join" => Ok(Self::Join),
             "recruit_leave_all" => Ok(Self::LeaveAll),
+            "recruit_select_elements" => Ok(Self::SelectElements),
+            "recruit_join_selected" => Ok(Self::JoinSelected),
             s if s.starts_with("recruit_join_") => {
                 let element_id_str = s
                     .strip_prefix("recruit_join_")
@@ -88,6 +94,8 @@ impl RecruitmentComponentId {
             Self::JoinElement(element_id) => format!("recruit_join_{element_id}"),
             Self::JoinAllElements => "recruit_join_0".to_string(),
             Self::LeaveAll => "recruit_leave_all".to_string(),
+            Self::SelectElements => "recruit_select_elements".to_string(),
+            Self::JoinSelected => "recruit_join_selected".to_string(),
         }
     }
 
@@ -99,7 +107,7 @@ impl RecruitmentComponentId {
     pub fn is_join(&self) -> bool {
         matches!(
             self,
-            Self::Join | Self::JoinElement(_) | Self::JoinAllElements
+            Self::Join | Self::JoinElement(_) | Self::JoinAllElements | Self::JoinSelected
         )
     }
 

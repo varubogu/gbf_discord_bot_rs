@@ -16,6 +16,200 @@ use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info, instrument};
 
+/// 属性セレクトメニューの選択を処理する（Facade層）
+///
+/// # 責務
+/// - 選択された複数の属性で一括参加処理
+/// - トランザクション境界の管理
+/// - Service層の協調
+/// - Discord APIとのやり取り
+///
+/// # 引数
+/// * `ctx` - Discord Context
+/// * `interaction` - セレクトメニューのインタラクション
+/// * `app_state` - アプリケーション状態
+/// * `element_ids` - 選択された属性IDのリスト
+#[instrument(level = "info", skip(ctx, interaction, app_state))]
+pub async fn handle_recruitment_select_menu(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    app_state: &AppState,
+    element_ids: Vec<i32>,
+) -> Result<()> {
+    info!("属性セレクトメニュー処理開始");
+
+    // Guild IDを取得
+    let guild_id = interaction
+        .guild_id
+        .ok_or_else(|| AppError::Business {
+            message: "ギルドコンテキストが必要です".to_string(),
+        })?
+        .get();
+
+    let user_id = interaction.user.id.get();
+    let message_id = interaction.message.id.get();
+    let channel_id = interaction.channel_id.get();
+
+    // DB接続とトランザクション開始
+    let conn = app_state.guild_db();
+    let txn = conn.begin().await?;
+
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let result = async {
+        // 1. メッセージIDから募集情報を取得
+        let query_service = RecruitmentQueryService::new();
+        let recruitment = query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
+            .await?
+            .ok_or_else(|| AppError::Business {
+                message: "募集が見つかりませんでした".to_string(),
+            })?;
+
+        info!(recruitment_id = recruitment.id, "募集情報を取得しました");
+
+        // 2. キャンセル済みチェック
+        if recruitment.is_canceled {
+            return Err(AppError::Business {
+                message: "この募集はキャンセル済みです".to_string(),
+            });
+        }
+
+        // 3. 期限切れチェック
+        let now = chrono::Utc::now();
+        if recruitment.quest_start_at < now {
+            return Err(AppError::Business {
+                message: "この募集は期限切れです".to_string(),
+            });
+        }
+
+        // 4. Service層を使って複数属性の参加処理
+        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
+        let service =
+            RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
+                Arc::new(participants_repo),
+            );
+
+        let mut joined_elements = Vec::new();
+        let mut left_elements = Vec::new();
+        for element_id in &element_ids {
+            let action = service
+                .toggle_participation(
+                    &txn,
+                    recruitment.id,
+                    user_id,
+                    if *element_id == 0 { None } else { Some(*element_id) },
+                )
+                .await?;
+
+            let element_name = if *element_id == 0 {
+                "全属性可能".to_string()
+            } else {
+                ELEMENT_NAMES
+                    .get((*element_id - 1) as usize)
+                    .copied()
+                    .unwrap_or("不明")
+                    .to_string()
+            };
+
+            match action {
+                ParticipationAction::Joined => joined_elements.push(element_name),
+                ParticipationAction::Left => left_elements.push(element_name),
+            }
+        }
+
+        // 参加と取り消しの両方のメッセージを生成
+        let mut response_messages = Vec::new();
+
+        if !joined_elements.is_empty() {
+            response_messages.push(format!(
+                "✅ {}属性で参加しました！",
+                joined_elements.join(", ")
+            ));
+        }
+
+        if !left_elements.is_empty() {
+            response_messages.push(format!(
+                "👋 {}属性の参加を取り消しました",
+                left_elements.join(", ")
+            ));
+        }
+
+        let response_message = if response_messages.is_empty() {
+            "ℹ️ 変更はありませんでした".to_string()
+        } else {
+            response_messages.join("\n")
+        };
+
+        // 5. 参加者数を取得
+        let participant_count = service
+            .count_unique_participants(&txn, recruitment.id)
+            .await?;
+
+        info!(
+            recruitment_id = recruitment.id,
+            participant_count = participant_count,
+            "参加者数を取得しました"
+        );
+
+        let participant_count_usize = participant_count.max(0) as usize;
+
+        // 6. メッセージを更新して参加者一覧を反映
+        update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
+
+        // 7. 規定人数到達の通知処理
+        check_and_notify_recruitment_full(
+            ctx,
+            &txn,
+            &recruitment,
+            participant_count_usize,
+            channel_id,
+            message_id,
+        )
+        .await?;
+
+        // 8. インタラクションに応答（deferの後なのでedit_response）
+        interaction
+            .edit_response(
+                &ctx.http,
+                poise::serenity_prelude::EditInteractionResponse::new().content(format!(
+                    "{response_message}\n\n現在の参加者数: **{participant_count}人**"
+                )),
+            )
+            .await?;
+
+        Ok(())
+    }
+    .await;
+
+    match result {
+        Ok(_) => {
+            txn.commit().await?;
+            info!("属性セレクトメニュー処理が正常に完了しました");
+            Ok(())
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            error!(error = %e, "属性セレクトメニュー処理でエラーが発生しました");
+
+            // ユーザーにエラーメッセージを返す（deferの後なのでedit_response）
+            if let Err(response_err) = interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(format!("❌ エラー: {}", e.user_message())),
+                )
+                .await
+            {
+                error!(error = %response_err, "エラーメッセージの送信に失敗しました");
+            }
+
+            Err(e)
+        }
+    }
+}
+
 /// 募集ボタンのクリックを処理する（Facade層）
 ///
 /// # 責務
@@ -139,6 +333,13 @@ pub async fn handle_recruitment_button(
                 } else {
                     "ℹ️ 参加していませんでした".to_string()
                 }
+            }
+            RecruitmentComponentId::SelectElements | RecruitmentComponentId::JoinSelected => {
+                // セレクトメニュー自体のインタラクションはcomponent_interactionで処理されるためここには来ない
+                // JoinSelectedも削除されたため、ここには来ない
+                return Err(AppError::Business {
+                    message: "予期しないコンポーネントIDです".to_string(),
+                });
             }
         };
 

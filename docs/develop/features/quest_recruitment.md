@@ -436,22 +436,65 @@ pub async fn create_recruitment_data(
 - seq（連番）の昇順でソート済み
 - Discord形式 `<@&role_id>` でメンション文字列を生成
 
-### リアクション処理
+### ボタン・セレクトメニュー処理
+
+#### 個別参加ボタン
+
+個別の属性ボタンまたはシンプル参加ボタンをクリックすると、即座に参加処理が実行されます。
+
+#### 複数選択セレクトメニュー（6属性のみ）
+
+6属性の募集の場合、個別ボタンに加えて**属性セレクトメニュー**（`recruit_select_elements`）が提供されます：
+
+- 複数の属性を同時に選択可能（最大7: 6属性 + 全属性可能）
+- 選択を確定すると、即座に選択した全ての属性で参加処理が実行される
+- 個別ボタンと同様に、DBに参加者情報を登録し、メッセージを更新する
+- 既に参加している属性を選択すると、その属性の参加が取り消される（トグル動作）
+- 参加と取り消しが混在する場合、両方のメッセージを表示する
+
+この方式により、3つ以上の属性に参加したいユーザーは連続クリックによる不具合を回避できます。
+
+##### レスポンスメッセージの例
+
+- 参加のみ: `✅ 火, 水, 土属性で参加しました！`
+- 取り消しのみ: `👋 火, 水属性の参加を取り消しました`
+- 参加と取り消し混在:
+  ```
+  ✅ 火, 水属性で参加しました！
+  👋 土, 風属性の参加を取り消しました
+  ```
 
 ```rust
-pub async fn handle_reaction_add(
-    ctx: &PoiseContext<'_>,
-    reaction: &Reaction,
-) -> types::Result<()> {
-    // 募集情報取得
-    let recruitment = get_recruitment_by_message(reaction.message_id).await?;
-    
-    // 参加者情報更新（全てのリアクションを対象）
-    let participants = get_participants_from_all_reactions(&recruitment).await?;
-    
-    // メッセージ更新
-    update_recruitment_message(ctx, &recruitment, &participants).await?;
-    
+pub async fn handle_recruitment_select_menu(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    app_state: &AppState,
+    element_ids: Vec<i32>,
+) -> Result<()> {
+    let mut joined_elements = Vec::new();
+    let mut left_elements = Vec::new();
+
+    // 選択された全ての属性で参加処理（トグル動作）
+    for element_id in element_ids {
+        let action = service.toggle_participation(
+            &txn,
+            recruitment.id,
+            user_id,
+            if element_id == 0 { None } else { Some(element_id) },
+        ).await?;
+
+        match action {
+            ParticipationAction::Joined => joined_elements.push(element_name),
+            ParticipationAction::Left => left_elements.push(element_name),
+        }
+    }
+
+    // 参加と取り消しの両方のメッセージを生成
+    let response_message = format_response_messages(joined_elements, left_elements);
+
+    // メッセージを更新して参加者一覧を反映
+    update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
+
     Ok(())
 }
 
