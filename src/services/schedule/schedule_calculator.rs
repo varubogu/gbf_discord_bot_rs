@@ -156,10 +156,8 @@ impl ScheduleCalculator {
 
             let schedule_datetime_utc = schedule_datetime_jst.with_timezone(&Utc);
 
-            // イベント期間内の日時のみを含める
-            if schedule_datetime_utc >= start_at_utc && schedule_datetime_utc <= end_at_utc {
-                results.push(schedule_datetime_utc);
-            }
+            // 開始日前や終了日後の通知も許可するため、期間チェックは行わない
+            results.push(schedule_datetime_utc);
 
             debug!(
                 event_start_jst = %event_schedule.start_at,
@@ -167,6 +165,7 @@ impl ScheduleCalculator {
                 time = %detail.time,
                 result_jst = %schedule_datetime_jst,
                 result_utc = %schedule_datetime_utc,
+                in_event_period = schedule_datetime_utc >= start_at_utc && schedule_datetime_utc <= end_at_utc,
                 "スケジュール日時を計算しました（JST→UTC）"
             );
         }
@@ -536,6 +535,175 @@ mod tests {
         assert_eq!(
             results[2].format("%Y-%m-%d %H:%M").to_string(),
             "2025-01-16 20:00"
+        );
+    }
+
+    #[test]
+    fn test_calculate_datetimes_before_start() {
+        let calculator = ScheduleCalculator::new();
+
+        let event_schedule = event_schedules::Model {
+            id: uuid::Uuid::new_v4(),
+            event_type: "test".to_string(),
+            event_count: 1,
+            profile: "test_profile".to_string(),
+            weak_attribute: 1,
+            start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            end_at: NaiveDate::from_ymd_opt(2025, 1, 20)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let detail = event_schedule_details::Model {
+            id: uuid::Uuid::new_v4(),
+            profile: "test_profile".to_string(),
+            start_day_relative: "-1".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "test_before".to_string(),
+            message_text_id: "msg_before".to_string(),
+            notification_channel_type: 1,
+            reactions: "".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let results = calculator
+            .calculate_datetimes(&event_schedule, &detail)
+            .unwrap();
+
+        // 開始日の1日前のスケジュールが作成されること
+        assert_eq!(results.len(), 1);
+
+        // JST 2025-01-14 05:00 → UTC 2025-01-13 20:00（開始日の1日前）
+        assert_eq!(
+            results[0].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-13 20:00"
+        );
+    }
+
+    #[test]
+    fn test_calculate_datetimes_after_end() {
+        let calculator = ScheduleCalculator::new();
+
+        let event_schedule = event_schedules::Model {
+            id: uuid::Uuid::new_v4(),
+            event_type: "test".to_string(),
+            event_count: 1,
+            profile: "test_profile".to_string(),
+            weak_attribute: 1,
+            start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            end_at: NaiveDate::from_ymd_opt(2025, 1, 20)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let detail = event_schedule_details::Model {
+            id: uuid::Uuid::new_v4(),
+            profile: "test_profile".to_string(),
+            start_day_relative: "10".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "test_after".to_string(),
+            message_text_id: "msg_after".to_string(),
+            notification_channel_type: 1,
+            reactions: "".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let results = calculator
+            .calculate_datetimes(&event_schedule, &detail)
+            .unwrap();
+
+        // 終了日後のスケジュールが作成されること
+        // イベント期間は1/15-1/20（5日間）、10日目は1/25なので終了日後
+        assert_eq!(results.len(), 1);
+
+        // JST 2025-01-25 05:00 → UTC 2025-01-24 20:00（開始日の10日後）
+        assert_eq!(
+            results[0].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-24 20:00"
+        );
+    }
+
+    #[test]
+    fn test_calculate_datetimes_range_including_before_and_after() {
+        let calculator = ScheduleCalculator::new();
+
+        let event_schedule = event_schedules::Model {
+            id: uuid::Uuid::new_v4(),
+            event_type: "test".to_string(),
+            event_count: 1,
+            profile: "test_profile".to_string(),
+            weak_attribute: 1,
+            start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            end_at: NaiveDate::from_ymd_opt(2025, 1, 17)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let detail = event_schedule_details::Model {
+            id: uuid::Uuid::new_v4(),
+            profile: "test_profile".to_string(),
+            start_day_relative: "-1-3".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "test_range".to_string(),
+            message_text_id: "msg_range".to_string(),
+            notification_channel_type: 1,
+            reactions: "".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let results = calculator
+            .calculate_datetimes(&event_schedule, &detail)
+            .unwrap();
+
+        // -1日目から3日目まで（5日分）のスケジュールが作成されること
+        // イベント期間は1/15-1/17（2日間）
+        // -1日目: 1/14（開始前）
+        // 0日目: 1/15（期間内）
+        // 1日目: 1/16（期間内）
+        // 2日目: 1/17（期間内・終了日）
+        // 3日目: 1/18（終了後）
+        assert_eq!(results.len(), 5);
+
+        assert_eq!(
+            results[0].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-13 20:00" // -1日目
+        );
+        assert_eq!(
+            results[1].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-14 20:00" // 0日目
+        );
+        assert_eq!(
+            results[2].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-15 20:00" // 1日目
+        );
+        assert_eq!(
+            results[3].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-16 20:00" // 2日目
+        );
+        assert_eq!(
+            results[4].format("%Y-%m-%d %H:%M").to_string(),
+            "2025-01-17 20:00" // 3日目
         );
     }
 }

@@ -279,8 +279,20 @@ mod tests {
         let service = DataCleanupService::new(db.clone());
 
         // テストデータ作成（31日前の送信済み通知）
-        let old_notification = notifications::ActiveModel {
+        // 先にscheduled_tasksを作成
+        let old_task = scheduled_tasks::ActiveModel {
             schedule_datetime: Set(Utc::now() - Duration::days(31)),
+            task_type: Set(ScheduledTaskType::Notification.as_i32()),
+            guild_id: Set(Some(123456789)),
+            channel_id: Set(Some(987654321)),
+            is_executed: Set(true),
+            ..Default::default()
+        };
+        let inserted_task = old_task.insert(&db).await.unwrap();
+
+        // 次にnotificationsを作成
+        let old_notification = notifications::ActiveModel {
+            task_id: Set(inserted_task.id),
             guild_id: Set(123456789),
             channel_id: Set(987654321),
             message_text_id: Set("test_message".to_string()),
