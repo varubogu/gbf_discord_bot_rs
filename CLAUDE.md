@@ -70,3 +70,15 @@ See `docs/schema_management.md` for details.
 - **All chat responses to users must be in Japanese**
 - Detailed design documents in `docs/develop/` (see documentation skill)
 - Skills auto-trigger based on context - no need to explicitly call them
+
+## Quality Assurance
+
+When you modify code, always run the following commands to ensure quality:
+
+```bash
+cargo clippy    # Check for common mistakes and improvements
+cargo fmt       # Format code according to Rust standards
+cargo test      # Run all tests to verify functionality
+```
+
+These checks must be performed before considering the changes complete.
