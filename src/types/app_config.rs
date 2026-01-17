@@ -45,8 +45,8 @@ impl AppConfig {
         if max_schedule_days_outside_event > 365 {
             return Err(AppError::Config {
                 message: format!(
-                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be 365 or less, but got: {}",
-                    max_schedule_days_outside_event
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be 365 or less, \
+                    but got: {max_schedule_days_outside_event}"
                 ),
             });
         }
@@ -55,8 +55,8 @@ impl AppConfig {
         if max_schedule_days_outside_event < 0 {
             return Err(AppError::Config {
                 message: format!(
-                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be non-negative, but got: {}",
-                    max_schedule_days_outside_event
+                    "MAX_SCHEDULE_DAYS_OUTSIDE_EVENT must be non-negative, \
+                    but got: {max_schedule_days_outside_event}"
                 ),
             });
         }
