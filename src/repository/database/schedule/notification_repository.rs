@@ -3,9 +3,7 @@ use crate::repository::schedule::NotificationRepository;
 use crate::types::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error};
 
 /// 通知リポジトリ

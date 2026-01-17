@@ -121,10 +121,7 @@ impl NotificationHistoryService {
             }
         }
 
-        info!(
-            count = results.len(),
-            "今後の通知予定を取得しました"
-        );
+        info!(count = results.len(), "今後の通知予定を取得しました");
 
         Ok(results)
     }

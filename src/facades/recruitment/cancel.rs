@@ -4,7 +4,9 @@ use crate::repository::battle_recruitments_repository::BattleRecruitmentsReposit
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
-use crate::repository::{GuildSettingsRepository, QuestRepository, RecruitmentParticipantsRepository};
+use crate::repository::{
+    GuildSettingsRepository, QuestRepository, RecruitmentParticipantsRepository,
+};
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
@@ -527,7 +529,9 @@ pub async fn cancel_on_message_deleted(
                     message_id = %message_id,
                     "削除されたメッセージは募集メッセージではありませんでした"
                 );
-                return Ok::<CancelOnDeleteResult, AppError>(CancelOnDeleteResult::NotRecruitmentMessage);
+                return Ok::<CancelOnDeleteResult, AppError>(
+                    CancelOnDeleteResult::NotRecruitmentMessage,
+                );
             }
         };
 
@@ -609,9 +613,14 @@ pub async fn cancel_on_message_deleted(
 
         // クエスト情報を取得して通知メッセージに追加
         let quest_repo = SeaOrmQuestRepository::new();
-        let final_notification_text = match quest_repo.get_by_target_id(&txn, recruitment.quest_id).await? {
+        let final_notification_text = match quest_repo
+            .get_by_target_id(&txn, recruitment.quest_id)
+            .await?
+        {
             Some(quest) => {
-                let quest_start_at_jst = recruitment.quest_start_at.with_timezone(&chrono_tz::Asia::Tokyo);
+                let quest_start_at_jst = recruitment
+                    .quest_start_at
+                    .with_timezone(&chrono_tz::Asia::Tokyo);
                 format!(
                     "【メッセージ削除によるキャンセル - {} / {}】\n{}",
                     quest.name,

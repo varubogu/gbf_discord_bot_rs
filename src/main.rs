@@ -21,7 +21,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
     initialize_logging();
@@ -201,9 +200,7 @@ fn create_gateway_intents() -> GatewayIntents {
 }
 
 /// Poiseフレームワークを構築する
-fn build_framework(
-    app_state: AppState,
-) -> poise::Framework<PoiseData, AppError> {
+fn build_framework(app_state: AppState) -> poise::Framework<PoiseData, AppError> {
     poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
@@ -234,7 +231,9 @@ fn build_framework(
 }
 
 /// 管理サーバー専用コマンドを登録する
-async fn register_admin_commands(ctx: &serenity::Context) -> std::result::Result<(), serenity::Error> {
+async fn register_admin_commands(
+    ctx: &serenity::Context,
+) -> std::result::Result<(), serenity::Error> {
     match env::var("BOT_ADMIN_SERVER_ID") {
         Ok(admin_server_id) => match admin_server_id.parse::<u64>() {
             Ok(guild_id_u64) => {
@@ -263,9 +262,7 @@ async fn register_admin_commands(ctx: &serenity::Context) -> std::result::Result
 }
 
 /// Discordクライアントを作成する
-async fn create_discord_client(
-    app_state: &AppState,
-) -> Result<serenity::Client> {
+async fn create_discord_client(app_state: &AppState) -> Result<serenity::Client> {
     let discord_token = app_state.config.discord_token.clone();
     let intents = create_gateway_intents();
     let framework = build_framework(app_state.clone());
@@ -279,10 +276,7 @@ async fn create_discord_client(
 }
 
 /// SchedulerManagerを初期化してバックグラウンドで起動する
-async fn start_scheduler(
-    app_state: &AppState,
-    http: Arc<serenity::Http>,
-) -> Result<()> {
+async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Result<()> {
     let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
     let dissolution_repo = Arc::new(SeaOrmScheduledTaskDissolutionRepository::new());
     let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
@@ -314,7 +308,6 @@ async fn start_scheduler(
 
     Ok(())
 }
-
 
 async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
     use poise::FrameworkError;

@@ -1,11 +1,13 @@
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::GuildSettingsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::{
     SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository,
 };
 use crate::repository::schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository};
-use crate::repository::{BattleRecruitmentsRepository, QuestRepository, RecruitmentParticipantsRepository};
+use crate::repository::{
+    BattleRecruitmentsRepository, QuestRepository, RecruitmentParticipantsRepository,
+};
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     create_cancel_notification_text, create_cancelled_message_content,
@@ -256,9 +258,14 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
 
         // クエスト情報を取得してフォールバックコンテキストを作成
         let quest_repo = SeaOrmQuestRepository::new();
-        let fallback_context = match quest_repo.get_by_target_id(txn, recruitment.quest_id).await? {
+        let fallback_context = match quest_repo
+            .get_by_target_id(txn, recruitment.quest_id)
+            .await?
+        {
             Some(quest) => {
-                let quest_start_at_jst = recruitment.quest_start_at.with_timezone(&chrono_tz::Asia::Tokyo);
+                let quest_start_at_jst = recruitment
+                    .quest_start_at
+                    .with_timezone(&chrono_tz::Asia::Tokyo);
                 format!(
                     "解散タスク通知 - {} / {}",
                     quest.name,

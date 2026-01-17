@@ -165,7 +165,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         info!(tasks = tasks.len(), "タスクをプリロードしました");
 
         // scheduled_tasksを実行
-        
+
         use crate::repository::database::schedule::SeaOrmNotificationRepository;
         use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
@@ -195,10 +195,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                                         {
                                             error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                         }
-                                        info!(
-                                            task_id = task.id,
-                                            "通知タスクを実行しました"
-                                        );
+                                        info!(task_id = task.id, "通知タスクを実行しました");
                                     }
                                     Err(e) => {
                                         error!(task_id = task.id, error = %e, "通知の送信中にエラーが発生しました");
