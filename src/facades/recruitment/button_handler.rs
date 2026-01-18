@@ -99,7 +99,11 @@ pub async fn handle_recruitment_select_menu(
                     &txn,
                     recruitment.id,
                     user_id,
-                    if *element_id == 0 { None } else { Some(*element_id) },
+                    if *element_id == 0 {
+                        None
+                    } else {
+                        Some(*element_id)
+                    },
                 )
                 .await?;
 

@@ -90,7 +90,14 @@ pub async fn on_component_interaction(
         // ただし、セレクトメニューは複数の属性を一度に登録するため、
         // カスタムIDを動的に生成してhandle_recruitment_buttonを呼び出すのではなく、
         // 直接ロジックを実装する
-        match button_handler::handle_recruitment_select_menu(ctx, interaction, &data.app_state, element_ids).await {
+        match button_handler::handle_recruitment_select_menu(
+            ctx,
+            interaction,
+            &data.app_state,
+            element_ids,
+        )
+        .await
+        {
             Ok(_) => {
                 info!("属性セレクトメニューの処理が正常に完了しました");
             }

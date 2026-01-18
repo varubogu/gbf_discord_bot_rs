@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ButtonStyle;
 use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{CreateActionRow, CreateButton, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption};
+use poise::serenity_prelude::all::{
+    CreateActionRow, CreateButton, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind,
+    CreateSelectMenuOption,
+};
 use std::collections::HashMap;
 use tracing::info;
 
@@ -409,10 +412,7 @@ pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> CreateActio
 
     // 属性1-6のオプション
     for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
-        let option = CreateSelectMenuOption::new(
-            format!("{emoji} {name}"),
-            format!("{}", i + 1),
-        );
+        let option = CreateSelectMenuOption::new(format!("{emoji} {name}"), format!("{}", i + 1));
         options.push(option);
     }
 
