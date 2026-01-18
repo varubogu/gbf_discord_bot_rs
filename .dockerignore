@@ -12,8 +12,8 @@ target/
 # 環境変数ファイル（セキュリティリスク）
 .env
 .env.*
-!.env.example
-!.env.*.example
+.env.example
+.env.*.example
 
 # 開発環境設定
 .devcontainer/
@@ -29,7 +29,8 @@ target/
 docs/
 plans/
 *.md
-!CLAUDE.md
+CLAUDE.md
+CLAUDE.local.md
 
 # 一時ファイル
 .tmp/
