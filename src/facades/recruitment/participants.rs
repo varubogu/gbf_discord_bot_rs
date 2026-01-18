@@ -39,6 +39,19 @@ pub async fn update_participants(
         let query_service = RecruitmentQueryService::new();
         let quest_query_service = QuestQueryService::new();
 
+        // メッセージを取得してv2かどうかを判定
+        let channel = poise::serenity_prelude::ChannelId::from(channel_id);
+        let message = channel
+            .message(&ctx.http, poise::serenity_prelude::MessageId::from(message_id))
+            .await?;
+
+        // メッセージにコンポーネント（ボタン）があればv2と判定し、リアクション処理をスキップ
+        // v2はボタンで参加管理を行うため、リアクションによる参加者収集は不要
+        if !message.components.is_empty() {
+            info!("v2募集のためリアクション処理をスキップします: message_id={}", message_id);
+            return Ok(());
+        }
+
         // 募集情報の存在確認（キャンセル済み・期限切れチェック含む）
         let recruitment = match participants_service
             .update_participants_by_message(guild_id, channel_id, message_id, &txn)
