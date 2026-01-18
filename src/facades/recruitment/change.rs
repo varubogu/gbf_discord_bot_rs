@@ -160,31 +160,87 @@ pub async fn change_recruitment_information_internal(
         )
         .await?;
 
-        // 4. リアクションから参加者を取得
-        let mut participant_ids = std::collections::HashSet::new();
-        for reaction in &message.reactions {
-            let users = channel_id_obj
-                .reaction_users(
-                    http,
-                    message_id_obj,
-                    reaction.reaction_type.clone(),
-                    Some(100),
-                    None,
-                )
-                .await?;
+        // 4. 参加者を取得（v2はDBから、v1はリアクションから）
+        // メッセージにコンポーネント（ボタン）があればv2、なければv1と判定
+        let is_v2 = !message.components.is_empty();
 
-            for user in users {
-                if !user.bot {
-                    participant_ids.insert(user.id);
+        // v2用: DBから参加者一覧を取得
+        use crate::models::entities::worker::recruitment_participants::{
+            Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
+        };
+        use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter, EditMessage};
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+        let (mentions, embed_for_update) = if is_v2 {
+            // v2: DBから参加者を取得し、embed用のテキストも作成
+            debug!("v2募集: DBから参加者を取得します");
+
+            let participants = RecruitmentParticipantEntity::find()
+                .filter(ParticipantColumn::RecruitmentId.eq(existing_recruitment.id))
+                .all(&txn)
+                .await
+                .map_err(types::AppError::Database)?;
+
+            // ユニークなユーザーIDを取得（重複排除）
+            let unique_user_ids: std::collections::HashSet<i64> =
+                participants.iter().map(|p| p.user_id).collect();
+            let participant_count = unique_user_ids.len();
+
+            // 参加者メンション（通知用）
+            let mentions_str = unique_user_ids
+                .iter()
+                .map(|user_id| format!("<@{user_id}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            // 参加者一覧テキストを作成（embed用）
+            let participants_text = create_participants_text_for_v2(
+                &recruitment_data.battle_style_name,
+                &participants,
+                &element_emojis,
+            );
+
+            // 既存embedのスタイルを保持しつつ、参加者一覧を更新したembedを作成
+            let embed = CreateEmbed::new()
+                .title("参加者一覧")
+                .description(&participants_text)
+                .footer(CreateEmbedFooter::new(format!(
+                    "参加者数: {participant_count}人"
+                )))
+                .color(0x0099ff);
+
+            (mentions_str, embed)
+        } else {
+            // v1: リアクションから参加者を取得
+            debug!("v1募集: リアクションから参加者を取得します");
+            let mut participant_ids = std::collections::HashSet::new();
+            for reaction in &message.reactions {
+                let users = channel_id_obj
+                    .reaction_users(
+                        http,
+                        message_id_obj,
+                        reaction.reaction_type.clone(),
+                        Some(100),
+                        None,
+                    )
+                    .await?;
+
+                for user in users {
+                    if !user.bot {
+                        participant_ids.insert(user.id);
+                    }
                 }
             }
-        }
 
-        // 参加者メンションを作成
-        let mut mentions = String::new();
-        for user_id in participant_ids {
-            mentions.push_str(&format!("<@{user_id}> "));
-        }
+            let mentions_str = participant_ids
+                .into_iter()
+                .map(|user_id| format!("<@{user_id}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            // v1は新規作成用のembedをそのまま使用
+            (mentions_str, recruitment_data.embed.clone())
+        };
 
         // 5. DBの募集情報を更新
         update_service
@@ -198,11 +254,9 @@ pub async fn change_recruitment_information_internal(
             .await?;
 
         // 6. Discordのメッセージを更新
-        use poise::serenity_prelude::EditMessage;
-
         let edit_message = EditMessage::new()
             .content(&recruitment_data.message_content)
-            .embed(recruitment_data.embed.clone());
+            .embed(embed_for_update);
 
         channel_id_obj
             .edit_message(http, message_id_obj, edit_message)
@@ -281,5 +335,84 @@ pub async fn change_recruitment_information_internal(
             error!(error = %e, "募集内容更新エラー");
             Err(e)
         }
+    }
+}
+
+/// v2募集用の参加者一覧テキストを作成する
+///
+/// # 引数
+/// * `battle_style_name` - 攻略方法の名前
+/// * `participants` - 参加者一覧（DBから取得）
+/// * `element_emojis` - 属性絵文字
+fn create_participants_text_for_v2(
+    battle_style_name: &str,
+    participants: &[crate::models::entities::worker::recruitment_participants::Model],
+    element_emojis: &crate::services::guild_environment_service::ElementEmojis,
+) -> String {
+    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
+    use std::collections::HashMap;
+
+    // 属性IDごとに参加者をグループ化（Noneは0として扱う）
+    let mut participants_by_element: HashMap<i32, Vec<u64>> = HashMap::new();
+    for participant in participants {
+        let element_id = participant.element_id.unwrap_or(0);
+        participants_by_element
+            .entry(element_id)
+            .or_default()
+            .push(participant.user_id as u64);
+    }
+
+    let mut text = String::new();
+
+    // 6属性の場合
+    if battle_style_name == "6属性" {
+        let emojis_array = element_emojis.as_array();
+        for (idx, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
+            let element_id = (idx + 1) as i32;
+            if let Some(user_ids) = participants_by_element.get(&element_id) {
+                let user_mentions: Vec<String> =
+                    user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+                text.push_str(&format!(
+                    "{} {}: {}\n",
+                    emoji,
+                    name,
+                    user_mentions.join(" ")
+                ));
+            } else {
+                text.push_str(&format!("{emoji} {name}: なし\n"));
+            }
+        }
+
+        // 全属性可能（element_id = 0）
+        if let Some(user_ids) = participants_by_element.get(&0) {
+            let user_mentions: Vec<String> =
+                user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+            text.push_str(&format!(
+                "{} 全属性可能: {}\n",
+                ALL_ELEMENTS_EMOJI,
+                user_mentions.join(" ")
+            ));
+        } else {
+            text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
+        }
+    } else {
+        // シンプル参加の場合（element_id = null）
+        if let Some(user_ids) = participants_by_element.get(&0) {
+            let user_mentions: Vec<String> =
+                user_ids.iter().map(|&uid| format!("<@{uid}>")).collect();
+            text.push_str(&format!(
+                "{} 参加: {}\n",
+                SIMPLE_JOIN_EMOJI,
+                user_mentions.join(" ")
+            ));
+        } else {
+            text.push_str(&format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n"));
+        }
+    }
+
+    if text.is_empty() {
+        "現在参加者はいません。".to_string()
+    } else {
+        text
     }
 }
