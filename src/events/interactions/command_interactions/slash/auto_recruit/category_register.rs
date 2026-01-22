@@ -1,9 +1,11 @@
 //! 自動募集カテゴリ登録コマンド
 
 use crate::facades::auto_recruitment;
+use crate::services::message::MessageTextId;
 use crate::services::permission::check_bot_control_role;
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Channel;
+use rust_i18n::t;
 use tracing::error;
 
 /// 自動募集カテゴリを登録
@@ -108,9 +110,23 @@ pub async fn auto_recruit_category_register(
         }
         Err(e) => {
             error!(error = %e, guild_id = guild_id.get(), "自動募集カテゴリの登録に失敗しました");
+
+            // エラーメッセージを多言語対応で取得
+            let error_message = match &e {
+                AppError::ChannelCreationFailed => {
+                    let locale = ctx.locale().unwrap_or("ja");
+                    t!(
+                        MessageTextId::AutoRecruitmentChannelCreateFailed.as_str(),
+                        locale = locale
+                    )
+                    .to_string()
+                }
+                _ => format!("エラー: {}", e),
+            };
+
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("エラー: {}", e))
+                    .content(error_message)
                     .ephemeral(true),
             )
             .await?;

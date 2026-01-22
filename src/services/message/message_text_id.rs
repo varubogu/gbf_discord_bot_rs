@@ -154,6 +154,10 @@ pub mod keys {
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
     pub const MESSAGES_HELP: &str = "messages.help";
+
+    // Auto recruitment messages
+    pub const AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED: &str =
+        "auto_recruitment.channel_create_failed";
 }
 
 /// メッセージID定義
@@ -299,6 +303,9 @@ pub enum MessageTextId {
     // General messages
     MessagesWelcome,
     MessagesHelp,
+
+    // Auto recruitment messages
+    AutoRecruitmentChannelCreateFailed,
 }
 
 impl MessageTextId {
@@ -508,6 +515,11 @@ impl MessageTextId {
             // Messages
             MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
             MessageTextId::MessagesHelp => keys::MESSAGES_HELP,
+
+            // Auto recruitment
+            MessageTextId::AutoRecruitmentChannelCreateFailed => {
+                keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED
+            }
         }
     }
 }
@@ -681,6 +693,7 @@ mod tests {
             MessageTextId::RecruitmentCommandChangeSuccess,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
+            MessageTextId::AutoRecruitmentChannelCreateFailed,
         ];
 
         // 各MessageTextIdに対してYAMLにキーが存在することを確認

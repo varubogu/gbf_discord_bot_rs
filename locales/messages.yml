@@ -338,3 +338,7 @@ timezone.set_success:
 timezone.show_current:
   ja: "現在のタイムゾーン: {{timezone}}"
   en: "Current timezone: {{timezone}}"
+
+auto_recruitment.channel_create_failed:
+  ja: "チャンネルの作成に失敗しました。\nカテゴリに対してこのアプリが「チャンネルの管理」権限を持っているか確認してください。"
+  en: "Failed to create channel.\nPlease check that this app has \"Manage Channels\" permission for the category."

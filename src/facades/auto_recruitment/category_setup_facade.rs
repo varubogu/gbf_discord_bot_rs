@@ -277,7 +277,11 @@ pub async fn change_days(
                             .kind(ChannelType::Text)
                             .category(ChannelId::new(category_id)),
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| {
+                        error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
+                        AppError::ChannelCreationFailed
+                    })?;
 
                 // DBに登録
                 channel_repo
@@ -374,8 +378,9 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
                     .category(ChannelId::new(category_id)),
             )
             .await
-            .map_err(|e| AppError::Business {
-                message: format!("チャンネルの作成に失敗しました: {}", e),
+            .map_err(|e| {
+                error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
+                AppError::ChannelCreationFailed
             })?;
 
         // DBに登録

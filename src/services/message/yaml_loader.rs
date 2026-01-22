@@ -380,6 +380,15 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::MESSAGES_WELCOME => Some(t!(keys::MESSAGES_WELCOME, locale = locale).to_string()),
         keys::MESSAGES_HELP => Some(t!(keys::MESSAGES_HELP, locale = locale).to_string()),
 
+        // Auto recruitment messages
+        keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
         // 未知のメッセージID
         _ => None,
     }
