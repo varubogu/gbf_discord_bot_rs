@@ -158,6 +158,8 @@ pub mod keys {
     // Auto recruitment messages
     pub const AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED: &str =
         "auto_recruitment.channel_create_failed";
+    pub const AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER: &str =
+        "auto_recruitment.time_select_placeholder";
 }
 
 /// メッセージID定義
@@ -306,6 +308,7 @@ pub enum MessageTextId {
 
     // Auto recruitment messages
     AutoRecruitmentChannelCreateFailed,
+    AutoRecruitmentTimeSelectPlaceholder,
 }
 
 impl MessageTextId {
@@ -520,6 +523,9 @@ impl MessageTextId {
             MessageTextId::AutoRecruitmentChannelCreateFailed => {
                 keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED
             }
+            MessageTextId::AutoRecruitmentTimeSelectPlaceholder => {
+                keys::AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER
+            }
         }
     }
 }
@@ -694,6 +700,7 @@ mod tests {
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
             MessageTextId::AutoRecruitmentChannelCreateFailed,
+            MessageTextId::AutoRecruitmentTimeSelectPlaceholder,
         ];
 
         // 各MessageTextIdに対してYAMLにキーが存在することを確認

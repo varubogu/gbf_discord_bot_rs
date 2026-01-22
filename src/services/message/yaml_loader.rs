@@ -388,6 +388,13 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
+        keys::AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
 
         // 未知のメッセージID
         _ => None,

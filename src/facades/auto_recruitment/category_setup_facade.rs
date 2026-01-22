@@ -12,12 +12,14 @@ use crate::repository::database::auto_recruitment::{
 };
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
+use crate::services::message::MessageTextId;
 use crate::types::{AppError, AppState, Result};
 use chrono::{Datelike, Duration, Utc};
 use poise::serenity_prelude::{
     ChannelId, ChannelType, Context, CreateActionRow, CreateChannel, CreateMessage,
     CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GuildId, Http,
 };
+use rust_i18n::t;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
@@ -417,37 +419,29 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
 
 /// 時間選択メッセージを送信
 async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<()> {
-    // 24時間を4つのセレクトメニューに分割（各6時間分、25個制限のため）
-    let time_ranges = [
-        (0, 6, "0:00〜5:00"),
-        (6, 12, "6:00〜11:00"),
-        (12, 18, "12:00〜17:00"),
-        (18, 24, "18:00〜23:00"),
-    ];
+    // 0〜23時の24個の選択肢を1つのセレクトメニューで表示（最大25個まで可能）
+    let options: Vec<CreateSelectMenuOption> = (0..24)
+        .map(|hour| CreateSelectMenuOption::new(format!("{:02}:00", hour), format!("{}", hour)))
+        .collect();
 
-    let mut components = Vec::new();
+    // 多言語対応のplaceholderを取得（デフォルトは日本語）
+    let placeholder = t!(
+        MessageTextId::AutoRecruitmentTimeSelectPlaceholder.as_str(),
+        locale = "ja"
+    )
+    .to_string();
 
-    for (start, end, _label) in time_ranges.iter() {
-        let options: Vec<CreateSelectMenuOption> = (*start..*end)
-            .map(|hour| {
-                CreateSelectMenuOption::new(format!("{:02}:00", hour), format!("{}", hour))
-            })
-            .collect();
-
-        let select_menu = CreateSelectMenu::new(
-            format!("auto_recruit_time_{}_{}", start, end),
-            CreateSelectMenuKind::String { options },
-        )
-        .placeholder(format!("{}〜{}時の参加可能時間を選択", start, end - 1))
-        .min_values(0)
-        .max_values((end - start) as u8);
-
-        components.push(CreateActionRow::SelectMenu(select_menu));
-    }
+    let select_menu = CreateSelectMenu::new(
+        "auto_recruit_time",
+        CreateSelectMenuKind::String { options },
+    )
+    .placeholder(&placeholder)
+    .min_values(0)
+    .max_values(24);
 
     let message = CreateMessage::new()
         .content("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
-        .components(components);
+        .components(vec![CreateActionRow::SelectMenu(select_menu)]);
 
     channel_id.send_message(http, message).await.map_err(|e| {
         error!(error = %e, channel_id = channel_id.get(), "時間選択メッセージの送信に失敗しました");
@@ -503,4 +497,3 @@ async fn create_initial_rotation_task(
 
     Ok(())
 }
-

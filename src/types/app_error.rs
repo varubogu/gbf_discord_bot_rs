@@ -94,9 +94,7 @@ impl AppError {
             AppError::DiscordOperation(e) => {
                 format!("Discord操作エラー: {e}")
             }
-            AppError::ChannelCreationFailed => {
-                "チャンネルの作成に失敗しました。".to_string()
-            }
+            AppError::ChannelCreationFailed => "チャンネルの作成に失敗しました。".to_string(),
         }
     }
 }

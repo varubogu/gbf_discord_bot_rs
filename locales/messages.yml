@@ -342,3 +342,6 @@ timezone.show_current:
 auto_recruitment.channel_create_failed:
   ja: "チャンネルの作成に失敗しました。\nカテゴリに対してこのアプリが「チャンネルの管理」権限を持っているか確認してください。"
   en: "Failed to create channel.\nPlease check that this app has \"Manage Channels\" permission for the category."
+auto_recruitment.time_select_placeholder:
+  ja: "参加可能な時間を選択（複数選択可）"
+  en: "Select available times (multiple selection)"
