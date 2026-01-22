@@ -14,7 +14,10 @@ use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::types::{AppError, AppState, Result};
 use chrono::{Datelike, Duration, Utc};
-use poise::serenity_prelude::{ChannelId, ChannelType, Context, CreateChannel, GuildId, Http};
+use poise::serenity_prelude::{
+    ChannelId, ChannelType, Context, CreateActionRow, CreateChannel, CreateMessage,
+    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GuildId, Http,
+};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
@@ -263,13 +266,14 @@ pub async fn change_days(
                 now_jst.date_naive()
             };
 
+            let discord_guild_id = GuildId::new(guild_id);
+
             for i in 1..=channels_to_add {
                 let new_date = last_channel_date + Duration::days(i as i64);
                 let channel_name = format!("{}月{}日", new_date.month(), new_date.day());
                 let sort_order = (existing_channels.len() + i) as i32;
 
-                // Discordチャンネルを作成
-                let discord_guild_id = GuildId::new(guild_id);
+                // Discordチャンネルを作成（カテゴリの権限を継承）
                 let channel = discord_guild_id
                     .create_channel(
                         &ctx.http,
@@ -282,6 +286,9 @@ pub async fn change_days(
                         error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
                         AppError::ChannelCreationFailed
                     })?;
+
+                // 時間選択コンポーネントを送信
+                send_time_selection_message(&ctx.http, channel.id).await?;
 
                 // DBに登録
                 channel_repo
@@ -369,7 +376,7 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
         let date = today + Duration::days(i as i64);
         let channel_name = format!("{}月{}日", date.month(), date.day());
 
-        // Discordチャンネルを作成
+        // Discordチャンネルを作成（カテゴリの権限を継承）
         let channel = discord_guild_id
             .create_channel(
                 http,
@@ -382,6 +389,9 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
                 error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
                 AppError::ChannelCreationFailed
             })?;
+
+        // 時間選択コンポーネントを送信
+        send_time_selection_message(http, channel.id).await?;
 
         // DBに登録
         channel_repo
@@ -403,6 +413,50 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
     }
 
     Ok(created_count)
+}
+
+/// 時間選択メッセージを送信
+async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<()> {
+    // 24時間を4つのセレクトメニューに分割（各6時間分、25個制限のため）
+    let time_ranges = [
+        (0, 6, "0:00〜5:00"),
+        (6, 12, "6:00〜11:00"),
+        (12, 18, "12:00〜17:00"),
+        (18, 24, "18:00〜23:00"),
+    ];
+
+    let mut components = Vec::new();
+
+    for (start, end, _label) in time_ranges.iter() {
+        let options: Vec<CreateSelectMenuOption> = (*start..*end)
+            .map(|hour| {
+                CreateSelectMenuOption::new(format!("{:02}:00", hour), format!("{}", hour))
+            })
+            .collect();
+
+        let select_menu = CreateSelectMenu::new(
+            format!("auto_recruit_time_{}_{}", start, end),
+            CreateSelectMenuKind::String { options },
+        )
+        .placeholder(format!("{}〜{}時の参加可能時間を選択", start, end - 1))
+        .min_values(0)
+        .max_values((end - start) as u8);
+
+        components.push(CreateActionRow::SelectMenu(select_menu));
+    }
+
+    let message = CreateMessage::new()
+        .content("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
+        .components(components);
+
+    channel_id.send_message(http, message).await.map_err(|e| {
+        error!(error = %e, channel_id = channel_id.get(), "時間選択メッセージの送信に失敗しました");
+        AppError::Business {
+            message: "時間選択メッセージの送信に失敗しました".to_string(),
+        }
+    })?;
+
+    Ok(())
 }
 
 /// 初期ローテーションタスクを作成
@@ -449,3 +503,4 @@ async fn create_initial_rotation_task(
 
     Ok(())
 }
+
