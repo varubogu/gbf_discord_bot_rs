@@ -1,3 +1,4 @@
+pub mod auto_recruitment_rotation_task_executor;
 pub mod dismissal_management_service;
 pub mod dismissal_task_executor;
 pub mod dissolution_task_executor;
@@ -12,6 +13,9 @@ pub mod scheduler_manager;
 pub mod scheduler_service;
 pub mod timezone_converter;
 
+pub use auto_recruitment_rotation_task_executor::{
+    AutoRecruitmentRotationResult, AutoRecruitmentRotationTaskExecutor,
+};
 pub use dismissal_management_service::DismissalManagementService;
 pub use dismissal_task_executor::{DismissalExecutionResult, DismissalTaskExecutor};
 pub use dissolution_task_executor::{DissolutionExecutionResult, DissolutionTaskExecutor};

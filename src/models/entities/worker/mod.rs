@@ -2,6 +2,8 @@ pub mod battle_recruitment_dismissals;
 pub mod battle_recruitments;
 pub mod guild_last_process_times;
 pub mod last_process_times;
+pub mod matched_recruitment_channels;
+pub mod matched_recruitment_votes;
 pub mod notification_rel_battle_recruitments;
 pub mod notification_rel_event_schedules;
 pub mod notifications;

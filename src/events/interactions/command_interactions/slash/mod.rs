@@ -1,5 +1,6 @@
 mod autocomplete;
 
+pub(crate) mod auto_recruit;
 pub(crate) mod channel;
 pub(crate) mod gspread;
 pub(crate) mod guild_settings;

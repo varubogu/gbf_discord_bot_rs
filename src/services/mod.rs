@@ -1,3 +1,4 @@
+pub mod auto_recruitment;
 pub mod channel;
 pub mod datetime_parser;
 pub mod environment;

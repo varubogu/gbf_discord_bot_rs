@@ -40,6 +40,11 @@ pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::schedule::schedule_stats::schedule_stats(),
         slash::guild_settings::guild_settings_set::guild_settings_set(),
         slash::guild_settings::guild_settings_show::guild_settings_show(),
+        // 自動募集コマンド
+        slash::auto_recruit::category_register::auto_recruit_category_register(),
+        slash::auto_recruit::category_unregister::auto_recruit_category_unregister(),
+        slash::auto_recruit::days_change::auto_recruit_days_change(),
+        slash::auto_recruit::status::auto_recruit_status(),
         // メッセージコンテキストメニューコマンド
         message::recruit_change::recruit_change_context_menu(),
     ]
