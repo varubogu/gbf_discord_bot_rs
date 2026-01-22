@@ -27,6 +27,9 @@ pub enum AppError {
 
     #[error("Channel creation failed")]
     ChannelCreationFailed,
+
+    #[error("Command executed in category channel")]
+    InCategoryChannelError,
 }
 
 impl From<poise::serenity_prelude::Error> for AppError {
@@ -95,6 +98,9 @@ impl AppError {
                 format!("Discord操作エラー: {e}")
             }
             AppError::ChannelCreationFailed => "チャンネルの作成に失敗しました。".to_string(),
+            AppError::InCategoryChannelError => {
+                "このコマンドはカテゴリ外のチャンネルで実行してください。".to_string()
+            }
         }
     }
 }

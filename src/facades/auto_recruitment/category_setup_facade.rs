@@ -140,8 +140,17 @@ pub async fn register_category(
 /// * `ctx` - Discord Context
 /// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
+/// * `command_channel_id` - コマンド実行チャンネルID
+///
+/// # エラー
+/// * カテゴリ内のチャンネルでコマンドが実行された場合、`InCategoryChannelError`を返す
 #[instrument(level = "info", skip(ctx, app_state))]
-pub async fn unregister_category(ctx: &Context, app_state: &AppState, guild_id: u64) -> Result<()> {
+pub async fn unregister_category(
+    ctx: &Context,
+    app_state: &AppState,
+    guild_id: u64,
+    command_channel_id: u64,
+) -> Result<()> {
     info!(guild_id, "自動募集カテゴリを解除します");
 
     let conn = app_state.guild_db();
@@ -155,12 +164,24 @@ pub async fn unregister_category(ctx: &Context, app_state: &AppState, guild_id: 
         let channel_repo = SeaOrmAutoRecruitmentChannelRepository::new();
 
         // 自動募集設定を取得
-        let _auto_recruitment = auto_recruitment_repo
+        let auto_recruitment = auto_recruitment_repo
             .find_by_guild_id(&txn, guild_id as i64)
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "このギルドには自動募集が登録されていません".to_string(),
             })?;
+
+        // コマンド実行チャンネルがカテゴリ内かどうかを判定
+        let command_channel = ChannelId::new(command_channel_id);
+        if let Ok(channel) = command_channel.to_channel(&ctx.http).await {
+            if let Some(guild_channel) = channel.guild() {
+                if let Some(parent_id) = guild_channel.parent_id {
+                    if parent_id.get() == auto_recruitment.category_id as u64 {
+                        return Err(AppError::InCategoryChannelError);
+                    }
+                }
+            }
+        }
 
         // 日時チャンネルを削除（Discordからも削除）
         let channels = channel_repo.find_by_guild_id(&txn, guild_id as i64).await?;

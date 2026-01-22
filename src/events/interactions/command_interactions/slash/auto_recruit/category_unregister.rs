@@ -1,8 +1,10 @@
 //! 自動募集カテゴリ解除コマンド
 
 use crate::facades::auto_recruitment;
+use crate::services::message::MessageTextId;
 use crate::services::permission::check_bot_control_role;
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
+use rust_i18n::t;
 use tracing::error;
 
 /// 自動募集カテゴリを解除
@@ -23,16 +25,23 @@ use tracing::error;
 pub async fn auto_recruit_category_unregister(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer_ephemeral().await?;
 
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Business {
-            message: "このコマンドはサーバー内でのみ使用できます。".to_string(),
-        })?;
+    let guild_id = ctx.guild_id().ok_or_else(|| AppError::Business {
+        message: "このコマンドはサーバー内でのみ使用できます。".to_string(),
+    })?;
 
+    let channel_id = ctx.channel_id();
     let app_state = &ctx.data().app_state;
     let serenity_ctx = ctx.serenity_context();
+    let locale = ctx.locale().unwrap_or("ja");
 
-    match auto_recruitment::unregister_category(serenity_ctx, app_state, guild_id.get()).await {
+    match auto_recruitment::unregister_category(
+        serenity_ctx,
+        app_state,
+        guild_id.get(),
+        channel_id.get(),
+    )
+    .await
+    {
         Ok(()) => {
             ctx.send(
                 poise::CreateReply::default()
@@ -43,11 +52,25 @@ pub async fn auto_recruit_category_unregister(ctx: PoiseContext<'_>) -> Result<(
             )
             .await?;
         }
+        Err(AppError::InCategoryChannelError) => {
+            // カテゴリ内チャンネルで実行された場合は多言語メッセージを表示
+            let message = t!(
+                MessageTextId::AutoRecruitmentUnregisterInCategoryError.as_str(),
+                locale = locale
+            )
+            .to_string();
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("⚠️ {message}"))
+                    .ephemeral(true),
+            )
+            .await?;
+        }
         Err(e) => {
             error!(error = %e, guild_id = guild_id.get(), "自動募集カテゴリの解除に失敗しました");
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("エラー: {}", e))
+                    .content(format!("エラー: {e}"))
                     .ephemeral(true),
             )
             .await?;

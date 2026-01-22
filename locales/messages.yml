@@ -345,3 +345,6 @@ auto_recruitment.channel_create_failed:
 auto_recruitment.time_select_placeholder:
   ja: "参加可能な時間を選択（複数選択可）"
   en: "Select available times (multiple selection)"
+auto_recruitment.unregister_in_category_error:
+  ja: "このコマンドは自動募集カテゴリ外のチャンネルで実行してください。"
+  en: "Please execute this command in a channel outside the auto-recruitment category."
