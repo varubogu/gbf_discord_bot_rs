@@ -30,11 +30,11 @@ pub async fn auto_recruit_category_register(
     category: Channel,
 
     #[name_localized("ja", "募集日数")]
-    #[description = "Days range (2-7)"]
-    #[description_localized("ja", "募集する日数（2〜7日）")]
+    #[description = "Days range (2-7, default: 7)"]
+    #[description_localized("ja", "募集する日数（2〜7日、デフォルト: 7日）")]
     #[min = 2]
     #[max = 7]
-    days: i32,
+    days: Option<i32>,
 
     #[name_localized("ja", "マッチングチャンネル")]
     #[description = "Matching notification channel"]
@@ -67,6 +67,7 @@ pub async fn auto_recruit_category_register(
 
     let matching_channel_id = matching_channel.map(|c| c.id().get());
     let quest_channel_id = quest_channel.map(|c| c.id().get());
+    let days_range = days.unwrap_or(7);
 
     let app_state = &ctx.data().app_state;
     let serenity_ctx = ctx.serenity_context();
@@ -76,7 +77,7 @@ pub async fn auto_recruit_category_register(
         app_state,
         guild_id.get(),
         category_id,
-        days,
+        days_range,
         matching_channel_id,
         quest_channel_id,
     )
@@ -88,7 +89,7 @@ pub async fn auto_recruit_category_register(
                  **カテゴリ:** <#{}>\n\
                  **募集日数:** {}日\n\
                  **作成されたチャンネル数:** {}",
-                result.category_id, days, result.channel_count
+                result.category_id, days_range, result.channel_count
             );
 
             if let Some(ch_id) = matching_channel_id {
