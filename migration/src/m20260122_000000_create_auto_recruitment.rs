@@ -32,7 +32,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_auto_recruitments_updated_at
             BEFORE UPDATE ON guild_master.auto_recruitments
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
@@ -63,7 +63,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_auto_recruitment_channels_updated_at
             BEFORE UPDATE ON guild_master.auto_recruitment_channels
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
@@ -99,7 +99,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_user_desired_quests_updated_at
             BEFORE UPDATE ON guild_master.user_desired_quests
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
@@ -130,7 +130,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_auto_recruitment_participants_updated_at
             BEFORE UPDATE ON guild_master.auto_recruitment_participants
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
@@ -173,7 +173,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_matched_recruitment_channels_updated_at
             BEFORE UPDATE ON worker.matched_recruitment_channels
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
@@ -202,7 +202,7 @@ impl MigrationTrait for Migration {
         conn.execute_unprepared(
             "CREATE TRIGGER set_matched_recruitment_votes_updated_at
             BEFORE UPDATE ON worker.matched_recruitment_votes
-            FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
         )
         .await?;
 
