@@ -5,8 +5,7 @@
 use crate::facades::auto_recruitment;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
-    ComponentInteraction, ComponentInteractionDataKind, Context, CreateInteractionResponse,
-    CreateInteractionResponseMessage,
+    ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
 use tracing::{error, info};
 
@@ -18,6 +17,12 @@ pub async fn handle_vote_interaction(
     interaction: &ComponentInteraction,
     data: &PoiseData,
 ) -> Result<()> {
+    // DB操作があるため、即座にdeferして処理時間を確保
+    interaction.defer_ephemeral(&ctx.http).await.map_err(|e| {
+        error!(error = %e, "defer_ephemeralに失敗しました");
+        AppError::Discord(Box::new(e))
+    })?;
+
     // Matched IDを抽出
     let matched_id = extract_matched_id(&interaction.data.custom_id)?;
     let user_id = interaction.user.id.get();
@@ -69,26 +74,15 @@ pub async fn handle_vote_interaction(
             };
 
             interaction
-                .create_response(
-                    &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(message)
-                            .ephemeral(true),
-                    ),
-                )
+                .edit_response(&ctx.http, EditInteractionResponse::new().content(message))
                 .await?;
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, matched_id, "投票の処理に失敗しました");
             interaction
-                .create_response(
+                .edit_response(
                     &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(format!("エラー: {}", e))
-                            .ephemeral(true),
-                    ),
+                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
                 )
                 .await?;
         }

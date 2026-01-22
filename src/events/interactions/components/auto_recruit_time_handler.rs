@@ -5,8 +5,7 @@
 use crate::facades::auto_recruitment;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
-    ComponentInteraction, ComponentInteractionDataKind, Context, CreateInteractionResponse,
-    CreateInteractionResponseMessage,
+    ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
 use tracing::{error, info};
 
@@ -18,6 +17,12 @@ pub async fn handle_time_selection_interaction(
     interaction: &ComponentInteraction,
     data: &PoiseData,
 ) -> Result<()> {
+    // DB操作があるため、即座にdeferして処理時間を確保
+    interaction.defer_ephemeral(&ctx.http).await.map_err(|e| {
+        error!(error = %e, "defer_ephemeralに失敗しました");
+        AppError::Discord(Box::new(e))
+    })?;
+
     // パラメータを抽出
     let (guild_id, month, day) = extract_params(&interaction.data.custom_id)?;
     let user_id = interaction.user.id.get();
@@ -37,13 +42,9 @@ pub async fn handle_time_selection_interaction(
 
     if selected_hours.is_empty() {
         interaction
-            .create_response(
+            .edit_response(
                 &ctx.http,
-                CreateInteractionResponse::Message(
-                    CreateInteractionResponseMessage::new()
-                        .content("時間を選択してください。")
-                        .ephemeral(true),
-                ),
+                EditInteractionResponse::new().content("時間を選択してください。"),
             )
             .await?;
         return Ok(());
@@ -80,29 +81,21 @@ pub async fn handle_time_selection_interaction(
                 .join(", ");
 
             interaction
-                .create_response(
+                .edit_response(
                     &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(format!(
-                                "✅ {}月{}日の参加可能時間を登録しました。\n登録した時間: {}",
-                                month, day, hours_str
-                            ))
-                            .ephemeral(true),
-                    ),
+                    EditInteractionResponse::new().content(format!(
+                        "✅ {}月{}日の参加可能時間を登録しました。\n登録した時間: {}",
+                        month, day, hours_str
+                    )),
                 )
                 .await?;
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, "時間選択の処理に失敗しました");
             interaction
-                .create_response(
+                .edit_response(
                     &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(format!("エラー: {}", e))
-                            .ephemeral(true),
-                    ),
+                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
                 )
                 .await?;
         }

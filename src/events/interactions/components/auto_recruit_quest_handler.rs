@@ -5,8 +5,7 @@
 use crate::facades::auto_recruitment;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
-    ComponentInteraction, ComponentInteractionDataKind, Context, CreateInteractionResponse,
-    CreateInteractionResponseMessage,
+    ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
 use tracing::{error, info};
 
@@ -18,6 +17,12 @@ pub async fn handle_quest_selection_interaction(
     interaction: &ComponentInteraction,
     data: &PoiseData,
 ) -> Result<()> {
+    // DB操作があるため、即座にdeferして処理時間を確保
+    interaction.defer_ephemeral(&ctx.http).await.map_err(|e| {
+        error!(error = %e, "defer_ephemeralに失敗しました");
+        AppError::Discord(Box::new(e))
+    })?;
+
     // Guild IDを抽出
     let guild_id = extract_guild_id(&interaction.data.custom_id)?;
     let user_id = interaction.user.id.get();
@@ -37,13 +42,9 @@ pub async fn handle_quest_selection_interaction(
 
     if selected_quest_ids.is_empty() {
         interaction
-            .create_response(
+            .edit_response(
                 &ctx.http,
-                CreateInteractionResponse::Message(
-                    CreateInteractionResponseMessage::new()
-                        .content("クエストを選択してください。")
-                        .ephemeral(true),
-                ),
+                EditInteractionResponse::new().content("クエストを選択してください。"),
             )
             .await?;
         return Ok(());
@@ -71,29 +72,21 @@ pub async fn handle_quest_selection_interaction(
         Ok(_result) => {
             let quest_count = selected_quest_ids.len();
             interaction
-                .create_response(
+                .edit_response(
                     &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(format!(
-                                "✅ {}個のクエストを登録しました。\n次に、参加可能な日時チャンネルで時間を選択してください。",
-                                quest_count
-                            ))
-                            .ephemeral(true),
-                    ),
+                    EditInteractionResponse::new().content(format!(
+                        "✅ {}個のクエストを登録しました。\n次に、参加可能な日時チャンネルで時間を選択してください。",
+                        quest_count
+                    )),
                 )
                 .await?;
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, "クエスト選択の処理に失敗しました");
             interaction
-                .create_response(
+                .edit_response(
                     &ctx.http,
-                    CreateInteractionResponse::Message(
-                        CreateInteractionResponseMessage::new()
-                            .content(format!("エラー: {}", e))
-                            .ephemeral(true),
-                    ),
+                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
                 )
                 .await?;
         }
