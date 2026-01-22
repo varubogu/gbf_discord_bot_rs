@@ -418,11 +418,28 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
 }
 
 /// 時間選択メッセージを送信
+///
+/// グラブルではAM5:00に日付が変わるため、1/21チャンネルは「1/21 5:00〜1/22 4:00」を対象とする。
+/// 選択肢は降順（夜の時間帯が先）で表示し、翌日分は「翌0:00」のように表記する。
+/// 内部値は0-28（5-23は当日、24-28は翌日0-4時を表す）。
 async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<()> {
-    // 0〜23時の24個の選択肢を1つのセレクトメニューで表示（最大25個まで可能）
-    let options: Vec<CreateSelectMenuOption> = (0..24)
-        .map(|hour| CreateSelectMenuOption::new(format!("{:02}:00", hour), format!("{}", hour)))
-        .collect();
+    // ゲーム内日付: 当日5:00〜翌日4:00（24時間）
+    // 降順で表示: 翌4:00, 翌3:00, 翌2:00, 翌1:00, 翌0:00, 23:00, 22:00, ..., 5:00
+    let mut options: Vec<CreateSelectMenuOption> = Vec::with_capacity(24);
+
+    // 翌日分（4:00→0:00の降順）- 内部値は28, 27, 26, 25, 24
+    for hour in (0..=4).rev() {
+        let label = format!("翌{hour}:00");
+        let value = (24 + hour).to_string(); // 24-28
+        options.push(CreateSelectMenuOption::new(label, value));
+    }
+
+    // 当日分（23:00→5:00の降順）- 内部値は23, 22, ..., 5
+    for hour in (5..=23).rev() {
+        let label = format!("{hour}:00");
+        let value = hour.to_string();
+        options.push(CreateSelectMenuOption::new(label, value));
+    }
 
     // 多言語対応のplaceholderを取得（デフォルトは日本語）
     let placeholder = t!(
