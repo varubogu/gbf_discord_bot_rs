@@ -12,6 +12,10 @@ pub struct CreateAutoRecruitmentParams {
     pub category_id: i64,
     pub matching_channel_id: Option<i64>,
     pub quest_channel_id: Option<i64>,
+    pub matching_channel_is_bot_created: bool,
+    pub quest_channel_is_bot_created: bool,
+    pub matching_message_id: Option<i64>,
+    pub quest_message_id: Option<i64>,
     pub days_range: i32,
 }
 

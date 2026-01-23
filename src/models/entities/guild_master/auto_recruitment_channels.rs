@@ -19,6 +19,10 @@ pub struct Model {
     pub day: i32,
     /// 並び順
     pub sort_order: i32,
+    /// Botが作成したチャンネルかどうか
+    pub is_bot_created: bool,
+    /// 時間選択メッセージID
+    pub message_id: Option<i64>,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -49,6 +53,8 @@ impl ActiveModelBehavior for ActiveModel {
             month: sea_orm::NotSet,
             day: sea_orm::NotSet,
             sort_order: sea_orm::Set(0),
+            is_bot_created: sea_orm::Set(false),
+            message_id: sea_orm::NotSet,
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),
         }

@@ -95,10 +95,12 @@ impl AutoRecruitmentChannelRepositoryTrait for SeaOrmAutoRecruitmentChannelRepos
         month: i32,
         day: i32,
         sort_order: i32,
+        is_bot_created: bool,
+        message_id: Option<i64>,
     ) -> Result<auto_recruitment_channels::Model> {
         debug!(
             guild_id,
-            channel_id, month, day, "日時チャンネルを作成します"
+            channel_id, month, day, is_bot_created, "日時チャンネルを作成します"
         );
 
         let now = chrono::Utc::now();
@@ -109,6 +111,8 @@ impl AutoRecruitmentChannelRepositoryTrait for SeaOrmAutoRecruitmentChannelRepos
             month: Set(month),
             day: Set(day),
             sort_order: Set(sort_order),
+            is_bot_created: Set(is_bot_created),
+            message_id: Set(message_id),
             created_at: Set(now),
             updated_at: Set(now),
         };

@@ -17,6 +17,14 @@ pub struct Model {
     pub matching_channel_id: Option<i64>,
     /// クエストチャンネルID
     pub quest_channel_id: Option<i64>,
+    /// マッチングチャンネルがBot作成かどうか
+    pub matching_channel_is_bot_created: bool,
+    /// クエストチャンネルがBot作成かどうか
+    pub quest_channel_is_bot_created: bool,
+    /// マッチングチャンネルに送信したメッセージID
+    pub matching_message_id: Option<i64>,
+    /// クエストチャンネルに送信したメッセージID
+    pub quest_message_id: Option<i64>,
     /// 募集日数（2-7日、デフォルト7日）
     pub days_range: i32,
     pub created_at: DateTimeUtc,
@@ -47,6 +55,10 @@ impl ActiveModelBehavior for ActiveModel {
             category_id: sea_orm::NotSet,
             matching_channel_id: sea_orm::NotSet,
             quest_channel_id: sea_orm::NotSet,
+            matching_channel_is_bot_created: sea_orm::Set(false),
+            quest_channel_is_bot_created: sea_orm::Set(false),
+            matching_message_id: sea_orm::NotSet,
+            quest_message_id: sea_orm::NotSet,
             days_range: sea_orm::Set(7), // デフォルト7日
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),

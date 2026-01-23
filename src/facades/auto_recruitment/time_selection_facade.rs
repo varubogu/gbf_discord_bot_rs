@@ -4,11 +4,10 @@
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::{
-    AutoRecruitmentParticipantRepository, AutoRecruitmentRepository, UserDesiredQuestRepository,
+    AutoRecruitmentParticipantRepository, AutoRecruitmentRepository,
 };
 use crate::repository::database::auto_recruitment::{
     SeaOrmAutoRecruitmentParticipantRepository, SeaOrmAutoRecruitmentRepository,
-    SeaOrmUserDesiredQuestRepository,
 };
 use crate::types::{AppError, AppState, Result};
 use poise::serenity_prelude::Context;
@@ -64,7 +63,6 @@ pub async fn handle_time_selection(
     let result = async {
         let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
         let participant_repo = SeaOrmAutoRecruitmentParticipantRepository::new();
-        let quest_repo = SeaOrmUserDesiredQuestRepository::new();
 
         // 自動募集設定を確認
         let _auto_recruitment = auto_recruitment_repo
@@ -73,17 +71,6 @@ pub async fn handle_time_selection(
             .ok_or_else(|| AppError::Business {
                 message: "このギルドには自動募集が登録されていません".to_string(),
             })?;
-
-        // ユーザーがクエストを登録しているか確認
-        let user_quests = quest_repo
-            .find_by_user(&txn, guild_id as i64, user_id as i64)
-            .await?;
-
-        if user_quests.is_empty() {
-            return Err(AppError::Business {
-                message: "先にクエスト選択チャンネルで希望クエストを選択してください".to_string(),
-            });
-        }
 
         // 既存の時間登録を削除して新しく登録
         participant_repo

@@ -38,6 +38,8 @@ pub trait AutoRecruitmentChannelRepository: Send + Sync {
         month: i32,
         day: i32,
         sort_order: i32,
+        is_bot_created: bool,
+        message_id: Option<i64>,
     ) -> Result<auto_recruitment_channels::Model>;
 
     /// 日時チャンネルの日付を更新

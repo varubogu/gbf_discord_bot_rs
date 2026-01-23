@@ -36,6 +36,8 @@
 
 ### カテゴリ解除コマンド
 - 指定したカテゴリの自動募集機能を解除
+- Bot作成チャンネル（マッチング、クエスト、日時）は削除
+- ユーザー指定チャンネルはBotが送信したメッセージのみ削除（チャンネルは残す）
 
 ### 日数変更コマンド
 - 募集する日数を変更（2日〜7日まで変更可能）
@@ -132,6 +134,12 @@
 ### ギルド自動募集テーブル（guild_master.auto_recruitments）
 - guild_id
 - category_id（カテゴリID）
+- matching_channel_id（マッチングチャンネルID）
+- quest_channel_id（クエストチャンネルID）
+- matching_channel_is_bot_created（マッチングチャンネルがBot作成か）
+- quest_channel_is_bot_created（クエストチャンネルがBot作成か）
+- matching_message_id（マッチングチャンネルに送信したメッセージID）
+- quest_message_id（クエストチャンネルに送信したメッセージID）
 - days_range（何日分募集するか）
 - created_at
 - updated_at
@@ -141,6 +149,9 @@
 - channel_id（チャンネルID）
 - month（何月の募集か）
 - day（何日の募集か）
+- sort_order（並び順）
+- is_bot_created（Bot作成チャンネルか）
+- message_id（送信したメッセージID）
 - created_at
 - updated_at
 

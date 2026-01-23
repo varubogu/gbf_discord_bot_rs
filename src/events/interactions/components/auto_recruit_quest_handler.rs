@@ -71,15 +71,28 @@ pub async fn handle_quest_selection_interaction(
     {
         Ok(_result) => {
             let quest_count = selected_quest_ids.len();
+
+            // ユーザーへの応答を先に送信
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!(
-                        "✅ {}個のクエストを登録しました。\n次に、参加可能な日時チャンネルで時間を選択してください。",
-                        quest_count
-                    )),
+                    EditInteractionResponse::new()
+                        .content(format!("✅ {}個のクエストを登録しました。", quest_count)),
                 )
                 .await?;
+
+            // マッチングチェックと通知（応答後に実行）
+            if let Err(e) = auto_recruitment::check_and_notify_after_quest_selection(
+                ctx,
+                app_state,
+                guild_id,
+                user_id,
+                selected_quest_ids,
+            )
+            .await
+            {
+                error!(error = %e, guild_id, user_id, "マッチングチェックに失敗しました");
+            }
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, "クエスト選択の処理に失敗しました");
