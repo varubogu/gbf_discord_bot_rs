@@ -1,7 +1,7 @@
 # ================================
 # ビルドステージ
 # ================================
-FROM rust:latest AS builder
+FROM rust:1.93-bookworm AS builder
 
 WORKDIR /build
 
@@ -36,13 +36,11 @@ RUN cargo build --release --bin gbf_discord_bot_rs
 # ================================
 FROM debian:bookworm-slim
 
-# PostgreSQLクライアントライブラリとCA証明書をインストール
-# - ca-certificates: HTTPS通信（Google Sheets API等）に必要
-# - libpq5: PostgreSQL接続に必要
+# CA証明書をインストール（HTTPS通信に必要）
+# 注: PostgreSQL接続はsqlxの純粋Rust実装を使用するためlibpqは不要
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libpq5 && \
+    ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # セキュリティのため非rootユーザーで実行

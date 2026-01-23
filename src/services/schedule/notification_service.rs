@@ -166,6 +166,16 @@ impl NotificationService {
             "通知メッセージを取得します"
         );
 
+        // message_text_id が「-」の場合はメッセージなしとして送信をスキップ
+        if notification.message_text_id == "-" {
+            info!(
+                notification_id = notification.id,
+                guild_id = notification.guild_id,
+                "メッセージなし（-）のため送信をスキップしました"
+            );
+            return Ok(());
+        }
+
         // リレーションを確認してマルチ募集通知かどうかを判定
         if let Some(rel) = self
             .rel_repo
