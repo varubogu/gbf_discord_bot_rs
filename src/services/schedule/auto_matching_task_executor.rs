@@ -227,6 +227,19 @@ impl AutoMatchingTaskExecutor {
                     matching.scheduled_hour,
                 );
 
+                // 出発時刻が過去の場合はスキップ
+                let now = Utc::now();
+                if quest_start_at <= now {
+                    info!(
+                        guild_id,
+                        matching_id = %matching.id,
+                        quest_start_at = %quest_start_at,
+                        now = %now,
+                        "出発時刻が過去のためマルチ募集の作成をスキップしました"
+                    );
+                    continue;
+                }
+
                 // マルチ募集を作成
                 let params = MatchingRecruitmentParams {
                     guild_id,
