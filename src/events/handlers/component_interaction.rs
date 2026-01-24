@@ -14,8 +14,95 @@ pub async fn on_component_interaction(
     let custom_id = &interaction.data.custom_id;
     debug!(custom_id = %custom_id, "ComponentInteraction受信");
 
+    // 自動募集クエスト選択確認ボタンの処理
+    if custom_id.starts_with("auto_quest_selection_check:") {
+        use crate::events::interactions::components::auto_recruit_selection_check_handler;
+
+        info!(custom_id = %custom_id, "自動募集クエスト選択確認ボタンを検出");
+
+        match auto_recruit_selection_check_handler::handle_selection_check_button(
+            ctx,
+            interaction,
+            data,
+        )
+        .await
+        {
+            Ok(_) => {
+                info!("自動募集クエスト選択確認ボタンの処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集クエスト選択確認ボタンの処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集クエスト参加ボタンの処理（1クエスト1メッセージ形式）
+    else if custom_id.starts_with("auto_quest_join:") {
+        use crate::events::interactions::components::auto_recruit_quest_join_handler;
+
+        info!(custom_id = %custom_id, "自動募集クエスト参加ボタンを検出");
+
+        match auto_recruit_quest_join_handler::handle_quest_join_button(ctx, interaction, data)
+            .await
+        {
+            Ok(_) => {
+                info!("自動募集クエスト参加ボタンの処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集クエスト参加ボタンの処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集属性選択の処理（1クエスト1メッセージ形式）
+    else if custom_id.starts_with("auto_quest_element:") {
+        use crate::events::interactions::components::auto_recruit_element_handler;
+
+        info!(custom_id = %custom_id, "自動募集属性選択を検出");
+
+        match auto_recruit_element_handler::handle_element_selection(ctx, interaction, data).await {
+            Ok(_) => {
+                info!("自動募集属性選択の処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集属性選択の処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集クエスト選択の処理（レガシー：セレクトメニュー形式）
+    else if custom_id.starts_with("auto_quest_select:") {
+        use crate::events::interactions::components::auto_recruit_quest_handler;
+
+        info!(custom_id = %custom_id, "自動募集クエスト選択を検出");
+
+        match auto_recruit_quest_handler::handle_quest_selection_interaction(ctx, interaction, data)
+            .await
+        {
+            Ok(_) => {
+                info!("自動募集クエスト選択の処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集クエスト選択の処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集時間選択の処理
+    else if custom_id.starts_with("auto_time_select:") {
+        use crate::events::interactions::components::auto_recruit_time_handler;
+
+        info!(custom_id = %custom_id, "自動募集時間選択を検出");
+
+        match auto_recruit_time_handler::handle_time_selection_interaction(ctx, interaction, data)
+            .await
+        {
+            Ok(_) => {
+                info!("自動募集時間選択の処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集時間選択の処理中にエラーが発生しました");
+            }
+        }
+    }
     // 募集変更のセレクトメニューを処理
-    if custom_id.starts_with("recruit_change_") {
+    else if custom_id.starts_with("recruit_change_") {
         use crate::events::interactions::components::recruit_change_handler;
 
         info!(custom_id = %custom_id, "募集変更インタラクションを検出");

@@ -1,5 +1,6 @@
 use crate::events::handlers;
 use crate::types::{AppError, PoiseData, Result};
+use tracing::{debug, info};
 
 #[allow(dead_code)]
 pub async fn event_handler(
@@ -31,8 +32,17 @@ pub async fn event_handler(
             handlers::reaction_remove::on_reaction_remove(ctx, removed_reaction, data).await?;
         }
         poise::serenity_prelude::FullEvent::InteractionCreate { interaction } => {
+            debug!(
+                interaction_type = ?interaction.kind(),
+                "InteractionCreateイベントを受信"
+            );
+
             // ComponentInteraction（ボタンクリック等）を処理
             if let Some(component_interaction) = interaction.as_message_component() {
+                info!(
+                    custom_id = %component_interaction.data.custom_id,
+                    "ComponentInteractionを検出"
+                );
                 handlers::component_interaction::on_component_interaction(
                     ctx,
                     component_interaction,

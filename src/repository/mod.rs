@@ -1,4 +1,5 @@
 pub mod all_recruitment_notification_roles_repository;
+pub mod auto_recruitment;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
@@ -20,6 +21,11 @@ pub mod schedule;
 
 // 抽象インターフェースをre-export
 pub use all_recruitment_notification_roles_repository::AllRecruitmentNotificationRolesRepository;
+pub use auto_recruitment::{
+    AutoRecruitmentChannelRepository, AutoRecruitmentParticipantRepository,
+    AutoRecruitmentQuestMessageRepository, AutoRecruitmentRepository, CreateAutoRecruitmentParams,
+    QuestMatchingRepository, QuestMatchingUserRepository, UserDesiredQuestRepository,
+};
 pub use battle_recruitments_repository::{
     BattleRecruitmentsRepository, CreateBattleRecruitmentParams,
 };

@@ -1,0 +1,17 @@
+//! 自動募集関連リポジトリのSeaORM実装
+
+pub mod auto_recruitment_channel_repository;
+pub mod auto_recruitment_participant_repository;
+pub mod auto_recruitment_quest_message_repository;
+pub mod auto_recruitment_repository;
+pub mod quest_matching_repository;
+pub mod quest_matching_user_repository;
+pub mod user_desired_quest_repository;
+
+pub use auto_recruitment_channel_repository::SeaOrmAutoRecruitmentChannelRepository;
+pub use auto_recruitment_participant_repository::SeaOrmAutoRecruitmentParticipantRepository;
+pub use auto_recruitment_quest_message_repository::SeaOrmAutoRecruitmentQuestMessageRepository;
+pub use auto_recruitment_repository::SeaOrmAutoRecruitmentRepository;
+pub use quest_matching_repository::SeaOrmQuestMatchingRepository;
+pub use quest_matching_user_repository::SeaOrmQuestMatchingUserRepository;
+pub use user_desired_quest_repository::SeaOrmUserDesiredQuestRepository;

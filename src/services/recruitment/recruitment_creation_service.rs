@@ -22,11 +22,23 @@ use crate::services::schedule::{DismissalManagementService, NotificationManageme
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
-use chrono::TimeZone;
+use chrono::{TimeZone, Utc};
 use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, info};
+
+/// マッチングから募集を作成するためのパラメータ
+pub struct MatchingRecruitmentParams {
+    /// ギルドID
+    pub guild_id: i64,
+    /// クエストID
+    pub quest_id: i32,
+    /// 出発時刻（UTC）
+    pub quest_start_at: chrono::DateTime<Utc>,
+    /// 参加ユーザーID一覧（メンション用）
+    pub participant_user_ids: Vec<u64>,
+}
 
 /// 募集作成Service
 /// スケジュールから募集を作成する責務を持つ
@@ -313,5 +325,199 @@ impl RecruitmentCreationService {
         }
 
         Ok(())
+    }
+
+    /// マッチングから募集を作成
+    /// マッチング成立時に自動的に募集を作成
+    ///
+    /// # 戻り値
+    /// 作成された募集のID
+    pub async fn create_recruitment_from_matching(
+        &self,
+        txn: &DatabaseTransaction,
+        db_conn: &DatabaseConnection,
+        http: &Arc<Http>,
+        params: &MatchingRecruitmentParams,
+    ) -> Result<i32> {
+        debug!(
+            guild_id = params.guild_id,
+            quest_id = params.quest_id,
+            "マッチングから募集を作成します"
+        );
+
+        // RLSポリシーのためにセッション変数を設定
+        set_current_guild_id(txn, params.guild_id).await?;
+
+        // 0. マルチ募集チャンネルを取得（channel_type = 2）
+        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
+        let guild_channel = guild_channel_repo
+            .get_by_guild_and_type_with_txn(txn, params.guild_id, 2)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "ギルドID {} にマルチ募集チャンネルが登録されていません",
+                    params.guild_id
+                ))
+            })?;
+
+        let recruitment_channel_id = guild_channel.channel_id;
+        debug!(
+            recruitment_channel_id = recruitment_channel_id,
+            "マルチ募集チャンネルを取得しました"
+        );
+
+        // 1. Quest, BattleStyle（デフォルト）, タイムゾーンを取得
+        let quest_repo = SeaOrmQuestRepository::new();
+        let battle_style_repo = SeaOrmBattleStyleRepository::new();
+        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+        let timezone_service = TimezoneService::new(timezone_repo);
+
+        let quest = quest_repo
+            .get_by_target_id(db_conn, params.quest_id)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "クエストID {} が見つかりませんでした",
+                    params.quest_id
+                ))
+            })?;
+
+        // クエストのデフォルト攻略方法を使用
+        let battle_style = battle_style_repo
+            .get_by_id(db_conn, quest.default_battle_style_id)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "攻略方法ID {} が見つかりませんでした",
+                    quest.default_battle_style_id
+                ))
+            })?;
+
+        let timezone = timezone_service
+            .get_guild_timezone(db_conn, params.guild_id)
+            .await?;
+
+        // 2. ロールメンションを取得
+        let role_service = RoleNotificationService::new();
+        let role_mentions = role_service
+            .get_role_mentions(txn, params.guild_id, quest.id)
+            .await?;
+
+        // 3. メッセージ内容を作成（マッチングでは解散時刻なし）
+        let mut message_content = create_message_content(
+            txn,
+            &quest.name,
+            &battle_style.display_name,
+            &params.quest_start_at,
+            timezone,
+            Some(params.guild_id),
+            None, // 解散時刻なし
+        )
+        .await?;
+
+        // ロールメンションを先頭に追加
+        if !role_mentions.is_empty() {
+            debug!(
+                role_mentions = %role_mentions,
+                "ロールメンションを募集メッセージの先頭に追加します"
+            );
+            message_content = format!("{role_mentions}\n{message_content}");
+        }
+
+        // マッチングユーザーのメンションを追加
+        if !params.participant_user_ids.is_empty() {
+            let user_mentions: Vec<String> = params
+                .participant_user_ids
+                .iter()
+                .map(|user_id| format!("<@{}>", user_id))
+                .collect();
+            message_content = format!("{}\n{message_content}", user_mentions.join(" "));
+        }
+
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+        let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
+        let element_emojis = guild_env_service
+            .get_element_emojis(txn, http, params.guild_id)
+            .await?;
+
+        // 4. Embedを作成
+        let initial_participants_text = create_initial_participants_text_for_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
+        let embed = CreateEmbed::new()
+            .title("参加者一覧")
+            .description(&initial_participants_text)
+            .color(0x0099ff);
+
+        // 5. ボタンを作成
+        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+
+        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
+        let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
+        let message = channel_id
+            .send_message(
+                http,
+                CreateMessage::new()
+                    .content(message_content)
+                    .embed(embed)
+                    .components(buttons),
+            )
+            .await?;
+
+        let message_id = message.id.get();
+
+        debug!(
+            message_id = %message_id,
+            "Discordメッセージを投稿しました"
+        );
+
+        // 7. battle_recruitmentsに保存
+        let repos = RepositoryContainer::new();
+        let battle_recruitment_repo = repos.battle_recruitment();
+
+        let recruitment = battle_recruitment_repo
+            .create_with_txn(
+                txn,
+                crate::repository::CreateBattleRecruitmentParams {
+                    guild_id: params.guild_id as u64,
+                    channel_id: recruitment_channel_id as u64,
+                    message_id,
+                    quest_id: quest.id,
+                    battle_style_id: quest.default_battle_style_id,
+                    quest_start_at: params.quest_start_at,
+                },
+            )
+            .await?;
+
+        info!(
+            recruitment_id = recruitment.id,
+            "マッチング募集をデータベースに登録しました"
+        );
+
+        // 8. 出発時刻の通知を登録（5分前とちょうどの時刻）
+        debug!(
+            quest_start_at = %params.quest_start_at,
+            "募集の出発通知を登録します"
+        );
+
+        let notification_management_service = NotificationManagementService::new();
+        notification_management_service
+            .create_recruitment_departure_notification(
+                txn,
+                params.quest_start_at,
+                params.guild_id,
+                recruitment_channel_id,
+                recruitment.id,
+            )
+            .await?;
+
+        info!(
+            recruitment_id = recruitment.id,
+            "マッチング募集の出発通知を登録しました"
+        );
+
+        Ok(recruitment.id)
     }
 }

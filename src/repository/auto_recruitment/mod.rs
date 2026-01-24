@@ -1,0 +1,17 @@
+//! 自動募集関連リポジトリの抽象インターフェース
+
+pub mod auto_recruitment_channel_repository;
+pub mod auto_recruitment_participant_repository;
+pub mod auto_recruitment_quest_message_repository;
+pub mod auto_recruitment_repository;
+pub mod quest_matching_repository;
+pub mod quest_matching_user_repository;
+pub mod user_desired_quest_repository;
+
+pub use auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
+pub use auto_recruitment_participant_repository::AutoRecruitmentParticipantRepository;
+pub use auto_recruitment_quest_message_repository::AutoRecruitmentQuestMessageRepository;
+pub use auto_recruitment_repository::{AutoRecruitmentRepository, CreateAutoRecruitmentParams};
+pub use quest_matching_repository::QuestMatchingRepository;
+pub use quest_matching_user_repository::QuestMatchingUserRepository;
+pub use user_desired_quest_repository::UserDesiredQuestRepository;

@@ -24,6 +24,12 @@ pub enum AppError {
 
     #[error("Discord operation error: {0}")]
     DiscordOperation(Box<crate::types::DiscordOperationError>),
+
+    #[error("Channel creation failed")]
+    ChannelCreationFailed,
+
+    #[error("Command executed in category channel")]
+    InCategoryChannelError,
 }
 
 impl From<poise::serenity_prelude::Error> for AppError {
@@ -90,6 +96,10 @@ impl AppError {
             AppError::NotFound(msg) => msg.clone(),
             AppError::DiscordOperation(e) => {
                 format!("Discord操作エラー: {e}")
+            }
+            AppError::ChannelCreationFailed => "チャンネルの作成に失敗しました。".to_string(),
+            AppError::InCategoryChannelError => {
+                "このコマンドはカテゴリ外のチャンネルで実行してください。".to_string()
             }
         }
     }

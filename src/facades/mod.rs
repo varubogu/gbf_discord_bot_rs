@@ -1,3 +1,4 @@
+pub mod auto_recruitment;
 pub(crate) mod channel;
 pub(crate) mod environment;
 pub mod guild;

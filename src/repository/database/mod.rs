@@ -1,4 +1,5 @@
 pub mod all_recruitment_notification_roles_repository;
+pub mod auto_recruitment;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
@@ -19,6 +20,12 @@ pub mod schedule;
 
 // 実装型をre-export
 pub use all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
+pub use auto_recruitment::{
+    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
+    SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
+    SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
+    SeaOrmUserDesiredQuestRepository,
+};
 pub use battle_style_repository::SeaOrmBattleStyleRepository;
 pub use guild_channel_repository::SeaOrmGuildChannelRepository;
 pub use guild_repository::SeaOrmGuildRepository;

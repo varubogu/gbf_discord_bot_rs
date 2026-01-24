@@ -154,6 +154,14 @@ pub mod keys {
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
     pub const MESSAGES_HELP: &str = "messages.help";
+
+    // Auto recruitment messages
+    pub const AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED: &str =
+        "auto_recruitment.channel_create_failed";
+    pub const AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER: &str =
+        "auto_recruitment.time_select_placeholder";
+    pub const AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR: &str =
+        "auto_recruitment.unregister_in_category_error";
 }
 
 /// メッセージID定義
@@ -299,6 +307,11 @@ pub enum MessageTextId {
     // General messages
     MessagesWelcome,
     MessagesHelp,
+
+    // Auto recruitment messages
+    AutoRecruitmentChannelCreateFailed,
+    AutoRecruitmentTimeSelectPlaceholder,
+    AutoRecruitmentUnregisterInCategoryError,
 }
 
 impl MessageTextId {
@@ -508,6 +521,17 @@ impl MessageTextId {
             // Messages
             MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
             MessageTextId::MessagesHelp => keys::MESSAGES_HELP,
+
+            // Auto recruitment
+            MessageTextId::AutoRecruitmentChannelCreateFailed => {
+                keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED
+            }
+            MessageTextId::AutoRecruitmentTimeSelectPlaceholder => {
+                keys::AUTO_RECRUITMENT_TIME_SELECT_PLACEHOLDER
+            }
+            MessageTextId::AutoRecruitmentUnregisterInCategoryError => {
+                keys::AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR
+            }
         }
     }
 }
@@ -681,6 +705,9 @@ mod tests {
             MessageTextId::RecruitmentCommandChangeSuccess,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
+            MessageTextId::AutoRecruitmentChannelCreateFailed,
+            MessageTextId::AutoRecruitmentTimeSelectPlaceholder,
+            MessageTextId::AutoRecruitmentUnregisterInCategoryError,
         ];
 
         // 各MessageTextIdに対してYAMLにキーが存在することを確認

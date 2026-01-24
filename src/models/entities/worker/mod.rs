@@ -5,6 +5,8 @@ pub mod last_process_times;
 pub mod notification_rel_battle_recruitments;
 pub mod notification_rel_event_schedules;
 pub mod notifications;
+pub mod quest_matching_users;
+pub mod quest_matchings;
 pub mod recruitment_participants;
 pub mod scheduled_task_cleanups;
 pub mod scheduled_task_dismissals;

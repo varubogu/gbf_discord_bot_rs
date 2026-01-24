@@ -1,6 +1,7 @@
 pub(crate) mod app_config;
 pub(crate) mod app_error;
 pub(crate) mod app_state;
+pub(crate) mod battle_style_id;
 pub(crate) mod constants;
 pub(crate) mod db_role;
 pub(crate) mod discord_operation;
@@ -11,6 +12,7 @@ pub(crate) mod recruitment_component_id;
 pub use app_config::AppConfig;
 pub use app_error::{AppError, Result};
 pub use app_state::AppState;
+pub use battle_style_id::BattleStyleId;
 pub use constants::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
 pub use db_role::DbRole;
 pub use discord_operation::{DiscordOperation, DiscordOperationError, DiscordOperationResult};

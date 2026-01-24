@@ -288,6 +288,53 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             }
                         }
                     }
+                    6 => {
+                        // AutoRecruitmentRotation
+                        info!(
+                            task_id = task.id,
+                            "自動募集日付ローテーションタスクを実行します"
+                        );
+                        use crate::repository::database::auto_recruitment::SeaOrmAutoRecruitmentChannelRepository;
+                        use crate::services::schedule::auto_recruitment_rotation_task_executor::AutoRecruitmentRotationTaskExecutor;
+
+                        let channel_repo = Arc::new(SeaOrmAutoRecruitmentChannelRepository::new());
+                        let executor = AutoRecruitmentRotationTaskExecutor::new(
+                            Arc::clone(task_repo),
+                            channel_repo,
+                        );
+
+                        match executor.execute(&txn, http, task.id).await {
+                            Ok(result) => {
+                                info!(task_id = task.id, result = ?result, "自動募集日付ローテーションタスクを実行しました");
+                            }
+                            Err(e) => {
+                                error!(task_id = task.id, error = %e, "自動募集日付ローテーションタスクの実行中にエラーが発生しました");
+                                // エラーがあっても他のタスクは継続
+                            }
+                        }
+                    }
+                    7 => {
+                        // AutoMatching
+                        info!(task_id = task.id, "自動マッチングタスクを実行します");
+                        use crate::services::schedule::auto_matching_task_executor::AutoMatchingTaskExecutor;
+
+                        let recruitment_creation_service =
+                            Arc::new(RecruitmentCreationService::new());
+                        let executor = AutoMatchingTaskExecutor::new(
+                            Arc::clone(task_repo),
+                            recruitment_creation_service,
+                        );
+
+                        match executor.execute(&txn, db, http, task.id).await {
+                            Ok(result) => {
+                                info!(task_id = task.id, result = ?result, "自動マッチングタスクを実行しました");
+                            }
+                            Err(e) => {
+                                error!(task_id = task.id, error = %e, "自動マッチングタスクの実行中にエラーが発生しました");
+                                // エラーがあっても他のタスクは継続
+                            }
+                        }
+                    }
                     _ => {
                         warn!(
                             task_id = task.id,
