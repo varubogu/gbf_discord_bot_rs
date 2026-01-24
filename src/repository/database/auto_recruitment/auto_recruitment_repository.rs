@@ -48,7 +48,6 @@ impl AutoRecruitmentRepositoryTrait for SeaOrmAutoRecruitmentRepository {
             matching_channel_is_bot_created: Set(params.matching_channel_is_bot_created),
             quest_channel_is_bot_created: Set(params.quest_channel_is_bot_created),
             matching_message_id: Set(params.matching_message_id),
-            quest_message_id: Set(params.quest_message_id),
             days_range: Set(params.days_range),
             created_at: Set(now),
             updated_at: Set(now),

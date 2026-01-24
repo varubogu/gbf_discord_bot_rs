@@ -65,9 +65,11 @@ pub async fn handle_quest_selection(
             .delete_all_by_user(&txn, guild_id as i64, user_id as i64)
             .await?;
 
+        // 属性指定なしクエストとしてbattle_style_id=0で登録
+        // 6属性クエストは別途UIから属性を指定して登録する
         for quest_id in &quest_ids {
             quest_repo
-                .create(&txn, guild_id as i64, user_id as i64, *quest_id)
+                .create(&txn, guild_id as i64, user_id as i64, *quest_id, 0)
                 .await?;
         }
 

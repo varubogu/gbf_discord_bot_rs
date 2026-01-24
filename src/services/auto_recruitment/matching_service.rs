@@ -1,349 +1,523 @@
 //! 自動募集マッチングサービス
 //!
 //! ユーザーの希望クエストと参加可能時間を照合し、
-//! マッチングを検出するサービス
+//! マッチングを検出してquest_matchingsテーブルに登録するサービス
+//!
+//! ## マッチングアルゴリズム
+//!
+//! 1. auto_recruitment_participantsとuser_desired_questsを結合
+//! 2. 同一の(guild_id, quest_id, month, day, hour)でグルーピング
+//! 3. 2人以上いるグループを抽出
+//! 4. 6属性クエストの場合は属性被りを考慮してグループ分け
+//! 5. quest_matchingsとquest_matching_usersに登録
 
-use crate::repository::auto_recruitment::{
-    AutoRecruitmentParticipantRepository, MatchedRecruitmentChannelRepository,
-    UserDesiredQuestRepository,
+use crate::models::entities::guild_master::{auto_recruitment_participants, user_desired_quests};
+use crate::models::entities::worker::quest_matchings;
+use crate::repository::QuestRepository;
+use crate::repository::auto_recruitment::{QuestMatchingRepository, QuestMatchingUserRepository};
+use crate::repository::database::auto_recruitment::{
+    SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
 };
+use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::types::Result;
-use sea_orm::DatabaseTransaction;
+use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use tracing::{debug, info};
 
-/// マッチング結果
+/// マッチング候補
 #[derive(Debug, Clone)]
-pub struct MatchResult {
-    /// マッチングした日時
+pub struct MatchCandidate {
+    pub guild_id: i64,
+    pub quest_id: i32,
     pub month: i32,
     pub day: i32,
     pub hour: i32,
-    /// マッチングしたユーザーID一覧
-    pub user_ids: Vec<i64>,
-    /// 共通のクエストID一覧
-    pub common_quest_ids: Vec<i32>,
-    /// 既存のマッチング済み募集があるかどうか
-    pub existing_matched_id: Option<i32>,
+    /// (user_id, battle_style_ids) のリスト
+    /// battle_style_ids: そのユーザーがこのクエストで希望する属性のリスト
+    pub users: Vec<(i64, Vec<i32>)>,
 }
 
-/// 自動募集マッチングサービス
-pub struct AutoMatchingService<P, Q, M>
-where
-    P: AutoRecruitmentParticipantRepository,
-    Q: UserDesiredQuestRepository,
-    M: MatchedRecruitmentChannelRepository,
-{
-    participant_repo: Arc<P>,
-    user_quest_repo: Arc<Q>,
-    matched_repo: Arc<M>,
+/// マッチング結果グループ
+#[derive(Debug, Clone)]
+pub struct MatchGroup {
+    pub guild_id: i64,
+    pub quest_id: i32,
+    pub month: i32,
+    pub day: i32,
+    pub hour: i32,
+    /// (user_id, assigned_battle_style_id) のリスト
+    /// assigned_battle_style_id: 0なら属性指定なし、None なら未確定
+    pub users: Vec<(i64, Option<i32>)>,
 }
 
-impl<P, Q, M> AutoMatchingService<P, Q, M>
-where
-    P: AutoRecruitmentParticipantRepository,
-    Q: UserDesiredQuestRepository,
-    M: MatchedRecruitmentChannelRepository,
-{
-    pub fn new(participant_repo: Arc<P>, user_quest_repo: Arc<Q>, matched_repo: Arc<M>) -> Self {
-        Self {
-            participant_repo,
-            user_quest_repo,
-            matched_repo,
-        }
+/// 周期マッチング処理用サービス
+///
+/// 10秒間隔で実行される周期マッチング処理で使用する
+pub struct PeriodicMatchingService;
+
+impl Default for PeriodicMatchingService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PeriodicMatchingService {
+    pub fn new() -> Self {
+        Self
     }
 
-    /// 参加時間追加時にマッチングを実行
+    /// マッチング候補を検出
     ///
-    /// 指定された日時に参加登録しているユーザーを検索し、
-    /// 共通するクエストがあるかチェックする
-    pub async fn check_match_by_time(
+    /// 各ギルドのauto_recruitment_participantsとuser_desired_questsを結合し、
+    /// 同じ(guild_id, quest_id, month, day, hour)でグルーピングして2人以上のグループを抽出
+    pub async fn find_match_candidates(
         &self,
         txn: &DatabaseTransaction,
-        guild_id: i64,
-        user_id: i64,
-        month: i32,
-        day: i32,
-        hour: i32,
-    ) -> Result<Option<MatchResult>> {
-        debug!(
-            guild_id,
-            user_id, month, day, hour, "参加時間追加によるマッチングをチェックします"
-        );
-
-        // 同じ日時に参加登録しているユーザーを取得
-        let participants = self
-            .participant_repo
-            .find_users_by_datetime(txn, guild_id, month, day, hour)
+    ) -> Result<Vec<MatchCandidate>> {
+        // 全ての参加可能時間を取得
+        let participants = auto_recruitment_participants::Entity::find()
+            .all(txn)
             .await?;
 
-        // 自分を除いた他のユーザーを取得
-        let other_user_ids: Vec<i64> = participants
-            .iter()
-            .filter(|p| p.user_id != user_id)
-            .map(|p| p.user_id)
-            .collect();
+        // 全ての希望クエストを取得
+        let desired_quests = user_desired_quests::Entity::find().all(txn).await?;
 
-        if other_user_ids.is_empty() {
-            debug!(guild_id, user_id, month, day, hour, "他の参加者がいません");
-            return Ok(None);
-        }
+        // ギルドごとの既存マッチングユーザーを取得
+        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
 
-        // 自分の希望クエストを取得
-        let my_quests = self
-            .user_quest_repo
-            .find_by_user(txn, guild_id, user_id)
+        // guild_id -> (quest_id, month, day, hour, user_id) のセットを構築
+        let mut existing_matches: HashMap<i64, HashSet<(i32, i32, i32, i32, i64)>> = HashMap::new();
+
+        // アクティブなマッチングを取得
+        let active_matchings = quest_matchings::Entity::find()
+            .filter(quest_matchings::Column::Status.eq("active"))
+            .all(txn)
             .await?;
-        let my_quest_ids: HashSet<i32> = my_quests.iter().map(|q| q.quest_id).collect();
 
-        if my_quest_ids.is_empty() {
-            debug!(guild_id, user_id, "希望クエストが登録されていません");
-            return Ok(None);
-        }
-
-        // 他のユーザーの希望クエストを取得し、共通クエストを探す
-        let mut matched_user_ids = vec![user_id];
-        let mut common_quest_ids: HashSet<i32> = my_quest_ids.clone();
-
-        for other_user_id in other_user_ids {
-            let other_quests = self
-                .user_quest_repo
-                .find_by_user(txn, guild_id, other_user_id)
+        for matching in active_matchings {
+            let users = matching_user_repo
+                .find_active_by_matching(txn, matching.guild_id, matching.id)
                 .await?;
-            let other_quest_ids: HashSet<i32> = other_quests.iter().map(|q| q.quest_id).collect();
 
-            // 共通クエストがあるかチェック
-            let intersection: HashSet<i32> = common_quest_ids
-                .intersection(&other_quest_ids)
-                .copied()
-                .collect();
+            let entry = existing_matches.entry(matching.guild_id).or_default();
 
-            if !intersection.is_empty() {
-                matched_user_ids.push(other_user_id);
-                common_quest_ids = intersection;
+            for user in users {
+                entry.insert((
+                    matching.quest_id,
+                    matching.scheduled_month,
+                    matching.scheduled_day,
+                    matching.scheduled_hour,
+                    user.user_id,
+                ));
             }
         }
 
-        // 2人以上でマッチング成功
-        if matched_user_ids.len() >= 2 {
-            info!(
-                guild_id,
-                month,
-                day,
-                hour,
-                user_count = matched_user_ids.len(),
-                quest_count = common_quest_ids.len(),
-                "マッチング成功"
-            );
+        // 参加者をギルド・ユーザーでグルーピング
+        // guild_id -> user_id -> [(month, day, hour)]
+        let mut participant_times: HashMap<i64, HashMap<i64, Vec<(i32, i32, i32)>>> =
+            HashMap::new();
 
-            // 既存のマッチング済み募集があるかチェック
-            let existing = self
-                .matched_repo
-                .find_by_datetime(txn, guild_id, month, day, hour)
-                .await?;
-
-            return Ok(Some(MatchResult {
-                month,
-                day,
-                hour,
-                user_ids: matched_user_ids,
-                common_quest_ids: common_quest_ids.into_iter().collect(),
-                existing_matched_id: existing.map(|m| m.id),
-            }));
+        for p in participants {
+            participant_times
+                .entry(p.guild_id)
+                .or_default()
+                .entry(p.user_id)
+                .or_default()
+                .push((p.month, p.day, p.hour));
         }
 
-        debug!(
-            guild_id,
-            user_id, month, day, hour, "マッチング条件を満たしていません"
-        );
-        Ok(None)
-    }
+        // 希望クエストをギルド・ユーザーでグルーピング
+        // guild_id -> user_id -> quest_id -> [battle_style_id]
+        let mut quest_prefs: HashMap<i64, HashMap<i64, HashMap<i32, Vec<i32>>>> = HashMap::new();
 
-    /// 希望クエスト追加時にマッチングを実行
-    ///
-    /// 追加されたクエストを希望している他のユーザーを検索し、
-    /// 参加時間が重なる場合をマッチングとして検出する
-    pub async fn check_match_by_quest(
-        &self,
-        txn: &DatabaseTransaction,
-        guild_id: i64,
-        user_id: i64,
-        quest_id: i32,
-    ) -> Result<Vec<MatchResult>> {
-        debug!(
-            guild_id,
-            user_id, quest_id, "希望クエスト追加によるマッチングをチェックします"
-        );
-
-        // 同じクエストを希望している他のユーザーを取得
-        let quest_users = self
-            .user_quest_repo
-            .find_users_by_quest(txn, guild_id, quest_id)
-            .await?;
-
-        let other_user_ids: Vec<i64> = quest_users
-            .iter()
-            .filter(|q| q.user_id != user_id)
-            .map(|q| q.user_id)
-            .collect();
-
-        if other_user_ids.is_empty() {
-            debug!(
-                guild_id,
-                user_id, quest_id, "同じクエストを希望している他のユーザーがいません"
-            );
-            return Ok(vec![]);
+        for q in desired_quests {
+            quest_prefs
+                .entry(q.guild_id)
+                .or_default()
+                .entry(q.user_id)
+                .or_default()
+                .entry(q.quest_id)
+                .or_default()
+                .push(q.battle_style_id);
         }
 
-        // 自分の参加可能時間を取得
-        let my_times = self
-            .participant_repo
-            .find_by_user(txn, guild_id, user_id)
-            .await?;
+        // マッチング候補を構築
+        // (guild_id, quest_id, month, day, hour) -> [(user_id, [battle_style_id])]
+        let mut candidates: HashMap<(i64, i32, i32, i32, i32), Vec<(i64, Vec<i32>)>> =
+            HashMap::new();
 
-        if my_times.is_empty() {
-            debug!(guild_id, user_id, "参加可能時間が登録されていません");
-            return Ok(vec![]);
-        }
+        for (guild_id, users) in &participant_times {
+            let existing = existing_matches.get(guild_id);
 
-        // 日時ごとにマッチングをチェック
-        let mut results = vec![];
-        let mut checked_datetimes: HashSet<(i32, i32, i32)> = HashSet::new();
+            if let Some(user_quests) = quest_prefs.get(guild_id) {
+                for (user_id, times) in users {
+                    if let Some(quests) = user_quests.get(user_id) {
+                        for (month, day, hour) in times {
+                            for (quest_id, battle_styles) in quests {
+                                // 既存マッチングに含まれていないか確認
+                                let is_already_matched = existing
+                                    .map(|e| {
+                                        e.contains(&(*quest_id, *month, *day, *hour, *user_id))
+                                    })
+                                    .unwrap_or(false);
 
-        for my_time in &my_times {
-            let datetime_key = (my_time.month, my_time.day, my_time.hour);
-            if checked_datetimes.contains(&datetime_key) {
-                continue;
-            }
-            checked_datetimes.insert(datetime_key);
-
-            // その日時に参加可能な他のユーザーを取得
-            let participants = self
-                .participant_repo
-                .find_users_by_datetime(txn, guild_id, my_time.month, my_time.day, my_time.hour)
-                .await?;
-
-            // 他のユーザーで同じクエストを希望しているユーザーを探す
-            let other_participants: Vec<i64> = participants
-                .iter()
-                .filter(|p| p.user_id != user_id && other_user_ids.contains(&p.user_id))
-                .map(|p| p.user_id)
-                .collect();
-
-            if !other_participants.is_empty() {
-                let mut matched_user_ids = vec![user_id];
-                matched_user_ids.extend(other_participants);
-
-                // 既存のマッチング済み募集があるかチェック
-                let existing = self
-                    .matched_repo
-                    .find_by_datetime(txn, guild_id, my_time.month, my_time.day, my_time.hour)
-                    .await?;
-
-                info!(
-                    guild_id,
-                    month = my_time.month,
-                    day = my_time.day,
-                    hour = my_time.hour,
-                    user_count = matched_user_ids.len(),
-                    "マッチング成功"
-                );
-
-                results.push(MatchResult {
-                    month: my_time.month,
-                    day: my_time.day,
-                    hour: my_time.hour,
-                    user_ids: matched_user_ids,
-                    common_quest_ids: vec![quest_id],
-                    existing_matched_id: existing.map(|m| m.id),
-                });
+                                if !is_already_matched {
+                                    candidates
+                                        .entry((*guild_id, *quest_id, *month, *day, *hour))
+                                        .or_default()
+                                        .push((*user_id, battle_styles.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        Ok(results)
-    }
-
-    /// 指定された日時でマッチング可能なユーザーとクエストを検索
-    ///
-    /// 日時が固定された状態で、どのユーザー間でどのクエストでマッチングできるかを調べる
-    pub async fn find_matching_candidates(
-        &self,
-        txn: &DatabaseTransaction,
-        guild_id: i64,
-        month: i32,
-        day: i32,
-        hour: i32,
-    ) -> Result<Option<MatchResult>> {
-        debug!(guild_id, month, day, hour, "マッチング候補を検索します");
-
-        // 指定日時に参加可能なユーザーを取得
-        let participants = self
-            .participant_repo
-            .find_users_by_datetime(txn, guild_id, month, day, hour)
-            .await?;
-
-        if participants.len() < 2 {
-            debug!(guild_id, month, day, hour, "参加者が2人未満です");
-            return Ok(None);
-        }
-
-        let user_ids: Vec<i64> = participants.iter().map(|p| p.user_id).collect();
-
-        // 各ユーザーの希望クエストを取得
-        let mut user_quests: HashMap<i64, HashSet<i32>> = HashMap::new();
-        for user_id in &user_ids {
-            let quests = self
-                .user_quest_repo
-                .find_by_user(txn, guild_id, *user_id)
-                .await?;
-            let quest_ids: HashSet<i32> = quests.iter().map(|q| q.quest_id).collect();
-            user_quests.insert(*user_id, quest_ids);
-        }
-
-        // 2人以上が共通して希望しているクエストを探す
-        let mut quest_user_count: HashMap<i32, Vec<i64>> = HashMap::new();
-        for (user_id, quest_ids) in &user_quests {
-            for quest_id in quest_ids {
-                quest_user_count
-                    .entry(*quest_id)
-                    .or_default()
-                    .push(*user_id);
-            }
-        }
-
-        // 2人以上が希望しているクエストを抽出
-        let matching_quests: Vec<i32> = quest_user_count
-            .iter()
+        // 2人以上のグループを抽出
+        let result: Vec<MatchCandidate> = candidates
+            .into_iter()
             .filter(|(_, users)| users.len() >= 2)
-            .map(|(quest_id, _)| *quest_id)
+            .map(
+                |((guild_id, quest_id, month, day, hour), users)| MatchCandidate {
+                    guild_id,
+                    quest_id,
+                    month,
+                    day,
+                    hour,
+                    users,
+                },
+            )
             .collect();
 
-        if matching_quests.is_empty() {
-            debug!(guild_id, month, day, hour, "共通のクエストがありません");
-            return Ok(None);
+        debug!(
+            candidate_count = result.len(),
+            "マッチング候補を検出しました"
+        );
+
+        Ok(result)
+    }
+
+    /// マッチング候補をグループ分け
+    ///
+    /// 属性被りや人数上限を考慮してグループを分割する
+    pub async fn group_candidates(
+        &self,
+        txn: &DatabaseTransaction,
+        candidates: Vec<MatchCandidate>,
+    ) -> Result<Vec<MatchGroup>> {
+        let quest_repo = SeaOrmQuestRepository::new();
+        let mut all_groups: Vec<MatchGroup> = Vec::new();
+
+        for candidate in candidates {
+            // クエスト情報を取得して人数上限を確認
+            let quest = quest_repo.get_by_target_id(txn, candidate.quest_id).await?;
+
+            let recruit_count = quest.as_ref().map(|q| q.recruit_count).unwrap_or(6) as usize;
+
+            // 属性情報を解析
+            let is_six_element = quest
+                .map(|q| {
+                    q.available_battle_style_ids
+                        .split(',')
+                        .filter_map(|s| s.trim().parse::<i32>().ok())
+                        .count()
+                        >= 6
+                })
+                .unwrap_or(false);
+
+            // グループ分けアルゴリズムを適用
+            let groups = self.apply_grouping_algorithm(&candidate, recruit_count, is_six_element);
+
+            all_groups.extend(groups);
         }
 
-        // マッチングするユーザーを集める（少なくとも1つの共通クエストがある）
-        let matched_user_ids: HashSet<i64> = matching_quests
-            .iter()
-            .flat_map(|quest_id| quest_user_count.get(quest_id).unwrap())
-            .copied()
-            .collect();
+        info!(
+            group_count = all_groups.len(),
+            "マッチンググループを作成しました"
+        );
 
-        // 既存のマッチング済み募集があるかチェック
-        let existing = self
-            .matched_repo
-            .find_by_datetime(txn, guild_id, month, day, hour)
-            .await?;
+        Ok(all_groups)
+    }
 
-        Ok(Some(MatchResult {
-            month,
-            day,
-            hour,
-            user_ids: matched_user_ids.into_iter().collect(),
-            common_quest_ids: matching_quests,
-            existing_matched_id: existing.map(|m| m.id),
-        }))
+    /// グループ分けアルゴリズム
+    ///
+    /// 希望属性数の少ない人から優先的に配置する
+    fn apply_grouping_algorithm(
+        &self,
+        candidate: &MatchCandidate,
+        recruit_count: usize,
+        is_six_element: bool,
+    ) -> Vec<MatchGroup> {
+        let mut groups: Vec<MatchGroup> = Vec::new();
+
+        // 希望属性数の少ない順にソート
+        let mut sorted_users = candidate.users.clone();
+        sorted_users.sort_by_key(|(_, battle_styles)| battle_styles.len());
+
+        for (user_id, battle_styles) in sorted_users {
+            let mut placed = false;
+
+            for group in &mut groups {
+                if self.can_join_group(
+                    user_id,
+                    &battle_styles,
+                    group,
+                    recruit_count,
+                    is_six_element,
+                ) {
+                    // グループに追加
+                    let assigned_style = if is_six_element {
+                        // 属性を仮割り当て（空いている属性の中から選択）
+                        self.find_available_style(&battle_styles, group)
+                    } else {
+                        // 属性指定なしクエスト
+                        Some(0)
+                    };
+                    group.users.push((user_id, assigned_style));
+                    placed = true;
+                    break;
+                }
+            }
+
+            if !placed {
+                // 新しいグループを作成
+                let assigned_style = if is_six_element {
+                    battle_styles.first().copied()
+                } else {
+                    Some(0)
+                };
+                let new_group = MatchGroup {
+                    guild_id: candidate.guild_id,
+                    quest_id: candidate.quest_id,
+                    month: candidate.month,
+                    day: candidate.day,
+                    hour: candidate.hour,
+                    users: vec![(user_id, assigned_style)],
+                };
+                groups.push(new_group);
+            }
+        }
+
+        // 2人以上のグループのみ返す
+        groups.into_iter().filter(|g| g.users.len() >= 2).collect()
+    }
+
+    /// グループに参加可能か判定
+    fn can_join_group(
+        &self,
+        _user_id: i64,
+        battle_styles: &[i32],
+        group: &MatchGroup,
+        recruit_count: usize,
+        is_six_element: bool,
+    ) -> bool {
+        // 人数上限チェック
+        if group.users.len() >= recruit_count {
+            return false;
+        }
+
+        // 属性指定なしクエストは属性チェック不要
+        if !is_six_element {
+            return true;
+        }
+
+        // 6属性クエスト: ユーザーの希望属性のうち、まだ空いている属性があるか
+        let used_styles: HashSet<i32> =
+            group.users.iter().filter_map(|(_, style)| *style).collect();
+
+        for style in battle_styles {
+            if !used_styles.contains(style) {
+                return true; // 空きがあれば参加可能
+            }
+        }
+
+        false // 全ての希望属性が埋まっている場合は別グループ
+    }
+
+    /// グループ内で空いている属性を探す
+    fn find_available_style(&self, battle_styles: &[i32], group: &MatchGroup) -> Option<i32> {
+        let used_styles: HashSet<i32> =
+            group.users.iter().filter_map(|(_, style)| *style).collect();
+
+        for style in battle_styles {
+            if !used_styles.contains(style) {
+                return Some(*style);
+            }
+        }
+
+        None
+    }
+
+    /// マッチンググループをDBに保存
+    pub async fn save_match_groups(
+        &self,
+        txn: &DatabaseTransaction,
+        groups: Vec<MatchGroup>,
+    ) -> Result<Vec<quest_matchings::Model>> {
+        let matching_repo = SeaOrmQuestMatchingRepository::new();
+        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
+        let mut created_matchings: Vec<quest_matchings::Model> = Vec::new();
+
+        for group in groups {
+            // quest_matchingsに登録（UUIDはリポジトリ側で生成）
+            let matching = matching_repo
+                .create(
+                    txn,
+                    group.guild_id,
+                    group.quest_id,
+                    group.month,
+                    group.day,
+                    group.hour,
+                )
+                .await?;
+
+            // quest_matching_usersに参加者を登録
+            for (user_id, battle_style_id) in &group.users {
+                matching_user_repo
+                    .create(txn, group.guild_id, matching.id, *user_id, *battle_style_id)
+                    .await?;
+            }
+
+            info!(
+                matching_id = %matching.id,
+                guild_id = group.guild_id,
+                quest_id = group.quest_id,
+                user_count = group.users.len(),
+                "マッチングを作成しました"
+            );
+
+            created_matchings.push(matching);
+        }
+
+        Ok(created_matchings)
+    }
+
+    /// マッチング処理のメインエントリポイント
+    pub async fn process_matching(
+        &self,
+        txn: &DatabaseTransaction,
+    ) -> Result<Vec<quest_matchings::Model>> {
+        // 1. マッチング候補を検出
+        let candidates = self.find_match_candidates(txn).await?;
+
+        if candidates.is_empty() {
+            debug!("マッチング候補がありません");
+            return Ok(Vec::new());
+        }
+
+        // 2. グループ分け
+        let groups = self.group_candidates(txn, candidates).await?;
+
+        if groups.is_empty() {
+            debug!("2人以上のグループがありません");
+            return Ok(Vec::new());
+        }
+
+        // 3. DBに保存
+        let matchings = self.save_match_groups(txn, groups).await?;
+
+        Ok(matchings)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_grouping_algorithm_basic() {
+        let service = PeriodicMatchingService::new();
+
+        // 3人のユーザーが同じクエストを希望（属性指定なし）
+        let candidate = MatchCandidate {
+            guild_id: 1,
+            quest_id: 1,
+            month: 1,
+            day: 25,
+            hour: 21,
+            users: vec![(100, vec![0]), (101, vec![0]), (102, vec![0])],
+        };
+
+        let groups = service.apply_grouping_algorithm(&candidate, 6, false);
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].users.len(), 3);
+    }
+
+    #[test]
+    fn test_grouping_algorithm_with_elements() {
+        let service = PeriodicMatchingService::new();
+
+        // 3人のユーザーが6属性クエストを希望
+        // ユーザー100: 火(1), 水(2)
+        // ユーザー101: 火(1), 土(3)
+        // ユーザー102: 水(2), 土(3)
+        let candidate = MatchCandidate {
+            guild_id: 1,
+            quest_id: 1,
+            month: 1,
+            day: 25,
+            hour: 21,
+            users: vec![(100, vec![1, 2]), (101, vec![1, 3]), (102, vec![2, 3])],
+        };
+
+        let groups = service.apply_grouping_algorithm(&candidate, 6, true);
+
+        // 3人全員が1グループに入れる（属性被りなし）
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].users.len(), 3);
+    }
+
+    #[test]
+    fn test_grouping_algorithm_with_conflict() {
+        let service = PeriodicMatchingService::new();
+
+        // 3人のユーザーが6属性クエストを希望（火属性のみ）
+        // 全員火属性のみ希望 → 別グループになる
+        let candidate = MatchCandidate {
+            guild_id: 1,
+            quest_id: 1,
+            month: 1,
+            day: 25,
+            hour: 21,
+            users: vec![(100, vec![1]), (101, vec![1]), (102, vec![1])],
+        };
+
+        let groups = service.apply_grouping_algorithm(&candidate, 6, true);
+
+        // 2人以上のグループがないため、0グループ
+        assert_eq!(groups.len(), 0);
+    }
+
+    #[test]
+    fn test_grouping_algorithm_overflow() {
+        let service = PeriodicMatchingService::new();
+
+        // 8人のユーザーが同じクエストを希望（属性指定なし、上限6人）
+        let candidate = MatchCandidate {
+            guild_id: 1,
+            quest_id: 1,
+            month: 1,
+            day: 25,
+            hour: 21,
+            users: vec![
+                (100, vec![0]),
+                (101, vec![0]),
+                (102, vec![0]),
+                (103, vec![0]),
+                (104, vec![0]),
+                (105, vec![0]),
+                (106, vec![0]),
+                (107, vec![0]),
+            ],
+        };
+
+        let groups = service.apply_grouping_algorithm(&candidate, 6, false);
+
+        // 6人グループと2人グループに分かれる
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].users.len(), 6);
+        assert_eq!(groups[1].users.len(), 2);
     }
 }

@@ -1,27 +1,24 @@
-//! ユーザー希望クエストエンティティ
+//! 自動募集クエストメッセージエンティティ
 //!
-//! ユーザーが自動募集で希望するクエストを管理する
-//! 6属性クエストの場合はbattle_style_idで希望属性も保存する
+//! クエストチャンネルに送信されたクエストごとのメッセージIDを管理する
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(schema_name = "guild_master", table_name = "user_desired_quests")]
+#[sea_orm(
+    schema_name = "guild_master",
+    table_name = "auto_recruitment_quest_messages"
+)]
 pub struct Model {
     /// ギルドID（複合主キーの一部）
     #[sea_orm(primary_key, auto_increment = false)]
     pub guild_id: i64,
-    /// ユーザーID（複合主キーの一部）
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub user_id: i64,
     /// クエストID（複合主キーの一部）
     #[sea_orm(primary_key, auto_increment = false)]
     pub quest_id: i32,
-    /// 希望属性（複合主キーの一部）
-    /// 0: 属性指定なしクエスト、1-6: 各属性
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub battle_style_id: i32,
+    /// メッセージID
+    pub message_id: i64,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -59,9 +56,8 @@ impl ActiveModelBehavior for ActiveModel {
         let now = chrono::Utc::now();
         Self {
             guild_id: sea_orm::NotSet,
-            user_id: sea_orm::NotSet,
             quest_id: sea_orm::NotSet,
-            battle_style_id: sea_orm::Set(0),
+            message_id: sea_orm::NotSet,
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),
         }

@@ -33,16 +33,28 @@ pub trait UserDesiredQuestRepository: Send + Sync {
     ) -> Result<Vec<user_desired_quests::Model>>;
 
     /// 希望クエストを追加
+    /// battle_style_id: 0なら属性指定なし、1-6なら各属性
     async fn create(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,
         user_id: i64,
         quest_id: i32,
+        battle_style_id: i32,
     ) -> Result<user_desired_quests::Model>;
 
-    /// 希望クエストを削除
+    /// 希望クエストを削除（特定の属性のみ）
     async fn delete(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        user_id: i64,
+        quest_id: i32,
+        battle_style_id: i32,
+    ) -> Result<u64>;
+
+    /// 希望クエストを全属性削除
+    async fn delete_all_styles(
         &self,
         txn: &DatabaseTransaction,
         guild_id: i64,

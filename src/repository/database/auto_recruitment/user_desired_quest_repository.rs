@@ -105,24 +105,32 @@ impl UserDesiredQuestRepositoryTrait for SeaOrmUserDesiredQuestRepository {
         guild_id: i64,
         user_id: i64,
         quest_id: i32,
+        battle_style_id: i32,
     ) -> Result<user_desired_quests::Model> {
-        debug!(guild_id, user_id, quest_id, "希望クエストを追加します");
+        debug!(
+            guild_id,
+            user_id, quest_id, battle_style_id, "希望クエストを追加します"
+        );
 
         let now = chrono::Utc::now();
         let active_model = user_desired_quests::ActiveModel {
             guild_id: Set(guild_id),
             user_id: Set(user_id),
             quest_id: Set(quest_id),
+            battle_style_id: Set(battle_style_id),
             created_at: Set(now),
             updated_at: Set(now),
         };
 
         let result = active_model.insert(txn).await.map_err(|e| {
-            error!(error = %e, guild_id, user_id, quest_id, "希望クエストの追加に失敗しました");
+            error!(error = %e, guild_id, user_id, quest_id, battle_style_id, "希望クエストの追加に失敗しました");
             e
         })?;
 
-        debug!(guild_id, user_id, quest_id, "希望クエストを追加しました");
+        debug!(
+            guild_id,
+            user_id, quest_id, battle_style_id, "希望クエストを追加しました"
+        );
         Ok(result)
     }
 
@@ -132,8 +140,47 @@ impl UserDesiredQuestRepositoryTrait for SeaOrmUserDesiredQuestRepository {
         guild_id: i64,
         user_id: i64,
         quest_id: i32,
+        battle_style_id: i32,
     ) -> Result<u64> {
-        debug!(guild_id, user_id, quest_id, "希望クエストを削除します");
+        debug!(
+            guild_id,
+            user_id, quest_id, battle_style_id, "希望クエストを削除します"
+        );
+
+        let result = user_desired_quests::Entity::delete_many()
+            .filter(user_desired_quests::Column::GuildId.eq(guild_id))
+            .filter(user_desired_quests::Column::UserId.eq(user_id))
+            .filter(user_desired_quests::Column::QuestId.eq(quest_id))
+            .filter(user_desired_quests::Column::BattleStyleId.eq(battle_style_id))
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, guild_id, user_id, quest_id, battle_style_id, "希望クエストの削除に失敗しました");
+                e
+            })?;
+
+        debug!(
+            guild_id,
+            user_id,
+            quest_id,
+            battle_style_id,
+            deleted_count = result.rows_affected,
+            "希望クエストを削除しました"
+        );
+        Ok(result.rows_affected)
+    }
+
+    async fn delete_all_styles(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+        user_id: i64,
+        quest_id: i32,
+    ) -> Result<u64> {
+        debug!(
+            guild_id,
+            user_id, quest_id, "希望クエストを全属性削除します"
+        );
 
         let result = user_desired_quests::Entity::delete_many()
             .filter(user_desired_quests::Column::GuildId.eq(guild_id))
@@ -151,7 +198,7 @@ impl UserDesiredQuestRepositoryTrait for SeaOrmUserDesiredQuestRepository {
             user_id,
             quest_id,
             deleted_count = result.rows_affected,
-            "希望クエストを削除しました"
+            "希望クエストを全属性削除しました"
         );
         Ok(result.rows_affected)
     }

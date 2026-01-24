@@ -4,7 +4,10 @@
 //! チャンネルを日付昇順に並び替える
 
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::auto_recruitment::AutoRecruitmentChannelRepository;
+use crate::repository::auto_recruitment::{
+    AutoRecruitmentChannelRepository, AutoRecruitmentRepository,
+};
+use crate::repository::database::auto_recruitment::SeaOrmAutoRecruitmentRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::types::{AppError, Result};
@@ -277,6 +280,8 @@ where
     }
 
     /// チャンネルを日付昇順に並び替え
+    ///
+    /// 順序: マッチング(0) → 日付昇順(1〜n) → クエスト(n+1)
     async fn reorder_channels_by_date(
         &self,
         txn: &DatabaseTransaction,
@@ -287,6 +292,29 @@ where
 
         if channels.is_empty() {
             return Ok(());
+        }
+
+        // 自動募集設定を取得（マッチング/クエストチャンネルID）
+        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
+        let auto_recruitment = auto_recruitment_repo
+            .find_by_guild_id(txn, guild_id)
+            .await?;
+
+        // マッチングチャンネルをposition 0に設定
+        if let Some(ref ar) = auto_recruitment {
+            if let Some(matching_ch_id) = ar.matching_channel_id {
+                let matching_channel = ChannelId::new(matching_ch_id as u64);
+                if let Err(e) = matching_channel
+                    .edit(http, EditChannel::new().position(0))
+                    .await
+                {
+                    warn!(
+                        channel_id = matching_ch_id,
+                        error = %e,
+                        "マッチングチャンネル位置の更新に失敗しました"
+                    );
+                }
+            }
         }
 
         // 今日の日付を基準に日付でソート
@@ -317,12 +345,15 @@ where
             date_a.cmp(&date_b)
         });
 
-        // Discordでチャンネルの位置を更新
-        for (position, channel) in channels.iter().enumerate() {
+        // 日付チャンネルの位置を更新（position 1から）
+        for (i, channel) in channels.iter().enumerate() {
             let discord_channel = ChannelId::new(channel.channel_id as u64);
-            let edit = EditChannel::new().position(position as u16);
+            let position = (i + 1) as u16; // position 1から開始
 
-            if let Err(e) = discord_channel.edit(http, edit).await {
+            if let Err(e) = discord_channel
+                .edit(http, EditChannel::new().position(position))
+                .await
+            {
                 warn!(
                     channel_id = channel.channel_id,
                     position,
@@ -330,6 +361,25 @@ where
                     "チャンネル位置の更新に失敗しました"
                 );
                 // 失敗しても続行
+            }
+        }
+
+        // クエストチャンネルを日付チャンネルの後に設定
+        if let Some(ref ar) = auto_recruitment {
+            if let Some(quest_ch_id) = ar.quest_channel_id {
+                let quest_channel = ChannelId::new(quest_ch_id as u64);
+                let quest_position = (channels.len() + 1) as u16;
+                if let Err(e) = quest_channel
+                    .edit(http, EditChannel::new().position(quest_position))
+                    .await
+                {
+                    warn!(
+                        channel_id = quest_ch_id,
+                        position = quest_position,
+                        error = %e,
+                        "クエストチャンネル位置の更新に失敗しました"
+                    );
+                }
             }
         }
 

@@ -1,3 +1,4 @@
+pub mod auto_matching_task_executor;
 pub mod auto_recruitment_rotation_task_executor;
 pub mod dismissal_management_service;
 pub mod dismissal_task_executor;
@@ -13,6 +14,7 @@ pub mod scheduler_manager;
 pub mod scheduler_service;
 pub mod timezone_converter;
 
+pub use auto_matching_task_executor::{AutoMatchingResult, AutoMatchingTaskExecutor};
 pub use auto_recruitment_rotation_task_executor::{
     AutoRecruitmentRotationResult, AutoRecruitmentRotationTaskExecutor,
 };

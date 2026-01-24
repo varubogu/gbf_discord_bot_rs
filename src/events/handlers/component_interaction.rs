@@ -14,8 +14,40 @@ pub async fn on_component_interaction(
     let custom_id = &interaction.data.custom_id;
     debug!(custom_id = %custom_id, "ComponentInteraction受信");
 
-    // 自動募集クエスト選択の処理
-    if custom_id.starts_with("auto_quest_select:") {
+    // 自動募集クエスト参加ボタンの処理（1クエスト1メッセージ形式）
+    if custom_id.starts_with("auto_quest_join:") {
+        use crate::events::interactions::components::auto_recruit_quest_join_handler;
+
+        info!(custom_id = %custom_id, "自動募集クエスト参加ボタンを検出");
+
+        match auto_recruit_quest_join_handler::handle_quest_join_button(ctx, interaction, data)
+            .await
+        {
+            Ok(_) => {
+                info!("自動募集クエスト参加ボタンの処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集クエスト参加ボタンの処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集属性選択の処理（1クエスト1メッセージ形式）
+    else if custom_id.starts_with("auto_quest_element:") {
+        use crate::events::interactions::components::auto_recruit_element_handler;
+
+        info!(custom_id = %custom_id, "自動募集属性選択を検出");
+
+        match auto_recruit_element_handler::handle_element_selection(ctx, interaction, data).await {
+            Ok(_) => {
+                info!("自動募集属性選択の処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集属性選択の処理中にエラーが発生しました");
+            }
+        }
+    }
+    // 自動募集クエスト選択の処理（レガシー：セレクトメニュー形式）
+    else if custom_id.starts_with("auto_quest_select:") {
         use crate::events::interactions::components::auto_recruit_quest_handler;
 
         info!(custom_id = %custom_id, "自動募集クエスト選択を検出");
@@ -45,21 +77,6 @@ pub async fn on_component_interaction(
             }
             Err(e) => {
                 error!(error = %e, "自動募集時間選択の処理中にエラーが発生しました");
-            }
-        }
-    }
-    // 自動募集投票の処理
-    else if custom_id.starts_with("auto_vote:") {
-        use crate::events::interactions::components::auto_recruit_vote_handler;
-
-        info!(custom_id = %custom_id, "自動募集投票を検出");
-
-        match auto_recruit_vote_handler::handle_vote_interaction(ctx, interaction, data).await {
-            Ok(_) => {
-                info!("自動募集投票の処理が正常に完了しました");
-            }
-            Err(e) => {
-                error!(error = %e, "自動募集投票の処理中にエラーが発生しました");
             }
         }
     }

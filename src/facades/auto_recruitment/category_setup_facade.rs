@@ -4,23 +4,28 @@
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::auto_recruitment::{
-    AutoRecruitmentChannelRepository, AutoRecruitmentRepository, CreateAutoRecruitmentParams,
+    AutoRecruitmentChannelRepository, AutoRecruitmentQuestMessageRepository,
+    AutoRecruitmentRepository, CreateAutoRecruitmentParams, QuestMatchingRepository,
+    QuestMatchingUserRepository,
 };
 use crate::repository::database::auto_recruitment::{
-    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentRepository,
+    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentQuestMessageRepository,
+    SeaOrmAutoRecruitmentRepository, SeaOrmQuestMatchingRepository,
+    SeaOrmQuestMatchingUserRepository,
 };
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
-use crate::services::auto_recruitment::ui::quest_select_menu::QuestSelectMenuBuilder;
+use crate::services::auto_recruitment::ui::QuestMessageBuilder;
 use crate::services::message::MessageTextId;
 use crate::types::{AppError, AppState, Result};
 use chrono::{Datelike, Duration, Utc};
 use poise::serenity_prelude::{
     ChannelId, ChannelType, Context, CreateActionRow, CreateChannel, CreateMessage,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GuildId, Http,
+    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditChannel, GuildId, Http,
 };
 use rust_i18n::t;
 use sea_orm::TransactionTrait;
@@ -88,21 +93,28 @@ pub async fn register_category(
 
         let discord_guild_id = GuildId::new(guild_id);
 
-        // マッチングチャンネルの処理
+        // チャンネル順序: マッチング(0) → 日付昇順(1〜days) → クエスト(days+1)
+
+        // マッチングチャンネルの処理（position 0）
         let (final_matching_channel_id, matching_is_bot_created, matching_message_id) =
             if let Some(ch_id) = matching_channel_id {
-                // 指定されたチャンネルにメッセージを送信
+                // 指定されたチャンネルにメッセージを送信し、位置を調整
                 let channel_id = ChannelId::new(ch_id);
                 let msg_id = send_matching_channel_message(&ctx.http, channel_id).await?;
+                // 指定チャンネルの位置を0に設定
+                let _ = channel_id
+                    .edit(&ctx.http, EditChannel::new().position(0))
+                    .await;
                 (ch_id, false, Some(msg_id))
             } else {
-                // チャンネルを新規作成
+                // チャンネルを新規作成（position 0）
                 let channel = discord_guild_id
                     .create_channel(
                         &ctx.http,
                         CreateChannel::new("マッチング")
                             .kind(ChannelType::Text)
-                            .category(ChannelId::new(category_id)),
+                            .category(ChannelId::new(category_id))
+                            .position(0),
                     )
                     .await
                     .map_err(|e| {
@@ -115,27 +127,27 @@ pub async fn register_category(
 
         // クエスト一覧を取得（有効なクエストのみ）
         let quest_repo = SeaOrmQuestRepository::new();
-        let quests = quest_repo
+        let quest_message_repo = SeaOrmAutoRecruitmentQuestMessageRepository::new();
+
+        // 有効なクエストIDを取得
+        let enabled_quest_results = quest_repo
             .search_enabled_quests(&txn, guild_id as i64, "")
             .await?;
+        let enabled_quest_ids: Vec<i32> =
+            enabled_quest_results.iter().map(|q| q.quest_id).collect();
 
-        // クエストリストを(id, name)のタプルに変換
-        let quest_list: Vec<(i32, String)> = quests
-            .iter()
-            .map(|q| (q.quest_id, q.name.clone()))
+        // 全クエストを取得してフィルタリング（available_battle_style_ids含む）
+        let all_quests = quest_repo.get_all(&txn).await?;
+        let enabled_quests: Vec<Quest> = all_quests
+            .into_iter()
+            .filter(|q| enabled_quest_ids.contains(&q.id))
             .collect();
 
-        // クエストチャンネルの処理
-        let (final_quest_channel_id, quest_is_bot_created, quest_message_id) = if let Some(ch_id) =
-            quest_channel_id
-        {
-            // 指定されたチャンネルにメッセージを送信
-            let channel_id = ChannelId::new(ch_id);
-            let msg_id =
-                send_quest_channel_message(&ctx.http, channel_id, guild_id, &quest_list).await?;
-            (ch_id, false, Some(msg_id))
+        // クエストチャンネルの処理（position days+1、日付チャンネル作成後に位置を設定）
+        let (final_quest_channel_id, quest_is_bot_created) = if let Some(ch_id) = quest_channel_id {
+            (ch_id, false)
         } else {
-            // チャンネルを新規作成
+            // チャンネルを新規作成（位置は後で設定）
             let channel = discord_guild_id
                 .create_channel(
                     &ctx.http,
@@ -148,10 +160,20 @@ pub async fn register_category(
                     error!(error = %e, guild_id, "クエストチャンネルの作成に失敗しました");
                     AppError::ChannelCreationFailed
                 })?;
-            let msg_id =
-                send_quest_channel_message(&ctx.http, channel.id, guild_id, &quest_list).await?;
-            (channel.id.get(), true, Some(msg_id))
+            (channel.id.get(), true)
         };
+
+        // 1クエスト1メッセージ形式でメッセージを送信し、メッセージIDを保存
+        let quest_channel_id_serenity = ChannelId::new(final_quest_channel_id);
+        send_quest_channel_messages(
+            &ctx.http,
+            quest_channel_id_serenity,
+            guild_id,
+            &enabled_quests,
+            &quest_message_repo,
+            &txn,
+        )
+        .await?;
 
         // auto_recruitmentsテーブルに登録
         let params = CreateAutoRecruitmentParams {
@@ -162,7 +184,6 @@ pub async fn register_category(
             matching_channel_is_bot_created: matching_is_bot_created,
             quest_channel_is_bot_created: quest_is_bot_created,
             matching_message_id: matching_message_id.map(|id| id as i64),
-            quest_message_id: quest_message_id.map(|id| id as i64),
             days_range: days,
         };
 
@@ -173,14 +194,23 @@ pub async fn register_category(
             "自動募集設定を登録しました"
         );
 
-        // 日時チャンネルを作成
+        // 日時チャンネルを作成（position 1〜days）
         let created_channels =
             create_date_channels(&ctx.http, guild_id, category_id, days, &channel_repo, &txn)
                 .await?;
 
+        // クエストチャンネルの位置を日付チャンネルの後に設定（position days+1）
+        let quest_channel = ChannelId::new(final_quest_channel_id);
+        let _ = quest_channel
+            .edit(&ctx.http, EditChannel::new().position((days + 1) as u16))
+            .await;
+
         // ローテーションタスクを初期登録（翌日0時）
         let task_repo = SeaOrmScheduledTaskRepository::new();
         create_initial_rotation_task(&task_repo, &txn).await?;
+
+        // 自動マッチングタスクを初期登録（10秒後）
+        create_initial_auto_matching_task(&task_repo, &txn).await?;
 
         Ok(CategoryRegistrationResult {
             category_id,
@@ -284,6 +314,7 @@ pub async fn unregister_category(
         }
 
         // クエストチャンネルの処理
+        let quest_message_repo = SeaOrmAutoRecruitmentQuestMessageRepository::new();
         if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
             let channel_id = ChannelId::new(quest_ch_id as u64);
             if auto_recruitment.quest_channel_is_bot_created {
@@ -295,19 +326,32 @@ pub async fn unregister_category(
                         "クエストチャンネルの削除に失敗しました"
                     );
                 }
-            } else if let Some(msg_id) = auto_recruitment.quest_message_id {
-                // 指定チャンネルはメッセージのみ削除
-                let message_id = poise::serenity_prelude::MessageId::new(msg_id as u64);
-                if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
-                    error!(
-                        channel_id = quest_ch_id,
-                        message_id = msg_id,
-                        error = %e,
-                        "クエストチャンネルのメッセージ削除に失敗しました"
-                    );
+            } else {
+                // 指定チャンネルは各クエストメッセージを削除
+                let quest_messages = quest_message_repo
+                    .find_all_by_guild(&txn, guild_id as i64)
+                    .await?;
+
+                for quest_msg in quest_messages {
+                    let message_id =
+                        poise::serenity_prelude::MessageId::new(quest_msg.message_id as u64);
+                    if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
+                        error!(
+                            channel_id = quest_ch_id,
+                            message_id = quest_msg.message_id,
+                            quest_id = quest_msg.quest_id,
+                            error = %e,
+                            "クエストメッセージの削除に失敗しました"
+                        );
+                    }
                 }
             }
         }
+
+        // クエストメッセージのDBレコードを削除
+        quest_message_repo
+            .delete_all_by_guild(&txn, guild_id as i64)
+            .await?;
 
         // 日時チャンネルの処理
         let channels = channel_repo.find_by_guild_id(&txn, guild_id as i64).await?;
@@ -336,6 +380,17 @@ pub async fn unregister_category(
                 }
             }
         }
+
+        // マッチング関連データを削除（外部キー制約のためquest_matching_usersを先に削除）
+        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
+        let matching_repo = SeaOrmQuestMatchingRepository::new();
+
+        matching_user_repo
+            .delete_all_by_guild(&txn, guild_id as i64)
+            .await?;
+        matching_repo
+            .delete_all_by_guild(&txn, guild_id as i64)
+            .await?;
 
         // DBから削除
         channel_repo
@@ -434,14 +489,17 @@ pub async fn change_days(
                 let new_date = last_channel_date + Duration::days(i as i64);
                 let channel_name = format!("{}月{}日", new_date.month(), new_date.day());
                 let sort_order = (existing_channels.len() + i) as i32;
+                // 日付チャンネルはposition 1から（position 0はマッチング）
+                let channel_position = (existing_channels.len() + i) as u16;
 
-                // Discordチャンネルを作成（カテゴリの権限を継承）
+                // Discordチャンネルを作成（カテゴリの権限を継承、位置指定）
                 let channel = discord_guild_id
                     .create_channel(
                         &ctx.http,
                         CreateChannel::new(&channel_name)
                             .kind(ChannelType::Text)
-                            .category(ChannelId::new(category_id)),
+                            .category(ChannelId::new(category_id))
+                            .position(channel_position),
                     )
                     .await
                     .map_err(|e| {
@@ -465,6 +523,17 @@ pub async fn change_days(
                         Some(message_id as i64),
                     )
                     .await?;
+            }
+
+            // クエストチャンネルの位置を日付チャンネルの後に更新
+            if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
+                let quest_channel = ChannelId::new(quest_ch_id as u64);
+                let _ = quest_channel
+                    .edit(
+                        &ctx.http,
+                        EditChannel::new().position((new_days + 1) as u16),
+                    )
+                    .await;
             }
         } else {
             // 減らす場合：末尾のチャンネルを削除
@@ -551,14 +620,17 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
     for i in 0..days {
         let date = today + Duration::days(i as i64);
         let channel_name = format!("{}月{}日", date.month(), date.day());
+        // 日付チャンネルはposition 1から開始（position 0はマッチングチャンネル）
+        let channel_position = (i + 1) as u16;
 
-        // Discordチャンネルを作成（カテゴリの権限を継承）
+        // Discordチャンネルを作成（カテゴリの権限を継承、位置指定）
         let channel = discord_guild_id
             .create_channel(
                 http,
                 CreateChannel::new(&channel_name)
                     .kind(ChannelType::Text)
-                    .category(ChannelId::new(category_id)),
+                    .category(ChannelId::new(category_id))
+                    .position(channel_position),
             )
             .await
             .map_err(|e| {
@@ -661,47 +733,72 @@ async fn send_matching_channel_message(http: &Arc<Http>, channel_id: ChannelId) 
     Ok(sent_message.id.get())
 }
 
-/// クエストチャンネルにメッセージを送信し、メッセージIDを返す
+/// クエストチャンネルに1クエスト1メッセージ形式でメッセージを送信
 ///
 /// # 引数
 /// * `http` - Discord HTTP クライアント
 /// * `channel_id` - 送信先チャンネルID
 /// * `guild_id` - ギルドID（カスタムID生成用）
-/// * `quests` - クエストリスト (id, name)
-async fn send_quest_channel_message(
+/// * `quests` - クエストリスト（available_battle_style_ids含む）
+/// * `quest_message_repo` - クエストメッセージリポジトリ
+/// * `txn` - データベーストランザクション
+async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
     http: &Arc<Http>,
     channel_id: ChannelId,
     guild_id: u64,
-    quests: &[(i32, String)],
-) -> Result<u64> {
+    quests: &[Quest],
+    quest_message_repo: &R,
+    txn: &sea_orm::DatabaseTransaction,
+) -> Result<()> {
     if quests.is_empty() {
         // クエストがない場合は説明メッセージのみ
         let message = CreateMessage::new()
             .content("**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。");
 
-        let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
+        channel_id.send_message(http, message).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
             AppError::Business {
                 message: "クエストチャンネルメッセージの送信に失敗しました".to_string(),
             }
         })?;
 
-        return Ok(sent_message.id.get());
+        return Ok(());
     }
 
-    // QuestSelectMenuBuilderを使用してセレクトメニューを構築
-    let builder = QuestSelectMenuBuilder::new(guild_id).quests(quests.to_vec());
+    // 各クエストに対してメッセージを送信
+    for quest in quests {
+        // QuestMessageBuilderを使用してメッセージを構築
+        // default_battle_style_idで6属性クエストかどうかを判定
+        let message = QuestMessageBuilder::new(guild_id, quest.id, quest.name.clone())
+            .with_default_battle_style_id(quest.default_battle_style_id)
+            .build();
 
-    let message = builder.build_message();
+        let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
+            error!(error = %e, channel_id = channel_id.get(), quest_id = quest.id, "クエストメッセージの送信に失敗しました");
+            AppError::Business {
+                message: format!("クエストメッセージの送信に失敗しました: {}", quest.name),
+            }
+        })?;
 
-    let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
-        error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
-        AppError::Business {
-            message: "クエストチャンネルメッセージの送信に失敗しました".to_string(),
-        }
-    })?;
+        // メッセージIDをDBに保存
+        quest_message_repo
+            .upsert(txn, guild_id as i64, quest.id, sent_message.id.get() as i64)
+            .await?;
 
-    Ok(sent_message.id.get())
+        debug!(
+            quest_id = quest.id,
+            message_id = sent_message.id.get(),
+            "クエストメッセージを送信しました"
+        );
+    }
+
+    info!(
+        guild_id,
+        quest_count = quests.len(),
+        "クエストメッセージを全て送信しました"
+    );
+
+    Ok(())
 }
 
 /// 初期ローテーションタスクを作成
@@ -743,6 +840,42 @@ async fn create_initial_rotation_task(
         info!(
             next_execution = %next_execution,
             "初期ローテーションタスクを作成しました"
+        );
+    }
+
+    Ok(())
+}
+
+/// 初期自動マッチングタスクを作成
+async fn create_initial_auto_matching_task(
+    task_repo: &SeaOrmScheduledTaskRepository,
+    txn: &sea_orm::DatabaseTransaction,
+) -> Result<()> {
+    // 10秒後に実行
+    let next_execution = Utc::now() + Duration::seconds(10);
+
+    // 既存の自動マッチングタスクがあるか確認（重複防止）
+    let pending_tasks = task_repo
+        .find_pending_to(txn, next_execution + Duration::minutes(1))
+        .await?;
+
+    let has_matching_task = pending_tasks
+        .iter()
+        .any(|t| t.task_type == ScheduledTaskType::AutoMatching as i32);
+
+    if !has_matching_task {
+        task_repo
+            .create(
+                txn,
+                next_execution,
+                ScheduledTaskType::AutoMatching as i32,
+                None,
+                None,
+            )
+            .await?;
+        info!(
+            next_execution = %next_execution,
+            "初期自動マッチングタスクを作成しました"
         );
     }
 

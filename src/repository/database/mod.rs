@@ -22,8 +22,9 @@ pub mod schedule;
 pub use all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
 pub use auto_recruitment::{
     SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
-    SeaOrmAutoRecruitmentRepository, SeaOrmMatchedRecruitmentChannelRepository,
-    SeaOrmMatchedRecruitmentVoteRepository, SeaOrmUserDesiredQuestRepository,
+    SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
+    SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
+    SeaOrmUserDesiredQuestRepository,
 };
 pub use battle_style_repository::SeaOrmBattleStyleRepository;
 pub use guild_channel_repository::SeaOrmGuildChannelRepository;

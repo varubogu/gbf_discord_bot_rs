@@ -10,12 +10,11 @@
 
 1. ユーザーがDiscord上でカテゴリを作成
 2. カテゴリ登録コマンドで自動募集機能を有効化
-3. Botが各種チャンネル（マッチング、クエスト、日時）を作成
+3. Botが各種チャンネル（マッチング、日時、クエスト）を作成
 4. 必要に応じて日数変更コマンドで募集期間を調整
 5. ユーザーがクエストチャンネルで希望クエストを登録、日時チャンネルで参加可能時間を登録（順不同）
-6. 2人以上が同じ日時・同じクエストを希望した場合、マッチング成功
-7. マッチング済みチャンネルに通知し、参加者にどのクエストを行うか投票を求める
-8. クエストが決定したらマルチ募集v2と同じ形式で募集を作成
+6. 周期マッチング処理（10秒間隔）で2人以上が同じ日時・同じクエストを希望した場合、マッチング成功
+7. マッチングチャンネルに通知し、マルチ募集v2と同じ形式で即座に募集を作成
 
 ## Botに必要な権限
 
@@ -61,26 +60,34 @@
 ### カテゴリチャンネル
 - ユーザーが用意
 
-### マッチング済みチャンネル
-- カテゴリ内に1つ用意
-- マッチング成功時にメッセージを投稿（日時、クエスト候補、参加者を表示）
-- セレクトBOXでどのクエストにするか投票
-- 「何でも良い」の選択肢あり
-- クエスト決定後、マルチ募集v2と同じ形式で募集を作成
+### チャンネル順序
+カテゴリ内のチャンネルは以下の順序で配置：
 
-### クエストチャンネル
-- カテゴリ内に1つ用意
-- セレクトBOXでクエストを選択
-- master.questsの内容で選択肢を作成
-- クエスト数が25個を超える場合は複数のセレクトBOXに分割（クエスト表示順、ID順の降順）
-- 選択はトグル式（選択完了で登録/解除）
+| 順序 | チャンネル | position |
+|------|-----------|----------|
+| 1 | マッチングチャンネル | 0 |
+| 2 | 日時チャンネル（昇順） | 1〜n |
+| 3 | クエスト選択チャンネル | n+1 |
+
+### マッチングチャンネル
+- カテゴリ内に1つ用意（position 0）
+- マッチング成功時にメッセージを投稿（日時、クエスト、参加者を表示）
+- マルチ募集v2と同じ形式で即座に募集を作成
+- 参加者全員にメンション通知
 
 ### 日時チャンネル
-- カテゴリ内に任意数用意
-- チャンネル名形式は「MM-dd(曜日)」
+- カテゴリ内に任意数用意（position 1〜n）
+- チャンネル名形式は「M月d日」
 - 日付昇順で並べる
 - セレクトBOXで1時間ごとに24時間分の選択肢を表示（最大24個同時選択可能）
 - 選択はトグル式（選択完了で登録/解除）
+
+### クエストチャンネル
+- カテゴリ内に1つ用意（position n+1）
+- 1クエスト1メッセージ形式で表示
+- 属性指定なしクエスト：参加ボタンでトグル式登録/解除
+- 6属性クエスト：属性セレクトBOX（複数選択可）で登録/解除
+- master.questsの内容でメッセージを作成（sort_order降順）
 
 #### ゲーム内日付の扱い
 - グラブルではAM5:00に日付が変わるため、1/21チャンネルは「1/21 5:00〜1/22 4:00」を対象とする
@@ -108,26 +115,38 @@
   - 参加時間を変更した場合：新たに追加された参加時間を条件に検索
 - 他人の同一日時・同一クエストがあれば2人以上でマッチング成功
 
+## 周期マッチング処理
+
+### スケジュール仕様
+- タスク区分：`auto_matching`
+- 実行間隔：10秒
+- 同時実行：不可（処理完了後に次回スケジュール登録）
+
+### マッチング検出
+- `auto_recruitment_participants`と`user_desired_quests`を結合
+- 同一の(guild_id, quest_id, month, day, hour)でグルーピング
+- 2人以上存在するグループを抽出
+- 既存の`quest_matchings`に登録済みでないユーザーのみ対象
+
+### 6属性クエストのグループ分け
+- 属性被りがあれば別グループに分割
+- 人数上限（`recruit_count`）を超えていれば別グループに分割
+- 希望属性数の少ないユーザーから優先配置
+
 ## マッチング成功時の挙動
 
 ### 通知
-- マッチング済みチャンネルにメッセージを投稿
-- 日時、クエスト候補、参加者を表示
-- 3人以上マッチした場合は既存メッセージを編集して参加者を追加
-
-### 投票
-- セレクトBOXでどのクエストにするか選択
-- 「何でも良い」の選択肢あり
-- 「何でも良い」を選んだ人は最終決定権なし
-- 全員が「何でも良い」の場合はランダムで決定
-- 同数投票の場合は全員に再投票を求める（元メッセージに返信する形で新しいメッセージを投稿）
-
-### タイムアウト・キャンセル
-- 該当日時を過ぎたらキャンセル
-- 何も入力しなければキャンセル扱い
+- マッチングチャンネルにメッセージを投稿
+- 日時、クエスト、参加者を表示
+- 参加者全員にメンション
+- 6属性クエストの場合は担当属性も表示
 
 ### 募集作成
-- クエスト決定後、Botがマルチ募集v2と同じ形式で募集を作成（定期募集処理を参考）
+- マッチング成立と同時にマルチ募集v2形式で即座に募集を作成
+- クエストに応じた通知ロール＋参加ユーザーにメンション
+
+### キャンセル
+- 該当日時を過ぎたらキャンセル扱い
 
 ## DBテーブル仕様
 
@@ -139,7 +158,7 @@
 - matching_channel_is_bot_created（マッチングチャンネルがBot作成か）
 - quest_channel_is_bot_created（クエストチャンネルがBot作成か）
 - matching_message_id（マッチングチャンネルに送信したメッセージID）
-- quest_message_id（クエストチャンネルに送信したメッセージID）
+- quest_message_id（非推奨：1クエスト1メッセージのため未使用）
 - days_range（何日分募集するか）
 - created_at
 - updated_at
@@ -155,12 +174,23 @@
 - created_at
 - updated_at
 
-### ギルドユーザー希望クエストテーブル（guild_master.user_desired_quests）
-- guild_id
-- user_id（ユーザーID）
-- quest_id（クエストID）
+### クエストメッセージテーブル（guild_master.auto_recruitment_quest_messages）
+- guild_id（PK）
+- quest_id（PK）
+- message_id（メッセージID）
 - created_at
 - updated_at
+
+### ギルドユーザー希望クエストテーブル（guild_master.user_desired_quests）
+- guild_id（PK）
+- user_id（PK、ユーザーID）
+- quest_id（PK、クエストID）
+- battle_style_id（PK、希望属性。0=属性指定なし）
+- created_at
+- updated_at
+
+※ 主キーは(guild_id, user_id, quest_id, battle_style_id)
+※ 同一クエストで複数属性を希望可能
 
 ### 日時募集参加者テーブル（guild_master.auto_recruitment_participants）
 - guild_id
@@ -171,25 +201,25 @@
 - created_at
 - updated_at
 
-### マッチング済みチャンネルテーブル（worker.matched_recruitment_channels）
-- guild_id
-- channel_id（チャンネルID）
-- message_id（メッセージID）
-- month（何月の募集か）
-- day（何日の募集か）
-- hour（何時の募集か）
-- quest_id（決定したクエストID、未決定ならNULL）
+### マッチングテーブル（worker.quest_matchings）
+- guild_id（PK）
+- id（PK、UUID）
+- quest_id（クエストID）
+- scheduled_month（予定月）
+- scheduled_day（予定日）
+- scheduled_hour（予定時間）
+- status（状態：active/completed/cancelled）
+- recruitment_id（作成されたマルチ募集ID、募集作成後にセット）
 - created_at
 - updated_at
 
-### マッチング投票テーブル（worker.matched_recruitment_votes）
-- guild_id
-- matched_channel_id（matched_recruitment_channelsへの参照）
-- message_id
-- user_id
-- quest_id（NULLなら「何でも良い」）
-- created_at
-- updated_at
+### マッチングユーザーテーブル（worker.quest_matching_users）
+- guild_id（PK）
+- matching_id（PK、FK→quest_matchings.id）
+- user_id（PK、ユーザーID）
+- battle_style_id（担当属性、6属性クエストの場合のみ）
+- joined_at（参加日時）
+- left_at（離脱日時、NULLなら参加中）
 
 ## 重要ルール
 
@@ -204,6 +234,16 @@
 ### データ削除
 - マッチング後もuser_desired_quests、auto_recruitment_participantsのレコードは残す
 - 将来的に削除バッチで一括削除
+
+### カテゴリ解除時のデータ削除
+カテゴリ解除コマンド実行時、以下の順序でデータを削除：
+
+1. Discordチャンネル/メッセージの削除
+2. `quest_matching_users` - 外部キー制約のため先に削除
+3. `quest_matchings` - マッチングデータ削除
+4. `auto_recruitment_quest_messages` - クエストメッセージID削除
+5. `auto_recruitment_channels` - 日時チャンネル情報削除
+6. `auto_recruitments` - 自動募集設定削除
 
 ## エラーハンドリング
 

@@ -23,8 +23,8 @@ pub mod schedule;
 pub use all_recruitment_notification_roles_repository::AllRecruitmentNotificationRolesRepository;
 pub use auto_recruitment::{
     AutoRecruitmentChannelRepository, AutoRecruitmentParticipantRepository,
-    AutoRecruitmentRepository, CreateAutoRecruitmentParams, MatchedRecruitmentChannelRepository,
-    MatchedRecruitmentVoteRepository, UserDesiredQuestRepository,
+    AutoRecruitmentQuestMessageRepository, AutoRecruitmentRepository, CreateAutoRecruitmentParams,
+    QuestMatchingRepository, QuestMatchingUserRepository, UserDesiredQuestRepository,
 };
 pub use battle_recruitments_repository::{
     BattleRecruitmentsRepository, CreateBattleRecruitmentParams,

@@ -81,17 +81,15 @@ pub async fn handle_quest_selection_interaction(
                 )
                 .await?;
 
-            // マッチングチェックと通知（応答後に実行）
+            // マッチングは周期タスクで実行されるため、ここではログのみ
             if let Err(e) = auto_recruitment::check_and_notify_after_quest_selection(
-                ctx,
-                app_state,
                 guild_id,
                 user_id,
                 selected_quest_ids,
             )
             .await
             {
-                error!(error = %e, guild_id, user_id, "マッチングチェックに失敗しました");
+                error!(error = %e, guild_id, user_id, "マッチングチェック登録に失敗しました");
             }
         }
         Err(e) => {
