@@ -318,9 +318,14 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         info!(task_id = task.id, "自動マッチングタスクを実行します");
                         use crate::services::schedule::auto_matching_task_executor::AutoMatchingTaskExecutor;
 
-                        let executor = AutoMatchingTaskExecutor::new(Arc::clone(task_repo));
+                        let recruitment_creation_service =
+                            Arc::new(RecruitmentCreationService::new());
+                        let executor = AutoMatchingTaskExecutor::new(
+                            Arc::clone(task_repo),
+                            recruitment_creation_service,
+                        );
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, db, http, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動マッチングタスクを実行しました");
                             }
