@@ -24,8 +24,9 @@ use crate::services::message::MessageTextId;
 use crate::types::{AppError, AppState, Result};
 use chrono::{Datelike, Duration, Utc};
 use poise::serenity_prelude::{
-    ChannelId, ChannelType, Context, CreateActionRow, CreateChannel, CreateMessage,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditChannel, GuildId, Http,
+    ButtonStyle, ChannelId, ChannelType, Context, CreateActionRow, CreateButton, CreateChannel,
+    CreateMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditChannel,
+    GuildId, Http,
 };
 use rust_i18n::t;
 use sea_orm::TransactionTrait;
@@ -791,6 +792,27 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
             "クエストメッセージを送信しました"
         );
     }
+
+    // 最後に「選択済みのクエスト」ボタン付きメッセージを送信
+    let check_button = CreateButton::new(format!("auto_quest_selection_check:{}", guild_id))
+        .style(ButtonStyle::Secondary)
+        .label("📋 選択済みのクエスト");
+
+    let check_message = CreateMessage::new()
+        .content(
+            "**選択状況の確認**\n下のボタンを押すと、あなたが選択しているクエストを確認できます。",
+        )
+        .components(vec![CreateActionRow::Buttons(vec![check_button])]);
+
+    channel_id
+        .send_message(http, check_message)
+        .await
+        .map_err(|e| {
+            error!(error = %e, channel_id = channel_id.get(), "選択確認メッセージの送信に失敗しました");
+            AppError::Business {
+                message: "選択確認メッセージの送信に失敗しました".to_string(),
+            }
+        })?;
 
     info!(
         guild_id,

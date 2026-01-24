@@ -14,8 +14,29 @@ pub async fn on_component_interaction(
     let custom_id = &interaction.data.custom_id;
     debug!(custom_id = %custom_id, "ComponentInteraction受信");
 
+    // 自動募集クエスト選択確認ボタンの処理
+    if custom_id.starts_with("auto_quest_selection_check:") {
+        use crate::events::interactions::components::auto_recruit_selection_check_handler;
+
+        info!(custom_id = %custom_id, "自動募集クエスト選択確認ボタンを検出");
+
+        match auto_recruit_selection_check_handler::handle_selection_check_button(
+            ctx,
+            interaction,
+            data,
+        )
+        .await
+        {
+            Ok(_) => {
+                info!("自動募集クエスト選択確認ボタンの処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "自動募集クエスト選択確認ボタンの処理中にエラーが発生しました");
+            }
+        }
+    }
     // 自動募集クエスト参加ボタンの処理（1クエスト1メッセージ形式）
-    if custom_id.starts_with("auto_quest_join:") {
+    else if custom_id.starts_with("auto_quest_join:") {
         use crate::events::interactions::components::auto_recruit_quest_join_handler;
 
         info!(custom_id = %custom_id, "自動募集クエスト参加ボタンを検出");
