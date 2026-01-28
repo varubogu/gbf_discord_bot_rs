@@ -1,3 +1,4 @@
+use crate::events::converters::to_create_embed;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
 use crate::services::recruitment::schedule::{OffsetCalculatorService, ScheduleDisplayService};
@@ -5,7 +6,6 @@ use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{PoiseContext, Result};
-use poise::serenity_prelude::CreateEmbed;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -178,8 +178,8 @@ pub async fn recruitment_schedule_create(
         e
     })?;
 
-    let embed: CreateEmbed =
-        ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
+    let embed_content = ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
+    let embed = to_create_embed(&embed_content);
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;
 

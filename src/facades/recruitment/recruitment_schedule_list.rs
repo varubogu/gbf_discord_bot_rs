@@ -1,3 +1,4 @@
+use crate::events::converters::to_autocomplete_choices;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
@@ -73,5 +74,6 @@ pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<Autoco
     let _ = txn.commit().await;
 
     // 表示用へ整形（タイムゾーンを渡す）
-    ScheduleDisplayService::to_autocomplete(&schedules, &timezone)
+    let options = ScheduleDisplayService::to_autocomplete(&schedules, &timezone);
+    to_autocomplete_choices(options)
 }

@@ -2,8 +2,8 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::quest::search::QuestSearchService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::error;
 
@@ -15,7 +15,7 @@ use tracing::error;
 pub async fn search_quests_for_autocomplete(
     ctx: PoiseContext<'_>,
     partial: &str,
-) -> Vec<AutocompleteChoice> {
+) -> Vec<AutocompleteOption> {
     // ギルドIDを取得
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
@@ -60,7 +60,7 @@ pub async fn search_quests_for_autocomplete(
     // AutocompleteChoiceに変換（display_nameを表示、quest_nameを値として使用）
     results
         .into_iter()
-        .map(|item| AutocompleteChoice::new(item.display_name, item.quest_name))
+        .map(|item| AutocompleteOption::new(item.display_name, item.quest_name))
         .collect()
 }
 

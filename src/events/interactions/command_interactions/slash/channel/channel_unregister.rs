@@ -2,6 +2,7 @@ use poise::serenity_prelude::AutocompleteChoice;
 use std::sync::Arc;
 use tracing::error;
 
+use crate::events::converters::to_autocomplete_choices;
 use crate::facades::channel::ChannelManagementFacade;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
@@ -13,7 +14,7 @@ async fn channel_type_autocomplete(
 ) -> Vec<AutocompleteChoice> {
     let facade = ChannelManagementFacade::new(Arc::new(ctx.data().app_state.clone()));
     match facade.get_channel_types_for_autocomplete().await {
-        Ok(v) => v,
+        Ok(options) => to_autocomplete_choices(options),
         Err(e) => {
             error!(error = %e, "チャンネル種別の取得に失敗しました");
             vec![]
