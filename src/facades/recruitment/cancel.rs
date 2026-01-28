@@ -430,7 +430,7 @@ async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> 
 // 未使用の関数を削除
 
 /// 確認メッセージ表示（内部関数）
-async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle> {
+async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle<'_>> {
     // 確認メッセージとボタンを作成
     let confirm_button = CreateButton::new("confirm_cancel")
         .label("はい")
