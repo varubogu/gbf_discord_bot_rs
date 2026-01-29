@@ -1,7 +1,14 @@
 //! 自動募集通知サービス
 //!
-//! マッチング成功時の通知メッセージを作成・送信するサービス
+//! マッチング成功時の通知メッセージを作成・送信するサービス。
+//! UIレイアウトは `NotificationPresenter` が担当し、本モジュールでは
+//! プレゼンターのドメインモデルをserenityのビルダー型へ変換して送信する。
 
+use crate::presenter::NotificationPresenter;
+use crate::types::discord::{
+    ActionRowContent, ComponentContent, EmbedContent, MessageContent, SelectMenuContent,
+    SelectMenuKindContent, SelectMenuOptionContent,
+};
 use crate::types::Result;
 use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateActionRow, CreateEmbed, CreateMessage, CreateSelectMenu,
@@ -42,43 +49,16 @@ impl AutoRecruitmentNotificationService {
 
         let channel = ChannelId::new(channel_id);
 
-        // 参加者メンション
-        let participant_mentions: Vec<String> =
-            participants.iter().map(|id| format!("<@{}>", id)).collect();
-
-        // Embed作成
-        let embed = CreateEmbed::new()
-            .title("🎮 マッチング成功！")
-            .description(format!(
-                "**日時**: {}月{}日 {}:00\n\n**参加者**: {}\n\n以下のクエスト候補から選択してください。",
-                month,
-                day,
-                hour,
-                participant_mentions.join(", ")
-            ))
-            .color(0x00ff00);
-
-        // クエスト選択セレクトメニュー作成
-        let mut options: Vec<CreateSelectMenuOption> = quest_candidates
-            .iter()
-            .map(|(id, name)| CreateSelectMenuOption::new(name, id.to_string()))
-            .collect();
-
-        // 「何でも良い」オプションを追加
-        options.push(CreateSelectMenuOption::new("何でも良い", "any"));
-
-        let select_menu = CreateSelectMenu::new(
-            format!("auto_vote:{}", matched_id),
-            CreateSelectMenuKind::String { options },
-        )
-        .placeholder("クエストを選択してください");
-
-        let action_row = CreateActionRow::SelectMenu(select_menu);
-
-        let message = CreateMessage::new()
-            .content(participant_mentions.join(" "))
-            .embed(embed)
-            .components(vec![action_row]);
+        // プレゼンターでメッセージを構築
+        let message_content = NotificationPresenter::create_match_notification(
+            participants,
+            quest_candidates,
+            month,
+            day,
+            hour,
+            matched_id,
+        );
+        let message = message_content_to_create_message(&message_content);
 
         let sent_message = channel.send_message(http, message).await.map_err(|e| {
             error!(error = %e, channel_id, "マッチング通知の送信に失敗しました");
@@ -118,42 +98,16 @@ impl AutoRecruitmentNotificationService {
 
         let channel = ChannelId::new(channel_id);
 
-        // 参加者メンション
-        let participant_mentions: Vec<String> =
-            participants.iter().map(|id| format!("<@{}>", id)).collect();
-
-        // Embed作成
-        let embed = CreateEmbed::new()
-            .title("🎮 マッチング成功！")
-            .description(format!(
-                "**日時**: {}月{}日 {}:00\n\n**参加者**: {}\n\n以下のクエスト候補から選択してください。",
-                month,
-                day,
-                hour,
-                participant_mentions.join(", ")
-            ))
-            .color(0x00ff00);
-
-        // クエスト選択セレクトメニュー作成
-        let mut options: Vec<CreateSelectMenuOption> = quest_candidates
-            .iter()
-            .map(|(id, name)| CreateSelectMenuOption::new(name, id.to_string()))
-            .collect();
-
-        options.push(CreateSelectMenuOption::new("何でも良い", "any"));
-
-        let select_menu = CreateSelectMenu::new(
-            format!("auto_vote:{}", matched_id),
-            CreateSelectMenuKind::String { options },
-        )
-        .placeholder("クエストを選択してください");
-
-        let action_row = CreateActionRow::SelectMenu(select_menu);
-
-        let edit_message = EditMessage::new()
-            .content(participant_mentions.join(" "))
-            .embed(embed)
-            .components(vec![action_row]);
+        // プレゼンターで最新のメッセージ内容を構築
+        let message_content = NotificationPresenter::create_match_notification(
+            participants,
+            quest_candidates,
+            month,
+            day,
+            hour,
+            matched_id,
+        );
+        let edit_message = message_content_to_edit_message(&message_content);
 
         let mut message = channel
             .message(http, serenity::MessageId::new(message_id))
@@ -193,42 +147,14 @@ impl AutoRecruitmentNotificationService {
 
         let channel = ChannelId::new(channel_id);
 
-        // 参加者メンション
-        let participant_mentions: Vec<String> =
-            participants.iter().map(|id| format!("<@{}>", id)).collect();
+        // プレゼンターで再投票メッセージを構築
+        let message_content =
+            NotificationPresenter::create_revote_notification(participants, tie_quest_ids, matched_id);
+        let mut create_message = message_content_to_create_message(&message_content);
+        create_message =
+            create_message.reference_message((channel, serenity::MessageId::new(reply_to_message_id)));
 
-        // Embed作成
-        let embed = CreateEmbed::new()
-            .title("🔄 再投票が必要です")
-            .description(format!(
-                "同数投票のため、以下のクエストから再度選択してください。\n\n{}",
-                participant_mentions.join(" ")
-            ))
-            .color(0xffaa00);
-
-        // 同数だったクエストのみ選択肢に
-        let mut options: Vec<CreateSelectMenuOption> = tie_quest_ids
-            .iter()
-            .map(|(id, name)| CreateSelectMenuOption::new(name, id.to_string()))
-            .collect();
-
-        options.push(CreateSelectMenuOption::new("何でも良い", "any"));
-
-        let select_menu = CreateSelectMenu::new(
-            format!("auto_vote:{}", matched_id),
-            CreateSelectMenuKind::String { options },
-        )
-        .placeholder("クエストを選択してください");
-
-        let action_row = CreateActionRow::SelectMenu(select_menu);
-
-        let message = CreateMessage::new()
-            .content(participant_mentions.join(" "))
-            .embed(embed)
-            .components(vec![action_row])
-            .reference_message((channel, serenity::MessageId::new(reply_to_message_id)));
-
-        let sent_message = channel.send_message(http, message).await.map_err(|e| {
+        let sent_message = channel.send_message(http, create_message).await.map_err(|e| {
             error!(error = %e, channel_id, "再投票メッセージの送信に失敗しました");
             crate::types::AppError::Business {
                 message: format!("再投票メッセージの送信に失敗しました: {}", e),
@@ -259,21 +185,15 @@ impl AutoRecruitmentNotificationService {
 
         let channel = ChannelId::new(channel_id);
 
-        // 参加者メンション
-        let participant_mentions: Vec<String> =
-            participants.iter().map(|id| format!("<@{}>", id)).collect();
-
-        let embed = CreateEmbed::new()
-            .title("✅ クエストが決定しました！")
-            .description(format!(
-                "**クエスト**: {}\n**日時**: {}月{}日 {}:00\n\n募集を作成しています...",
-                quest_name, month, day, hour
-            ))
-            .color(0x00aaff);
-
-        let message = CreateMessage::new()
-            .content(participant_mentions.join(" "))
-            .embed(embed);
+        // プレゼンターでクエスト決定通知を構築
+        let message_content = NotificationPresenter::create_quest_decided_notification(
+            participants,
+            quest_name,
+            month,
+            day,
+            hour,
+        );
+        let message = message_content_to_create_message(&message_content);
 
         let sent_message = channel.send_message(http, message).await.map_err(|e| {
             error!(error = %e, channel_id, "クエスト決定通知の送信に失敗しました");
@@ -291,4 +211,135 @@ impl Default for AutoRecruitmentNotificationService {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// EmbedContent を CreateEmbed に変換する（通知用の最小限フィールドのみ対応）
+fn embed_content_to_create_embed(embed: &EmbedContent) -> CreateEmbed {
+    let mut builder = CreateEmbed::new();
+
+    if let Some(title) = &embed.title {
+        builder = builder.title(title);
+    }
+    if let Some(description) = &embed.description {
+        builder = builder.description(description);
+    }
+    if let Some(color) = embed.color {
+        builder = builder.color(color);
+    }
+
+    builder
+}
+
+/// ActionRowContent を CreateActionRow に変換する（セレクトメニューのみ対応）
+fn action_row_to_create_action_row(row: &ActionRowContent) -> Option<CreateActionRow> {
+    if row.components.is_empty() {
+        return None;
+    }
+
+    match &row.components[0] {
+        ComponentContent::SelectMenu(menu) => {
+            let select_menu = select_menu_to_create_select_menu(menu);
+            Some(CreateActionRow::SelectMenu(select_menu))
+        }
+        // 現状このサービスではボタンを使用しないため、未対応コンポーネントは無視する
+        ComponentContent::Button(_) => None,
+    }
+}
+
+/// SelectMenuContent を CreateSelectMenu に変換する（文字列メニューのみ対応）
+fn select_menu_to_create_select_menu(menu: &SelectMenuContent) -> CreateSelectMenu {
+    let kind = match &menu.kind {
+        SelectMenuKindContent::String { options } => {
+            let serenity_options: Vec<CreateSelectMenuOption> = options
+                .iter()
+                .map(|opt| {
+                    let mut o = CreateSelectMenuOption::new(&opt.label, &opt.value);
+                    if let Some(desc) = &opt.description {
+                        o = o.description(desc);
+                    }
+                    if let Some(emoji) = &opt.emoji {
+                        o = o.emoji(serenity::ReactionType::Unicode(emoji.clone()));
+                    }
+                    if opt.default {
+                        o = o.default_selection(true);
+                    }
+                    o
+                })
+                .collect();
+            CreateSelectMenuKind::String {
+                options: serenity_options,
+            }
+        }
+        // 通知サービスではその他の種別は使用しない想定
+        _ => CreateSelectMenuKind::String {
+            options: Vec::new(),
+        },
+    };
+
+    let mut select_menu = CreateSelectMenu::new(&menu.custom_id, kind);
+
+    if let Some(placeholder) = &menu.placeholder {
+        select_menu = select_menu.placeholder(placeholder);
+    }
+    if let Some(min) = menu.min_values {
+        select_menu = select_menu.min_values(min);
+    }
+    if let Some(max) = menu.max_values {
+        select_menu = select_menu.max_values(max);
+    }
+    if menu.disabled {
+        select_menu = select_menu.disabled(true);
+    }
+
+    select_menu
+}
+
+/// MessageContent を CreateMessage に変換する
+fn message_content_to_create_message(message: &MessageContent) -> CreateMessage {
+    let mut create_message = CreateMessage::new();
+
+    if let Some(text) = &message.text {
+        create_message = create_message.content(text);
+    }
+
+    for embed in &message.embeds {
+        create_message = create_message.embed(embed_content_to_create_embed(embed));
+    }
+
+    let action_rows: Vec<CreateActionRow> = message
+        .components
+        .iter()
+        .filter_map(action_row_to_create_action_row)
+        .collect();
+
+    if !action_rows.is_empty() {
+        create_message = create_message.components(action_rows);
+    }
+
+    create_message
+}
+
+/// MessageContent を EditMessage に変換する
+fn message_content_to_edit_message(message: &MessageContent) -> EditMessage {
+    let mut edit_message = EditMessage::new();
+
+    if let Some(text) = &message.text {
+        edit_message = edit_message.content(text);
+    }
+
+    for embed in &message.embeds {
+        edit_message = edit_message.embed(embed_content_to_create_embed(embed));
+    }
+
+    let action_rows: Vec<CreateActionRow> = message
+        .components
+        .iter()
+        .filter_map(action_row_to_create_action_row)
+        .collect();
+
+    if !action_rows.is_empty() {
+        edit_message = edit_message.components(action_rows);
+    }
+
+    edit_message
 }
