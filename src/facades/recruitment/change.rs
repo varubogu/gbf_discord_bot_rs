@@ -1,3 +1,4 @@
+use crate::events::converters::to_create_embed;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -239,7 +240,7 @@ pub async fn change_recruitment_information_internal(
                 .join(" ");
 
             // v1は新規作成用のembedをそのまま使用
-            (mentions_str, recruitment_data.embed.clone())
+            (mentions_str, to_create_embed(&recruitment_data.embed_content))
         };
 
         // 5. DBの募集情報を更新

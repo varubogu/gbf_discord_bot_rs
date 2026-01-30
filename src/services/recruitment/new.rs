@@ -2,12 +2,13 @@ use chrono::{DateTime, Utc};
 use poise::serenity_prelude::ButtonStyle;
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::{
-    CreateActionRow, CreateButton, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind,
+    CreateActionRow, CreateButton, CreateSelectMenu, CreateSelectMenuKind,
     CreateSelectMenuOption,
 };
 use std::collections::HashMap;
 use tracing::info;
 
+use crate::events::converters::to_create_embed;
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
@@ -15,6 +16,7 @@ use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
+use crate::types::discord::EmbedContent;
 use crate::types::PoiseContext;
 use sea_orm::DatabaseTransaction;
 
@@ -28,8 +30,8 @@ pub struct RecruitmentData {
     pub guild_id: u64,
     pub expiry_date: DateTime<chrono::Utc>,
     pub message_content: String,
-    pub embed: CreateEmbed,
-    pub reactions: Vec<poise::serenity_prelude::ReactionType>,
+    pub embed_content: EmbedContent,
+    pub reaction_emojis: Vec<String>,
     pub element_emojis: ElementEmojis,
 }
 
@@ -100,16 +102,13 @@ where
             ))
         })?;
 
-    // reactionsをパース
+    // reactionsをパース（絵文字文字列として取得）
     // 6属性の場合はelement_emojisから取得、それ以外はbattle_styleのreactionsをパース
-    let reactions = if battle_style.display_name == "6属性" {
+    let reaction_emojis: Vec<String> = if battle_style.display_name == "6属性" {
         let emojis_array = element_emojis.as_array();
-        emojis_array
-            .iter()
-            .map(|emoji| ReactionType::Unicode(emoji.to_string()))
-            .collect()
+        emojis_array.iter().map(|emoji| emoji.to_string()).collect()
     } else {
-        parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"))
+        parse_reaction_emojis(battle_style.reactions.as_deref().unwrap_or("✅"))
     };
 
     // メッセージ内容を作成（解散時刻なし - create_recruitment_dataでは解散時刻情報がないため）
@@ -126,7 +125,7 @@ where
 
     // 初期参加者一覧を作成
     let initial_participants_text =
-        create_initial_participants_text(db, &reactions, Some(params.guild_id as i64)).await?;
+        create_initial_participants_text(db, &reaction_emojis, Some(params.guild_id as i64)).await?;
 
     Ok(RecruitmentData {
         quest,
@@ -136,11 +135,11 @@ where
         guild_id: params.guild_id,
         expiry_date,
         message_content,
-        embed: poise::serenity_prelude::CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff),
-        reactions,
+        embed_content: EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff),
+        reaction_emojis,
         element_emojis: element_emojis.clone(),
     })
 }
@@ -155,7 +154,7 @@ pub async fn send_recruitment_message(
     // deferした応答を完了させる形でメッセージを送信
     let reply = CreateReply::default()
         .content(recruitment_data.message_content.clone())
-        .embed(recruitment_data.embed.clone());
+        .embed(to_create_embed(&recruitment_data.embed_content));
 
     let message = ctx.send(reply).await?;
     Ok(message.message().await?.id.get())
@@ -326,7 +325,19 @@ fn format_dismissal_time(
     }
 }
 
+/// reactionsをパースする（カンマ区切りの絵文字文字列をStringのVecに変換）
+fn parse_reaction_emojis(reactions_str: &str) -> Vec<String> {
+    reactions_str
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect()
+}
+
 /// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）
+/// 後方互換性のため残しているが、将来的には削除予定
+#[allow(dead_code)]
 fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
     reactions_str
         .split(',')
@@ -340,7 +351,7 @@ fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
 /// すべてのリアクション絵文字を「なし」で表示（メッセージサービス使用版）
 async fn create_initial_participants_text<C>(
     db: &C,
-    reactions: &[ReactionType],
+    reaction_emojis: &[String],
     guild_id: Option<i64>,
 ) -> types::Result<String>
 where
@@ -360,12 +371,7 @@ where
         )
         .await?;
 
-    for reaction in reactions {
-        // ReactionTypeから絵文字文字列を取得
-        let emoji = match reaction {
-            ReactionType::Unicode(emoji_str) => emoji_str,
-            _ => continue,
-        };
+    for emoji in reaction_emojis {
         text.push_str(&format!("{emoji} {no_participants}\n"));
     }
 

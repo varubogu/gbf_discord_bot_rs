@@ -1,6 +1,6 @@
-use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateEmbed, EditMessage, MessageId, ReactionType,
-};
+use crate::events::converters::to_edit_message;
+use crate::types::discord::{EmbedContent, MessageContent};
+use poise::serenity_prelude::all::{ChannelId, Context, MessageId, ReactionType};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -232,13 +232,16 @@ impl ParticipantsService {
         };
 
         // 埋め込みメッセージを作成
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&participants_text)
-            .color(0x0099ff);
+        let embed_content = EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&participants_text)
+            .with_color(0x0099ff);
 
         // メッセージを更新
-        let edit_message = EditMessage::new().content(content).embed(embed);
+        let message_content = MessageContent::new()
+            .with_text(content)
+            .with_embed(embed_content);
+        let edit_message = to_edit_message(&message_content);
 
         match message.edit(&ctx.http, edit_message).await {
             Ok(_) => {

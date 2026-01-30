@@ -1,5 +1,7 @@
 // use chrono::{DateTime, Local};
-use poise::serenity_prelude::all::{ChannelId, Context, CreateEmbed, EditMessage, Message};
+use crate::events::converters::to_edit_message;
+use crate::types::discord::{EmbedContent, MessageContent};
+use poise::serenity_prelude::all::{ChannelId, Context, Message};
 use tracing::{error, info};
 
 pub struct UpdateRecruitmentService {}
@@ -221,16 +223,16 @@ impl UpdateRecruitmentService {
         message_id: u64,
         urgent_message: &str,
     ) -> Result<(), String> {
-        let embed = CreateEmbed::new()
-            .title("🚨 重要な更新")
-            .description(urgent_message)
-            .color(0xff0000)
-            .timestamp(chrono::Utc::now());
+        let embed_content = EmbedContent::new()
+            .with_title("🚨 重要な更新")
+            .with_description(urgent_message)
+            .with_color(0xff0000);
 
         // 元のメッセージに緊急マークを追加
-        let edit_builder = EditMessage::new()
-            .content("🚨 重要更新あり 🚨")
-            .embed(embed);
+        let message_content = MessageContent::new()
+            .with_text("🚨 重要更新あり 🚨")
+            .with_embed(embed_content);
+        let edit_builder = to_edit_message(&message_content);
 
         match ChannelId::from(channel_id)
             .edit_message(&ctx.http, message_id, edit_builder)

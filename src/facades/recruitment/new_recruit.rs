@@ -211,8 +211,13 @@ pub async fn new_recruitment(
             );
         }
 
-        // message_idとreactionsを返す
-        Ok((message_id, recruitment_data.reactions.clone()))
+        // message_idとreactionsを返す（絵文字文字列をReactionTypeに変換）
+        let reactions: Vec<poise::serenity_prelude::ReactionType> = recruitment_data
+            .reaction_emojis
+            .iter()
+            .map(|emoji| poise::serenity_prelude::ReactionType::Unicode(emoji.clone()))
+            .collect();
+        Ok((message_id, reactions))
     }
     .await;
 

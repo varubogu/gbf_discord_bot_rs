@@ -19,9 +19,11 @@ use crate::services::auto_recruitment::PeriodicMatchingService;
 use crate::services::recruitment::recruitment_creation_service::{
     MatchingRecruitmentParams, RecruitmentCreationService,
 };
+use crate::events::converters::to_create_message;
+use crate::types::discord::{EmbedContent, MessageContent};
 use crate::types::{AppError, Result};
 use chrono::{Datelike, Duration, TimeZone, Utc};
-use poise::serenity_prelude::{ChannelId, CreateEmbed, CreateMessage, Http};
+use poise::serenity_prelude::{ChannelId, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -355,9 +357,9 @@ impl AutoMatchingTaskExecutor {
         let element_info = self.build_element_info(users);
 
         // Embed作成
-        let embed = CreateEmbed::new()
-            .title("🎮 マッチング成立！")
-            .description(format!(
+        let embed_content = EmbedContent::new()
+            .with_title("🎮 マッチング成立！")
+            .with_description(&format!(
                 "**クエスト**: {}\n**日時**: {}月{}日 {}:00\n\n**参加者**:\n{}{}\n\n募集を作成しています...",
                 quest_name,
                 month,
@@ -366,14 +368,14 @@ impl AutoMatchingTaskExecutor {
                 participant_mentions.join("\n"),
                 element_info,
             ))
-            .color(0x00ff00);
+            .with_color(0x00ff00);
 
-        let message = CreateMessage::new()
-            .content(participant_mentions.join(" "))
-            .embed(embed);
+        let message_content = MessageContent::new()
+            .with_text(&participant_mentions.join(" "))
+            .with_embed(embed_content);
 
         channel
-            .send_message(http, message)
+            .send_message(http, to_create_message(&message_content))
             .await
             .map_err(|e| AppError::Business {
                 message: format!("マッチング通知の送信に失敗しました: {}", e),

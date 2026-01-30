@@ -20,10 +20,12 @@ use crate::services::recruitment::new::{
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
+use crate::events::converters::to_create_embed;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
+use crate::types::discord::EmbedContent;
 use crate::types::Result;
 use chrono::{TimeZone, Utc};
-use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
+use poise::serenity_prelude::{CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -230,10 +232,10 @@ impl RecruitmentCreationService {
             &battle_style.display_name,
             &element_emojis,
         );
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff);
+        let embed_content = EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff);
 
         // 5. ボタンを作成
         let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
@@ -245,7 +247,7 @@ impl RecruitmentCreationService {
                 http,
                 CreateMessage::new()
                     .content(message_content)
-                    .embed(embed)
+                    .embed(to_create_embed(&embed_content))
                     .components(buttons),
             )
             .await?;
@@ -446,10 +448,10 @@ impl RecruitmentCreationService {
             &battle_style.display_name,
             &element_emojis,
         );
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff);
+        let embed_content = EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff);
 
         // 5. ボタンを作成
         let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
@@ -461,7 +463,7 @@ impl RecruitmentCreationService {
                 http,
                 CreateMessage::new()
                     .content(message_content)
-                    .embed(embed)
+                    .embed(to_create_embed(&embed_content))
                     .components(buttons),
             )
             .await?;
