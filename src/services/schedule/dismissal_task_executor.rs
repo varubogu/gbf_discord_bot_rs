@@ -17,7 +17,9 @@ use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
 use crate::types::{AppError, Result};
 use crate::utils::discord_helper::send_message_with_optional_reply;
-use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
+use crate::events::converters::to_edit_message;
+use crate::types::discord::MessageContent;
+use poise::serenity_prelude::{ChannelId, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -243,13 +245,10 @@ impl DismissalTaskExecutor {
 
         let cancelled_content = format!("~~{original_content}~~\n\n**{cancelled_suffix}**");
 
-        // メッセージを編集
+        // メッセージを編集（ドメインモデルを使用）
+        let edit_content = MessageContent::text(&cancelled_content);
         channel_id
-            .edit_message(
-                http,
-                message_id,
-                EditMessage::new().content(cancelled_content),
-            )
+            .edit_message(http, message_id, to_edit_message(&edit_content))
             .await
             .map_err(|e| {
                 error!(error = %e, "募集メッセージの編集に失敗しました");

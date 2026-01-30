@@ -1,23 +1,19 @@
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::ButtonStyle;
-use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{
-    CreateActionRow, CreateButton, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption,
-};
 use std::collections::HashMap;
 use tracing::info;
 
-use crate::events::converters::to_create_embed;
+use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::models::quests::Quest;
+use crate::presenter::RecruitmentPresenter;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
-use crate::types::discord::EmbedContent;
+use crate::types::discord::{ActionRowContent, EmbedContent};
 use crate::types::PoiseContext;
+use poise::serenity_prelude::{CreateActionRow, ReactionType};
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
@@ -383,165 +379,90 @@ where
 }
 
 /// ボタン版用の初期参加者一覧テキストを作成
-/// 修正済みの絵文字を使用
+/// Presenterへのラッパー関数
 pub fn create_initial_participants_text_for_buttons(
     battle_style_name: &str,
     element_emojis: &ElementEmojis,
 ) -> String {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
-
-    if battle_style_name == "6属性" {
-        let mut text = String::new();
-        let emojis_array = element_emojis.as_array();
-        for (emoji, name) in emojis_array.iter().zip(ELEMENT_NAMES.iter()) {
-            text.push_str(&format!("{emoji} {name}: なし\n"));
-        }
-        text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
-        text
-    } else {
-        format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n")
-    }
+    RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis)
 }
 
-/// 属性セレクトメニュー（複数選択可能）を作成する
-///
-/// # 引数
-/// * `element_emojis` - カスタム属性絵文字
-///
-/// # 戻り値
-/// CreateActionRow（セレクトメニュー）
-pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> CreateActionRow {
-    use crate::types::ELEMENT_NAMES;
-
-    let emojis_array = element_emojis.as_array();
-    let mut options = Vec::new();
-
-    // 属性1-6のオプション
-    for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
-        let option = CreateSelectMenuOption::new(format!("{emoji} {name}"), format!("{}", i + 1));
-        options.push(option);
-    }
-
-    let select_menu = CreateSelectMenu::new(
-        "recruit_select_elements",
-        CreateSelectMenuKind::String { options },
-    )
-    .placeholder("複数の属性を選択する")
-    .min_values(1)
-    .max_values(6); // 6属性
-
-    CreateActionRow::SelectMenu(select_menu)
-}
-
-/// 募集用ボタンを作成する（ボタン版募集用）
+/// 募集用ボタンを作成する（ドメイン型版）
 ///
 /// # 引数
 /// * `battle_style_name` - 攻略方法の名前（「6属性」かどうかで分岐）
 /// * `element_emojis` - カスタム属性絵文字
 ///
 /// # 戻り値
-/// CreateActionRowのVec（Discord Message Componentsとして使用）
+/// ActionRowContentのVec（ドメインモデル）
 pub fn create_recruitment_buttons(
     battle_style_name: &str,
     element_emojis: &ElementEmojis,
-) -> Vec<CreateActionRow> {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES};
+) -> Vec<ActionRowContent> {
+    RecruitmentPresenter::create_recruitment_buttons(battle_style_name, element_emojis)
+}
 
-    if battle_style_name == "6属性" {
-        // 6属性の場合：属性1-6ボタン + 全属性可能ボタン
-        let mut element_buttons = Vec::new();
-        let emojis_array = element_emojis.as_array();
-        for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
-            let button = CreateButton::new(format!("recruit_join_{}", i + 1))
-                .label(format!("{emoji} {name}"))
-                .style(ButtonStyle::Primary);
-            element_buttons.push(button);
-        }
+/// 属性セレクトメニュー（複数選択可能）を作成する（ドメイン型版）
+///
+/// # 引数
+/// * `element_emojis` - カスタム属性絵文字
+///
+/// # 戻り値
+/// ActionRowContent（ドメインモデル）
+pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowContent {
+    RecruitmentPresenter::create_element_select_menu(element_emojis)
+}
 
-        // 全属性可能ボタン
-        let all_elements_button = CreateButton::new("recruit_join_0")
-            .label(format!("{ALL_ELEMENTS_EMOJI} 全属性可能"))
-            .style(ButtonStyle::Success);
-
-        // 全て取り消しボタン
-        let leave_all_button = CreateButton::new("recruit_leave_all")
-            .label("❌ 全て取り消し")
-            .style(ButtonStyle::Danger);
-
-        // 行1: 属性1-3
-        let row1 = CreateActionRow::Buttons(element_buttons[0..3].to_vec());
-        // 行2: 属性4-6
-        let row2 = CreateActionRow::Buttons(element_buttons[3..6].to_vec());
-        // 行3: 全属性可能 + 全て取り消し
-        let row3 = CreateActionRow::Buttons(vec![all_elements_button, leave_all_button]);
-
-        vec![row1, row2, row3]
-    } else {
-        // シンプル参加の場合：参加ボタン + 全て取り消しボタン
-        use crate::types::SIMPLE_JOIN_EMOJI;
-
-        let join_button = CreateButton::new("recruit_join")
-            .label(format!("{SIMPLE_JOIN_EMOJI} 参加"))
-            .style(ButtonStyle::Success);
-
-        let leave_all_button = CreateButton::new("recruit_leave_all")
-            .label("❌ 全て取り消し")
-            .style(ButtonStyle::Danger);
-
-        let row = CreateActionRow::Buttons(vec![join_button, leave_all_button]);
-        vec![row]
-    }
+/// 6属性募集用の全コンポーネント（ボタン + セレクトメニュー）を作成する（ドメイン型版）
+///
+/// # 引数
+/// * `element_emojis` - カスタム属性絵文字
+///
+/// # 戻り値
+/// ActionRowContentのVec（ドメインモデル）
+pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
+    RecruitmentPresenter::create_six_element_full_components(element_emojis)
 }
 
 /// Discord操作関数（ボタン付きメッセージ送信）
+///
+/// Presenterで生成したドメインモデルをConverterでpoise型に変換して送信する。
 pub async fn send_recruitment_message_with_buttons(
     ctx: &PoiseContext<'_>,
     recruitment_data: &RecruitmentData,
 ) -> types::Result<u64> {
     use poise::CreateReply;
-    use poise::serenity_prelude::CreateEmbed;
 
-    // ボタンを生成
-    let mut components = create_recruitment_buttons(
-        &recruitment_data.battle_style_name,
-        &recruitment_data.element_emojis,
-    );
+    // ボタンコンポーネントをPresenterから取得（ドメイン型）
+    let components = if recruitment_data.battle_style_name == "6属性" {
+        // 6属性の場合はセレクトメニュー付き
+        RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
+    } else {
+        // 通常の場合
+        RecruitmentPresenter::create_recruitment_buttons(
+            &recruitment_data.battle_style_name,
+            &recruitment_data.element_emojis,
+        )
+    };
 
-    // 6属性の場合のみ、セレクトメニューを最後の行（全属性可能＋全て取り消し）の直前に挿入
-    if recruitment_data.battle_style_name == "6属性" {
-        // 最後の行（全属性可能＋全て取り消し）を取り出す
-        let last_row = components.pop();
-
-        // セレクトメニューを追加（選択時に即座に参加処理が実行される）
-        let select_menu_row = create_element_select_menu(&recruitment_data.element_emojis);
-        components.push(select_menu_row);
-
-        // 最後の行を戻す
-        if let Some(row) = last_row {
-            components.push(row);
-        }
-    }
+    // ドメイン型をpoise型に変換
+    let poise_components: Vec<CreateActionRow> =
+        components.iter().map(to_create_action_row).collect();
 
     // ボタン版用の初期参加者一覧を作成
-    let initial_text = create_initial_participants_text_for_buttons(
+    let initial_text = RecruitmentPresenter::create_initial_participants_text(
         &recruitment_data.battle_style_name,
         &recruitment_data.element_emojis,
     );
 
-    // ボタン版用のembedを作成（絵文字を修正済みのものを使用）
-    let embed = CreateEmbed::new()
-        .title("参加者一覧")
-        .description(&initial_text)
-        .footer(poise::serenity_prelude::CreateEmbedFooter::new(
-            "参加者数: 0人",
-        ))
-        .color(0x0099ff);
+    // Presenterを使用してEmbedを生成
+    let embed_content = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
 
     // deferした応答を完了させる形でボタン付きメッセージを送信
     let reply = CreateReply::default()
         .content(recruitment_data.message_content.clone())
-        .embed(embed)
-        .components(components);
+        .embed(to_create_embed(&embed_content))
+        .components(poise_components);
 
     let message = ctx.send(reply).await?;
     Ok(message.message().await?.id.get())

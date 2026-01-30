@@ -1,4 +1,4 @@
-use crate::events::converters::{to_create_message, to_edit_message};
+use crate::events::converters::{to_create_action_row, to_create_message, to_edit_message};
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
@@ -16,12 +16,12 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
-use crate::types::discord::MessageContent;
+use crate::types::discord::{ActionRowContent, ButtonContent, ButtonStyleType, MessageContent};
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
-    CreateActionRow, CreateButton, EditInteractionResponse, Message, MessageId,
+    ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
+    EditInteractionResponse, Message, MessageId,
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -434,23 +434,21 @@ async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> 
 
 /// 確認メッセージ表示（内部関数）
 async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle<'_>> {
-    // 確認メッセージとボタンを作成
-    let confirm_button = CreateButton::new("confirm_cancel")
-        .label("はい")
-        .style(ButtonStyle::Danger);
+    // 確認メッセージとボタンを作成（ドメインモデル使用）
+    let confirm_button = ButtonContent::new("confirm_cancel", "はい")
+        .with_style(ButtonStyleType::Danger);
 
-    let cancel_button = CreateButton::new("deny_cancel")
-        .label("いいえ")
-        .style(ButtonStyle::Secondary);
+    let cancel_button = ButtonContent::new("deny_cancel", "いいえ")
+        .with_style(ButtonStyleType::Secondary);
 
-    let action_row = CreateActionRow::Buttons(vec![confirm_button, cancel_button]);
+    let action_row = ActionRowContent::buttons(vec![confirm_button, cancel_button]);
 
     // 確認メッセージを送信
     let reply = ctx
         .send(
             poise::CreateReply::default()
                 .content("この募集をキャンセルしますか？")
-                .components(vec![action_row])
+                .components(vec![to_create_action_row(&action_row)])
                 .ephemeral(true),
         )
         .await?;

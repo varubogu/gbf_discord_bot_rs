@@ -1,4 +1,5 @@
-use crate::events::converters::to_create_embed;
+use crate::events::converters::to_edit_message;
+use crate::types::discord::{EmbedContent, MessageContent};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -169,7 +170,6 @@ pub async fn change_recruitment_information_internal(
         use crate::models::entities::worker::recruitment_participants::{
             Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
         };
-        use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter, EditMessage};
         use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
         let (mentions, embed_for_update) = if is_v2 {
@@ -201,16 +201,14 @@ pub async fn change_recruitment_information_internal(
                 &element_emojis,
             );
 
-            // 既存embedのスタイルを保持しつつ、参加者一覧を更新したembedを作成
-            let embed = CreateEmbed::new()
-                .title("参加者一覧")
-                .description(&participants_text)
-                .footer(CreateEmbedFooter::new(format!(
-                    "参加者数: {participant_count}人"
-                )))
-                .color(0x0099ff);
+            // ドメインモデルでEmbedを作成
+            let embed_content = EmbedContent::new()
+                .with_title("参加者一覧")
+                .with_description(&participants_text)
+                .with_footer(format!("参加者数: {participant_count}人"))
+                .with_color(0x0099ff);
 
-            (mentions_str, embed)
+            (mentions_str, embed_content)
         } else {
             // v1: リアクションから参加者を取得
             debug!("v1募集: リアクションから参加者を取得します");
@@ -239,8 +237,8 @@ pub async fn change_recruitment_information_internal(
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            // v1は新規作成用のembedをそのまま使用
-            (mentions_str, to_create_embed(&recruitment_data.embed_content))
+            // v1は新規作成用のembedをそのまま使用（ドメインモデル）
+            (mentions_str, recruitment_data.embed_content.clone())
         };
 
         // 5. DBの募集情報を更新
@@ -254,13 +252,13 @@ pub async fn change_recruitment_information_internal(
             )
             .await?;
 
-        // 6. Discordのメッセージを更新
-        let edit_message = EditMessage::new()
-            .content(&recruitment_data.message_content)
-            .embed(embed_for_update);
+        // 6. Discordのメッセージを更新（ドメインモデルを使用）
+        let edit_content = MessageContent::new()
+            .with_text(&recruitment_data.message_content)
+            .with_embed(embed_for_update);
 
         channel_id_obj
-            .edit_message(http, message_id_obj, edit_message)
+            .edit_message(http, message_id_obj, to_edit_message(&edit_content))
             .await?;
 
         // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）

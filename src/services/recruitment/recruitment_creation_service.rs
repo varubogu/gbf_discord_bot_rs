@@ -1,5 +1,7 @@
+use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::presenter::RecruitmentPresenter;
 use crate::repository::GuildChannelRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_style_repository::{
@@ -13,14 +15,10 @@ use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismis
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::new::{
-    create_initial_participants_text_for_buttons, create_message_content,
-    create_recruitment_buttons,
-};
+use crate::services::recruitment::new::create_message_content;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
-use crate::events::converters::to_create_embed;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::discord::EmbedContent;
 use crate::types::Result;
@@ -227,8 +225,8 @@ impl RecruitmentCreationService {
             .get_element_emojis(txn, http, calculated_time.guild_id)
             .await?;
 
-        // 4. Embedを作成
-        let initial_participants_text = create_initial_participants_text_for_buttons(
+        // 4. Embedを作成（Presenterを使用）
+        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
             &battle_style.display_name,
             &element_emojis,
         );
@@ -237,8 +235,10 @@ impl RecruitmentCreationService {
             .with_description(&initial_participants_text)
             .with_color(0x0099ff);
 
-        // 5. ボタンを作成
-        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
+        let button_components =
+            RecruitmentPresenter::create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
         let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
@@ -443,8 +443,8 @@ impl RecruitmentCreationService {
             .get_element_emojis(txn, http, params.guild_id)
             .await?;
 
-        // 4. Embedを作成
-        let initial_participants_text = create_initial_participants_text_for_buttons(
+        // 4. Embedを作成（Presenterを使用）
+        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
             &battle_style.display_name,
             &element_emojis,
         );
@@ -453,8 +453,10 @@ impl RecruitmentCreationService {
             .with_description(&initial_participants_text)
             .with_color(0x0099ff);
 
-        // 5. ボタンを作成
-        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
+        let button_components =
+            RecruitmentPresenter::create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
         let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);

@@ -14,7 +14,9 @@ use crate::services::recruitment::cancel::{
 };
 use crate::types::{AppError, Result};
 use crate::utils::discord_helper::send_message_with_optional_reply;
-use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
+use crate::events::converters::to_edit_message;
+use crate::types::discord::MessageContent;
+use poise::serenity_prelude::{ChannelId, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -217,10 +219,10 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         )
         .await?;
 
-        // Discordメッセージを更新
-        let edit_builder = EditMessage::new().content(cancelled_content);
+        // Discordメッセージを更新（ドメインモデルを使用）
+        let edit_content = MessageContent::text(&cancelled_content);
         channel_id
-            .edit_message(http, message_id, edit_builder)
+            .edit_message(http, message_id, to_edit_message(&edit_content))
             .await
             .map_err(|e| {
                 error!(
