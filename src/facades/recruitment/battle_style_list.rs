@@ -1,14 +1,14 @@
 use crate::services::recruitment::battle_style_query_service::BattleStyleQueryService;
+use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::DatabaseConnection;
 use tracing::error;
 
 /// 攻略方法の入力候補を取得するファサード
 ///
 /// オートコンプリートで攻略方法を取得する際に使用する。
-/// すべての攻略方法をサービスから取得し、AutocompleteChoiceに変換して返す。
-pub async fn get_battle_styles_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteChoice> {
+/// すべての攻略方法をサービスから取得し、AutocompleteOptionに変換して返す。
+pub async fn get_battle_styles_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteOption> {
     // AppStateからDB接続を取得
     let db_conn = ctx.data().app_state.guild_db();
     let service = BattleStyleQueryService::new();
@@ -22,10 +22,10 @@ pub async fn get_battle_styles_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<Au
             vec![]
         });
 
-    // AutocompleteChoiceに変換
+    // AutocompleteOptionに変換
     battle_styles
         .into_iter()
-        .map(|style| AutocompleteChoice::new(style.display_name, style.id))
+        .map(|style| AutocompleteOption::new(style.display_name, style.id.to_string()))
         .collect()
 }
 

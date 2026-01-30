@@ -7,7 +7,7 @@
 use crate::presenter::NotificationPresenter;
 use crate::types::discord::{
     ActionRowContent, ComponentContent, EmbedContent, MessageContent, SelectMenuContent,
-    SelectMenuKindContent, SelectMenuOptionContent,
+    SelectMenuKindContent,
 };
 use crate::types::Result;
 use poise::serenity_prelude::{

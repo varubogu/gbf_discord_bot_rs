@@ -3,9 +3,9 @@
 //! 6属性クエストの属性セレクトメニュー操作を処理する
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::presenter::auto_recruitment_presenter::get_six_elements;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
 use crate::repository::database::auto_recruitment::SeaOrmUserDesiredQuestRepository;
-use crate::services::auto_recruitment::ui::get_six_elements;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, ComponentInteractionDataKind, Context};
 use sea_orm::TransactionTrait;

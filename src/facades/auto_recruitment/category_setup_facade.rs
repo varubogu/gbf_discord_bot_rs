@@ -16,12 +16,13 @@ use crate::repository::database::auto_recruitment::{
     SeaOrmAutoRecruitmentRepository, SeaOrmQuestMatchingRepository,
     SeaOrmQuestMatchingUserRepository,
 };
+use crate::events::converters::to_create_message;
+use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
-use crate::services::auto_recruitment::ui::QuestMessageBuilder;
 use crate::services::message::MessageTextId;
-use crate::types::{AppError, AppState, Result};
+use crate::types::{AppError, AppState, BattleStyleId, Result};
 use chrono::{Datelike, Duration, Utc};
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ChannelType, Context, CreateActionRow, CreateButton, CreateChannel,
@@ -768,11 +769,16 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
 
     // 各クエストに対してメッセージを送信
     for quest in quests {
-        // QuestMessageBuilderを使用してメッセージを構築
+        // AutoRecruitmentPresenterを使用してメッセージを構築
         // default_battle_style_idで6属性クエストかどうかを判定
-        let message = QuestMessageBuilder::new(guild_id, quest.id, quest.name.clone())
-            .with_default_battle_style_id(quest.default_battle_style_id)
-            .build();
+        let is_six_element = BattleStyleId::is_six_elements(quest.default_battle_style_id);
+        let message_content = AutoRecruitmentPresenter::create_quest_message(
+            guild_id,
+            quest.id,
+            &quest.name,
+            is_six_element,
+        );
+        let message = to_create_message(&message_content);
 
         let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), quest_id = quest.id, "クエストメッセージの送信に失敗しました");

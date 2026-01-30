@@ -18,7 +18,8 @@ pub async fn battle_style_auto_complete(
     ctx: PoiseContext<'_>,
     _partial: &str,
 ) -> Vec<AutocompleteChoice> {
-    battle_style_list::get_battle_styles_for_autocomplete(ctx).await
+    let options = battle_style_list::get_battle_styles_for_autocomplete(ctx).await;
+    to_autocomplete_choices(options)
 }
 
 /// タイムゾーンの入力候補を取得
@@ -39,7 +40,8 @@ pub async fn recruitment_schedule_auto_complete(
     _partial: &str,
 ) -> Vec<AutocompleteChoice> {
     // Facade経由で取得（Tx/RLSと整形はファサード／サービスへ移譲）
-    recruitment_schedule_list::get_schedules_for_autocomplete(ctx).await
+    let options = recruitment_schedule_list::get_schedules_for_autocomplete(ctx).await;
+    to_autocomplete_choices(options)
 }
 
 /// ロケールの入力候補を取得

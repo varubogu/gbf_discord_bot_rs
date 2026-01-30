@@ -1,11 +1,10 @@
-use crate::events::converters::to_autocomplete_choices;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
+use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -15,7 +14,7 @@ use tracing::{debug, warn};
 /// - RLS/トランザクション管理
 /// - Repositoryでスケジュール一覧取得（作成者フィルタ）
 /// - 表示整形（サービス）
-pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteChoice> {
+pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteOption> {
     // ギルドIDを取得（サーバー外では空）
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
@@ -74,6 +73,5 @@ pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<Autoco
     let _ = txn.commit().await;
 
     // 表示用へ整形（タイムゾーンを渡す）
-    let options = ScheduleDisplayService::to_autocomplete(&schedules, &timezone);
-    to_autocomplete_choices(options)
+    ScheduleDisplayService::to_autocomplete(&schedules, &timezone)
 }
