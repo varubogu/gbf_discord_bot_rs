@@ -22,12 +22,14 @@ use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::message::MessageTextId;
+use crate::types::discord::{
+    ActionRowContent, ButtonContent, ButtonStyleType, MessageContent, SelectMenuContent,
+    SelectMenuOptionContent,
+};
 use crate::types::{AppError, AppState, BattleStyleId, Result};
 use chrono::{Datelike, Duration, Utc};
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ChannelType, Context, CreateActionRow, CreateButton, CreateChannel,
-    CreateMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditChannel,
-    GuildId, Http,
+    ChannelId, ChannelType, Context, CreateChannel, EditChannel, GuildId, Http,
 };
 use rust_i18n::t;
 use sea_orm::TransactionTrait;
@@ -675,20 +677,20 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
 async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<u64> {
     // ゲーム内日付: 当日5:00〜翌日4:00（24時間）
     // 降順で表示: 翌4:00, 翌3:00, 翌2:00, 翌1:00, 翌0:00, 23:00, 22:00, ..., 5:00
-    let mut options: Vec<CreateSelectMenuOption> = Vec::with_capacity(24);
+    let mut options: Vec<SelectMenuOptionContent> = Vec::with_capacity(24);
 
     // 翌日分（4:00→0:00の降順）- 内部値は28, 27, 26, 25, 24
     for hour in (0..=4).rev() {
         let label = format!("翌{hour}:00");
         let value = (24 + hour).to_string(); // 24-28
-        options.push(CreateSelectMenuOption::new(label, value));
+        options.push(SelectMenuOptionContent::new(label, value));
     }
 
     // 当日分（23:00→5:00の降順）- 内部値は23, 22, ..., 5
     for hour in (5..=23).rev() {
         let label = format!("{hour}:00");
         let value = hour.to_string();
-        options.push(CreateSelectMenuOption::new(label, value));
+        options.push(SelectMenuOptionContent::new(label, value));
     }
 
     // 多言語対応のplaceholderを取得（デフォルトは日本語）
@@ -701,36 +703,48 @@ async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) ->
     // custom_id形式: auto_time_select:{channel_id}
     let custom_id = format!("auto_time_select:{}", channel_id.get());
 
-    let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
-        .placeholder(&placeholder)
-        .min_values(0)
-        .max_values(24);
+    // ドメインモデルでセレクトメニューを作成
+    let select_menu = SelectMenuContent::string_select(&custom_id, options)
+        .with_placeholder(&placeholder)
+        .with_min_values(0)
+        .with_max_values(24);
 
-    let message = CreateMessage::new()
-        .content("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
-        .components(vec![CreateActionRow::SelectMenu(select_menu)]);
+    let action_row = ActionRowContent::select_menu(select_menu);
 
-    let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
-        error!(error = %e, channel_id = channel_id.get(), "時間選択メッセージの送信に失敗しました");
-        AppError::Business {
-            message: "時間選択メッセージの送信に失敗しました".to_string(),
-        }
-    })?;
+    // ドメインモデルでメッセージを作成
+    let message_content = MessageContent::new()
+        .with_text("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
+        .with_component(action_row);
+
+    let sent_message = channel_id
+        .send_message(http, to_create_message(&message_content))
+        .await
+        .map_err(|e| {
+            error!(error = %e, channel_id = channel_id.get(), "時間選択メッセージの送信に失敗しました");
+            AppError::Business {
+                message: "時間選択メッセージの送信に失敗しました".to_string(),
+            }
+        })?;
 
     Ok(sent_message.id.get())
 }
 
 /// マッチングチャンネルにメッセージを送信し、メッセージIDを返す
 async fn send_matching_channel_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<u64> {
-    let message = CreateMessage::new()
-        .content("**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。");
+    // ドメインモデルでメッセージを作成
+    let message_content = MessageContent::text(
+        "**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。",
+    );
 
-    let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
-        error!(error = %e, channel_id = channel_id.get(), "マッチングチャンネルメッセージの送信に失敗しました");
-        AppError::Business {
-            message: "マッチングチャンネルメッセージの送信に失敗しました".to_string(),
-        }
-    })?;
+    let sent_message = channel_id
+        .send_message(http, to_create_message(&message_content))
+        .await
+        .map_err(|e| {
+            error!(error = %e, channel_id = channel_id.get(), "マッチングチャンネルメッセージの送信に失敗しました");
+            AppError::Business {
+                message: "マッチングチャンネルメッセージの送信に失敗しました".to_string(),
+            }
+        })?;
 
     Ok(sent_message.id.get())
 }
@@ -754,10 +768,10 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
 ) -> Result<()> {
     if quests.is_empty() {
         // クエストがない場合は説明メッセージのみ
-        let message = CreateMessage::new()
-            .content("**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。");
+        let message_content =
+            MessageContent::text("**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。");
 
-        channel_id.send_message(http, message).await.map_err(|e| {
+        channel_id.send_message(http, to_create_message(&message_content)).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
             AppError::Business {
                 message: "クエストチャンネルメッセージの送信に失敗しました".to_string(),
@@ -799,19 +813,21 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
         );
     }
 
-    // 最後に「選択済みのクエスト」ボタン付きメッセージを送信
-    let check_button = CreateButton::new(format!("auto_quest_selection_check:{}", guild_id))
-        .style(ButtonStyle::Secondary)
-        .label("📋 選択済みのクエスト");
+    // 最後に「選択済みのクエスト」ボタン付きメッセージを送信（ドメインモデル使用）
+    let check_button =
+        ButtonContent::new(format!("auto_quest_selection_check:{}", guild_id), "📋 選択済みのクエスト")
+            .with_style(ButtonStyleType::Secondary);
 
-    let check_message = CreateMessage::new()
-        .content(
+    let action_row = ActionRowContent::buttons(vec![check_button]);
+
+    let check_message_content = MessageContent::new()
+        .with_text(
             "**選択状況の確認**\n下のボタンを押すと、あなたが選択しているクエストを確認できます。",
         )
-        .components(vec![CreateActionRow::Buttons(vec![check_button])]);
+        .with_component(action_row);
 
     channel_id
-        .send_message(http, check_message)
+        .send_message(http, to_create_message(&check_message_content))
         .await
         .map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "選択確認メッセージの送信に失敗しました");
