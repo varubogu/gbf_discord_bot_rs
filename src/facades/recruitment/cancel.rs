@@ -1,3 +1,4 @@
+use crate::events::converters::{to_create_message, to_edit_message};
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
@@ -15,11 +16,12 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
+use crate::types::discord::MessageContent;
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
-    CreateActionRow, CreateButton, CreateMessage, EditInteractionResponse, Message, MessageId,
+    CreateActionRow, CreateButton, EditInteractionResponse, Message, MessageId,
 };
 use sea_orm::TransactionTrait;
 use std::time::Duration;
@@ -182,7 +184,8 @@ async fn cancel_recruitment_internal(
             )
             .await?;
         let channel = ChannelId::from(channel_id);
-        let edit_message = poise::serenity_prelude::EditMessage::new().content(cancelled_content);
+        let message_content = MessageContent::text(&cancelled_content);
+        let edit_message = to_edit_message(&message_content);
         channel
             .edit_message(&ctx.http(), MessageId::from(message_id), edit_message)
             .await?;
@@ -633,7 +636,8 @@ pub async fn cancel_on_message_deleted(
 
         // 募集チャンネルに通知を送信
         let channel_id_obj = ChannelId::from(channel_id);
-        let notification_message = CreateMessage::new().content(final_notification_text);
+        let message_content = MessageContent::text(&final_notification_text);
+        let notification_message = to_create_message(&message_content);
 
         channel_id_obj
             .send_message(&ctx.http, notification_message)

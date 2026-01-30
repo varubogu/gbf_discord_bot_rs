@@ -431,7 +431,9 @@ async fn update_recruitment_message(
     message_id: u64,
     channel_id: u64,
 ) -> Result<()> {
-    use poise::serenity_prelude::{ChannelId, CreateEmbed, EditMessage, MessageId};
+    use crate::events::converters::to_edit_message;
+    use crate::types::discord::{EmbedContent, MessageContent};
+    use poise::serenity_prelude::{ChannelId, MessageId};
 
     info!("募集メッセージの参加者一覧を更新します");
 
@@ -487,34 +489,30 @@ async fn update_recruitment_message(
     let existing_embed = message.embeds.first().cloned();
 
     // 新しいembedを作成（既存の内容を保持しつつdescriptionとfooterを更新）
-    let new_embed = if let Some(old_embed) = existing_embed {
-        let mut embed = CreateEmbed::new();
+    let embed_content = if let Some(old_embed) = existing_embed {
+        let mut embed = EmbedContent::new()
+            .with_description(&participants_text)
+            .with_footer(format!("参加者数: {participant_count}人"));
         if let Some(title) = &old_embed.title {
-            embed = embed.title(title);
+            embed = embed.with_title(title);
         }
         if let Some(color) = old_embed.colour {
-            embed = embed.color(color);
+            embed = embed.with_color(color.0);
         }
-        embed = embed.description(&participants_text).footer(
-            poise::serenity_prelude::CreateEmbedFooter::new(format!(
-                "参加者数: {participant_count}人"
-            )),
-        );
         embed
     } else {
         // embedが存在しない場合は新規作成
-        CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&participants_text)
-            .footer(poise::serenity_prelude::CreateEmbedFooter::new(format!(
-                "参加者数: {participant_count}人"
-            )))
-            .color(0x0099ff)
+        EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&participants_text)
+            .with_footer(format!("参加者数: {participant_count}人"))
+            .with_color(0x0099ff)
     };
 
     // メッセージのembedを更新
+    let message_content = MessageContent::new().with_embed(embed_content);
     message
-        .edit(&ctx.http, EditMessage::new().embed(new_embed))
+        .edit(&ctx.http, to_edit_message(&message_content))
         .await?;
 
     info!("募集メッセージの参加者一覧を更新しました");
