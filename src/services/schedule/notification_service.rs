@@ -9,11 +9,13 @@ use crate::repository::database::schedule::{
 use crate::repository::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
+use crate::events::converters::to_create_message;
 use crate::services::message::MessageService;
+use crate::types::discord::MessageContent;
 use crate::types::Result;
 use crate::utils::discord_helper::send_message_with_optional_reply;
 use chrono::Utc;
-use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
+use poise::serenity_prelude::{ChannelId, Http, MessageId};
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -314,7 +316,8 @@ impl NotificationService {
         // チャンネルにメッセージを送信
         let channel_id = ChannelId::new(notification.channel_id as u64);
 
-        let message = CreateMessage::new().content(&message_text);
+        let message_content = MessageContent::text(&message_text);
+        let message = to_create_message(&message_content);
 
         match channel_id.send_message(&self.http, message).await {
             Ok(sent_message) => {
