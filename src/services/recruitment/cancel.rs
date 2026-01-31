@@ -8,6 +8,7 @@ use tracing::{error, info, warn};
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::services::message::MessageService;
 use crate::services::message::MessageTextId;
+use crate::types::discord::DiscordMessageId;
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
 
@@ -89,7 +90,7 @@ pub async fn cancel_recruitment_by_message<R: crate::repository::BattleRecruitme
     guild_id: u64,
     channel_id: u64,
     message_id: u64,
-    cancel_message_id: MessageId,
+    cancel_message_id: DiscordMessageId,
 ) -> Result<BattleRecruitments> {
     info!("cancel_recruitment_by_message - キャンセル処理開始");
 
@@ -150,7 +151,7 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
 pub async fn mark_recruitment_as_cancelled<R: crate::repository::BattleRecruitmentsRepository>(
     txn: &DatabaseTransaction,
     recruitment_id: i32,
-    cancel_message_id: MessageId,
+    cancel_message_id: DiscordMessageId,
     battle_recruitment_repo: &R,
 ) -> Result<()> {
     info!(

@@ -1,6 +1,6 @@
 use crate::services::recruitment::battle_style_query_service::BattleStyleQueryService;
-use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
+use crate::types::discord::AutocompleteOption;
 use sea_orm::DatabaseConnection;
 use tracing::error;
 

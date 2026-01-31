@@ -103,7 +103,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         &self,
         db: &'c C,
         recruitment_id: i32,
-        message_id: poise::serenity_prelude::MessageId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()>
     where
         C: sea_orm::ConnectionTrait,
@@ -127,7 +127,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
-        message_id: poise::serenity_prelude::MessageId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()> {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(txn)

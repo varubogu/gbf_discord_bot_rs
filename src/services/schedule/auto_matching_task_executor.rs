@@ -3,6 +3,7 @@
 //! 10秒間隔で実行され、同じクエスト・時間・属性を希望するユーザーをマッチングし、
 //! マッチング通知を送信後、マルチ募集を作成する
 
+use crate::events::converters::to_create_message;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::QuestRepository;
 use crate::repository::auto_recruitment::{
@@ -19,7 +20,6 @@ use crate::services::auto_recruitment::PeriodicMatchingService;
 use crate::services::recruitment::recruitment_creation_service::{
     MatchingRecruitmentParams, RecruitmentCreationService,
 };
-use crate::events::converters::to_create_message;
 use crate::types::discord::{EmbedContent, MessageContent};
 use crate::types::{AppError, Result};
 use chrono::{Datelike, Duration, TimeZone, Utc};

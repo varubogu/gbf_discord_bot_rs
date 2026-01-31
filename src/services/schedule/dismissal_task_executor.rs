@@ -1,3 +1,4 @@
+use crate::gateway::DiscordGateway;
 use crate::repository::GuildSettingsRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
@@ -15,11 +16,8 @@ use crate::repository::schedule::{
 };
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::schedule::NotificationManagementService;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, Result};
-use crate::utils::discord_helper::send_message_with_optional_reply;
-use crate::events::converters::to_edit_message;
-use crate::types::discord::MessageContent;
-use poise::serenity_prelude::{ChannelId, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -74,11 +72,11 @@ impl DismissalTaskExecutor {
         }
     }
 
-    /// 解散タスクを実行する
-    pub async fn execute(
+    /// 解散タスクを実行する（Gateway経由）
+    pub async fn execute<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
-        http: &Arc<Http>,
+        gateway: &G,
         task_id: i32,
     ) -> Result<DismissalExecutionResult> {
         info!(task_id, "解散タスク実行開始");
@@ -203,11 +201,12 @@ impl DismissalTaskExecutor {
             recruitment_id, participant_count, max_participants, "定員未達のため募集を解散します"
         );
 
-        // Discordメッセージを取得・編集
-        let channel_id = ChannelId::new(recruitment.channel_id as u64);
-        let message_id = MessageId::new(recruitment.message_id as u64);
+        // ドメイン型でDiscord IDを作成
+        let channel_id = DiscordChannelId::new(recruitment.channel_id as u64);
+        let message_id = DiscordMessageId::new(recruitment.message_id as u64);
 
-        let original_message = match channel_id.message(http, message_id).await {
+        // Discordメッセージを取得（Gateway経由）
+        let original_message = match gateway.get_message(channel_id, message_id).await {
             Ok(msg) => msg,
             Err(e) => {
                 warn!(
@@ -245,14 +244,14 @@ impl DismissalTaskExecutor {
 
         let cancelled_content = format!("~~{original_content}~~\n\n**{cancelled_suffix}**");
 
-        // メッセージを編集（ドメインモデルを使用）
+        // メッセージを編集（Gateway経由）
         let edit_content = MessageContent::text(&cancelled_content);
-        channel_id
-            .edit_message(http, message_id, to_edit_message(&edit_content))
+        gateway
+            .edit_message(channel_id, message_id, edit_content)
             .await
             .map_err(|e| {
                 error!(error = %e, "募集メッセージの編集に失敗しました");
-                AppError::Discord(Box::new(e))
+                AppError::from(e)
             })?;
 
         // 参加者リストを取得
@@ -302,19 +301,19 @@ impl DismissalTaskExecutor {
             format!("{base_message}: {participants_str}")
         };
 
-        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-        send_message_with_optional_reply(
-            http,
-            channel_id,
-            message_id,
-            dismissal_notification,
-            Some("解散通知".to_string()),
-        )
-        .await
-        .map_err(|e| {
-            error!(error = %e, "解散通知メッセージの送信に失敗しました");
-            AppError::Discord(Box::new(e))
-        })?;
+        // 返信形式で送信（Gateway経由）
+        gateway
+            .send_reply(
+                channel_id,
+                message_id,
+                MessageContent::text(&dismissal_notification),
+                Some("解散通知".to_string()),
+            )
+            .await
+            .map_err(|e| {
+                error!(error = %e, "解散通知メッセージの送信に失敗しました");
+                AppError::from(e)
+            })?;
 
         // 募集をキャンセル状態に更新
         recruitment_repo

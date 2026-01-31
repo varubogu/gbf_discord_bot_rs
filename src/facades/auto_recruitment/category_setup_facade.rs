@@ -2,9 +2,11 @@
 //!
 //! カテゴリ登録/解除/日数変更の処理を行う
 
+use crate::events::converters::to_create_message;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
+use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
 use crate::repository::QuestRepository;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentChannelRepository, AutoRecruitmentQuestMessageRepository,
@@ -16,8 +18,6 @@ use crate::repository::database::auto_recruitment::{
     SeaOrmAutoRecruitmentRepository, SeaOrmQuestMatchingRepository,
     SeaOrmQuestMatchingUserRepository,
 };
-use crate::events::converters::to_create_message;
-use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
@@ -768,8 +768,9 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
 ) -> Result<()> {
     if quests.is_empty() {
         // クエストがない場合は説明メッセージのみ
-        let message_content =
-            MessageContent::text("**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。");
+        let message_content = MessageContent::text(
+            "**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。",
+        );
 
         channel_id.send_message(http, to_create_message(&message_content)).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
@@ -814,9 +815,11 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
     }
 
     // 最後に「選択済みのクエスト」ボタン付きメッセージを送信（ドメインモデル使用）
-    let check_button =
-        ButtonContent::new(format!("auto_quest_selection_check:{}", guild_id), "📋 選択済みのクエスト")
-            .with_style(ButtonStyleType::Secondary);
+    let check_button = ButtonContent::new(
+        format!("auto_quest_selection_check:{}", guild_id),
+        "📋 選択済みのクエスト",
+    )
+    .with_style(ButtonStyleType::Secondary);
 
     let action_row = ActionRowContent::buttons(vec![check_button]);
 

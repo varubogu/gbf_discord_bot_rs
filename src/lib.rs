@@ -1,4 +1,5 @@
 pub mod constants;
+pub mod di;
 pub mod errors;
 pub mod events;
 pub mod facades;

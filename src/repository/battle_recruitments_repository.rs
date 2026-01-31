@@ -1,8 +1,8 @@
-﻿use crate::models::battle_recruitments::BattleRecruitments;
+use crate::models::battle_recruitments::BattleRecruitments;
 use crate::types::Result;
+use crate::types::discord::DiscordMessageId;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::MessageId;
 
 /// バトル募集作成パラメータ
 pub struct CreateBattleRecruitmentParams {
@@ -57,7 +57,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         &self,
         db: &'c C,
         recruitment_id: i32,
-        message_id: MessageId,
+        message_id: DiscordMessageId,
     ) -> Result<()>
     where
         C: sea_orm::ConnectionTrait;
@@ -67,7 +67,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         &self,
         txn: &sea_orm::DatabaseTransaction,
         recruitment_id: i32,
-        message_id: MessageId,
+        message_id: DiscordMessageId,
     ) -> Result<()>;
 
     /// 募集情報を更新（トランザクション対応）

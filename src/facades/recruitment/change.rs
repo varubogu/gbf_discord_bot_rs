@@ -1,5 +1,4 @@
 use crate::events::converters::to_edit_message;
-use crate::types::discord::{EmbedContent, MessageContent};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -13,6 +12,7 @@ use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::PoiseContext;
+use crate::types::discord::{EmbedContent, MessageContent};
 use crate::utils::discord_helper::send_message_with_optional_reply;
 use chrono::{DateTime, Utc};
 use poise::serenity_prelude::Message;

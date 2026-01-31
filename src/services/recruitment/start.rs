@@ -6,6 +6,7 @@ use tracing::{error, info, warn};
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use crate::types::discord::DiscordMessageId;
 use crate::types::{AppError, Result};
 use crate::utils::discord_helper::send_message_with_optional_reply;
 
@@ -209,7 +210,11 @@ impl StartRecruitmentService {
         );
 
         self.repo
-            .set_end_message(db, recruitment_id as i32, MessageId::from(end_message_id))
+            .set_end_message(
+                db,
+                recruitment_id as i32,
+                DiscordMessageId::new(end_message_id),
+            )
             .await?;
 
         info!(

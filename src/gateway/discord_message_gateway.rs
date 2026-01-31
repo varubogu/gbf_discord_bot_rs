@@ -84,4 +84,26 @@ pub trait DiscordMessageGateway: Send + Sync {
         channel_id: DiscordChannelId,
         limit: u8,
     ) -> Result<Vec<MessageData>, GatewayError>;
+
+    /// メッセージへの返信を送信する
+    ///
+    /// 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信する。
+    ///
+    /// # Arguments
+    ///
+    /// * `channel_id` - 送信先チャンネルID
+    /// * `reply_to_message_id` - 返信対象メッセージID
+    /// * `content` - メッセージコンテンツ
+    /// * `fallback_context` - 返信失敗時に付加する文脈情報（オプション）
+    ///
+    /// # Returns
+    ///
+    /// 送信されたメッセージのID
+    async fn send_reply(
+        &self,
+        channel_id: DiscordChannelId,
+        reply_to_message_id: DiscordMessageId,
+        content: MessageContent,
+        fallback_context: Option<String>,
+    ) -> Result<DiscordMessageId, GatewayError>;
 }

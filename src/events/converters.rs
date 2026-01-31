@@ -8,8 +8,8 @@ use crate::types::discord::{
     EmbedContent, MessageContent, SelectMenuContent, SelectMenuKindContent,
 };
 use poise::serenity_prelude::{
-    AutocompleteChoice, ButtonStyle, CreateActionRow, CreateButton, CreateEmbed,
-    CreateEmbedAuthor, CreateEmbedFooter, CreateMessage, CreateSelectMenu, CreateSelectMenuKind,
+    AutocompleteChoice, ButtonStyle, CreateActionRow, CreateButton, CreateEmbed, CreateEmbedAuthor,
+    CreateEmbedFooter, CreateMessage, CreateSelectMenu, CreateSelectMenuKind,
     CreateSelectMenuOption, EditMessage, ReactionType,
 };
 
@@ -127,8 +127,12 @@ fn to_create_select_menu(menu: &SelectMenuContent) -> CreateSelectMenu {
                 options: serenity_options,
             }
         }
-        SelectMenuKindContent::User => CreateSelectMenuKind::User { default_users: None },
-        SelectMenuKindContent::Role => CreateSelectMenuKind::Role { default_roles: None },
+        SelectMenuKindContent::User => CreateSelectMenuKind::User {
+            default_users: None,
+        },
+        SelectMenuKindContent::Role => CreateSelectMenuKind::Role {
+            default_roles: None,
+        },
         SelectMenuKindContent::Channel => CreateSelectMenuKind::Channel {
             channel_types: None,
             default_channels: None,
@@ -197,8 +201,11 @@ pub fn to_create_message(message: &MessageContent) -> CreateMessage {
         create_message = create_message.embed(to_create_embed(embed));
     }
 
-    let action_rows: Vec<CreateActionRow> =
-        message.components.iter().map(to_create_action_row).collect();
+    let action_rows: Vec<CreateActionRow> = message
+        .components
+        .iter()
+        .map(to_create_action_row)
+        .collect();
     if !action_rows.is_empty() {
         create_message = create_message.components(action_rows);
     }
@@ -218,8 +225,11 @@ pub fn to_edit_message(message: &MessageContent) -> EditMessage {
         edit_message = edit_message.embed(to_create_embed(embed));
     }
 
-    let action_rows: Vec<CreateActionRow> =
-        message.components.iter().map(to_create_action_row).collect();
+    let action_rows: Vec<CreateActionRow> = message
+        .components
+        .iter()
+        .map(to_create_action_row)
+        .collect();
     if !action_rows.is_empty() {
         edit_message = edit_message.components(action_rows);
     }

@@ -142,18 +142,24 @@ impl AutoRecruitmentNotificationService {
         let channel = ChannelId::new(channel_id);
 
         // プレゼンターで再投票メッセージを構築
-        let message_content =
-            NotificationPresenter::create_revote_notification(participants, tie_quest_ids, matched_id);
+        let message_content = NotificationPresenter::create_revote_notification(
+            participants,
+            tie_quest_ids,
+            matched_id,
+        );
         let mut create_message = to_create_message(&message_content);
-        create_message =
-            create_message.reference_message((channel, serenity::MessageId::new(reply_to_message_id)));
+        create_message = create_message
+            .reference_message((channel, serenity::MessageId::new(reply_to_message_id)));
 
-        let sent_message = channel.send_message(http, create_message).await.map_err(|e| {
-            error!(error = %e, channel_id, "再投票メッセージの送信に失敗しました");
-            crate::types::AppError::Business {
-                message: format!("再投票メッセージの送信に失敗しました: {}", e),
-            }
-        })?;
+        let sent_message = channel
+            .send_message(http, create_message)
+            .await
+            .map_err(|e| {
+                error!(error = %e, channel_id, "再投票メッセージの送信に失敗しました");
+                crate::types::AppError::Business {
+                    message: format!("再投票メッセージの送信に失敗しました: {}", e),
+                }
+            })?;
 
         info!(
             channel_id,

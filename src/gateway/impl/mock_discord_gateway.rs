@@ -66,6 +66,14 @@ mock! {
             channel_id: DiscordChannelId,
             limit: u8,
         ) -> Result<Vec<MessageData>, GatewayError>;
+
+        async fn send_reply(
+            &self,
+            channel_id: DiscordChannelId,
+            reply_to_message_id: DiscordMessageId,
+            content: MessageContent,
+            fallback_context: Option<String>,
+        ) -> Result<DiscordMessageId, GatewayError>;
     }
 
     #[async_trait]

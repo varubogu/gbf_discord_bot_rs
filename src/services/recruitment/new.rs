@@ -11,8 +11,8 @@ use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
-use crate::types::discord::{ActionRowContent, EmbedContent};
 use crate::types::PoiseContext;
+use crate::types::discord::{ActionRowContent, EmbedContent};
 use poise::serenity_prelude::{CreateActionRow, ReactionType};
 use sea_orm::DatabaseTransaction;
 
@@ -121,7 +121,8 @@ where
 
     // 初期参加者一覧を作成
     let initial_participants_text =
-        create_initial_participants_text(db, &reaction_emojis, Some(params.guild_id as i64)).await?;
+        create_initial_participants_text(db, &reaction_emojis, Some(params.guild_id as i64))
+            .await?;
 
     Ok(RecruitmentData {
         quest,

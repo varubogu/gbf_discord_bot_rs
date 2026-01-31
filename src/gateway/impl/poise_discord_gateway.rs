@@ -483,6 +483,65 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
 
         Ok(messages.into_iter().map(MessageData::from).collect())
     }
+
+    async fn send_reply(
+        &self,
+        channel_id: DiscordChannelId,
+        reply_to_message_id: DiscordMessageId,
+        content: MessageContent,
+        fallback_context: Option<String>,
+    ) -> Result<DiscordMessageId, GatewayError> {
+        use poise::serenity_prelude::MessageReference;
+
+        let serenity_channel_id = ChannelId::new(channel_id.get());
+        let serenity_message_id = MessageId::new(reply_to_message_id.get());
+
+        // まず返信形式で送信を試みる
+        let reference = MessageReference::from((serenity_channel_id, serenity_message_id));
+        let reply_message = content
+            .clone()
+            .into_serenity_message()
+            .reference_message(reference);
+
+        match serenity_channel_id
+            .send_message(&self.http, reply_message)
+            .await
+        {
+            Ok(sent_message) => {
+                tracing::debug!(
+                    channel_id = %channel_id,
+                    reply_to = %reply_to_message_id,
+                    "返信形式でメッセージを送信しました"
+                );
+                Ok(DiscordMessageId::new(sent_message.id.get()))
+            }
+            Err(e) => {
+                // 返信失敗をログに記録
+                tracing::warn!(
+                    error = %e,
+                    channel_id = %channel_id,
+                    reply_to = %reply_to_message_id,
+                    "返信形式でのメッセージ送信に失敗しました。通常メッセージとして再送信します"
+                );
+
+                // 文脈情報を付加して通常メッセージとして送信
+                let fallback_content = if let Some(context) = fallback_context {
+                    let original_text = content.text.clone().unwrap_or_default();
+                    MessageContent::text(format!("【{context}】\n{original_text}"))
+                } else {
+                    content
+                };
+
+                let normal_message = fallback_content.into_serenity_message();
+                let sent_message = serenity_channel_id
+                    .send_message(&self.http, normal_message)
+                    .await
+                    .map_err(GatewayError::send_message_failed)?;
+
+                Ok(DiscordMessageId::new(sent_message.id.get()))
+            }
+        }
+    }
 }
 
 #[async_trait]

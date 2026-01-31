@@ -20,8 +20,8 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
-use crate::types::discord::EmbedContent;
 use crate::types::Result;
+use crate::types::discord::EmbedContent;
 use chrono::{TimeZone, Utc};
 use poise::serenity_prelude::{CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
@@ -236,8 +236,10 @@ impl RecruitmentCreationService {
             .with_color(0x0099ff);
 
         // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
-        let button_components =
-            RecruitmentPresenter::create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        let button_components = RecruitmentPresenter::create_recruitment_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
         let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
@@ -454,8 +456,10 @@ impl RecruitmentCreationService {
             .with_color(0x0099ff);
 
         // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
-        let button_components =
-            RecruitmentPresenter::create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        let button_components = RecruitmentPresenter::create_recruitment_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
         let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）

@@ -1,7 +1,7 @@
 use crate::repository::ChannelTypeRepository;
 use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
-use crate::types::discord::AutocompleteOption;
 use crate::types::Result;
+use crate::types::discord::AutocompleteOption;
 use sea_orm::ConnectionTrait;
 
 /// チャンネル種別クエリサービス

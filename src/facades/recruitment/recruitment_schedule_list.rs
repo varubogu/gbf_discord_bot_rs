@@ -3,8 +3,8 @@ use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsR
 use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
-use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
+use crate::types::discord::AutocompleteOption;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, warn};

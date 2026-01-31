@@ -1,3 +1,4 @@
+use crate::gateway::PoiseDiscordGateway;
 use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
@@ -169,7 +170,9 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         use crate::repository::database::schedule::SeaOrmNotificationRepository;
         use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
-        let notification_service = NotificationService::new(Arc::clone(http));
+        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+        let gateway = Arc::new(PoiseDiscordGateway::new(Arc::clone(http)));
+        let notification_service = NotificationService::new(gateway);
         let notification_repo = SeaOrmNotificationRepository::new();
 
         for task in tasks {
@@ -228,8 +231,10 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(participants_repo),
                             Arc::clone(message_service),
                         );
+                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, &gateway, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散タスクを実行しました");
                             }
@@ -277,8 +282,10 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         // Dismissal
                         info!(task_id = task.id, "解散（人数不足）タスクを実行します");
                         let executor = DismissalTaskExecutor::new(Arc::clone(message_service));
+                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, &gateway, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散（人数不足）タスクを実行しました");
                             }
@@ -302,8 +309,10 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(task_repo),
                             channel_repo,
                         );
+                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, &gateway, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動募集日付ローテーションタスクを実行しました");
                             }

@@ -2,8 +2,8 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::quest::search::QuestSearchService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
-use crate::types::discord::AutocompleteOption;
 use crate::types::PoiseContext;
+use crate::types::discord::AutocompleteOption;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::error;
 

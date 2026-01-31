@@ -16,7 +16,9 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
-use crate::types::discord::{ActionRowContent, ButtonContent, ButtonStyleType, MessageContent};
+use crate::types::discord::{
+    ActionRowContent, ButtonContent, ButtonStyleType, DiscordMessageId, MessageContent,
+};
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
@@ -211,7 +213,7 @@ async fn cancel_recruitment_internal(
             guild_id,
             channel_id,
             message_id,
-            cancel_message_id,
+            DiscordMessageId::new(cancel_message_id.get()),
         )
         .await?;
 
@@ -435,11 +437,11 @@ async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> 
 /// 確認メッセージ表示（内部関数）
 async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle<'_>> {
     // 確認メッセージとボタンを作成（ドメインモデル使用）
-    let confirm_button = ButtonContent::new("confirm_cancel", "はい")
-        .with_style(ButtonStyleType::Danger);
+    let confirm_button =
+        ButtonContent::new("confirm_cancel", "はい").with_style(ButtonStyleType::Danger);
 
-    let cancel_button = ButtonContent::new("deny_cancel", "いいえ")
-        .with_style(ButtonStyleType::Secondary);
+    let cancel_button =
+        ButtonContent::new("deny_cancel", "いいえ").with_style(ButtonStyleType::Secondary);
 
     let action_row = ActionRowContent::buttons(vec![confirm_button, cancel_button]);
 
@@ -569,7 +571,7 @@ pub async fn cancel_on_message_deleted(
             guild_id,
             channel_id,
             message_id,
-            MessageId::from(message_id),
+            DiscordMessageId::new(message_id),
         )
         .await?;
 
