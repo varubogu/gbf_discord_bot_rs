@@ -1,4 +1,5 @@
 use crate::events::converters::to_edit_message;
+use crate::gateway::PoiseDiscordGateway;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -31,7 +32,7 @@ pub async fn change_recruitment_information(
 ) -> types::Result<()> {
     let app_state = &ctx.data().app_state;
     let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
-    let http = ctx.http();
+    let http = Arc::clone(&ctx.serenity_context().http);
 
     change_recruitment_information_internal(
         app_state,
@@ -49,7 +50,7 @@ pub async fn change_recruitment_information(
 #[instrument(level = "debug", skip(app_state, http, message))]
 pub async fn change_recruitment_information_internal(
     app_state: &crate::types::AppState,
-    http: &poise::serenity_prelude::Http,
+    http: Arc<poise::serenity_prelude::Http>,
     guild_id: u64,
     message: &Message,
     quest: Option<&str>,
@@ -138,10 +139,12 @@ pub async fn change_recruitment_information_internal(
             .await?;
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&http));
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(db, http, guild_id as i64)
+            .get_element_emojis(db, &gateway, guild_id as i64)
             .await?;
 
         // 3. メッセージ表示用の募集データを作成
@@ -216,7 +219,7 @@ pub async fn change_recruitment_information_internal(
             for reaction in &message.reactions {
                 let users = channel_id_obj
                     .reaction_users(
-                        http,
+                        &http,
                         message_id_obj,
                         reaction.reaction_type.clone(),
                         Some(100),
@@ -258,7 +261,7 @@ pub async fn change_recruitment_information_internal(
             .with_embed(embed_for_update);
 
         channel_id_obj
-            .edit_message(http, message_id_obj, to_edit_message(&edit_content))
+            .edit_message(&http, message_id_obj, to_edit_message(&edit_content))
             .await?;
 
         // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
@@ -290,7 +293,7 @@ pub async fn change_recruitment_information_internal(
 
         // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
         send_message_with_optional_reply(
-            http,
+            &http,
             channel_id_obj,
             message_id_obj,
             update_notification,

@@ -1,6 +1,7 @@
+use crate::gateway::DiscordGuildGateway;
 use crate::repository::GuildEnvironmentRepository;
 use crate::types::constants::ELEMENT_EMOJIS;
-use poise::serenity_prelude::{Emoji, GuildId, Http};
+use crate::types::discord::{DiscordGuildId, GuildEmoji};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -90,14 +91,15 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
     /// - 環境変数が存在しない場合: デフォルト値を使用
     /// - 絵文字が不正な形式の場合: デフォルト値を使用してログ警告
     /// - カスタム絵文字がサーバーに存在しない場合: デフォルト値を使用してログ警告
-    pub async fn get_element_emojis<C>(
+    pub async fn get_element_emojis<C, G>(
         &self,
         db: &C,
-        http: &Http,
+        gateway: &G,
         guild_id: i64,
     ) -> crate::types::Result<ElementEmojis>
     where
         C: sea_orm::ConnectionTrait,
+        G: DiscordGuildGateway,
     {
         debug!(guild_id = guild_id, "属性絵文字設定を取得します");
 
@@ -109,7 +111,7 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
             .map_err(crate::types::AppError::Database)?;
 
         // サーバーの絵文字一覧を取得（カスタム絵文字の検証用）
-        let guild_emojis = Self::fetch_guild_emojis(http, guild_id as u64).await;
+        let guild_emojis = Self::fetch_guild_emojis(gateway, guild_id as u64).await;
 
         // デフォルト値でElementEmojisを初期化
         let mut emojis = ElementEmojis::default_emojis();
@@ -217,23 +219,25 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
         Ok(emojis)
     }
 
-    /// サーバーの絵文字一覧を取得
+    /// サーバーの絵文字一覧を取得（Gateway経由）
     /// 失敗した場合は空のHashMapを返す（フォールバック動作）
-    async fn fetch_guild_emojis(http: &Http, guild_id: u64) -> HashMap<u64, Emoji> {
-        let guild_id_obj = GuildId::new(guild_id);
+    async fn fetch_guild_emojis<G: DiscordGuildGateway>(
+        gateway: &G,
+        guild_id: u64,
+    ) -> HashMap<u64, GuildEmoji> {
+        let guild_id_obj = DiscordGuildId::new(guild_id);
 
-        match guild_id_obj.to_partial_guild(http).await {
-            Ok(guild) => {
+        match gateway.get_emojis(guild_id_obj).await {
+            Ok(emojis) => {
                 debug!(
                     guild_id = guild_id,
-                    emoji_count = guild.emojis.len(),
+                    emoji_count = emojis.len(),
                     "サーバー絵文字一覧を取得しました"
                 );
-                // EmojiId を u64 に変換
-                guild
-                    .emojis
+                // GuildEmoji を HashMap に変換
+                emojis
                     .into_iter()
-                    .map(|(emoji_id, emoji)| (emoji_id.get(), emoji))
+                    .map(|emoji| (emoji.id.get(), emoji))
                     .collect()
             }
             Err(e) => {
@@ -255,7 +259,7 @@ impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
     /// # 戻り値
     /// - Some(String): 使用可能な絵文字（変換済み）
     /// - None: 使用不可（デフォルト値にフォールバック）
-    fn resolve_emoji(value: &str, guild_emojis: &HashMap<u64, Emoji>) -> Option<String> {
+    fn resolve_emoji(value: &str, guild_emojis: &HashMap<u64, GuildEmoji>) -> Option<String> {
         // 1. すでに <:name:id> または <a:name:id> 形式の場合
         if (value.starts_with("<:") || value.starts_with("<a:")) && value.ends_with('>') {
             if let Some(emoji_id) = Self::extract_custom_emoji_id(value) {

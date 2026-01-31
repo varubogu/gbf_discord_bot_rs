@@ -3,7 +3,7 @@
 //! 10秒間隔で実行され、同じクエスト・時間・属性を希望するユーザーをマッチングし、
 //! マッチング通知を送信後、マルチ募集を作成する
 
-use crate::events::converters::to_create_message;
+use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::QuestRepository;
 use crate::repository::auto_recruitment::{
@@ -20,10 +20,9 @@ use crate::services::auto_recruitment::PeriodicMatchingService;
 use crate::services::recruitment::recruitment_creation_service::{
     MatchingRecruitmentParams, RecruitmentCreationService,
 };
-use crate::types::discord::{EmbedContent, MessageContent};
+use crate::types::discord::{DiscordChannelId, EmbedContent, MessageContent};
 use crate::types::{AppError, Result};
 use chrono::{Datelike, Duration, TimeZone, Utc};
-use poise::serenity_prelude::{ChannelId, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -65,16 +64,16 @@ impl AutoMatchingTaskExecutor {
     /// # 引数
     /// * `txn` - データベーストランザクション
     /// * `db_conn` - データベース接続
-    /// * `http` - Discord HTTP クライアント
+    /// * `gateway` - Discord Gateway
     /// * `task_id` - 実行対象のタスクID
     ///
     /// # 戻り値
     /// * `Ok(AutoMatchingResult)` - 実行結果
-    pub async fn execute(
+    pub async fn execute<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         task_id: i32,
     ) -> Result<AutoMatchingResult> {
         info!(task_id, "自動マッチングタスク実行開始");
@@ -104,8 +103,10 @@ impl AutoMatchingTaskExecutor {
 
         // マッチング通知を送信し、マルチ募集を作成
         if !matchings.is_empty() {
-            self.send_match_notifications_and_create_recruitments(txn, db_conn, http, &matchings)
-                .await?;
+            self.send_match_notifications_and_create_recruitments(
+                txn, db_conn, gateway, &matchings,
+            )
+            .await?;
         }
 
         // タスクを実行済みにマーク
@@ -130,11 +131,11 @@ impl AutoMatchingTaskExecutor {
     }
 
     /// マッチング通知を送信し、マルチ募集を作成
-    async fn send_match_notifications_and_create_recruitments(
+    async fn send_match_notifications_and_create_recruitments<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         matchings: &[crate::models::entities::worker::quest_matchings::Model],
     ) -> Result<()> {
         let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
@@ -197,10 +198,10 @@ impl AutoMatchingTaskExecutor {
 
                 let user_ids: Vec<u64> = users.iter().map(|u| u.user_id as u64).collect();
 
-                // 通知を送信
+                // 通知を送信（Gateway経由）
                 if let Err(e) = self
                     .send_notification(
-                        http,
+                        gateway,
                         matching_channel_id,
                         &quest.name,
                         matching.scheduled_month,
@@ -252,7 +253,7 @@ impl AutoMatchingTaskExecutor {
 
                 match self
                     .recruitment_creation_service
-                    .create_recruitment_from_matching(txn, db_conn, http, &params)
+                    .create_recruitment_from_matching(txn, db_conn, gateway, &params)
                     .await
                 {
                     Ok(recruitment_id) => {
@@ -334,10 +335,10 @@ impl AutoMatchingTaskExecutor {
         local_datetime.with_timezone(&Utc)
     }
 
-    /// 個別のマッチング通知を送信
-    async fn send_notification(
+    /// 個別のマッチング通知を送信（Gateway経由）
+    async fn send_notification<G: DiscordGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         quest_name: &str,
         month: i32,
@@ -345,7 +346,7 @@ impl AutoMatchingTaskExecutor {
         hour: i32,
         users: &[(u64, Option<i32>)],
     ) -> Result<()> {
-        let channel = ChannelId::new(channel_id);
+        let channel = DiscordChannelId::new(channel_id);
 
         // 参加者メンション
         let participant_mentions: Vec<String> = users
@@ -374,8 +375,8 @@ impl AutoMatchingTaskExecutor {
             .with_text(&participant_mentions.join(" "))
             .with_embed(embed_content);
 
-        channel
-            .send_message(http, to_create_message(&message_content))
+        gateway
+            .send_message(channel, message_content)
             .await
             .map_err(|e| AppError::Business {
                 message: format!("マッチング通知の送信に失敗しました: {}", e),

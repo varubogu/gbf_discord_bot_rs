@@ -1,3 +1,4 @@
+use crate::gateway::PoiseDiscordGateway;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
@@ -459,10 +460,12 @@ async fn update_recruitment_message(
         .map_err(AppError::Database)?;
 
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+    // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
     let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
     let element_emojis = guild_env_service
-        .get_element_emojis(txn, &ctx.http, recruitment.guild_id as i64)
+        .get_element_emojis(txn, &gateway, recruitment.guild_id as i64)
         .await?;
 
     // 3. 参加者一覧のテキストを作成

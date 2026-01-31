@@ -267,8 +267,10 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             schedule_service,
                             recruitment_creation_service,
                         );
+                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, db, http, task.id).await {
+                        match executor.execute(&txn, db, &gateway, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "定期募集タスクを実行しました");
                             }
@@ -333,8 +335,10 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(task_repo),
                             recruitment_creation_service,
                         );
+                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
+                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, db, http, task.id).await {
+                        match executor.execute(&txn, db, &gateway, task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動マッチングタスクを実行しました");
                             }

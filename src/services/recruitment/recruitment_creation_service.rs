@@ -1,4 +1,5 @@
-use crate::events::converters::{to_create_action_row, to_create_embed};
+// Note: converters are no longer needed as we use domain types directly with Gateway
+use crate::gateway::DiscordGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
@@ -21,9 +22,8 @@ use crate::services::schedule::{DismissalManagementService, NotificationManageme
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
-use crate::types::discord::EmbedContent;
+use crate::types::discord::{DiscordChannelId, EmbedContent, MessageContent};
 use chrono::{TimeZone, Utc};
-use poise::serenity_prelude::{CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -57,11 +57,11 @@ impl RecruitmentCreationService {
 
     /// スケジュールから募集を作成
     /// 定期募集スケジュールに基づいて実際の募集を作成
-    pub async fn create_recruitment_from_schedule(
+    pub async fn create_recruitment_from_schedule<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         calculated_time: &crate::services::schedule::CalculatedRecruitmentTime,
     ) -> Result<()> {
         debug!(
@@ -218,11 +218,11 @@ impl RecruitmentCreationService {
             message_content = format!("{role_mentions}\n{message_content}");
         }
 
-        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(txn, http, calculated_time.guild_id)
+            .get_element_emojis(txn, gateway, calculated_time.guild_id)
             .await?;
 
         // 4. Embedを作成（Presenterを使用）
@@ -235,26 +235,24 @@ impl RecruitmentCreationService {
             .with_description(&initial_participants_text)
             .with_color(0x0099ff);
 
-        // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
+        // 5. ボタンを作成（Presenterのドメインモデル）
         let button_components = RecruitmentPresenter::create_recruitment_buttons(
             &battle_style.display_name,
             &element_emojis,
         );
-        let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
-        let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
-        let message = channel_id
-            .send_message(
-                http,
-                CreateMessage::new()
-                    .content(message_content)
-                    .embed(to_create_embed(&embed_content))
-                    .components(buttons),
-            )
+        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
+        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
+        let domain_message_content = MessageContent::new()
+            .with_text(&message_content)
+            .with_embed(embed_content)
+            .with_components(button_components);
+
+        let sent_message_id = gateway
+            .send_message(channel_id, domain_message_content)
             .await?;
 
-        let message_id = message.id.get();
+        let message_id = sent_message_id.get();
 
         debug!(
             message_id = %message_id,
@@ -336,11 +334,11 @@ impl RecruitmentCreationService {
     ///
     /// # 戻り値
     /// 作成された募集のID
-    pub async fn create_recruitment_from_matching(
+    pub async fn create_recruitment_from_matching<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         params: &MatchingRecruitmentParams,
     ) -> Result<i32> {
         debug!(
@@ -438,11 +436,11 @@ impl RecruitmentCreationService {
             message_content = format!("{}\n{message_content}", user_mentions.join(" "));
         }
 
-        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(txn, http, params.guild_id)
+            .get_element_emojis(txn, gateway, params.guild_id)
             .await?;
 
         // 4. Embedを作成（Presenterを使用）
@@ -455,26 +453,24 @@ impl RecruitmentCreationService {
             .with_description(&initial_participants_text)
             .with_color(0x0099ff);
 
-        // 5. ボタンを作成（PresenterのドメインモデルをConverterで変換）
+        // 5. ボタンを作成（Presenterのドメインモデル）
         let button_components = RecruitmentPresenter::create_recruitment_buttons(
             &battle_style.display_name,
             &element_emojis,
         );
-        let buttons: Vec<_> = button_components.iter().map(to_create_action_row).collect();
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
-        let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
-        let message = channel_id
-            .send_message(
-                http,
-                CreateMessage::new()
-                    .content(message_content)
-                    .embed(to_create_embed(&embed_content))
-                    .components(buttons),
-            )
+        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
+        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
+        let domain_message_content = MessageContent::new()
+            .with_text(&message_content)
+            .with_embed(embed_content)
+            .with_components(button_components);
+
+        let sent_message_id = gateway
+            .send_message(channel_id, domain_message_content)
             .await?;
 
-        let message_id = message.id.get();
+        let message_id = sent_message_id.get();
 
         debug!(
             message_id = %message_id,

@@ -5,6 +5,7 @@ use poise::serenity_prelude::{
     CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal, CreateSelectMenu,
     CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
 };
+use std::sync::Arc;
 use tracing::{error, info};
 
 /// 募集変更関連のコンポーネントインタラクションを処理
@@ -216,7 +217,7 @@ async fn handle_quest_selection(
     // リファクタリングされたfacadeを呼び出す
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
-        &ctx.http,
+        Arc::clone(&ctx.http),
         guild_id,
         &target_message,
         Some(&quest_name),
@@ -312,7 +313,7 @@ async fn handle_battle_style_selection(
     // リファクタリングされたfacadeを呼び出す
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
-        &ctx.http,
+        Arc::clone(&ctx.http),
         guild_id,
         &target_message,
         None,
