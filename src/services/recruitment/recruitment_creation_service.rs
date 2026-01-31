@@ -22,7 +22,9 @@ use crate::services::schedule::{DismissalManagementService, NotificationManageme
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
-use crate::types::discord::{DiscordChannelId, EmbedContent, MessageContent};
+use crate::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
+};
 use chrono::{TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
@@ -263,13 +265,14 @@ impl RecruitmentCreationService {
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
+        // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
-                    guild_id: calculated_time.guild_id as u64,
-                    channel_id: recruitment_channel_id as u64,
-                    message_id,
+                    guild_id: DiscordGuildId::new(calculated_time.guild_id as u64),
+                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    message_id: DiscordMessageId::new(message_id),
                     quest_id: quest.id,
                     battle_style_id: calculated_time.battle_style_id,
                     quest_start_at: calculated_time.quest_start_at,
@@ -481,13 +484,14 @@ impl RecruitmentCreationService {
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
+        // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
-                    guild_id: params.guild_id as u64,
-                    channel_id: recruitment_channel_id as u64,
-                    message_id,
+                    guild_id: DiscordGuildId::new(params.guild_id as u64),
+                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    message_id: DiscordMessageId::new(message_id),
                     quest_id: quest.id,
                     battle_style_id: quest.default_battle_style_id,
                     quest_start_at: params.quest_start_at,

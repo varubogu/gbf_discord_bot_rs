@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::services::message::MessageService;
 use crate::services::message::MessageTextId;
-use crate::types::discord::DiscordMessageId;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::domain_interface_result::CanCancelResult;
 use crate::types::{AppError, PoiseContext, Result};
 
@@ -36,8 +36,14 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
     );
 
     // DBから募集情報を取得（エラーの場合はNone扱い）（トランザクション対応版を使用）
+    // serenity型からドメイン型に変換
     let recruitment_opt = battle_recruitment_repo
-        .get_by_message_with_txn(txn, guild_id, channel_id.into(), message_id.into())
+        .get_by_message_with_txn(
+            txn,
+            DiscordGuildId::new(guild_id),
+            DiscordChannelId::new(channel_id.get()),
+            DiscordMessageId::new(message_id.get()),
+        )
         .await?;
 
     // Discordからメッセージを取得（エラーの場合はNone扱い）
@@ -130,8 +136,14 @@ pub async fn get_recruitment_from_database<R: crate::repository::BattleRecruitme
         guild_id, channel_id, message_id
     );
 
+    // u64をドメイン型に変換
     match battle_recruitment_repo
-        .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+        .get_by_message_with_txn(
+            txn,
+            DiscordGuildId::new(guild_id),
+            DiscordChannelId::new(channel_id),
+            DiscordMessageId::new(message_id),
+        )
         .await?
     {
         Some(recruitment) => {

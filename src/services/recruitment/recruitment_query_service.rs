@@ -5,6 +5,7 @@ use crate::repository::database::battle_style_repository::{
     BattleStyleRepository, SeaOrmBattleStyleRepository,
 };
 use crate::types::Result;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use sea_orm::DatabaseTransaction;
 use tracing::debug;
 
@@ -36,8 +37,14 @@ impl RecruitmentQueryService {
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
+        // u64をドメイン型に変換
         let recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+            .get_by_message_with_txn(
+                txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await?;
 
         debug!(

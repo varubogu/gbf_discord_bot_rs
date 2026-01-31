@@ -12,7 +12,9 @@ use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
 use crate::types::PoiseContext;
-use crate::types::discord::{ActionRowContent, EmbedContent};
+use crate::types::discord::{
+    ActionRowContent, DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent,
+};
 use poise::serenity_prelude::{CreateActionRow, ReactionType};
 use sea_orm::DatabaseTransaction;
 
@@ -180,13 +182,14 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     message_id: u64,
 ) -> types::Result<crate::models::battle_recruitments::BattleRecruitments> {
     // battle_style_idは実際に使用されたものを保存
+    // u64をドメイン型に変換してRepositoryに渡す
     let recruitment = battle_recruitment_repo
         .create_with_txn(
             txn,
             crate::repository::CreateBattleRecruitmentParams {
-                guild_id: recruitment_data.guild_id,
-                channel_id: recruitment_data.channel_id,
-                message_id,
+                guild_id: DiscordGuildId::new(recruitment_data.guild_id),
+                channel_id: DiscordChannelId::new(recruitment_data.channel_id),
+                message_id: DiscordMessageId::new(message_id),
                 quest_id: recruitment_data.quest.id,
                 battle_style_id: recruitment_data.battle_style_id,
                 quest_start_at: recruitment_data.expiry_date,

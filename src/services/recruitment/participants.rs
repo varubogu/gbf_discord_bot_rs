@@ -1,5 +1,7 @@
 use crate::events::converters::to_edit_message;
-use crate::types::discord::{EmbedContent, MessageContent};
+use crate::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
+};
 use poise::serenity_prelude::all::{ChannelId, Context, MessageId, ReactionType};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
@@ -36,9 +38,15 @@ impl ParticipantsService {
         info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
 
         // 募集情報の存在確認（トランザクション対応版を使用）
+        // u64をドメイン型に変換
         let recruitment = self
             .battle_recruitment_repo
-            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+            .get_by_message_with_txn(
+                txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
 

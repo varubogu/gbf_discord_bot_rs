@@ -17,7 +17,8 @@ use crate::services::recruitment::cancel::{
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
 use crate::types::discord::{
-    ActionRowContent, ButtonContent, ButtonStyleType, DiscordMessageId, MessageContent,
+    ActionRowContent, ButtonContent, ButtonStyleType, DiscordChannelId, DiscordGuildId,
+    DiscordMessageId, MessageContent,
 };
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
@@ -145,8 +146,14 @@ async fn cancel_recruitment_internal(
         );
 
         // 0. DBから募集情報を取得して開催日時をチェック
+        // u64をドメイン型に変換
         let recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+            .get_by_message_with_txn(
+                &txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "募集情報が見つかりません".to_string(),
@@ -520,8 +527,14 @@ pub async fn cancel_on_message_deleted(
         let battle_recruitment_repo = repos.battle_recruitment();
 
         // 募集メッセージかどうか確認
+        // u64をドメイン型に変換
         let recruitment_opt = battle_recruitment_repo
-            .get_by_message_with_txn(&txn, guild_id, channel_id, message_id)
+            .get_by_message_with_txn(
+                &txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await?;
 
         let recruitment = match recruitment_opt {
