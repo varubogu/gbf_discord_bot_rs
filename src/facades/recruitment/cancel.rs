@@ -1,4 +1,10 @@
+//! 募集キャンセル処理のFacade層
+//!
+//! PoiseContext等のDiscordフレームワーク固有の型を扱い、
+//! サービス層のビジネスロジックを呼び出す。
+
 use crate::events::converters::{to_create_action_row, to_create_message, to_edit_message};
+use crate::gateway::PoiseDiscordGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
@@ -9,10 +15,9 @@ use crate::repository::{
     GuildSettingsRepository, QuestRepository, RecruitmentParticipantsRepository,
 };
 use crate::services::message::MessageService;
+use crate::services::message::MessageTextId;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
-    delete_cancelling_message, delete_confirmation_message, get_participants_from_reactions,
-    send_cancel_reply_message, show_cancelling_message,
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
@@ -26,7 +31,9 @@ use poise::serenity_prelude::{
     ChannelId, ComponentInteraction, ComponentInteractionCollector, Context,
     EditInteractionResponse, Message, MessageId,
 };
-use sea_orm::TransactionTrait;
+use sea_orm::{ConnectionTrait, TransactionTrait};
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info, instrument, warn};
 
@@ -63,7 +70,7 @@ pub async fn confirm_cancel(ctx: PoiseContext<'_>, message: &Message) -> types::
 
 /// 募集をキャンセルできるか確認（内部関数）
 #[instrument(
-    level = "debug", 
+    level = "debug",
     skip(ctx, message),
     fields(
         guild_id = %message.guild_id.map(|id| id.get()).unwrap_or(0),
@@ -92,14 +99,25 @@ async fn check_can_cancel_recruitment_internal(
     };
     set_current_guild_id(&txn, guild_id as i64).await?;
 
+    let channel_id = message.channel_id.get();
+    let message_id = message.id.get();
+
     let result = async {
         // RepositoryContainerとRepositoryの取得
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
-        // DBの募集情報とDiscordメッセージの状況をチェック
-        let can_cancel_result =
-            check_can_cancel_recruitment(ctx, message, battle_recruitment_repo, &txn).await?;
+        // Gateway経由でDBの募集情報とDiscordメッセージの状況をチェック
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+        let can_cancel_result = check_can_cancel_recruitment(
+            &gateway,
+            guild_id,
+            channel_id,
+            message_id,
+            battle_recruitment_repo,
+            &txn,
+        )
+        .await?;
 
         Ok::<CanCancelResult, crate::types::AppError>(can_cancel_result)
     }
@@ -691,4 +709,152 @@ pub async fn cancel_on_message_deleted(
             Err(e)
         }
     }
+}
+
+// ============================================================
+// 以下はservice層から移動したDiscord操作関数（facade層で実装）
+// ============================================================
+
+/// リアクションから参加者一覧取得（facade層実装）
+///
+/// メッセージのリアクションを列挙し、各リアクションのユーザーを取得して
+/// 参加者一覧を返す。ボットユーザーは除外される。
+async fn get_participants_from_reactions(
+    ctx: PoiseContext<'_>,
+    channel_id: u64,
+    message_id: u64,
+) -> types::Result<Vec<String>> {
+    info!(
+        "リアクション参加者取得開始: channel_id={}, message_id={}",
+        channel_id, message_id
+    );
+
+    let channel = ChannelId::from(channel_id);
+    let message = channel
+        .message(&ctx.http(), MessageId::from(message_id))
+        .await?;
+
+    let mut all_participants = Vec::new();
+
+    for reaction in &message.reactions {
+        // リアクションしたユーザーを取得
+        match message
+            .reaction_users(&ctx.http(), reaction.reaction_type.clone(), Some(100), None)
+            .await
+        {
+            Ok(users) => {
+                let user_mentions: Vec<String> = users
+                    .iter()
+                    .filter(|user| !user.bot) // ボットユーザーを除外
+                    .map(|user| format!("<@{}>", user.id))
+                    .collect();
+
+                all_participants.extend(user_mentions);
+            }
+            Err(e) => {
+                error!("リアクションユーザー取得エラー: {:?}", e);
+                // エラーが発生しても他のリアクションの処理は続行
+            }
+        }
+    }
+
+    // 重複を除去
+    all_participants.sort();
+    all_participants.dedup();
+
+    info!(
+        "リアクション参加者取得完了: {} participants found",
+        all_participants.len()
+    );
+    Ok(all_participants)
+}
+
+/// キャンセル返信送信（facade層実装）
+async fn send_cancel_reply_message(
+    ctx: PoiseContext<'_>,
+    channel_id: u64,
+    original_message_id: u64,
+    content: &str,
+) -> types::Result<MessageId> {
+    info!(
+        "キャンセル返信送信: channel_id={}, original_message_id={}",
+        channel_id, original_message_id
+    );
+
+    let cancel_reply = ctx.say(content).await?;
+    info!("キャンセル返信送信完了");
+
+    Ok(cancel_reply.message().await?.id)
+}
+
+/// 確認メッセージを削除する（facade層実装）
+async fn delete_confirmation_message(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+) -> types::Result<()> {
+    info!("確認メッセージを削除します");
+
+    // メッセージを削除
+    interaction
+        .message
+        .delete(&ctx.serenity_context().http)
+        .await?;
+
+    info!("確認メッセージの削除完了");
+    Ok(())
+}
+
+/// キャンセル中表示に変更する（facade層実装）
+async fn show_cancelling_message<C>(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+    db: &C,
+    message_service: &MessageService,
+    guild_id: Option<i64>,
+    locale: Option<&str>,
+) -> types::Result<()>
+where
+    C: ConnectionTrait,
+{
+    info!("キャンセル中表示に変更します");
+
+    // メッセージサービスからキャンセル中メッセージを取得
+    let cancelling_message = message_service
+        .get_message(
+            db,
+            MessageTextId::RecruitmentCommandCancellingProgress.as_str(),
+            HashMap::new(),
+            guild_id,
+            locale,
+        )
+        .await
+        .unwrap_or_else(|_| "キャンセル中...".to_string());
+
+    interaction
+        .edit_response(
+            &ctx.serenity_context().http,
+            EditInteractionResponse::new()
+                .content(cancelling_message)
+                .components(vec![]),
+        )
+        .await?;
+
+    info!("キャンセル中表示への変更完了");
+    Ok(())
+}
+
+/// キャンセル中メッセージを削除する（facade層実装）
+async fn delete_cancelling_message(
+    ctx: PoiseContext<'_>,
+    interaction: &ComponentInteraction,
+) -> types::Result<()> {
+    info!("キャンセル中メッセージを削除します");
+
+    interaction
+        .message
+        .delete(&ctx.serenity_context().http)
+        .await?;
+
+    info!("キャンセル中メッセージの削除完了");
+    Ok(())
 }

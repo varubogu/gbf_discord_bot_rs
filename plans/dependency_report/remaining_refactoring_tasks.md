@@ -2,7 +2,7 @@
 
 作成日: 2026-02-01
 最終更新: 2026-02-01
-状況: Phase 2完了 - Services層の整理、Gateway経由化の継続
+状況: Phase 3完了 - Services層のpoise依存完全除去
 
 ## 正しいClean Architecture方針
 
@@ -25,6 +25,8 @@
 - [x] src/facades/environment.rs - コメントアウトのみ、スキップ
 - [x] src/services/recruitment/reaction_handler.rs - **削除**（未使用）
 - [x] src/services/permission/mod.rs - **events層に移動** (src/events/permission.rs)
+- [x] src/services/recruitment/cancel.rs - **poise依存完全除去**（Discord操作関数をfacade層に移動）
+- [x] src/services/recruitment/participants.rs - **poise依存完全除去**（Discord操作関数をfacade層に移動）
 
 ## 残り修正対象ファイル
 
@@ -38,12 +40,12 @@
 | src/facades/recruitment/change.rs | あり | Gateway抽象化（中程度: Message, Http） |
 | src/facades/recruitment/participants.rs | あり | Gateway抽象化（中程度: Context） |
 
-### Services層（要対応）
+### Services層（✅ 完了）
 
 | ファイル | 状況 | 対応方針 |
 |----------|------|----------|
-| src/services/recruitment/participants.rs | poise依存あり（TODO記載済） | Discord操作関数をfacade層に移動 |
-| src/services/recruitment/cancel.rs | poise依存あり（TODO記載済） | Discord操作関数をfacade層に移動 |
+| ~~src/services/recruitment/participants.rs~~ | ✅ poise依存除去済み | Discord操作関数をfacade層に移動 |
+| ~~src/services/recruitment/cancel.rs~~ | ✅ poise依存除去済み | Discord操作関数をfacade層に移動 |
 
 ## Gateway抽象化パターン
 
@@ -107,3 +109,11 @@ pub struct PoiseDiscordGateway {
   - reaction_handler.rs削除（未使用）
   - permission/mod.rsをevents層に移動（26ファイルのimport更新）
   - 全体のビルド検証完了
+- 2026-02-01: **Phase 3完了**:
+  - services/recruitment/cancel.rsのpoise依存完全除去
+    - check_can_cancel_recruitmentをGateway経由に変更
+    - get_discord_message, get_participants_from_reactions, send_cancel_reply_message等をfacade層に移動
+  - services/recruitment/participants.rsのpoise依存完全除去
+    - get_reactions_and_members, update_message, has_notification_been_sent, send_recruitment_full_notificationをfacade層に移動
+  - facades/recruitment/cancel.rs, participants.rsに移動した関数を実装
+  - 全体のビルド・テスト検証完了
