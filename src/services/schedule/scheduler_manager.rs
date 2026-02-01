@@ -28,7 +28,7 @@ pub struct SchedulerManager<
 > {
     scheduler: JobScheduler,
     db: Arc<DatabaseConnection>,
-    http: Arc<Http>,
+    gateway: Arc<PoiseDiscordGateway>,
     task_repo: Arc<SeaOrmScheduledTaskRepository>,
     dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
     recruitment_repo: Arc<R>,
@@ -53,10 +53,13 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
             crate::types::AppError::Generic(format!("JobScheduler creation failed: {e}"))
         })?;
 
+        // HttpからPoiseDiscordGatewayを作成して保持
+        let gateway = Arc::new(PoiseDiscordGateway::new(http));
+
         Ok(Self {
             scheduler,
             db,
-            http,
+            gateway,
             task_repo,
             dissolution_repo,
             recruitment_repo,
@@ -73,7 +76,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
 
         // 10秒間隔でタスクをプリロードするジョブを作成
         let db = Arc::clone(&self.db);
-        let http = Arc::clone(&self.http);
+        let gateway = Arc::clone(&self.gateway);
         let task_repo = Arc::clone(&self.task_repo);
         let dissolution_repo = Arc::clone(&self.dissolution_repo);
         let recruitment_repo = Arc::clone(&self.recruitment_repo);
@@ -82,7 +85,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
 
         let job = Job::new_async("*/10 * * * * *", move |_uuid, _lock| {
             let db = Arc::clone(&db);
-            let http = Arc::clone(&http);
+            let gateway = Arc::clone(&gateway);
             let task_repo = Arc::clone(&task_repo);
             let dissolution_repo = Arc::clone(&dissolution_repo);
             let recruitment_repo = Arc::clone(&recruitment_repo);
@@ -92,7 +95,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
             Box::pin(async move {
                 if let Err(e) = Self::preload_and_execute_tasks(
                     &db,
-                    &http,
+                    &gateway,
                     &task_repo,
                     &dissolution_repo,
                     &recruitment_repo,
@@ -135,7 +138,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     /// 現在時刻から20秒先までの未実行タスクを取得し、実行時刻に達しているものを実行する
     async fn preload_and_execute_tasks(
         db: &Arc<DatabaseConnection>,
-        http: &Arc<Http>,
+        gateway: &Arc<PoiseDiscordGateway>,
         task_repo: &Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: &Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: &Arc<R>,
@@ -170,9 +173,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         use crate::repository::database::schedule::SeaOrmNotificationRepository;
         use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
-        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-        let gateway = Arc::new(PoiseDiscordGateway::new(Arc::clone(http)));
-        let notification_service = NotificationService::new(gateway);
+        // Gateway経由でNotificationServiceを作成
+        let notification_service = NotificationService::new(Arc::clone(gateway));
         let notification_repo = SeaOrmNotificationRepository::new();
 
         for task in tasks {
@@ -231,10 +233,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(participants_repo),
                             Arc::clone(message_service),
                         );
-                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, &gateway, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散タスクを実行しました");
                             }
@@ -267,10 +267,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             schedule_service,
                             recruitment_creation_service,
                         );
-                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, db, &gateway, task.id).await {
+                        match executor.execute(&txn, db, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "定期募集タスクを実行しました");
                             }
@@ -284,10 +282,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         // Dismissal
                         info!(task_id = task.id, "解散（人数不足）タスクを実行します");
                         let executor = DismissalTaskExecutor::new(Arc::clone(message_service));
-                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, &gateway, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散（人数不足）タスクを実行しました");
                             }
@@ -311,10 +307,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(task_repo),
                             channel_repo,
                         );
-                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, &gateway, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動募集日付ローテーションタスクを実行しました");
                             }
@@ -335,10 +329,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(task_repo),
                             recruitment_creation_service,
                         );
-                        // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-                        let gateway = PoiseDiscordGateway::new(Arc::clone(http));
 
-                        match executor.execute(&txn, db, &gateway, task.id).await {
+                        match executor.execute(&txn, db, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動マッチングタスクを実行しました");
                             }

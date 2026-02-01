@@ -1,6 +1,7 @@
 //! 自動募集日数変更コマンド
 
 use crate::facades::auto_recruitment;
+use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
 use crate::services::permission::check_bot_control_role;
 use crate::types::{AppError, PoiseContext, Result};
@@ -38,9 +39,9 @@ pub async fn auto_recruit_days_change(
         })?;
 
     let app_state = &ctx.data().app_state;
-    let serenity_ctx = ctx.serenity_context();
+    let gateway = PoiseDiscordGateway::new(std::sync::Arc::clone(&ctx.serenity_context().http));
 
-    match auto_recruitment::change_days(serenity_ctx, app_state, guild_id.get(), days).await {
+    match auto_recruitment::change_days(&gateway, app_state, guild_id.get(), days).await {
         Ok(()) => {
             ctx.send(
                 poise::CreateReply::default()

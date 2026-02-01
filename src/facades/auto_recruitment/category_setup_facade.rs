@@ -2,7 +2,7 @@
 //!
 //! カテゴリ登録/解除/日数変更の処理を行う
 
-use crate::events::converters::to_create_message;
+use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway, PoiseDiscordGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
@@ -23,17 +23,14 @@ use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{
-    ActionRowContent, ButtonContent, ButtonStyleType, MessageContent, SelectMenuContent,
+    ActionRowContent, ButtonContent, ButtonStyleType, ChannelCreateParams, ChannelEditParams,
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent, SelectMenuContent,
     SelectMenuOptionContent,
 };
 use crate::types::{AppError, AppState, BattleStyleId, Result};
 use chrono::{Datelike, Duration, Utc};
-use poise::serenity_prelude::{
-    ChannelId, ChannelType, Context, CreateChannel, EditChannel, GuildId, Http,
-};
 use rust_i18n::t;
 use sea_orm::TransactionTrait;
-use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
 /// カテゴリ登録結果
@@ -47,16 +44,16 @@ pub struct CategoryRegistrationResult {
 /// カテゴリを自動募集に登録
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `category_id` - カテゴリチャンネルID
 /// * `days` - 募集日数（2-7日）
 /// * `matching_channel_id` - マッチング通知チャンネルID（省略可能）
 /// * `quest_channel_id` - クエスト選択チャンネルID（省略可能）
-#[instrument(level = "info", skip(ctx, app_state))]
+#[instrument(level = "info", skip(gateway, app_state))]
 pub async fn register_category(
-    ctx: &Context,
+    gateway: &PoiseDiscordGateway,
     app_state: &AppState,
     guild_id: u64,
     category_id: u64,
@@ -95,7 +92,7 @@ pub async fn register_category(
             });
         }
 
-        let discord_guild_id = GuildId::new(guild_id);
+        let discord_guild_id = DiscordGuildId::new(guild_id);
 
         // チャンネル順序: マッチング(0) → 日付昇順(1〜days) → クエスト(days+1)
 
@@ -103,30 +100,29 @@ pub async fn register_category(
         let (final_matching_channel_id, matching_is_bot_created, matching_message_id) =
             if let Some(ch_id) = matching_channel_id {
                 // 指定されたチャンネルにメッセージを送信し、位置を調整
-                let channel_id = ChannelId::new(ch_id);
-                let msg_id = send_matching_channel_message(&ctx.http, channel_id).await?;
+                let channel_id = DiscordChannelId::new(ch_id);
+                let msg_id = send_matching_channel_message(gateway, channel_id).await?;
                 // 指定チャンネルの位置を0に設定
-                let _ = channel_id
-                    .edit(&ctx.http, EditChannel::new().position(0))
+                let _ = gateway
+                    .edit_channel(channel_id, ChannelEditParams::new().with_position(0))
                     .await;
-                (ch_id, false, Some(msg_id))
+                (ch_id, false, Some(msg_id.get()))
             } else {
                 // チャンネルを新規作成（position 0）
-                let channel = discord_guild_id
-                    .create_channel(
-                        &ctx.http,
-                        CreateChannel::new("マッチング")
-                            .kind(ChannelType::Text)
-                            .category(ChannelId::new(category_id))
-                            .position(0),
-                    )
+                let channel_params = ChannelCreateParams::text("マッチング")
+                    .with_parent(DiscordChannelId::new(category_id))
+                    .with_position(0);
+
+                let new_channel_id = gateway
+                    .create_channel(discord_guild_id, channel_params)
                     .await
                     .map_err(|e| {
                         error!(error = %e, guild_id, "マッチングチャンネルの作成に失敗しました");
                         AppError::ChannelCreationFailed
                     })?;
-                let msg_id = send_matching_channel_message(&ctx.http, channel.id).await?;
-                (channel.id.get(), true, Some(msg_id))
+
+                let msg_id = send_matching_channel_message(gateway, new_channel_id).await?;
+                (new_channel_id.get(), true, Some(msg_id.get()))
             };
 
         // クエスト一覧を取得（有効なクエストのみ）
@@ -152,26 +148,25 @@ pub async fn register_category(
             (ch_id, false)
         } else {
             // チャンネルを新規作成（位置は後で設定）
-            let channel = discord_guild_id
-                .create_channel(
-                    &ctx.http,
-                    CreateChannel::new("クエスト選択")
-                        .kind(ChannelType::Text)
-                        .category(ChannelId::new(category_id)),
-                )
+            let channel_params = ChannelCreateParams::text("クエスト選択")
+                .with_parent(DiscordChannelId::new(category_id));
+
+            let new_channel_id = gateway
+                .create_channel(discord_guild_id, channel_params)
                 .await
                 .map_err(|e| {
                     error!(error = %e, guild_id, "クエストチャンネルの作成に失敗しました");
                     AppError::ChannelCreationFailed
                 })?;
-            (channel.id.get(), true)
+
+            (new_channel_id.get(), true)
         };
 
         // 1クエスト1メッセージ形式でメッセージを送信し、メッセージIDを保存
-        let quest_channel_id_serenity = ChannelId::new(final_quest_channel_id);
+        let quest_channel_id_domain = DiscordChannelId::new(final_quest_channel_id);
         send_quest_channel_messages(
-            &ctx.http,
-            quest_channel_id_serenity,
+            gateway,
+            quest_channel_id_domain,
             guild_id,
             &enabled_quests,
             &quest_message_repo,
@@ -200,13 +195,16 @@ pub async fn register_category(
 
         // 日時チャンネルを作成（position 1〜days）
         let created_channels =
-            create_date_channels(&ctx.http, guild_id, category_id, days, &channel_repo, &txn)
+            create_date_channels(gateway, guild_id, category_id, days, &channel_repo, &txn)
                 .await?;
 
         // クエストチャンネルの位置を日付チャンネルの後に設定（position days+1）
-        let quest_channel = ChannelId::new(final_quest_channel_id);
-        let _ = quest_channel
-            .edit(&ctx.http, EditChannel::new().position((days + 1) as u16))
+        let quest_channel = DiscordChannelId::new(final_quest_channel_id);
+        let _ = gateway
+            .edit_channel(
+                quest_channel,
+                ChannelEditParams::new().with_position((days + 1) as u16),
+            )
             .await;
 
         // ローテーションタスクを初期登録（翌日0時）
@@ -245,16 +243,16 @@ pub async fn register_category(
 /// カテゴリの自動募集を解除
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `command_channel_id` - コマンド実行チャンネルID
 ///
 /// # エラー
 /// * カテゴリ内のチャンネルでコマンドが実行された場合、`InCategoryChannelError`を返す
-#[instrument(level = "info", skip(ctx, app_state))]
+#[instrument(level = "info", skip(gateway, app_state))]
 pub async fn unregister_category(
-    ctx: &Context,
+    gateway: &PoiseDiscordGateway,
     app_state: &AppState,
     guild_id: u64,
     command_channel_id: u64,
@@ -280,23 +278,21 @@ pub async fn unregister_category(
             })?;
 
         // コマンド実行チャンネルがカテゴリ内かどうかを判定
-        let command_channel = ChannelId::new(command_channel_id);
-        if let Ok(channel) = command_channel.to_channel(&ctx.http).await {
-            if let Some(guild_channel) = channel.guild() {
-                if let Some(parent_id) = guild_channel.parent_id {
-                    if parent_id.get() == auto_recruitment.category_id as u64 {
-                        return Err(AppError::InCategoryChannelError);
-                    }
+        let command_channel = DiscordChannelId::new(command_channel_id);
+        if let Ok(channel_data) = gateway.get_channel(command_channel).await {
+            if let Some(parent_id) = channel_data.parent_id {
+                if parent_id.get() == auto_recruitment.category_id as u64 {
+                    return Err(AppError::InCategoryChannelError);
                 }
             }
         }
 
         // マッチングチャンネルの処理
         if let Some(matching_ch_id) = auto_recruitment.matching_channel_id {
-            let channel_id = ChannelId::new(matching_ch_id as u64);
+            let channel_id = DiscordChannelId::new(matching_ch_id as u64);
             if auto_recruitment.matching_channel_is_bot_created {
                 // Bot作成チャンネルは削除
-                if let Err(e) = channel_id.delete(&ctx.http).await {
+                if let Err(e) = gateway.delete_channel(channel_id).await {
                     error!(
                         channel_id = matching_ch_id,
                         error = %e,
@@ -305,8 +301,8 @@ pub async fn unregister_category(
                 }
             } else if let Some(msg_id) = auto_recruitment.matching_message_id {
                 // 指定チャンネルはメッセージのみ削除
-                let message_id = poise::serenity_prelude::MessageId::new(msg_id as u64);
-                if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
+                let message_id = DiscordMessageId::new(msg_id as u64);
+                if let Err(e) = gateway.delete_message(channel_id, message_id).await {
                     error!(
                         channel_id = matching_ch_id,
                         message_id = msg_id,
@@ -320,10 +316,10 @@ pub async fn unregister_category(
         // クエストチャンネルの処理
         let quest_message_repo = SeaOrmAutoRecruitmentQuestMessageRepository::new();
         if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
-            let channel_id = ChannelId::new(quest_ch_id as u64);
+            let channel_id = DiscordChannelId::new(quest_ch_id as u64);
             if auto_recruitment.quest_channel_is_bot_created {
                 // Bot作成チャンネルは削除
-                if let Err(e) = channel_id.delete(&ctx.http).await {
+                if let Err(e) = gateway.delete_channel(channel_id).await {
                     error!(
                         channel_id = quest_ch_id,
                         error = %e,
@@ -337,9 +333,8 @@ pub async fn unregister_category(
                     .await?;
 
                 for quest_msg in quest_messages {
-                    let message_id =
-                        poise::serenity_prelude::MessageId::new(quest_msg.message_id as u64);
-                    if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
+                    let message_id = DiscordMessageId::new(quest_msg.message_id as u64);
+                    if let Err(e) = gateway.delete_message(channel_id, message_id).await {
                         error!(
                             channel_id = quest_ch_id,
                             message_id = quest_msg.message_id,
@@ -361,10 +356,10 @@ pub async fn unregister_category(
         let channels = channel_repo.find_by_guild_id(&txn, guild_id as i64).await?;
 
         for channel in channels {
-            let channel_id = ChannelId::new(channel.channel_id as u64);
+            let channel_id = DiscordChannelId::new(channel.channel_id as u64);
             if channel.is_bot_created {
                 // Bot作成チャンネルは削除
-                if let Err(e) = channel_id.delete(&ctx.http).await {
+                if let Err(e) = gateway.delete_channel(channel_id).await {
                     error!(
                         channel_id = channel.channel_id,
                         error = %e,
@@ -373,8 +368,8 @@ pub async fn unregister_category(
                 }
             } else if let Some(msg_id) = channel.message_id {
                 // 指定チャンネルはメッセージのみ削除
-                let message_id = poise::serenity_prelude::MessageId::new(msg_id as u64);
-                if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
+                let message_id = DiscordMessageId::new(msg_id as u64);
+                if let Err(e) = gateway.delete_message(channel_id, message_id).await {
                     error!(
                         channel_id = channel.channel_id,
                         message_id = msg_id,
@@ -423,13 +418,13 @@ pub async fn unregister_category(
 /// 募集日数を変更
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `new_days` - 新しい募集日数（2-7日）
-#[instrument(level = "info", skip(ctx, app_state))]
+#[instrument(level = "info", skip(gateway, app_state))]
 pub async fn change_days(
-    ctx: &Context,
+    gateway: &PoiseDiscordGateway,
     app_state: &AppState,
     guild_id: u64,
     new_days: i32,
@@ -487,7 +482,7 @@ pub async fn change_days(
                 now_jst.date_naive()
             };
 
-            let discord_guild_id = GuildId::new(guild_id);
+            let discord_guild_id = DiscordGuildId::new(guild_id);
 
             for i in 1..=channels_to_add {
                 let new_date = last_channel_date + Duration::days(i as i64);
@@ -497,14 +492,12 @@ pub async fn change_days(
                 let channel_position = (existing_channels.len() + i) as u16;
 
                 // Discordチャンネルを作成（カテゴリの権限を継承、位置指定）
-                let channel = discord_guild_id
-                    .create_channel(
-                        &ctx.http,
-                        CreateChannel::new(&channel_name)
-                            .kind(ChannelType::Text)
-                            .category(ChannelId::new(category_id))
-                            .position(channel_position),
-                    )
+                let channel_params = ChannelCreateParams::text(&channel_name)
+                    .with_parent(DiscordChannelId::new(category_id))
+                    .with_position(channel_position);
+
+                let new_channel_id = gateway
+                    .create_channel(discord_guild_id, channel_params)
                     .await
                     .map_err(|e| {
                         error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
@@ -512,30 +505,30 @@ pub async fn change_days(
                     })?;
 
                 // 時間選択コンポーネントを送信してメッセージIDを取得
-                let message_id = send_time_selection_message(&ctx.http, channel.id).await?;
+                let message_id = send_time_selection_message(gateway, new_channel_id).await?;
 
                 // DBに登録（Bot作成フラグ=true、メッセージID保存）
                 channel_repo
                     .create(
                         &txn,
                         guild_id as i64,
-                        channel.id.get() as i64,
+                        new_channel_id.get() as i64,
                         new_date.month() as i32,
                         new_date.day() as i32,
                         sort_order,
                         true, // is_bot_created
-                        Some(message_id as i64),
+                        Some(message_id.get() as i64),
                     )
                     .await?;
             }
 
             // クエストチャンネルの位置を日付チャンネルの後に更新
             if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
-                let quest_channel = ChannelId::new(quest_ch_id as u64);
-                let _ = quest_channel
-                    .edit(
-                        &ctx.http,
-                        EditChannel::new().position((new_days + 1) as u16),
+                let quest_channel = DiscordChannelId::new(quest_ch_id as u64);
+                let _ = gateway
+                    .edit_channel(
+                        quest_channel,
+                        ChannelEditParams::new().with_position((new_days + 1) as u16),
                     )
                     .await;
             }
@@ -549,10 +542,10 @@ pub async fn change_days(
                 .collect();
 
             for channel in channels_to_delete {
-                let channel_id = ChannelId::new(channel.channel_id as u64);
+                let channel_id = DiscordChannelId::new(channel.channel_id as u64);
                 if channel.is_bot_created {
                     // Bot作成チャンネルは削除
-                    if let Err(e) = channel_id.delete(&ctx.http).await {
+                    if let Err(e) = gateway.delete_channel(channel_id).await {
                         error!(
                             channel_id = channel.channel_id,
                             error = %e,
@@ -561,8 +554,8 @@ pub async fn change_days(
                     }
                 } else if let Some(msg_id) = channel.message_id {
                     // 指定チャンネルはメッセージのみ削除
-                    let message_id = poise::serenity_prelude::MessageId::new(msg_id as u64);
-                    if let Err(e) = channel_id.delete_message(&ctx.http, message_id).await {
+                    let message_id = DiscordMessageId::new(msg_id as u64);
+                    if let Err(e) = gateway.delete_message(channel_id, message_id).await {
                         error!(
                             channel_id = channel.channel_id,
                             message_id = msg_id,
@@ -604,7 +597,7 @@ pub async fn change_days(
 
 /// 日時チャンネルを作成
 async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
-    http: &Arc<Http>,
+    gateway: &PoiseDiscordGateway,
     guild_id: u64,
     category_id: u64,
     days: i32,
@@ -618,7 +611,7 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
     let now_jst = now_utc + Duration::hours(9);
     let today = now_jst.date_naive();
 
-    let discord_guild_id = GuildId::new(guild_id);
+    let discord_guild_id = DiscordGuildId::new(guild_id);
     let mut created_count = 0;
 
     for i in 0..days {
@@ -628,14 +621,12 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
         let channel_position = (i + 1) as u16;
 
         // Discordチャンネルを作成（カテゴリの権限を継承、位置指定）
-        let channel = discord_guild_id
-            .create_channel(
-                http,
-                CreateChannel::new(&channel_name)
-                    .kind(ChannelType::Text)
-                    .category(ChannelId::new(category_id))
-                    .position(channel_position),
-            )
+        let channel_params = ChannelCreateParams::text(&channel_name)
+            .with_parent(DiscordChannelId::new(category_id))
+            .with_position(channel_position);
+
+        let new_channel_id = gateway
+            .create_channel(discord_guild_id, channel_params)
             .await
             .map_err(|e| {
                 error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
@@ -643,25 +634,25 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
             })?;
 
         // 時間選択コンポーネントを送信してメッセージIDを取得
-        let message_id = send_time_selection_message(http, channel.id).await?;
+        let message_id = send_time_selection_message(gateway, new_channel_id).await?;
 
         // DBに登録（Bot作成フラグ=true、メッセージID保存）
         channel_repo
             .create(
                 txn,
                 guild_id as i64,
-                channel.id.get() as i64,
+                new_channel_id.get() as i64,
                 date.month() as i32,
                 date.day() as i32,
                 i,
                 true, // is_bot_created
-                Some(message_id as i64),
+                Some(message_id.get() as i64),
             )
             .await?;
 
         created_count += 1;
         debug!(
-            channel_id = channel.id.get(),
+            channel_id = new_channel_id.get(),
             channel_name, "日時チャンネルを作成しました"
         );
     }
@@ -674,7 +665,10 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
 /// グラブルではAM5:00に日付が変わるため、1/21チャンネルは「1/21 5:00〜1/22 4:00」を対象とする。
 /// 選択肢は降順（夜の時間帯が先）で表示し、翌日分は「翌0:00」のように表記する。
 /// 内部値は0-28（5-23は当日、24-28は翌日0-4時を表す）。
-async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<u64> {
+async fn send_time_selection_message(
+    gateway: &PoiseDiscordGateway,
+    channel_id: DiscordChannelId,
+) -> Result<DiscordMessageId> {
     // ゲーム内日付: 当日5:00〜翌日4:00（24時間）
     // 降順で表示: 翌4:00, 翌3:00, 翌2:00, 翌1:00, 翌0:00, 23:00, 22:00, ..., 5:00
     let mut options: Vec<SelectMenuOptionContent> = Vec::with_capacity(24);
@@ -716,8 +710,8 @@ async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) ->
         .with_text("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
         .with_component(action_row);
 
-    let sent_message = channel_id
-        .send_message(http, to_create_message(&message_content))
+    let sent_message_id = gateway
+        .send_message(channel_id, message_content)
         .await
         .map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "時間選択メッセージの送信に失敗しました");
@@ -726,18 +720,21 @@ async fn send_time_selection_message(http: &Arc<Http>, channel_id: ChannelId) ->
             }
         })?;
 
-    Ok(sent_message.id.get())
+    Ok(sent_message_id)
 }
 
 /// マッチングチャンネルにメッセージを送信し、メッセージIDを返す
-async fn send_matching_channel_message(http: &Arc<Http>, channel_id: ChannelId) -> Result<u64> {
+async fn send_matching_channel_message(
+    gateway: &PoiseDiscordGateway,
+    channel_id: DiscordChannelId,
+) -> Result<DiscordMessageId> {
     // ドメインモデルでメッセージを作成
     let message_content = MessageContent::text(
         "**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。",
     );
 
-    let sent_message = channel_id
-        .send_message(http, to_create_message(&message_content))
+    let sent_message_id = gateway
+        .send_message(channel_id, message_content)
         .await
         .map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "マッチングチャンネルメッセージの送信に失敗しました");
@@ -746,21 +743,21 @@ async fn send_matching_channel_message(http: &Arc<Http>, channel_id: ChannelId) 
             }
         })?;
 
-    Ok(sent_message.id.get())
+    Ok(sent_message_id)
 }
 
 /// クエストチャンネルに1クエスト1メッセージ形式でメッセージを送信
 ///
 /// # 引数
-/// * `http` - Discord HTTP クライアント
+/// * `gateway` - Discord Gateway
 /// * `channel_id` - 送信先チャンネルID
 /// * `guild_id` - ギルドID（カスタムID生成用）
 /// * `quests` - クエストリスト（available_battle_style_ids含む）
 /// * `quest_message_repo` - クエストメッセージリポジトリ
 /// * `txn` - データベーストランザクション
 async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
-    http: &Arc<Http>,
-    channel_id: ChannelId,
+    gateway: &PoiseDiscordGateway,
+    channel_id: DiscordChannelId,
     guild_id: u64,
     quests: &[Quest],
     quest_message_repo: &R,
@@ -772,7 +769,7 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
             "**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。",
         );
 
-        channel_id.send_message(http, to_create_message(&message_content)).await.map_err(|e| {
+        gateway.send_message(channel_id, message_content).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
             AppError::Business {
                 message: "クエストチャンネルメッセージの送信に失敗しました".to_string(),
@@ -793,9 +790,8 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
             &quest.name,
             is_six_element,
         );
-        let message = to_create_message(&message_content);
 
-        let sent_message = channel_id.send_message(http, message).await.map_err(|e| {
+        let sent_message_id = gateway.send_message(channel_id, message_content).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), quest_id = quest.id, "クエストメッセージの送信に失敗しました");
             AppError::Business {
                 message: format!("クエストメッセージの送信に失敗しました: {}", quest.name),
@@ -804,12 +800,12 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
 
         // メッセージIDをDBに保存
         quest_message_repo
-            .upsert(txn, guild_id as i64, quest.id, sent_message.id.get() as i64)
+            .upsert(txn, guild_id as i64, quest.id, sent_message_id.get() as i64)
             .await?;
 
         debug!(
             quest_id = quest.id,
-            message_id = sent_message.id.get(),
+            message_id = sent_message_id.get(),
             "クエストメッセージを送信しました"
         );
     }
@@ -829,8 +825,8 @@ async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
         )
         .with_component(action_row);
 
-    channel_id
-        .send_message(http, to_create_message(&check_message_content))
+    gateway
+        .send_message(channel_id, check_message_content)
         .await
         .map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "選択確認メッセージの送信に失敗しました");

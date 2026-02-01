@@ -2,13 +2,12 @@
 //!
 //! マッチング成功時の通知メッセージを作成・送信するサービス。
 //! UIレイアウトは `NotificationPresenter` が担当し、本モジュールでは
-//! プレゼンターのドメインモデルをserenityのビルダー型へ変換して送信する。
+//! プレゼンターのドメインモデルをGateway経由で送信する。
 
-use crate::events::converters::{to_create_message, to_edit_message};
+use crate::gateway::DiscordMessageGateway;
 use crate::presenter::NotificationPresenter;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId};
 use crate::types::Result;
-use poise::serenity_prelude::{self as serenity, ChannelId, Http, Message};
-use std::sync::Arc;
 use tracing::{debug, error, info};
 
 /// 自動募集通知サービス
@@ -20,9 +19,9 @@ impl AutoRecruitmentNotificationService {
     }
 
     /// マッチング成功通知をマッチングチャンネルに投稿
-    pub async fn notify_match(
+    pub async fn notify_match<G: DiscordMessageGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         participants: &[u64],
         quest_candidates: &[(i32, String)], // (quest_id, quest_name)
@@ -30,7 +29,7 @@ impl AutoRecruitmentNotificationService {
         day: i32,
         hour: i32,
         matched_id: i32,
-    ) -> Result<Message> {
+    ) -> Result<DiscordMessageId> {
         debug!(
             channel_id,
             participant_count = participants.len(),
@@ -41,7 +40,7 @@ impl AutoRecruitmentNotificationService {
             "マッチング成功通知を送信します"
         );
 
-        let channel = ChannelId::new(channel_id);
+        let channel = DiscordChannelId::new(channel_id);
 
         // プレゼンターでメッセージを構築
         let message_content = NotificationPresenter::create_match_notification(
@@ -52,28 +51,30 @@ impl AutoRecruitmentNotificationService {
             hour,
             matched_id,
         );
-        let message = to_create_message(&message_content);
 
-        let sent_message = channel.send_message(http, message).await.map_err(|e| {
-            error!(error = %e, channel_id, "マッチング通知の送信に失敗しました");
-            crate::types::AppError::Business {
-                message: format!("マッチング通知の送信に失敗しました: {}", e),
-            }
-        })?;
+        let sent_message_id = gateway
+            .send_message(channel, message_content)
+            .await
+            .map_err(|e| {
+                error!(error = %e, channel_id, "マッチング通知の送信に失敗しました");
+                crate::types::AppError::Business {
+                    message: format!("マッチング通知の送信に失敗しました: {}", e),
+                }
+            })?;
 
         info!(
             channel_id,
-            message_id = sent_message.id.get(),
+            message_id = sent_message_id.get(),
             "マッチング成功通知を送信しました"
         );
 
-        Ok(sent_message)
+        Ok(sent_message_id)
     }
 
     /// 参加者追加時にメッセージを編集
-    pub async fn update_match_notification(
+    pub async fn update_match_notification<G: DiscordMessageGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         message_id: u64,
         participants: &[u64],
@@ -82,7 +83,7 @@ impl AutoRecruitmentNotificationService {
         day: i32,
         hour: i32,
         matched_id: i32,
-    ) -> Result<Message> {
+    ) -> Result<()> {
         debug!(
             channel_id,
             message_id,
@@ -90,7 +91,8 @@ impl AutoRecruitmentNotificationService {
             "マッチング通知を更新します"
         );
 
-        let channel = ChannelId::new(channel_id);
+        let channel = DiscordChannelId::new(channel_id);
+        let msg_id = DiscordMessageId::new(message_id);
 
         // プレゼンターで最新のメッセージ内容を構築
         let message_content = NotificationPresenter::create_match_notification(
@@ -101,45 +103,38 @@ impl AutoRecruitmentNotificationService {
             hour,
             matched_id,
         );
-        let edit_message = to_edit_message(&message_content);
 
-        let mut message = channel
-            .message(http, serenity::MessageId::new(message_id))
+        gateway
+            .edit_message(channel, msg_id, message_content)
             .await
             .map_err(|e| {
-                error!(error = %e, channel_id, message_id, "メッセージの取得に失敗しました");
+                error!(error = %e, channel_id, message_id, "メッセージの編集に失敗しました");
                 crate::types::AppError::Business {
-                    message: format!("メッセージの取得に失敗しました: {}", e),
+                    message: format!("メッセージの編集に失敗しました: {}", e),
                 }
             })?;
 
-        message.edit(http, edit_message).await.map_err(|e| {
-            error!(error = %e, channel_id, message_id, "メッセージの編集に失敗しました");
-            crate::types::AppError::Business {
-                message: format!("メッセージの編集に失敗しました: {}", e),
-            }
-        })?;
-
         info!(channel_id, message_id, "マッチング通知を更新しました");
-        Ok(message)
+        Ok(())
     }
 
     /// 再投票メッセージを送信（元メッセージに返信）
-    pub async fn send_revote_message(
+    pub async fn send_revote_message<G: DiscordMessageGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         reply_to_message_id: u64,
         participants: &[u64],
         tie_quest_ids: &[(i32, String)],
         matched_id: i32,
-    ) -> Result<Message> {
+    ) -> Result<DiscordMessageId> {
         debug!(
             channel_id,
             reply_to_message_id, "再投票メッセージを送信します"
         );
 
-        let channel = ChannelId::new(channel_id);
+        let channel = DiscordChannelId::new(channel_id);
+        let reply_to = DiscordMessageId::new(reply_to_message_id);
 
         // プレゼンターで再投票メッセージを構築
         let message_content = NotificationPresenter::create_revote_notification(
@@ -147,12 +142,9 @@ impl AutoRecruitmentNotificationService {
             tie_quest_ids,
             matched_id,
         );
-        let mut create_message = to_create_message(&message_content);
-        create_message = create_message
-            .reference_message((channel, serenity::MessageId::new(reply_to_message_id)));
 
-        let sent_message = channel
-            .send_message(http, create_message)
+        let sent_message_id = gateway
+            .send_reply(channel, reply_to, message_content, None)
             .await
             .map_err(|e| {
                 error!(error = %e, channel_id, "再投票メッセージの送信に失敗しました");
@@ -163,27 +155,27 @@ impl AutoRecruitmentNotificationService {
 
         info!(
             channel_id,
-            message_id = sent_message.id.get(),
+            message_id = sent_message_id.get(),
             "再投票メッセージを送信しました"
         );
 
-        Ok(sent_message)
+        Ok(sent_message_id)
     }
 
     /// クエスト決定通知を送信
-    pub async fn notify_quest_decided(
+    pub async fn notify_quest_decided<G: DiscordMessageGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         participants: &[u64],
         quest_name: &str,
         month: i32,
         day: i32,
         hour: i32,
-    ) -> Result<Message> {
+    ) -> Result<DiscordMessageId> {
         debug!(channel_id, quest_name, "クエスト決定通知を送信します");
 
-        let channel = ChannelId::new(channel_id);
+        let channel = DiscordChannelId::new(channel_id);
 
         // プレゼンターでクエスト決定通知を構築
         let message_content = NotificationPresenter::create_quest_decided_notification(
@@ -193,17 +185,19 @@ impl AutoRecruitmentNotificationService {
             day,
             hour,
         );
-        let message = to_create_message(&message_content);
 
-        let sent_message = channel.send_message(http, message).await.map_err(|e| {
-            error!(error = %e, channel_id, "クエスト決定通知の送信に失敗しました");
-            crate::types::AppError::Business {
-                message: format!("クエスト決定通知の送信に失敗しました: {}", e),
-            }
-        })?;
+        let sent_message_id = gateway
+            .send_message(channel, message_content)
+            .await
+            .map_err(|e| {
+                error!(error = %e, channel_id, "クエスト決定通知の送信に失敗しました");
+                crate::types::AppError::Business {
+                    message: format!("クエスト決定通知の送信に失敗しました: {}", e),
+                }
+            })?;
 
         info!(channel_id, quest_name, "クエスト決定通知を送信しました");
-        Ok(sent_message)
+        Ok(sent_message_id)
     }
 }
 
