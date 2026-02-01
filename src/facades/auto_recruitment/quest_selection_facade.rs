@@ -8,7 +8,6 @@ use crate::repository::database::auto_recruitment::{
     SeaOrmAutoRecruitmentRepository, SeaOrmUserDesiredQuestRepository,
 };
 use crate::types::{AppError, AppState, Result};
-use poise::serenity_prelude::Context;
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -22,14 +21,12 @@ pub enum QuestSelectionResult {
 /// クエスト選択を処理
 ///
 /// # 引数
-/// * `_ctx` - Discord Context（将来の拡張用）
 /// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `user_id` - ユーザーID
 /// * `quest_ids` - 選択されたクエストIDのリスト
-#[instrument(level = "info", skip(_ctx, app_state))]
+#[instrument(level = "info", skip(app_state))]
 pub async fn handle_quest_selection(
-    _ctx: &Context,
     app_state: &AppState,
     guild_id: u64,
     user_id: u64,

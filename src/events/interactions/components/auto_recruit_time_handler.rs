@@ -89,7 +89,6 @@ pub async fn handle_time_selection_interaction(
     let app_state = &data.app_state;
 
     match auto_recruitment::handle_time_selection(
-        ctx,
         app_state,
         guild_id,
         user_id,
