@@ -1,9 +1,9 @@
 //! 自動募集カテゴリ登録コマンド
 
+use crate::events::permission::check_bot_control_role;
 use crate::facades::auto_recruitment;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Channel;
 use rust_i18n::t;

@@ -2,6 +2,7 @@ use gbf_discord_bot_rs::events::{
     command::{admin_commands, commands, global_commands},
     handler::event_handler,
 };
+use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
 use gbf_discord_bot_rs::repository::database::{
     battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
     recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
@@ -285,9 +286,12 @@ async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Res
     let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
     let message_service = Arc::new(MessageService::new());
 
+    // poise依存をサービス層から分離するため、ここでGatewayを作成
+    let gateway = Arc::new(PoiseDiscordGateway::new(http));
+
     let mut scheduler_manager = SchedulerManager::new(
         Arc::new(app_state.system_db().clone()),
-        http,
+        gateway,
         task_repo,
         dissolution_repo,
         recruitment_repo,

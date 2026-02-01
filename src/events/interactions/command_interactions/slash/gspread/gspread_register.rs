@@ -3,10 +3,10 @@
 /// gbf_bot_controlロール保持者が実行可能
 /// ギルド用の読み込み・書き込みスプレッドシートをデータベースに登録します
 use crate::errors::PresentationError;
+use crate::events::permission::check_bot_control_role;
 use crate::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
 use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use tracing::{error, info};

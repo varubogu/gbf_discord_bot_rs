@@ -1,4 +1,4 @@
-use crate::services::permission::has_bot_control_permission;
+use crate::events::permission::has_bot_control_permission;
 // use crate::services::environment::service::load_environment_from_database;
 use crate::types::{PoiseContext, Result};
 

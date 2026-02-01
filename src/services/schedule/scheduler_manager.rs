@@ -13,7 +13,6 @@ use crate::services::schedule::recurring_recruitment_task_executor::RecurringRec
 use crate::services::schedule::{NotificationService, RecruitmentScheduleService};
 use crate::types::Result;
 use chrono::{Duration, Utc};
-use poise::serenity_prelude::Http;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -40,9 +39,18 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     SchedulerManager<R, P>
 {
     /// 新しいSchedulerManagerを作成
+    ///
+    /// # Arguments
+    /// * `db` - データベース接続
+    /// * `gateway` - Discord Gateway（poise依存をサービス層から分離）
+    /// * `task_repo` - スケジュールタスクリポジトリ
+    /// * `dissolution_repo` - 解散タスクリポジトリ
+    /// * `recruitment_repo` - 募集リポジトリ
+    /// * `participants_repo` - 参加者リポジトリ
+    /// * `message_service` - メッセージサービス
     pub async fn new(
         db: Arc<DatabaseConnection>,
-        http: Arc<Http>,
+        gateway: Arc<PoiseDiscordGateway>,
         task_repo: Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: Arc<R>,
@@ -52,9 +60,6 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         let scheduler = JobScheduler::new().await.map_err(|e| {
             crate::types::AppError::Generic(format!("JobScheduler creation failed: {e}"))
         })?;
-
-        // HttpからPoiseDiscordGatewayを作成して保持
-        let gateway = Arc::new(PoiseDiscordGateway::new(http));
 
         Ok(Self {
             scheduler,

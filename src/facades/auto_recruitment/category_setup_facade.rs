@@ -195,8 +195,7 @@ pub async fn register_category(
 
         // 日時チャンネルを作成（position 1〜days）
         let created_channels =
-            create_date_channels(gateway, guild_id, category_id, days, &channel_repo, &txn)
-                .await?;
+            create_date_channels(gateway, guild_id, category_id, days, &channel_repo, &txn).await?;
 
         // クエストチャンネルの位置を日付チャンネルの後に設定（position days+1）
         let quest_channel = DiscordChannelId::new(final_quest_channel_id);

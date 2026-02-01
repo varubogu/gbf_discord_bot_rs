@@ -6,8 +6,8 @@
 
 use crate::gateway::DiscordMessageGateway;
 use crate::presenter::NotificationPresenter;
-use crate::types::discord::{DiscordChannelId, DiscordMessageId};
 use crate::types::Result;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId};
 use tracing::{debug, error, info};
 
 /// 自動募集通知サービス

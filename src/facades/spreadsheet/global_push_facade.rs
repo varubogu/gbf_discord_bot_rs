@@ -1,4 +1,4 @@
-use crate::services::permission::is_bot_admin_server;
+use crate::events::permission::is_bot_admin_server;
 use crate::services::spreadsheet::global_push_service::{GlobalPushService, GlobalPushServiceImpl};
 use crate::types::{PoiseContext, Result};
 use sea_orm::TransactionTrait;

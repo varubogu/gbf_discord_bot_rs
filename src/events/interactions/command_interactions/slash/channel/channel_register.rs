@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tracing::error;
 
 use crate::events::converters::to_autocomplete_choices;
+use crate::events::permission::check_bot_control_role;
 use crate::facades::channel::ChannelManagementFacade;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 
 /// チャンネル種別の選択肢を取得

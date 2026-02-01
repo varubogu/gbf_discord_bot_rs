@@ -1,3 +1,8 @@
+//! パーミッションチェック関数
+//!
+//! Poiseコマンドの実行前チェック（check function）を提供する。
+//! これらはevents層に属し、poise依存が許容される。
+
 use crate::constants::ROLL_GBF_BOT_CONTROLS;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::all::Member;

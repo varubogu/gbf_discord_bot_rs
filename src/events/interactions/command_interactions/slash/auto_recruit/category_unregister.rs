@@ -1,9 +1,9 @@
 //! 自動募集カテゴリ解除コマンド
 
+use crate::events::permission::check_bot_control_role;
 use crate::facades::auto_recruitment;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{AppError, PoiseContext, Result};
 use rust_i18n::t;
 use tracing::error;

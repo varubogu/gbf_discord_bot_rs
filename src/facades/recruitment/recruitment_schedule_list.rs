@@ -23,7 +23,6 @@ pub async fn get_schedules_for_autocomplete(
     guild_id: i64,
     user_id: i64,
 ) -> Vec<AutocompleteOption> {
-
     // Tx開始
     let txn = match conn.begin().await {
         Ok(t) => t,
