@@ -1,14 +1,12 @@
-use poise::serenity_prelude::all::{ChannelId, Context, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::{AppError, Result};
-use crate::utils::discord_helper::send_message_with_optional_reply;
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
 pub struct StartRecruitmentService {
@@ -84,65 +82,6 @@ impl StartRecruitmentService {
         }
     }
 
-    /// リアクションから参加者一覧取得
-    pub async fn get_participants_from_reactions(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        message_id: u64,
-    ) -> Result<Vec<String>> {
-        info!(
-            "リアクション参加者取得開始: channel_id={}, message_id={}",
-            channel_id, message_id
-        );
-
-        let channel = ChannelId::from(channel_id);
-        let message = match channel
-            .message(&ctx.http, MessageId::from(message_id))
-            .await
-        {
-            Ok(message) => message,
-            Err(e) => {
-                error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {e}").into());
-            }
-        };
-
-        let mut all_participants = Vec::new();
-
-        for reaction in &message.reactions {
-            // リアクションしたユーザーを取得
-            match message
-                .reaction_users(&ctx.http, reaction.reaction_type.clone(), Some(100), None)
-                .await
-            {
-                Ok(users) => {
-                    let user_mentions: Vec<String> = users
-                        .iter()
-                        .filter(|user| !user.bot) // ボットユーザーを除外
-                        .map(|user| format!("<@{}>", user.id))
-                        .collect();
-
-                    all_participants.extend(user_mentions);
-                }
-                Err(e) => {
-                    error!("リアクションユーザー取得エラー: {:?}", e);
-                    // エラーが発生しても他のリアクションの処理は続行
-                }
-            }
-        }
-
-        // 重複を除去
-        all_participants.sort();
-        all_participants.dedup();
-
-        info!(
-            "リアクション参加者取得完了: {} participants found",
-            all_participants.len()
-        );
-        Ok(all_participants)
-    }
-
     /// 開始メッセージを作成（参加者へのメンション含む）
     pub async fn create_start_message(
         &self,
@@ -159,43 +98,6 @@ impl StartRecruitmentService {
             "🚀 **クエスト出発時間です！** 🚀\n\n{quest_name}\n\n参加者の皆さん: {participant_mentions}\n\nクエストを開始してください！"
         );
         Ok(message)
-    }
-
-    /// 元の募集メッセージに返信する形でメッセージを送信
-    pub async fn send_start_reply(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        original_message_id: u64,
-        content: &str,
-    ) -> Result<()> {
-        info!(
-            "開始返信送信開始: channel_id={}, message_id={}",
-            channel_id, original_message_id
-        );
-
-        let channel = ChannelId::from(channel_id);
-        let original_message = MessageId::from(original_message_id);
-
-        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-        match send_message_with_optional_reply(
-            &ctx.http,
-            channel,
-            original_message,
-            content.to_string(),
-            Some("募集開始通知".to_string()),
-        )
-        .await
-        {
-            Ok(sent_message) => {
-                info!("開始返信送信成功: sent_message_id={}", sent_message.id);
-                Ok(())
-            }
-            Err(e) => {
-                error!("開始返信送信エラー: {:?}", e);
-                Err(format!("Failed to send start reply: {e}").into())
-            }
-        }
     }
 
     /// 募集を開始済み状態に更新

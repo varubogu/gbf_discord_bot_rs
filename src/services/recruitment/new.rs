@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tracing::info;
 
-use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::models::quests::Quest;
 use crate::presenter::RecruitmentPresenter;
 use crate::repository::QuestRepository;
@@ -11,11 +10,9 @@ use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
-use crate::types::PoiseContext;
 use crate::types::discord::{
     ActionRowContent, DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent,
 };
-use poise::serenity_prelude::{CreateActionRow, ReactionType};
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
@@ -141,37 +138,6 @@ where
         reaction_emojis,
         element_emojis: element_emojis.clone(),
     })
-}
-
-/// Discord操作関数（メッセージ送信）
-pub async fn send_recruitment_message(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    use poise::CreateReply;
-
-    // deferした応答を完了させる形でメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(to_create_embed(&recruitment_data.embed_content));
-
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
-}
-
-/// Discord操作関数（リアクション追加）
-pub async fn add_recruitment_reactions(
-    ctx: &PoiseContext<'_>,
-    message_id: u64,
-    reactions: &[ReactionType],
-) -> types::Result<()> {
-    let message_id = poise::serenity_prelude::MessageId::new(message_id);
-    let message = ctx.channel_id().message(&ctx.http(), message_id).await?;
-
-    for reaction in reactions {
-        message.react(&ctx.http(), reaction.clone()).await?;
-    }
-    Ok(())
 }
 
 /// データ保存関数
@@ -335,18 +301,6 @@ fn parse_reaction_emojis(reactions_str: &str) -> Vec<String> {
         .collect()
 }
 
-/// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）
-/// 後方互換性のため残しているが、将来的には削除予定
-#[allow(dead_code)]
-fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
-    reactions_str
-        .split(',')
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(|emoji| ReactionType::Unicode(emoji.to_string()))
-        .collect()
-}
-
 /// 初期参加者一覧テキストを作成
 /// すべてのリアクション絵文字を「なし」で表示（メッセージサービス使用版）
 async fn create_initial_participants_text<C>(
@@ -426,50 +380,6 @@ pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowCo
 /// ActionRowContentのVec（ドメインモデル）
 pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
     RecruitmentPresenter::create_six_element_full_components(element_emojis)
-}
-
-/// Discord操作関数（ボタン付きメッセージ送信）
-///
-/// Presenterで生成したドメインモデルをConverterでpoise型に変換して送信する。
-pub async fn send_recruitment_message_with_buttons(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    use poise::CreateReply;
-
-    // ボタンコンポーネントをPresenterから取得（ドメイン型）
-    let components = if recruitment_data.battle_style_name == "6属性" {
-        // 6属性の場合はセレクトメニュー付き
-        RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
-    } else {
-        // 通常の場合
-        RecruitmentPresenter::create_recruitment_buttons(
-            &recruitment_data.battle_style_name,
-            &recruitment_data.element_emojis,
-        )
-    };
-
-    // ドメイン型をpoise型に変換
-    let poise_components: Vec<CreateActionRow> =
-        components.iter().map(to_create_action_row).collect();
-
-    // ボタン版用の初期参加者一覧を作成
-    let initial_text = RecruitmentPresenter::create_initial_participants_text(
-        &recruitment_data.battle_style_name,
-        &recruitment_data.element_emojis,
-    );
-
-    // Presenterを使用してEmbedを生成
-    let embed_content = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
-
-    // deferした応答を完了させる形でボタン付きメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(to_create_embed(&embed_content))
-        .components(poise_components);
-
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
 }
 
 /// 募集データを作成する（Repository直接アクセス版）

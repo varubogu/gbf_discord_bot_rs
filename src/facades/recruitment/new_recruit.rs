@@ -1,10 +1,12 @@
+use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::gateway::PoiseDiscordGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::presenter::RecruitmentPresenter;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::new;
+use crate::services::recruitment::new::{self, RecruitmentData};
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
@@ -15,6 +17,8 @@ use crate::services::unified_datetime_parser::{
 use crate::types;
 use crate::types::PoiseContext;
 use chrono::{DateTime, Utc};
+use poise::serenity_prelude::CreateActionRow;
+use poise::CreateReply;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, info, instrument};
@@ -161,10 +165,11 @@ pub async fn new_recruitment(
         }
 
         // 2. メッセージ送信（ボタンまたはリアクション用）
+        // Discord操作はfacade層で直接実行（services層はビジネスロジックのみ）
         let message_id = if use_buttons {
-            new::send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
+            send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
         } else {
-            new::send_recruitment_message(ctx, &recruitment_data).await?
+            send_recruitment_message(ctx, &recruitment_data).await?
         };
 
         // 3. データ保存
@@ -234,4 +239,64 @@ pub async fn new_recruitment(
             Err(e)
         }
     }
+}
+
+// ========================================
+// Discord操作関数（facade層で実行）
+// ========================================
+
+/// Discord操作関数（メッセージ送信）
+/// eventsレイヤーとの境界としてfacade層で実装
+async fn send_recruitment_message(
+    ctx: &PoiseContext<'_>,
+    recruitment_data: &RecruitmentData,
+) -> types::Result<u64> {
+    // deferした応答を完了させる形でメッセージを送信
+    let reply = CreateReply::default()
+        .content(recruitment_data.message_content.clone())
+        .embed(to_create_embed(&recruitment_data.embed_content));
+
+    let message = ctx.send(reply).await?;
+    Ok(message.message().await?.id.get())
+}
+
+/// Discord操作関数（ボタン付きメッセージ送信）
+/// eventsレイヤーとの境界としてfacade層で実装
+async fn send_recruitment_message_with_buttons(
+    ctx: &PoiseContext<'_>,
+    recruitment_data: &RecruitmentData,
+) -> types::Result<u64> {
+    // ボタンコンポーネントをPresenterから取得（ドメイン型）
+    let components = if recruitment_data.battle_style_name == "6属性" {
+        // 6属性の場合はセレクトメニュー付き
+        RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
+    } else {
+        // 通常の場合
+        RecruitmentPresenter::create_recruitment_buttons(
+            &recruitment_data.battle_style_name,
+            &recruitment_data.element_emojis,
+        )
+    };
+
+    // ドメイン型をpoise型に変換
+    let poise_components: Vec<CreateActionRow> =
+        components.iter().map(to_create_action_row).collect();
+
+    // ボタン版用の初期参加者一覧を作成
+    let initial_text = RecruitmentPresenter::create_initial_participants_text(
+        &recruitment_data.battle_style_name,
+        &recruitment_data.element_emojis,
+    );
+
+    // Presenterを使用してEmbedを生成
+    let embed_content = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
+
+    // deferした応答を完了させる形でボタン付きメッセージを送信
+    let reply = CreateReply::default()
+        .content(recruitment_data.message_content.clone())
+        .embed(to_create_embed(&embed_content))
+        .components(poise_components);
+
+    let message = ctx.send(reply).await?;
+    Ok(message.message().await?.id.get())
 }

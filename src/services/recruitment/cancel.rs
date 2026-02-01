@@ -1,3 +1,11 @@
+// TODO: Clean Architecture移行作業
+// このファイルにはDiscord操作関数が多数あり、以下から呼ばれています:
+// - facades/recruitment/cancel.rs
+// - services/schedule/dissolution_task_executor.rs
+// 将来的には以下のいずれかで対応:
+// 1. Discord操作関数をfacade層に移動
+// 2. Gateway抽象化を適用
+
 use poise::serenity_prelude::all::{
     ChannelId, ComponentInteraction, EditInteractionResponse, Message, MessageId,
 };

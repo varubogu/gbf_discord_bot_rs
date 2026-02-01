@@ -1,3 +1,10 @@
+// TODO: Clean Architecture移行作業
+// このファイルにはDiscord操作関数（get_reactions_and_members, update_message等）がありますが、
+// facades/recruitment/participants.rsから呼ばれているため、移行作業が必要です。
+// 将来的には以下のいずれかで対応:
+// 1. Discord操作関数をfacade層に移動
+// 2. Gateway抽象化を適用
+
 use crate::events::converters::to_edit_message;
 use crate::types::discord::{
     DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,

@@ -2,7 +2,6 @@ use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::services::quest::search::QuestSearchService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
-use crate::types::PoiseContext;
 use crate::types::discord::AutocompleteOption;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::error;
@@ -12,25 +11,20 @@ use tracing::error;
 /// オートコンプリートでクエスト名を検索する際に使用する。
 /// Service層を使ってクエストを検索し、候補を返す。
 /// guild_quest_disablesテーブルを考慮し、空文字の場合は無効化されたクエストを除外、1文字以上の場合は全件対象
+///
+/// # 引数
+/// * `conn` - データベース接続
+/// * `guild_id` - ギルドID
+/// * `partial` - 部分一致検索文字列
 pub async fn search_quests_for_autocomplete(
-    ctx: PoiseContext<'_>,
+    conn: &DatabaseConnection,
+    guild_id: i64,
     partial: &str,
 ) -> Vec<AutocompleteOption> {
-    // ギルドIDを取得
-    let guild_id = match ctx.guild_id() {
-        Some(id) => id.get() as i64,
-        None => {
-            error!("ギルドIDが取得できませんでした");
-            return vec![];
-        }
-    };
-
-    // AppStateからDB接続を取得してRepositoryを作成
-    let db_conn = ctx.data().app_state.guild_db().clone();
     let quest_repository = SeaOrmQuestRepository::new();
 
     // トランザクションを開始してguild_idを設定
-    let txn = match db_conn.begin().await {
+    let txn = match conn.begin().await {
         Ok(t) => t,
         Err(e) => {
             error!(error = %e, "トランザクション開始に失敗しました");

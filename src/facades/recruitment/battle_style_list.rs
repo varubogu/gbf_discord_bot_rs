@@ -1,5 +1,4 @@
 use crate::services::recruitment::battle_style_query_service::BattleStyleQueryService;
-use crate::types::PoiseContext;
 use crate::types::discord::AutocompleteOption;
 use sea_orm::DatabaseConnection;
 use tracing::error;
@@ -8,14 +7,17 @@ use tracing::error;
 ///
 /// オートコンプリートで攻略方法を取得する際に使用する。
 /// すべての攻略方法をサービスから取得し、AutocompleteOptionに変換して返す。
-pub async fn get_battle_styles_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteOption> {
-    // AppStateからDB接続を取得
-    let db_conn = ctx.data().app_state.guild_db();
+///
+/// # 引数
+/// * `conn` - データベース接続
+pub async fn get_battle_styles_for_autocomplete(
+    conn: &DatabaseConnection,
+) -> Vec<AutocompleteOption> {
     let service = BattleStyleQueryService::new();
 
     // すべての攻略方法を取得
     let battle_styles = service
-        .get_all_battle_styles(db_conn)
+        .get_all_battle_styles(conn)
         .await
         .unwrap_or_else(|e| {
             error!(error = %e, "攻略方法の取得に失敗しました");

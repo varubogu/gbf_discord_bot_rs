@@ -3,30 +3,26 @@ use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsR
 use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
-use crate::types::PoiseContext;
 use crate::types::discord::AutocompleteOption;
-use sea_orm::TransactionTrait;
+use sea_orm::{DatabaseConnection, TransactionTrait};
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// 募集スケジュールの入力候補を取得するファサード
 ///
 /// - RLS/トランザクション管理
 /// - Repositoryでスケジュール一覧取得（作成者フィルタ）
 /// - 表示整形（サービス）
-pub async fn get_schedules_for_autocomplete(ctx: PoiseContext<'_>) -> Vec<AutocompleteOption> {
-    // ギルドIDを取得（サーバー外では空）
-    let guild_id = match ctx.guild_id() {
-        Some(id) => id.get() as i64,
-        None => {
-            debug!("ギルドIDが取得できませんでした");
-            return vec![];
-        }
-    };
-
-    let user_id = ctx.author().id.get() as i64;
-    let app_state = &ctx.data().app_state;
-    let conn = app_state.guild_db();
+///
+/// # 引数
+/// * `conn` - データベース接続
+/// * `guild_id` - ギルドID
+/// * `user_id` - ユーザーID
+pub async fn get_schedules_for_autocomplete(
+    conn: &DatabaseConnection,
+    guild_id: i64,
+    user_id: i64,
+) -> Vec<AutocompleteOption> {
 
     // Tx開始
     let txn = match conn.begin().await {

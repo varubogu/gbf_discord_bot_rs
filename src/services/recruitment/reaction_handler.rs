@@ -1,3 +1,9 @@
+// TODO: Clean Architecture移行作業
+// このファイルは現在使われていません。
+// - 古いDatabase直接アクセスパターンを使用
+// - poise Context依存あり
+// 将来的には削除または完全リファクタリングが必要です。
+
 use poise::serenity_prelude::all::{Context, Message, Reaction, User};
 use std::sync::Arc;
 use tracing::{error, info};
