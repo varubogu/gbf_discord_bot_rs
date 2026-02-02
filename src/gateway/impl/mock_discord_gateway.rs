@@ -186,6 +186,7 @@ pub fn create_test_message_data(
         components: vec![],
         reactions: vec![],
         pinned: false,
+        referenced_message_id: None,
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::gateway::{DiscordMessageGateway, PoiseDiscordGateway};
+use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
@@ -10,12 +10,31 @@ use crate::services::recruitment::recruitment_participants_service::{
 };
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types::constants::ELEMENT_NAMES;
-use crate::types::discord::{DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent};
+use crate::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
+};
 use crate::types::{AppError, AppState, RecruitmentComponentId, Result};
-use poise::serenity_prelude::{ComponentInteraction, Context};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info, instrument};
+
+/// ボタンハンドラーの処理結果
+///
+/// events層でインタラクション応答を行うための情報を含む
+#[derive(Debug)]
+pub struct ButtonHandlerResult {
+    /// 応答メッセージ
+    pub message: String,
+}
+
+impl ButtonHandlerResult {
+    /// 新しい結果を作成
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
 
 /// 属性セレクトメニューの選択を処理する（Facade層）
 ///
@@ -23,46 +42,45 @@ use tracing::{error, info, instrument};
 /// - 選択された複数の属性で一括参加処理
 /// - トランザクション境界の管理
 /// - Service層の協調
-/// - Discord APIとのやり取り
 ///
 /// # 引数
-/// * `ctx` - Discord Context
-/// * `interaction` - セレクトメニューのインタラクション
+/// * `gateway` - Discord Gateway
 /// * `app_state` - アプリケーション状態
+/// * `guild_id` - ギルドID
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+/// * `user_id` - ユーザーID
 /// * `element_ids` - 選択された属性IDのリスト
-#[instrument(level = "info", skip(ctx, interaction, app_state))]
-pub async fn handle_recruitment_select_menu(
-    ctx: &Context,
-    interaction: &ComponentInteraction,
+///
+/// # 戻り値
+/// 処理結果（応答メッセージを含む）
+#[instrument(level = "info", skip(gateway, app_state))]
+pub async fn handle_recruitment_select_menu<G>(
+    gateway: &G,
     app_state: &AppState,
+    guild_id: DiscordGuildId,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+    user_id: u64,
     element_ids: Vec<i32>,
-) -> Result<()> {
+) -> Result<ButtonHandlerResult>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     info!("属性セレクトメニュー処理開始");
-
-    // Guild IDを取得
-    let guild_id = interaction
-        .guild_id
-        .ok_or_else(|| AppError::Business {
-            message: "ギルドコンテキストが必要です".to_string(),
-        })?
-        .get();
-
-    let user_id = interaction.user.id.get();
-    let message_id = interaction.message.id.get();
-    let channel_id = interaction.channel_id.get();
 
     // DB接続とトランザクション開始
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id as i64).await?;
+    set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
     let result = async {
         // 1. メッセージIDから募集情報を取得
         let query_service = RecruitmentQueryService::new();
         let recruitment = query_service
-            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
+            .get_recruitment_by_message(&txn, guild_id.get(), channel_id.get(), message_id.get())
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "募集が見つかりませんでした".to_string(),
@@ -161,11 +179,11 @@ pub async fn handle_recruitment_select_menu(
         let participant_count_usize = participant_count.max(0) as usize;
 
         // 6. メッセージを更新して参加者一覧を反映
-        update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
+        update_recruitment_message(gateway, &txn, &recruitment, message_id, channel_id).await?;
 
         // 7. 規定人数到達の通知処理
         check_and_notify_recruitment_full(
-            ctx,
+            gateway,
             &txn,
             &recruitment,
             participant_count_usize,
@@ -174,42 +192,23 @@ pub async fn handle_recruitment_select_menu(
         )
         .await?;
 
-        // 8. インタラクションに応答（deferの後なのでedit_response）
-        interaction
-            .edit_response(
-                &ctx.http,
-                poise::serenity_prelude::EditInteractionResponse::new().content(format!(
-                    "{response_message}\n\n現在の参加者数: **{participant_count}人**"
-                )),
-            )
-            .await?;
+        // 8. 応答メッセージを作成して返す
+        let final_message =
+            format!("{response_message}\n\n現在の参加者数: **{participant_count}人**");
 
-        Ok(())
+        Ok(ButtonHandlerResult::new(final_message))
     }
     .await;
 
     match result {
-        Ok(_) => {
+        Ok(handler_result) => {
             txn.commit().await?;
             info!("属性セレクトメニュー処理が正常に完了しました");
-            Ok(())
+            Ok(handler_result)
         }
         Err(e) => {
             txn.rollback().await?;
             error!(error = %e, "属性セレクトメニュー処理でエラーが発生しました");
-
-            // ユーザーにエラーメッセージを返す（deferの後なのでedit_response）
-            if let Err(response_err) = interaction
-                .edit_response(
-                    &ctx.http,
-                    poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("❌ エラー: {}", e.user_message())),
-                )
-                .await
-            {
-                error!(error = %response_err, "エラーメッセージの送信に失敗しました");
-            }
-
             Err(e)
         }
     }
@@ -220,48 +219,49 @@ pub async fn handle_recruitment_select_menu(
 /// # 責務
 /// - トランザクション境界の管理
 /// - Service層の協調
-/// - Discord APIとのやり取り
 ///
 /// # 引数
-/// * `ctx` - Discord Context
-/// * `interaction` - ボタンクリックのインタラクション
+/// * `gateway` - Discord Gateway
 /// * `app_state` - アプリケーション状態
-#[instrument(level = "info", skip(ctx, interaction, app_state))]
-pub async fn handle_recruitment_button(
-    ctx: &Context,
-    interaction: &ComponentInteraction,
+/// * `guild_id` - ギルドID
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+/// * `user_id` - ユーザーID
+/// * `custom_id` - コンポーネントのカスタムID
+///
+/// # 戻り値
+/// 処理結果（応答メッセージを含む）
+#[instrument(level = "info", skip(gateway, app_state))]
+pub async fn handle_recruitment_button<G>(
+    gateway: &G,
     app_state: &AppState,
-) -> Result<()> {
+    guild_id: DiscordGuildId,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+    user_id: u64,
+    custom_id: &str,
+) -> Result<ButtonHandlerResult>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     info!("募集ボタンクリック処理開始");
 
     // Custom IDをパース
-    let component_id = RecruitmentComponentId::parse(&interaction.data.custom_id)?;
+    let component_id = RecruitmentComponentId::parse(custom_id)?;
     info!(component_id = ?component_id, "Custom IDをパースしました");
-
-    // Guild IDを取得
-    let guild_id = interaction
-        .guild_id
-        .ok_or_else(|| AppError::Business {
-            message: "ギルドコンテキストが必要です".to_string(),
-        })?
-        .get();
-
-    let user_id = interaction.user.id.get();
-    let message_id = interaction.message.id.get();
-    let channel_id = interaction.channel_id.get();
 
     // DB接続とトランザクション開始
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id as i64).await?;
+    set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
     let result = async {
         // 1. メッセージIDから募集情報を取得
         let query_service = RecruitmentQueryService::new();
         let recruitment = query_service
-            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
+            .get_recruitment_by_message(&txn, guild_id.get(), channel_id.get(), message_id.get())
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "募集が見つかりませんでした".to_string(),
@@ -362,11 +362,11 @@ pub async fn handle_recruitment_button(
         let participant_count_usize = participant_count.max(0) as usize;
 
         // 6. メッセージを更新して参加者一覧を反映
-        update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
+        update_recruitment_message(gateway, &txn, &recruitment, message_id, channel_id).await?;
 
         // 7. 規定人数到達の通知処理
         check_and_notify_recruitment_full(
-            ctx,
+            gateway,
             &txn,
             &recruitment,
             participant_count_usize,
@@ -375,42 +375,23 @@ pub async fn handle_recruitment_button(
         )
         .await?;
 
-        // 8. インタラクションに応答（deferの後なのでedit_response）
-        interaction
-            .edit_response(
-                &ctx.http,
-                poise::serenity_prelude::EditInteractionResponse::new().content(format!(
-                    "{response_message}\n\n現在の参加者数: **{participant_count}人**"
-                )),
-            )
-            .await?;
+        // 8. 応答メッセージを作成して返す
+        let final_message =
+            format!("{response_message}\n\n現在の参加者数: **{participant_count}人**");
 
-        Ok(())
+        Ok(ButtonHandlerResult::new(final_message))
     }
     .await;
 
     match result {
-        Ok(_) => {
+        Ok(handler_result) => {
             txn.commit().await?;
             info!("募集ボタンクリック処理が正常に完了しました");
-            Ok(())
+            Ok(handler_result)
         }
         Err(e) => {
             txn.rollback().await?;
             error!(error = %e, "募集ボタンクリック処理でエラーが発生しました");
-
-            // ユーザーにエラーメッセージを返す（deferの後なのでedit_response）
-            if let Err(response_err) = interaction
-                .edit_response(
-                    &ctx.http,
-                    poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("❌ エラー: {}", e.user_message())),
-                )
-                .await
-            {
-                error!(error = %response_err, "エラーメッセージの送信に失敗しました");
-            }
-
             Err(e)
         }
     }
@@ -419,25 +400,23 @@ pub async fn handle_recruitment_button(
 /// 募集メッセージの参加者一覧を更新する
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `txn` - データベーストランザクション
 /// * `recruitment` - 募集情報
 /// * `message_id` - メッセージID
 /// * `channel_id` - チャンネルID
-#[instrument(level = "info", skip(ctx, txn))]
-async fn update_recruitment_message(
-    ctx: &Context,
+#[instrument(level = "info", skip(gateway, txn))]
+async fn update_recruitment_message<G>(
+    gateway: &G,
     txn: &sea_orm::DatabaseTransaction,
     recruitment: &crate::models::battle_recruitments::BattleRecruitments,
-    message_id: u64,
-    channel_id: u64,
-) -> Result<()> {
+    message_id: DiscordMessageId,
+    channel_id: DiscordChannelId,
+) -> Result<()>
+where
+    G: DiscordMessageGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     info!("募集メッセージの参加者一覧を更新します");
-
-    // Gatewayを作成
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
-    let channel_id_obj = DiscordChannelId::new(channel_id);
-    let message_id_obj = DiscordMessageId::new(message_id);
 
     // 1. battle_styleの情報を取得（属性・絵文字の情報）
     let query_service = RecruitmentQueryService::new();
@@ -464,7 +443,7 @@ async fn update_recruitment_message(
     let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
     let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
     let element_emojis = guild_env_service
-        .get_element_emojis(txn, &gateway, recruitment.guild_id as i64)
+        .get_element_emojis(txn, gateway, recruitment.guild_id as i64)
         .await?;
 
     // 3. 参加者一覧のテキストを作成
@@ -478,7 +457,7 @@ async fn update_recruitment_message(
     let participant_count = unique_user_ids.len();
 
     // 4. Gatewayを使ってメッセージを取得
-    let message_data = gateway.get_message(channel_id_obj, message_id_obj).await?;
+    let message_data = gateway.get_message(channel_id, message_id).await?;
 
     // 既存のembedを取得（最初のembedを使用）
     let existing_embed = message_data.embeds.first().cloned();
@@ -506,9 +485,7 @@ async fn update_recruitment_message(
 
     // Gatewayを使ってメッセージを更新
     let message_content = MessageContent::new().with_embed(embed_content);
-    gateway
-        .edit_message(channel_id_obj, message_id_obj, message_content)
-        .await?;
+    gateway.edit_message(channel_id, message_id, message_content).await?;
 
     info!("募集メッセージの参加者一覧を更新しました");
     Ok(())
@@ -599,21 +576,24 @@ async fn create_participants_text(
 /// 規定人数到達の通知処理
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `txn` - データベーストランザクション
 /// * `recruitment` - 募集情報
 /// * `participant_count` - 現在の参加者数
 /// * `channel_id` - チャンネルID
 /// * `message_id` - メッセージID
-#[instrument(level = "info", skip(ctx, txn))]
-async fn check_and_notify_recruitment_full(
-    ctx: &Context,
+#[instrument(level = "info", skip(gateway, txn))]
+async fn check_and_notify_recruitment_full<G>(
+    gateway: &G,
     txn: &sea_orm::DatabaseTransaction,
     recruitment: &crate::models::battle_recruitments::BattleRecruitments,
     participant_count: usize,
-    channel_id: u64,
-    message_id: u64,
-) -> Result<()> {
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+) -> Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+{
     info!("規定人数到達チェックを開始します");
 
     // クエスト情報を取得して規定人数を確認
@@ -656,7 +636,7 @@ async fn check_and_notify_recruitment_full(
             let participants = get_all_participant_mentions(txn, recruitment.id).await?;
 
             // 通知メッセージを送信
-            send_full_notification(ctx, channel_id, message_id, participants).await?;
+            send_full_notification(gateway, channel_id, message_id, participants).await?;
 
             // フラグを立てる
             recruitment_repo
@@ -671,7 +651,7 @@ async fn check_and_notify_recruitment_full(
             info!("参加者が規定人数を下回りました。通知を送信します");
 
             // 減少通知メッセージを送信
-            send_decreased_notification(ctx, channel_id, message_id).await?;
+            send_decreased_notification(gateway, channel_id, message_id).await?;
 
             // フラグを下げる
             recruitment_repo
@@ -722,24 +702,26 @@ async fn get_all_participant_mentions(
 /// 規定人数到達通知メッセージを送信
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `channel_id` - チャンネルID
 /// * `message_id` - メッセージID
 /// * `participants` - 参加者のメンション一覧
-async fn send_full_notification(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
+async fn send_full_notification<G>(
+    gateway: &G,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
     participants: Vec<String>,
-) -> Result<()> {
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+) -> Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+{
     let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
     // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
     gateway
         .send_reply(
-            DiscordChannelId::new(channel_id),
-            DiscordMessageId::new(message_id),
+            channel_id,
+            message_id,
             MessageContent::text(&notification_message),
             Some("規定人数到達通知".to_string()),
         )
@@ -751,22 +733,24 @@ async fn send_full_notification(
 /// 参加者減少通知メッセージを送信
 ///
 /// # 引数
-/// * `ctx` - Discord Context
+/// * `gateway` - Discord Gateway
 /// * `channel_id` - チャンネルID
 /// * `message_id` - メッセージID
-async fn send_decreased_notification(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
-) -> Result<()> {
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+async fn send_decreased_notification<G>(
+    gateway: &G,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+) -> Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+{
     let notification_message = "参加メンバーが規定人数を下回りました。";
 
     // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
     gateway
         .send_reply(
-            DiscordChannelId::new(channel_id),
-            DiscordMessageId::new(message_id),
+            channel_id,
+            message_id,
             MessageContent::text(notification_message),
             Some("参加者減少通知".to_string()),
         )

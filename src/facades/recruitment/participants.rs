@@ -1,8 +1,8 @@
 //! 募集参加者管理Facade層
 //!
-//! Discord APIとの直接的なやり取りを行い、サービス層のビジネスロジックを呼び出す。
+//! Gateway経由でDiscord APIを操作し、サービス層のビジネスロジックを呼び出す。
 
-use crate::gateway::{DiscordMessageGateway, PoiseDiscordGateway};
+use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
@@ -11,8 +11,9 @@ use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types;
-use crate::types::discord::{DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent};
-use poise::serenity_prelude::{ChannelId, Context, GetMessages, MessageId, ReactionType};
+use crate::types::discord::{
+    DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent, MessageData,
+};
 use sea_orm::TransactionTrait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,23 +22,34 @@ use tracing::{error, info, instrument, warn};
 /// 参加者を更新する
 ///
 /// # 引数
+/// * `gateway` - Discord Gateway
+/// * `guild_id` - ギルドID
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
 /// * `user_id` - リアクション追加/削除を行ったユーザーID（DB登録用、Noneの場合はDB登録なし）
 /// * `reaction_emoji` - 追加/削除されたリアクション絵文字（DB登録用）
-#[instrument(level = "debug", skip(ctx))]
-pub async fn update_participants(
-    ctx: &Context,
+/// * `db` - データベース接続
+#[instrument(level = "debug", skip(gateway, db))]
+pub async fn update_participants<G>(
+    gateway: &G,
     guild_id: u64,
     channel_id: u64,
     message_id: u64,
     user_id: Option<u64>,
     reaction_emoji: Option<String>,
     db: &sea_orm::DatabaseConnection,
-) -> types::Result<()> {
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + Sync,
+{
     info!("BattleRecruitmentFacade::update_participants - 参加者を更新します");
     let txn = db.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let channel_id_obj = DiscordChannelId::new(channel_id);
+    let message_id_obj = DiscordMessageId::new(message_id);
 
     let result = async {
         // Service層のインスタンスを作成
@@ -46,11 +58,8 @@ pub async fn update_participants(
         let query_service = RecruitmentQueryService::new();
         let quest_query_service = QuestQueryService::new();
 
-        // メッセージを取得してv2かどうかを判定
-        let channel = poise::serenity_prelude::ChannelId::from(channel_id);
-        let message = channel
-            .message(&ctx.http, poise::serenity_prelude::MessageId::from(message_id))
-            .await?;
+        // メッセージを取得してv2かどうかを判定（Gatewayを使用）
+        let message = gateway.get_message(channel_id_obj, message_id_obj).await?;
 
         // メッセージにコンポーネント（ボタン）があればv2と判定し、リアクション処理をスキップ
         // v2はボタンで参加管理を行うため、リアクションによる参加者収集は不要
@@ -115,21 +124,16 @@ pub async fn update_participants(
             }
         }
 
-        // メッセージのリアクションとユーザーを取得（facade層で直接Discord操作）
+        // メッセージのリアクションとユーザーを取得（Gatewayを使用）
         let participants_by_reaction =
-            get_reactions_and_members(ctx, channel_id, message_id).await?;
+            get_reactions_and_members(gateway, &message, channel_id_obj, message_id_obj).await?;
 
-        // 既存のメッセージ内容を取得
-        let channel = ChannelId::from(channel_id);
-        let message = channel.message(&ctx.http, MessageId::from(message_id)).await?;
-        let message_content = message.content.clone();
-
-        // 募集メッセージを編集して参加者一覧部分を反映（facade層で直接Discord操作）
+        // 募集メッセージを編集して参加者一覧部分を反映（Gatewayを使用）
         update_message(
-            ctx,
-            channel_id,
-            message_id,
-            &message_content,
+            gateway,
+            channel_id_obj,
+            message_id_obj,
+            &message.content,
             &participants_by_reaction,
         )
         .await?;
@@ -149,20 +153,20 @@ pub async fn update_participants(
 
             // 規定人数に達した場合、通知を送信
             if unique_participant_count >= recruit_count {
-                // 既に通知が送信されているかチェック（facade層で直接Discord操作）
+                // 既に通知が送信されているかチェック（Gatewayを使用）
                 let notification_sent =
-                    has_notification_been_sent(ctx, channel_id, message_id).await?;
+                    has_notification_been_sent(gateway, channel_id_obj, message_id_obj).await?;
 
                 if !notification_sent {
                     info!("規定人数に到達しました。通知を送信します。");
                     let all_participants =
                         participants_service.get_all_participants(&participants_by_reaction);
 
-                    // 規定人数到達通知送信（facade層で直接Discord操作）
+                    // 規定人数到達通知送信（Gatewayを使用）
                     send_recruitment_full_notification(
-                        ctx,
-                        channel_id,
-                        message_id,
+                        gateway,
+                        channel_id_obj,
+                        message_id_obj,
                         all_participants,
                     )
                     .await?;
@@ -207,47 +211,36 @@ pub async fn update_participants(
 /// 募集メッセージのリアクションとメンバーを取得（facade層実装）
 ///
 /// 参加者がいない場合でもリアクション情報を含める
-async fn get_reactions_and_members(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
-) -> types::Result<HashMap<String, Vec<String>>> {
+async fn get_reactions_and_members<G>(
+    gateway: &G,
+    message: &MessageData,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+) -> types::Result<HashMap<String, Vec<String>>>
+where
+    G: DiscordReactionGateway + Sync,
+{
     info!(
         "リアクション・メンバー取得開始: channel_id={}, message_id={}",
-        channel_id, message_id
+        channel_id.get(),
+        message_id.get()
     );
-
-    let channel = ChannelId::from(channel_id);
-    let message = match channel
-        .message(&ctx.http, MessageId::from(message_id))
-        .await
-    {
-        Ok(message) => message,
-        Err(e) => {
-            error!("メッセージ取得エラー: {:?}", e);
-            return Err(format!("Failed to get message: {e}").into());
-        }
-    };
 
     let mut participants_by_reaction = HashMap::new();
 
     for reaction in &message.reactions {
-        let reaction_emoji = match &reaction.reaction_type {
-            ReactionType::Unicode(emoji) => emoji.clone(),
-            ReactionType::Custom { name, .. } => name.clone().unwrap_or_default(),
-            _ => continue,
-        };
+        let reaction_emoji = reaction.emoji.to_string();
 
-        // リアクションしたユーザーを取得
-        match message
-            .reaction_users(&ctx.http, reaction.reaction_type.clone(), Some(100), None)
+        // リアクションしたユーザーを取得（Gatewayを使用）
+        match gateway
+            .get_reaction_users(channel_id, message_id, reaction.emoji.clone(), Some(100))
             .await
         {
-            Ok(users) => {
-                let user_mentions: Vec<String> = users
+            Ok(user_ids) => {
+                // Gateway経由ではボット判定ができないため、取得したユーザーをそのまま使用
+                let user_mentions: Vec<String> = user_ids
                     .iter()
-                    .filter(|user| !user.bot) // ボットユーザーを除外
-                    .map(|user| format!("<@{}>", user.id))
+                    .map(|user_id| format!("<@{}>", user_id.get()))
                     .collect();
 
                 // 参加者がいない場合でも空のVecとして追加
@@ -268,16 +261,20 @@ async fn get_reactions_and_members(
 }
 
 /// メッセージを更新（facade層実装）
-async fn update_message(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
+async fn update_message<G>(
+    gateway: &G,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
     content: &str,
     participants_by_reaction: &HashMap<String, Vec<String>>,
-) -> types::Result<()> {
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+{
     info!(
         "メッセージ更新開始: channel_id={}, message_id={}",
-        channel_id, message_id
+        channel_id.get(),
+        message_id.get()
     );
 
     // 参加者情報を埋め込みに変換
@@ -324,21 +321,13 @@ async fn update_message(
         .with_color(0x0099ff);
 
     // Gatewayを使用してメッセージを更新
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let message_content = MessageContent::new()
         .with_text(content)
         .with_embed(embed_content);
 
-    match gateway
-        .edit_message(
-            DiscordChannelId::new(channel_id),
-            DiscordMessageId::new(message_id),
-            message_content,
-        )
-        .await
-    {
+    match gateway.edit_message(channel_id, message_id, message_content).await {
         Ok(_) => {
-            info!("メッセージ更新成功: message_id={}", message_id);
+            info!("メッセージ更新成功: message_id={}", message_id.get());
             Ok(())
         }
         Err(e) => {
@@ -352,25 +341,21 @@ async fn update_message(
 ///
 /// チャンネルの最近のメッセージを確認し、募集メッセージへの返信で
 /// 「参加人数が集まりました」という内容があるかをチェック
-async fn has_notification_been_sent(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
-) -> types::Result<bool> {
-    let channel = ChannelId::from(channel_id);
-    let target_message_id = MessageId::from(message_id);
-
+async fn has_notification_been_sent<G>(
+    gateway: &G,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
+) -> types::Result<bool>
+where
+    G: DiscordMessageGateway + Sync,
+{
     // チャンネルの最近のメッセージを取得（最大100件）
-    match channel
-        .messages(&ctx.http, GetMessages::new().limit(100))
-        .await
-    {
+    match gateway.get_messages(channel_id, 100).await {
         Ok(messages) => {
             // 募集メッセージへの返信で「参加人数が集まりました」を含むメッセージを探す
             for msg in messages {
-                if let Some(ref_msg) = &msg.referenced_message {
-                    if ref_msg.id == target_message_id
-                        && msg.content.contains("参加人数が集まりました")
+                if let Some(ref_msg_id) = &msg.referenced_message_id {
+                    if *ref_msg_id == message_id && msg.content.contains("参加人数が集まりました")
                     {
                         info!("既に規定人数到達通知が送信済みです");
                         return Ok(true);
@@ -390,27 +375,29 @@ async fn has_notification_been_sent(
 /// 規定人数到達時の通知メッセージを送信（facade層実装）
 ///
 /// 募集メッセージに返信する形で全参加者にメンションを送る
-async fn send_recruitment_full_notification(
-    ctx: &Context,
-    channel_id: u64,
-    message_id: u64,
+async fn send_recruitment_full_notification<G>(
+    gateway: &G,
+    channel_id: DiscordChannelId,
+    message_id: DiscordMessageId,
     participants: Vec<String>,
-) -> types::Result<()> {
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+{
     info!(
         "規定人数到達通知を送信: channel_id={}, message_id={}, participants={}",
-        channel_id,
-        message_id,
+        channel_id.get(),
+        message_id.get(),
         participants.len()
     );
 
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
     // Gatewayを使用して返信形式で送信（失敗時は文脈情報を付加して通常メッセージ）
     match gateway
         .send_reply(
-            DiscordChannelId::new(channel_id),
-            DiscordMessageId::new(message_id),
+            channel_id,
+            message_id,
             MessageContent::text(&notification_message),
             Some("規定人数到達通知".to_string()),
         )

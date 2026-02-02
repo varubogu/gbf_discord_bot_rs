@@ -1,4 +1,4 @@
-use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway, PoiseDiscordGateway};
+use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -11,37 +11,42 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
-use crate::types::PoiseContext;
 use crate::types::discord::{
-    DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent, MessageData,
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent, MessageData,
 };
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
-/// 募集内容を更新する（PoiseContext版）
-#[instrument(level = "debug", skip(ctx, message))]
-pub async fn change_recruitment_information(
-    ctx: &PoiseContext<'_>,
-    message: &Message,
+/// 募集内容を更新する
+///
+/// # 引数
+/// * `app_state` - アプリケーション状態
+/// * `gateway` - Discord Gateway
+/// * `guild_id` - ギルドID
+/// * `message` - 対象メッセージ（ドメイン型）
+/// * `quest` - クエスト名（変更する場合）
+/// * `event_date` - 開催日時（変更する場合）
+/// * `battle_style_id` - 攻略方法ID（変更する場合）
+#[instrument(level = "debug", skip(app_state, gateway, message))]
+pub async fn change_recruitment_information<G>(
+    app_state: &crate::types::AppState,
+    gateway: &G,
+    guild_id: DiscordGuildId,
+    message: &MessageData,
     quest: Option<&str>,
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
-) -> types::Result<()> {
-    let app_state = &ctx.data().app_state;
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
-
-    // poiseのMessageをドメイン型MessageDataに変換
-    let message_data = MessageData::from(message.clone());
-
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     change_recruitment_information_internal(
         app_state,
-        &gateway,
-        guild_id,
-        &message_data,
+        gateway,
+        guild_id.get(),
+        message,
         quest,
         event_date,
         battle_style_id,

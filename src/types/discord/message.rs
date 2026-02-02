@@ -80,6 +80,8 @@ pub struct MessageData {
     pub reactions: Vec<ReactionData>,
     /// ピン留めされているか
     pub pinned: bool,
+    /// 返信先メッセージID（返信メッセージの場合）
+    pub referenced_message_id: Option<DiscordMessageId>,
 }
 
 /// 取得したリアクションデータ

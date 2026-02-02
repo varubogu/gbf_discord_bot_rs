@@ -1,13 +1,16 @@
 use crate::facades::recruitment::cancel as CancelFacade;
+use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
 use crate::services::message::helpers::get_message_from_context;
 use crate::types;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::PoiseContext;
 use crate::types::domain_interface_result::CanCancelResult;
 use poise::serenity_prelude::{
     ButtonStyle, ComponentInteractionCollector, CreateActionRow, CreateButton, Message,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
@@ -27,8 +30,15 @@ pub async fn recruit_cancel(
 ) -> types::Result<()> {
     ctx.defer().await?;
 
+    // events層でpoise型からドメイン型への変換を行う
+    let app_state = &ctx.data().app_state;
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+    let guild_id = DiscordGuildId::new(message.guild_id.map(|id| id.get()).unwrap_or(0));
+    let channel_id = DiscordChannelId::new(message.channel_id.get());
+    let message_id = DiscordMessageId::new(message.id.get());
+
     // キャンセル可能か確認
-    match CancelFacade::can_cancel(ctx, &message).await {
+    match CancelFacade::can_cancel(app_state, &gateway, guild_id, channel_id, message_id).await {
         Ok(CanCancelResult::Success) => {
             // キャンセル可能な場合、確認付きでキャンセル処理を実行（events層でUI操作）
             execute_cancel_with_confirmation(ctx, &message).await
@@ -183,8 +193,21 @@ async fn execute_cancel_with_confirmation(
                     let channel_id = message.channel_id.get();
                     let message_id = message.id.get();
 
+                    // events層でGatewayを作成
+                    let app_state = &ctx.data().app_state;
+                    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+                    let locale = ctx.locale();
+
                     // キャンセル実行（facade層）
-                    match CancelFacade::execute_cancel(ctx, guild_id, channel_id, message_id).await
+                    match CancelFacade::execute_cancel(
+                        app_state,
+                        &gateway,
+                        guild_id,
+                        channel_id,
+                        message_id,
+                        locale,
+                    )
+                    .await
                     {
                         Ok(_) => {
                             // 成功時：確認メッセージを削除

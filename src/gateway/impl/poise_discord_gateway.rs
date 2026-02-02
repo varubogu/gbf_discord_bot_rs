@@ -282,6 +282,10 @@ impl From<poise::serenity_prelude::Message> for MessageData {
                 .collect(),
             reactions: msg.reactions.into_iter().map(ReactionData::from).collect(),
             pinned: msg.pinned,
+            referenced_message_id: msg
+                .referenced_message
+                .as_ref()
+                .map(|m| DiscordMessageId::new(m.id.get())),
         }
     }
 }
