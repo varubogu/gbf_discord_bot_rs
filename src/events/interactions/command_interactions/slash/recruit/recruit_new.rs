@@ -1,3 +1,4 @@
+use crate::events::converters::to_create_embed;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment;
 use crate::services::unified_datetime_parser::{
@@ -5,6 +6,7 @@ use crate::services::unified_datetime_parser::{
 };
 use crate::types::{PoiseContext, Result};
 use crate::utils::discord_helper;
+use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::MessageId;
 use std::sync::Arc;
 
@@ -65,18 +67,40 @@ pub async fn recruit_new(
         }
     };
 
-    // Facade呼び出し（メッセージ送信とDB保存）リアクション版
-    let (message_id, reactions) = recruitment::new_recruit::new_recruitment(
+    // Facade呼び出し（データ作成とDB保存、message_id=0で仮保存）
+    let result = recruitment::new_recruit::new_recruitment(
         &ctx,
         &quest,
         battle_style,
         Some(parsed_date),
-        false,
+        false, // リアクション版
         dismissal_times,
     )
     .await?;
 
+    // メッセージ送信（events層で実行）
+    let reply = poise::CreateReply::default()
+        .content(&result.message_content)
+        .embed(to_create_embed(&result.embed_content));
+
+    let message = ctx.send(reply).await?;
+    let message_id = message.message().await?.id.get();
+
+    // message_idをDBに更新
+    recruitment::new_recruit::update_message_id(
+        app_state.guild_db(),
+        result.recruitment_id,
+        message_id,
+    )
+    .await?;
+
     // リアクション追加（UI層ヘルパー経由）
+    let reactions: Vec<ReactionType> = result
+        .reaction_emojis
+        .iter()
+        .map(|emoji| ReactionType::Unicode(emoji.clone()))
+        .collect();
+
     discord_helper::add_reactions(
         ctx.serenity_context(),
         ctx.channel_id(),

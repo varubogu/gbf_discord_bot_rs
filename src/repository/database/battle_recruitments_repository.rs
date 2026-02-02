@@ -194,4 +194,28 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
 
         Ok(())
     }
+
+    async fn update_message_id<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+        message_id: crate::types::discord::DiscordMessageId,
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(db)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::Business {
+                message: "募集が見つかりませんでした".to_string(),
+            })?
+            .into();
+
+        active_model.message_id = Set(message_id.get() as i64);
+        active_model.update(db).await.map_err(AppError::Database)?;
+
+        Ok(())
+    }
 }

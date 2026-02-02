@@ -1,9 +1,11 @@
+use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::{PoiseContext, Result};
+use poise::serenity_prelude::CreateActionRow;
 use std::sync::Arc;
 
 use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
@@ -62,18 +64,37 @@ pub async fn recruit_new_v2(
         }
     };
 
-    // Facade呼び出し（メッセージ送信とDB保存）ボタン版
-    let (_message_id, _reactions) = recruitment::new_recruit::new_recruitment(
+    // Facade呼び出し（データ作成とDB保存、message_id=0で仮保存）
+    let result = recruitment::new_recruit::new_recruitment(
         &ctx,
         &quest,
         battle_style,
         Some(parsed_date),
-        true,
+        true, // ボタン版
         dismissal_times,
     )
     .await?;
 
-    // ボタンは既にメッセージに含まれているため、追加の処理は不要
+    // ドメイン型をpoise型に変換
+    let poise_components: Vec<CreateActionRow> =
+        result.components.iter().map(to_create_action_row).collect();
+
+    // メッセージ送信（events層で実行）
+    let reply = poise::CreateReply::default()
+        .content(&result.message_content)
+        .embed(to_create_embed(&result.embed_content))
+        .components(poise_components);
+
+    let message = ctx.send(reply).await?;
+    let message_id = message.message().await?.id.get();
+
+    // message_idをDBに更新
+    recruitment::new_recruit::update_message_id(
+        app_state.guild_db(),
+        result.recruitment_id,
+        message_id,
+    )
+    .await?;
 
     Ok(())
 }

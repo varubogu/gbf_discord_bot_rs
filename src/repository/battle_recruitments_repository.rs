@@ -88,4 +88,14 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         recruitment_id: i32,
         sent: bool,
     ) -> Result<()>;
+
+    /// メッセージIDを更新
+    async fn update_message_id<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait;
 }

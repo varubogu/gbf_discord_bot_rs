@@ -1,12 +1,12 @@
-use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::gateway::PoiseDiscordGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
+use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::new::{self, RecruitmentData};
+use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
@@ -16,12 +16,26 @@ use crate::services::unified_datetime_parser::{
 };
 use crate::types;
 use crate::types::PoiseContext;
+use crate::types::discord::{ActionRowContent, DiscordMessageId, EmbedContent};
 use chrono::{DateTime, Utc};
-use poise::CreateReply;
-use poise::serenity_prelude::CreateActionRow;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, info, instrument};
+
+/// 募集作成結果（events層でのメッセージ送信用）
+#[derive(Debug, Clone)]
+pub struct RecruitmentResult {
+    /// DB保存後の募集ID
+    pub recruitment_id: i32,
+    /// メッセージ本文
+    pub message_content: String,
+    /// Embed内容
+    pub embed_content: EmbedContent,
+    /// ボタン/セレクトメニュー（ボタン版のみ使用）
+    pub components: Vec<ActionRowContent>,
+    /// リアクション絵文字（リアクション版のみ使用）
+    pub reaction_emojis: Vec<String>,
+}
 
 /// 新しい募集を開始する
 ///
@@ -29,7 +43,8 @@ use tracing::{debug, info, instrument};
 /// * `use_buttons` - ボタンを使用する場合は true、リアクションを使用する場合は false
 ///
 /// # 戻り値
-/// (message_id, reactions) - メッセージIDとリアクションのリスト
+/// RecruitmentResult - 募集ID、表示用メッセージ、Embed、コンポーネント等
+/// 注: message_idは0で仮保存されるため、events層でメッセージ送信後に`update_message_id`を呼び出すこと
 #[instrument(level = "debug", skip(ctx))]
 pub async fn new_recruitment(
     ctx: &PoiseContext<'_>,
@@ -38,7 +53,7 @@ pub async fn new_recruitment(
     event_date: Option<DateTime<Utc>>,
     use_buttons: bool,
     dismissal_times: Option<String>,
-) -> types::Result<(u64, Vec<poise::serenity_prelude::ReactionType>)> {
+) -> types::Result<RecruitmentResult> {
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
     let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
@@ -164,16 +179,8 @@ pub async fn new_recruitment(
             info!("ロールメンションを募集メッセージに追加しました");
         }
 
-        // 2. メッセージ送信（ボタンまたはリアクション用）
-        // Discord操作はfacade層で直接実行（services層はビジネスロジックのみ）
-        let message_id = if use_buttons {
-            send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
-        } else {
-            send_recruitment_message(ctx, &recruitment_data).await?
-        };
-
-        // 3. データ保存
-        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
+        // 2. データ保存（message_id=0で仮保存、events層でメッセージ送信後に更新）
+        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, 0).await?;
 
         // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(
@@ -219,20 +226,43 @@ pub async fn new_recruitment(
             );
         }
 
-        // message_idとreactionsを返す（絵文字文字列をReactionTypeに変換）
-        let reactions: Vec<poise::serenity_prelude::ReactionType> = recruitment_data
-            .reaction_emojis
-            .iter()
-            .map(|emoji| poise::serenity_prelude::ReactionType::Unicode(emoji.clone()))
-            .collect();
-        Ok((message_id, reactions))
+        // 3. 表示用データを準備
+        let (embed_content, components) = if use_buttons {
+            // ボタン版用のEmbed・コンポーネントを作成
+            let components = if recruitment_data.battle_style_name == "6属性" {
+                RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
+            } else {
+                RecruitmentPresenter::create_recruitment_buttons(
+                    &recruitment_data.battle_style_name,
+                    &recruitment_data.element_emojis,
+                )
+            };
+
+            let initial_text = RecruitmentPresenter::create_initial_participants_text(
+                &recruitment_data.battle_style_name,
+                &recruitment_data.element_emojis,
+            );
+            let embed = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
+            (embed, components)
+        } else {
+            // リアクション版用のEmbed（コンポーネントなし）
+            (recruitment_data.embed_content.clone(), vec![])
+        };
+
+        Ok(RecruitmentResult {
+            recruitment_id: recruitment.id,
+            message_content: recruitment_data.message_content.clone(),
+            embed_content,
+            components,
+            reaction_emojis: recruitment_data.reaction_emojis.clone(),
+        })
     }
     .await;
 
     match result {
-        Ok((msg_id, reactions)) => {
+        Ok(recruitment_result) => {
             txn.commit().await?;
-            Ok((msg_id, reactions))
+            Ok(recruitment_result)
         }
         Err(e) => {
             txn.rollback().await?;
@@ -241,62 +271,32 @@ pub async fn new_recruitment(
     }
 }
 
-// ========================================
-// Discord操作関数（facade層で実行）
-// ========================================
-
-/// Discord操作関数（メッセージ送信）
-/// eventsレイヤーとの境界としてfacade層で実装
-async fn send_recruitment_message(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    // deferした応答を完了させる形でメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(to_create_embed(&recruitment_data.embed_content));
-
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
-}
-
-/// Discord操作関数（ボタン付きメッセージ送信）
-/// eventsレイヤーとの境界としてfacade層で実装
-async fn send_recruitment_message_with_buttons(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    // ボタンコンポーネントをPresenterから取得（ドメイン型）
-    let components = if recruitment_data.battle_style_name == "6属性" {
-        // 6属性の場合はセレクトメニュー付き
-        RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
-    } else {
-        // 通常の場合
-        RecruitmentPresenter::create_recruitment_buttons(
-            &recruitment_data.battle_style_name,
-            &recruitment_data.element_emojis,
-        )
-    };
-
-    // ドメイン型をpoise型に変換
-    let poise_components: Vec<CreateActionRow> =
-        components.iter().map(to_create_action_row).collect();
-
-    // ボタン版用の初期参加者一覧を作成
-    let initial_text = RecruitmentPresenter::create_initial_participants_text(
-        &recruitment_data.battle_style_name,
-        &recruitment_data.element_emojis,
+/// メッセージ送信後にmessage_idを更新する
+///
+/// events層でメッセージ送信後に呼び出し、DBのmessage_idを更新する
+#[instrument(level = "debug", skip(db))]
+pub async fn update_message_id(
+    db: &sea_orm::DatabaseConnection,
+    recruitment_id: i32,
+    message_id: u64,
+) -> types::Result<()> {
+    info!(
+        recruitment_id = recruitment_id,
+        message_id = message_id,
+        "募集のmessage_idを更新します"
     );
 
-    // Presenterを使用してEmbedを生成
-    let embed_content = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
+    let repos = RepositoryContainer::new();
+    let battle_recruitment_repo = repos.battle_recruitment();
 
-    // deferした応答を完了させる形でボタン付きメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(to_create_embed(&embed_content))
-        .components(poise_components);
+    battle_recruitment_repo
+        .update_message_id(db, recruitment_id, DiscordMessageId::new(message_id))
+        .await?;
 
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
+    info!(
+        recruitment_id = recruitment_id,
+        message_id = message_id,
+        "message_idの更新が完了しました"
+    );
+    Ok(())
 }
