@@ -404,10 +404,11 @@ impl DataConverterServiceTrait for DataConverterService {
                 }
                 Ok(postgres_value) => {
                     // UUID型で値が空だった場合、自動生成されたUUIDを記録
-                    if column.postgres_type == PostgresType::Uuid && Self::is_null_value(value) {
-                        if let PostgresValue::Uuid(uuid) = &postgres_value {
-                            generated_uuids.push((index, *uuid));
-                        }
+                    if column.postgres_type == PostgresType::Uuid
+                        && Self::is_null_value(value)
+                        && let PostgresValue::Uuid(uuid) = &postgres_value
+                    {
+                        generated_uuids.push((index, *uuid));
                     }
                     converted.push(postgres_value);
                 }

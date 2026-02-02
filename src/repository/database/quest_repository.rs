@@ -121,14 +121,14 @@ impl QuestRepository for SeaOrmQuestRepository {
         // エイリアスでマッチしたものを追加（重複を避ける）
         for (quest_id, quest_name) in quest_map {
             // 既に名前でマッチしているかチェック
-            if !results.iter().any(|r| r.quest_id == quest_id) {
-                if let Some(alias) = alias_map.get(&quest_id) {
-                    results.push(QuestSearchResult {
-                        quest_id,
-                        name: quest_name,
-                        matched_text: alias.clone(),
-                    });
-                }
+            if !results.iter().any(|r| r.quest_id == quest_id)
+                && let Some(alias) = alias_map.get(&quest_id)
+            {
+                results.push(QuestSearchResult {
+                    quest_id,
+                    name: quest_name,
+                    matched_text: alias.clone(),
+                });
             }
         }
 
@@ -168,11 +168,9 @@ impl QuestRepository for SeaOrmQuestRepository {
         }
 
         // 除外リストがある場合は、それらのクエストを除外
-        if let Some(ref excluded_ids) = excluded_quest_ids {
-            if !excluded_ids.is_empty() {
-                quests_query =
-                    quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
-            }
+        if let Some(ref excluded_ids) = excluded_quest_ids && !excluded_ids.is_empty() {
+            quests_query =
+                quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
         }
 
         let quests_by_name = quests_query
@@ -233,14 +231,14 @@ impl QuestRepository for SeaOrmQuestRepository {
         // エイリアスでマッチしたものを追加（重複を避ける）
         for (quest_id, quest_name) in quest_map {
             // 既に名前でマッチしているかチェック
-            if !results.iter().any(|r| r.quest_id == quest_id) {
-                if let Some(alias) = alias_map.get(&quest_id) {
-                    results.push(QuestSearchResult {
-                        quest_id,
-                        name: quest_name,
-                        matched_text: alias.clone(),
-                    });
-                }
+            if !results.iter().any(|r| r.quest_id == quest_id)
+                && let Some(alias) = alias_map.get(&quest_id)
+            {
+                results.push(QuestSearchResult {
+                    quest_id,
+                    name: quest_name,
+                    matched_text: alias.clone(),
+                });
             }
         }
 
@@ -336,14 +334,14 @@ impl QuestRepository for SeaOrmQuestRepository {
         // エイリアスでマッチしたものを追加（重複を避ける）
         for (quest_id, quest_name) in quest_map {
             // 既に名前でマッチしているかチェック
-            if !results.iter().any(|r| r.quest_id == quest_id) {
-                if let Some(alias) = alias_map.get(&quest_id) {
-                    results.push(QuestSearchResult {
-                        quest_id,
-                        name: quest_name,
-                        matched_text: alias.clone(),
-                    });
-                }
+            if !results.iter().any(|r| r.quest_id == quest_id)
+                && let Some(alias) = alias_map.get(&quest_id)
+            {
+                results.push(QuestSearchResult {
+                    quest_id,
+                    name: quest_name,
+                    matched_text: alias.clone(),
+                });
             }
         }
 
@@ -437,14 +435,14 @@ impl QuestRepository for SeaOrmQuestRepository {
         // エイリアスでマッチしたものを追加（重複を避ける）
         for (quest_id, quest_name) in quest_map {
             // 既に名前でマッチしているかチェック
-            if !results.iter().any(|r| r.quest_id == quest_id) {
-                if let Some(alias) = alias_map.get(&quest_id) {
-                    results.push(QuestSearchResult {
-                        quest_id,
-                        name: quest_name,
-                        matched_text: alias.clone(),
-                    });
-                }
+            if !results.iter().any(|r| r.quest_id == quest_id)
+                && let Some(alias) = alias_map.get(&quest_id)
+            {
+                results.push(QuestSearchResult {
+                    quest_id,
+                    name: quest_name,
+                    matched_text: alias.clone(),
+                });
             }
         }
 

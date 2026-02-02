@@ -24,6 +24,15 @@ use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, info};
 
+/// ギルドごとの既存マッチングキー（quest_id, month, day, hour, user_id）
+type MatchKey = (i32, i32, i32, i32, i64);
+/// ギルドID → 既存マッチングのセット
+type ExistingMatchesMap = HashMap<i64, HashSet<MatchKey>>;
+/// ユーザーごとの参加可能日時（month, day, hour）のリスト
+type ParticipantTimesMap = HashMap<i64, HashMap<i64, Vec<(i32, i32, i32)>>>;
+/// マッチング候補キー（guild_id, quest_id, month, day, hour）→ 候補リスト（user_id, battle_style_ids）
+type CandidatesMap = HashMap<(i64, i32, i32, i32, i32), Vec<(i64, Vec<i32>)>>;
+
 /// マッチング候補
 #[derive(Debug, Clone)]
 pub struct MatchCandidate {
@@ -86,7 +95,7 @@ impl PeriodicMatchingService {
         let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
 
         // guild_id -> (quest_id, month, day, hour, user_id) のセットを構築
-        let mut existing_matches: HashMap<i64, HashSet<(i32, i32, i32, i32, i64)>> = HashMap::new();
+        let mut existing_matches: ExistingMatchesMap = HashMap::new();
 
         // アクティブなマッチングを取得
         let active_matchings = quest_matchings::Entity::find()
@@ -114,8 +123,7 @@ impl PeriodicMatchingService {
 
         // 参加者をギルド・ユーザーでグルーピング
         // guild_id -> user_id -> [(month, day, hour)]
-        let mut participant_times: HashMap<i64, HashMap<i64, Vec<(i32, i32, i32)>>> =
-            HashMap::new();
+        let mut participant_times: ParticipantTimesMap = HashMap::new();
 
         for p in participants {
             participant_times
@@ -143,8 +151,7 @@ impl PeriodicMatchingService {
 
         // マッチング候補を構築
         // (guild_id, quest_id, month, day, hour) -> [(user_id, [battle_style_id])]
-        let mut candidates: HashMap<(i64, i32, i32, i32, i32), Vec<(i64, Vec<i32>)>> =
-            HashMap::new();
+        let mut candidates: CandidatesMap = HashMap::new();
 
         for (guild_id, users) in &participant_times {
             let existing = existing_matches.get(guild_id);

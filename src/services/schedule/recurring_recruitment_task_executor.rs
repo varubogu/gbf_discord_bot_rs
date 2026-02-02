@@ -216,34 +216,34 @@ impl RecurringRecruitmentTaskExecutor {
             )?;
 
             // 最初に見つかった未来の募集開始日時を使用
-            if let Some(next_time) = next_times.first() {
-                if next_time.recruit_start_at > now {
-                    // 未来日時が見つかった場合、scheduled_tasksに登録
-                    let task = self
-                        .task_repo
-                        .create(
-                            txn,
-                            next_time.recruit_start_at,
-                            ScheduledTaskType::RecurringRecruitment as i32,
-                            Some(next_time.guild_id),
-                            Some(next_time.channel_id),
-                        )
-                        .await?;
+            if let Some(next_time) = next_times.first()
+                && next_time.recruit_start_at > now
+            {
+                // 未来日時が見つかった場合、scheduled_tasksに登録
+                let task = self
+                    .task_repo
+                    .create(
+                        txn,
+                        next_time.recruit_start_at,
+                        ScheduledTaskType::RecurringRecruitment as i32,
+                        Some(next_time.guild_id),
+                        Some(next_time.channel_id),
+                    )
+                    .await?;
 
-                    // scheduled_task_recurring_recruitmentsに関連付けを登録
-                    self.recurring_repo
-                        .create(txn, task.id, schedule.id)
-                        .await?;
+                // scheduled_task_recurring_recruitmentsに関連付けを登録
+                self.recurring_repo
+                    .create(txn, task.id, schedule.id)
+                    .await?;
 
-                    info!(
-                        schedule_id = schedule.id,
-                        task_id = task.id,
-                        recruit_start_at = %next_time.recruit_start_at,
-                        "次回実行タスクを登録しました"
-                    );
+                info!(
+                    schedule_id = schedule.id,
+                    task_id = task.id,
+                    recruit_start_at = %next_time.recruit_start_at,
+                    "次回実行タスクを登録しました"
+                );
 
-                    return Ok(task.id);
-                }
+                return Ok(task.id);
             }
 
             // 次の検索範囲に進む

@@ -229,29 +229,29 @@ where
     ));
 
     // 解散時刻を追加
-    if let Some(dismissal_times_list) = dismissal_times {
-        if !dismissal_times_list.is_empty() {
-            let dismissal_label = message_service
-                .get_message(
-                    db,
-                    MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
-                    HashMap::new(),
-                    guild_id,
-                    Some("ja"),
-                )
-                .await?;
+    if let Some(dismissal_times_list) = dismissal_times
+        && !dismissal_times_list.is_empty()
+    {
+        let dismissal_label = message_service
+            .get_message(
+                db,
+                MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
+                HashMap::new(),
+                guild_id,
+                Some("ja"),
+            )
+            .await?;
 
-            let dismissal_texts: Vec<String> = dismissal_times_list
-                .iter()
-                .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
-                .collect();
+        let dismissal_texts: Vec<String> = dismissal_times_list
+            .iter()
+            .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
+            .collect();
 
-            message_text.push_str(&format!(
-                "\n{}{}",
-                dismissal_label,
-                dismissal_texts.join(", ")
-            ));
-        }
+        message_text.push_str(&format!(
+            "\n{}{}",
+            dismissal_label,
+            dismissal_texts.join(", ")
+        ));
     }
 
     Ok(message_text)

@@ -302,17 +302,17 @@ where
             .await?;
 
         // マッチングチャンネルをposition 0に設定
-        if let Some(ref ar) = auto_recruitment {
-            if let Some(matching_ch_id) = ar.matching_channel_id {
-                let matching_channel_id = DiscordChannelId::new(matching_ch_id as u64);
-                let params = ChannelEditParams::new().with_position(0);
-                if let Err(e) = gateway.edit_channel(matching_channel_id, params).await {
-                    warn!(
-                        channel_id = matching_ch_id,
-                        error = %e,
-                        "マッチングチャンネル位置の更新に失敗しました"
-                    );
-                }
+        if let Some(ref ar) = auto_recruitment
+            && let Some(matching_ch_id) = ar.matching_channel_id
+        {
+            let matching_channel_id = DiscordChannelId::new(matching_ch_id as u64);
+            let params = ChannelEditParams::new().with_position(0);
+            if let Err(e) = gateway.edit_channel(matching_channel_id, params).await {
+                warn!(
+                    channel_id = matching_ch_id,
+                    error = %e,
+                    "マッチングチャンネル位置の更新に失敗しました"
+                );
             }
         }
 
@@ -362,19 +362,19 @@ where
         }
 
         // クエストチャンネルを日付チャンネルの後に設定
-        if let Some(ref ar) = auto_recruitment {
-            if let Some(quest_ch_id) = ar.quest_channel_id {
-                let quest_channel_id = DiscordChannelId::new(quest_ch_id as u64);
-                let quest_position = (channels.len() + 1) as u16;
-                let params = ChannelEditParams::new().with_position(quest_position);
-                if let Err(e) = gateway.edit_channel(quest_channel_id, params).await {
-                    warn!(
-                        channel_id = quest_ch_id,
-                        position = quest_position,
-                        error = %e,
-                        "クエストチャンネル位置の更新に失敗しました"
-                    );
-                }
+        if let Some(ref ar) = auto_recruitment
+            && let Some(quest_ch_id) = ar.quest_channel_id
+        {
+            let quest_channel_id = DiscordChannelId::new(quest_ch_id as u64);
+            let quest_position = (channels.len() + 1) as u16;
+            let params = ChannelEditParams::new().with_position(quest_position);
+            if let Err(e) = gateway.edit_channel(quest_channel_id, params).await {
+                warn!(
+                    channel_id = quest_ch_id,
+                    position = quest_position,
+                    error = %e,
+                    "クエストチャンネル位置の更新に失敗しました"
+                );
             }
         }
 

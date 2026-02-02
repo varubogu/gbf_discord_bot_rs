@@ -354,12 +354,12 @@ where
         Ok(messages) => {
             // 募集メッセージへの返信で「参加人数が集まりました」を含むメッセージを探す
             for msg in messages {
-                if let Some(ref_msg_id) = &msg.referenced_message_id {
-                    if *ref_msg_id == message_id && msg.content.contains("参加人数が集まりました")
-                    {
-                        info!("既に規定人数到達通知が送信済みです");
-                        return Ok(true);
-                    }
+                if let Some(ref_msg_id) = &msg.referenced_message_id
+                    && *ref_msg_id == message_id
+                    && msg.content.contains("参加人数が集まりました")
+                {
+                    info!("既に規定人数到達通知が送信済みです");
+                    return Ok(true);
                 }
             }
             Ok(false)

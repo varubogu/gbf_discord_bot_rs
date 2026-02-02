@@ -278,12 +278,11 @@ pub async fn unregister_category(
 
         // コマンド実行チャンネルがカテゴリ内かどうかを判定
         let command_channel = DiscordChannelId::new(command_channel_id);
-        if let Ok(channel_data) = gateway.get_channel(command_channel).await {
-            if let Some(parent_id) = channel_data.parent_id {
-                if parent_id.get() == auto_recruitment.category_id as u64 {
-                    return Err(AppError::InCategoryChannelError);
-                }
-            }
+        if let Ok(channel_data) = gateway.get_channel(command_channel).await
+            && let Some(parent_id) = channel_data.parent_id
+            && parent_id.get() == auto_recruitment.category_id as u64
+        {
+            return Err(AppError::InCategoryChannelError);
         }
 
         // マッチングチャンネルの処理

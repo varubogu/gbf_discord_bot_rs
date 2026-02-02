@@ -19,6 +19,7 @@ impl AutoRecruitmentNotificationService {
     }
 
     /// マッチング成功通知をマッチングチャンネルに投稿
+    #[allow(clippy::too_many_arguments)]
     pub async fn notify_match<G: DiscordMessageGateway>(
         &self,
         gateway: &G,
@@ -72,6 +73,7 @@ impl AutoRecruitmentNotificationService {
     }
 
     /// 参加者追加時にメッセージを編集
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_match_notification<G: DiscordMessageGateway>(
         &self,
         gateway: &G,
@@ -163,6 +165,7 @@ impl AutoRecruitmentNotificationService {
     }
 
     /// クエスト決定通知を送信
+    #[allow(clippy::too_many_arguments)]
     pub async fn notify_quest_decided<G: DiscordMessageGateway>(
         &self,
         gateway: &G,

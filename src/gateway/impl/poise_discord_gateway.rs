@@ -134,10 +134,10 @@ impl EmbedContent {
             embed = embed.author(author_builder);
         }
 
-        if let Some(timestamp) = self.timestamp {
-            if let Ok(ts) = timestamp.parse::<poise::serenity_prelude::Timestamp>() {
-                embed = embed.timestamp(ts);
-            }
+        if let Some(timestamp) = self.timestamp
+            && let Ok(ts) = timestamp.parse::<poise::serenity_prelude::Timestamp>()
+        {
+            embed = embed.timestamp(ts);
         }
 
         embed
@@ -830,8 +830,8 @@ impl DiscordGuildGateway for PoiseDiscordGateway {
             .map_err(GatewayError::get_roles_failed)?;
 
         Ok(roles
-            .into_iter()
-            .map(|(_, role)| GuildRole {
+            .into_values()
+            .map(|role| GuildRole {
                 id: DiscordRoleId::new(role.id.get()),
                 name: role.name,
                 color: role.colour.0,

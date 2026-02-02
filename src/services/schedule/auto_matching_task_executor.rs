@@ -336,6 +336,7 @@ impl AutoMatchingTaskExecutor {
     }
 
     /// 個別のマッチング通知を送信（Gateway経由）
+    #[allow(clippy::too_many_arguments)]
     async fn send_notification<G: DiscordGateway>(
         &self,
         gateway: &G,
@@ -360,7 +361,7 @@ impl AutoMatchingTaskExecutor {
         // Embed作成
         let embed_content = EmbedContent::new()
             .with_title("🎮 マッチング成立！")
-            .with_description(&format!(
+            .with_description(format!(
                 "**クエスト**: {}\n**日時**: {}月{}日 {}:00\n\n**参加者**:\n{}{}\n\n募集を作成しています...",
                 quest_name,
                 month,
@@ -372,7 +373,7 @@ impl AutoMatchingTaskExecutor {
             .with_color(0x00ff00);
 
         let message_content = MessageContent::new()
-            .with_text(&participant_mentions.join(" "))
+            .with_text(participant_mentions.join(" "))
             .with_embed(embed_content);
 
         gateway

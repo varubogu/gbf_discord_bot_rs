@@ -71,12 +71,12 @@ impl SpreadsheetUrlServiceTrait for SpreadsheetUrlService {
             }
 
             // 正規表現でIDを抽出
-            if let Some(captures) = self.url_pattern.captures(trimmed) {
-                if let Some(id_match) = captures.get(1) {
-                    let id = id_match.as_str().to_string();
-                    self.validate_spreadsheet_id(&id)?;
-                    return Ok(id);
-                }
+            if let Some(captures) = self.url_pattern.captures(trimmed)
+                && let Some(id_match) = captures.get(1)
+            {
+                let id = id_match.as_str().to_string();
+                self.validate_spreadsheet_id(&id)?;
+                return Ok(id);
             }
 
             // URLパターンにマッチしなかった場合
