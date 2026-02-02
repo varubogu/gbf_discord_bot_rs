@@ -3,7 +3,7 @@
 //! Discordメッセージの作成・編集に必要なデータを表現する型を定義する。
 //! poise/serenityのCreateMessage, EditMessage等の代替となる。
 
-use super::{DiscordChannelId, DiscordMessageId, DiscordUserId};
+use super::{DiscordChannelId, DiscordMessageId, DiscordUserId, ReactionEmoji};
 
 /// メッセージ送信用のコンテンツ
 #[derive(Debug, Clone, Default)]
@@ -76,8 +76,19 @@ pub struct MessageData {
     pub embeds: Vec<EmbedData>,
     /// コンポーネント一覧
     pub components: Vec<ActionRowData>,
+    /// リアクション一覧
+    pub reactions: Vec<ReactionData>,
     /// ピン留めされているか
     pub pinned: bool,
+}
+
+/// 取得したリアクションデータ
+#[derive(Debug, Clone)]
+pub struct ReactionData {
+    /// リアクション絵文字
+    pub emoji: ReactionEmoji,
+    /// リアクション数
+    pub count: u64,
 }
 
 /// Embedコンテンツ（送信用）

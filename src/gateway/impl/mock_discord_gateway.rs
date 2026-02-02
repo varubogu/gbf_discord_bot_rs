@@ -184,6 +184,7 @@ pub fn create_test_message_data(
         content: content.to_string(),
         embeds: vec![],
         components: vec![],
+        reactions: vec![],
         pinned: false,
     }
 }

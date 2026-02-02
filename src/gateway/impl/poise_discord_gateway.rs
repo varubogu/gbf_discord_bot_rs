@@ -22,7 +22,7 @@ use crate::types::discord::{
     ComponentData, DiscordChannelId, DiscordEmojiId, DiscordGuildId, DiscordInteractionId,
     DiscordMessageId, DiscordRoleId, DiscordUserId, EmbedContent, EmbedData, EmbedFieldData,
     GuildEmoji, GuildMember, GuildRole, InteractionResponse, MessageContent, MessageData,
-    ReactionEmoji, SelectMenuContent, SelectMenuData, SelectMenuKindContent,
+    ReactionData, ReactionEmoji, SelectMenuContent, SelectMenuData, SelectMenuKindContent,
 };
 
 /// Poise/Serenityを使用したDiscord Gateway実装
@@ -280,7 +280,31 @@ impl From<poise::serenity_prelude::Message> for MessageData {
                 .into_iter()
                 .map(ActionRowData::from)
                 .collect(),
+            reactions: msg.reactions.into_iter().map(ReactionData::from).collect(),
             pinned: msg.pinned,
+        }
+    }
+}
+
+impl From<poise::serenity_prelude::MessageReaction> for ReactionData {
+    fn from(reaction: poise::serenity_prelude::MessageReaction) -> Self {
+        Self {
+            emoji: ReactionEmoji::from(reaction.reaction_type),
+            count: reaction.count,
+        }
+    }
+}
+
+impl From<ReactionType> for ReactionEmoji {
+    fn from(rt: ReactionType) -> Self {
+        match rt {
+            ReactionType::Unicode(s) => ReactionEmoji::Unicode(s),
+            ReactionType::Custom { animated, id, name } => ReactionEmoji::Custom {
+                id: DiscordEmojiId::new(id.get()),
+                name: name.unwrap_or_default(),
+                animated,
+            },
+            _ => ReactionEmoji::Unicode("❓".to_string()),
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::gateway::PoiseDiscordGateway;
+use crate::gateway::{DiscordMessageGateway, PoiseDiscordGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
@@ -10,8 +10,8 @@ use crate::services::recruitment::recruitment_participants_service::{
 };
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types::constants::ELEMENT_NAMES;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent};
 use crate::types::{AppError, AppState, RecruitmentComponentId, Result};
-use crate::utils::discord_helper::send_message_with_optional_reply;
 use poise::serenity_prelude::{ComponentInteraction, Context};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
@@ -432,11 +432,12 @@ async fn update_recruitment_message(
     message_id: u64,
     channel_id: u64,
 ) -> Result<()> {
-    use crate::events::converters::to_edit_message;
-    use crate::types::discord::{EmbedContent, MessageContent};
-    use poise::serenity_prelude::{ChannelId, MessageId};
-
     info!("募集メッセージの参加者一覧を更新します");
+
+    // Gatewayを作成
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+    let channel_id_obj = DiscordChannelId::new(channel_id);
+    let message_id_obj = DiscordMessageId::new(message_id);
 
     // 1. battle_styleの情報を取得（属性・絵文字の情報）
     let query_service = RecruitmentQueryService::new();
@@ -460,8 +461,6 @@ async fn update_recruitment_message(
         .map_err(AppError::Database)?;
 
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
-    // HttpからPoiseDiscordGatewayを作成（移行期間中の互換性対応）
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
     let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
     let element_emojis = guild_env_service
@@ -469,27 +468,20 @@ async fn update_recruitment_message(
         .await?;
 
     // 3. 参加者一覧のテキストを作成
-    let participants_text = create_participants_text(
-        &battle_style.display_name,
-        &participants,
-        &element_emojis,
-        ctx,
-    )
-    .await?;
+    let participants_text =
+        create_participants_text(&battle_style.display_name, &participants, &element_emojis)
+            .await?;
 
     // 3.5. ユニーク参加者数を計算（複数属性でも1人とカウント）
     use std::collections::HashSet;
     let unique_user_ids: HashSet<i64> = participants.iter().map(|p| p.user_id).collect();
     let participant_count = unique_user_ids.len();
 
-    // 4. メッセージを取得して更新
-    let channel = ChannelId::new(channel_id);
-    let mut message = channel
-        .message(&ctx.http, MessageId::new(message_id))
-        .await?;
+    // 4. Gatewayを使ってメッセージを取得
+    let message_data = gateway.get_message(channel_id_obj, message_id_obj).await?;
 
     // 既存のembedを取得（最初のembedを使用）
-    let existing_embed = message.embeds.first().cloned();
+    let existing_embed = message_data.embeds.first().cloned();
 
     // 新しいembedを作成（既存の内容を保持しつつdescriptionとfooterを更新）
     let embed_content = if let Some(old_embed) = existing_embed {
@@ -499,8 +491,8 @@ async fn update_recruitment_message(
         if let Some(title) = &old_embed.title {
             embed = embed.with_title(title);
         }
-        if let Some(color) = old_embed.colour {
-            embed = embed.with_color(color.0);
+        if let Some(color) = old_embed.color {
+            embed = embed.with_color(color);
         }
         embed
     } else {
@@ -512,10 +504,10 @@ async fn update_recruitment_message(
             .with_color(0x0099ff)
     };
 
-    // メッセージのembedを更新
+    // Gatewayを使ってメッセージを更新
     let message_content = MessageContent::new().with_embed(embed_content);
-    message
-        .edit(&ctx.http, to_edit_message(&message_content))
+    gateway
+        .edit_message(channel_id_obj, message_id_obj, message_content)
         .await?;
 
     info!("募集メッセージの参加者一覧を更新しました");
@@ -527,12 +519,11 @@ async fn update_recruitment_message(
 /// # 引数
 /// * `battle_style_name` - 攻略方法の名前
 /// * `participants` - 参加者一覧
-/// * `ctx` - Discord Context（ユーザー情報取得用）
+/// * `element_emojis` - 属性絵文字
 async fn create_participants_text(
     battle_style_name: &str,
     participants: &[crate::models::entities::worker::recruitment_participants::Model],
     element_emojis: &ElementEmojis,
-    _ctx: &Context,
 ) -> Result<String> {
     use std::collections::HashMap;
 
@@ -741,20 +732,18 @@ async fn send_full_notification(
     message_id: u64,
     participants: Vec<String>,
 ) -> Result<()> {
-    use poise::serenity_prelude::{ChannelId, MessageId};
-
-    let channel = ChannelId::new(channel_id);
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
     // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-    send_message_with_optional_reply(
-        &ctx.http,
-        channel,
-        MessageId::new(message_id),
-        notification_message,
-        Some("規定人数到達通知".to_string()),
-    )
-    .await?;
+    gateway
+        .send_reply(
+            DiscordChannelId::new(channel_id),
+            DiscordMessageId::new(message_id),
+            MessageContent::text(&notification_message),
+            Some("規定人数到達通知".to_string()),
+        )
+        .await?;
 
     Ok(())
 }
@@ -770,20 +759,18 @@ async fn send_decreased_notification(
     channel_id: u64,
     message_id: u64,
 ) -> Result<()> {
-    use poise::serenity_prelude::{ChannelId, MessageId};
-
-    let channel = ChannelId::new(channel_id);
-    let notification_message = "参加メンバーが規定人数を下回りました。".to_string();
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+    let notification_message = "参加メンバーが規定人数を下回りました。";
 
     // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-    send_message_with_optional_reply(
-        &ctx.http,
-        channel,
-        MessageId::new(message_id),
-        notification_message,
-        Some("参加者減少通知".to_string()),
-    )
-    .await?;
+    gateway
+        .send_reply(
+            DiscordChannelId::new(channel_id),
+            DiscordMessageId::new(message_id),
+            MessageContent::text(notification_message),
+            Some("参加者減少通知".to_string()),
+        )
+        .await?;
 
     Ok(())
 }

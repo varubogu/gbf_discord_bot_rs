@@ -1,4 +1,6 @@
 use crate::facades::recruitment::{battle_style_list, quest_list};
+use crate::gateway::PoiseDiscordGateway;
+use crate::types::discord::MessageData;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow, CreateInputText,
@@ -214,12 +216,16 @@ async fn handle_quest_selection(
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
 
+    // Gateway を作成し、メッセージをドメイン型に変換
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+    let message_data = MessageData::from(target_message);
+
     // リファクタリングされたfacadeを呼び出す
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
-        Arc::clone(&ctx.http),
+        &gateway,
         guild_id,
-        &target_message,
+        &message_data,
         Some(&quest_name),
         None,
         None,
@@ -310,12 +316,16 @@ async fn handle_battle_style_selection(
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
 
+    // Gateway を作成し、メッセージをドメイン型に変換
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+    let message_data = MessageData::from(target_message);
+
     // リファクタリングされたfacadeを呼び出す
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
-        Arc::clone(&ctx.http),
+        &gateway,
         guild_id,
-        &target_message,
+        &message_data,
         None,
         None,
         Some(battle_style_id),

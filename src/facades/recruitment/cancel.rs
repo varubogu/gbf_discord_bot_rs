@@ -3,8 +3,7 @@
 //! PoiseContext等のDiscordフレームワーク固有の型を扱い、
 //! サービス層のビジネスロジックを呼び出す。
 
-use crate::events::converters::{to_create_action_row, to_create_message, to_edit_message};
-use crate::gateway::PoiseDiscordGateway;
+use crate::gateway::{DiscordMessageGateway, PoiseDiscordGateway};
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
@@ -21,10 +20,7 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
-use crate::types::discord::{
-    ActionRowContent, ButtonContent, ButtonStyleType, DiscordChannelId, DiscordGuildId,
-    DiscordMessageId, MessageContent,
-};
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult, PoiseContext};
 use poise::ReplyHandle;
 use poise::serenity_prelude::{
@@ -200,7 +196,7 @@ async fn cancel_recruitment_internal(
         let guild_id_i64 = Some(guild_id as i64);
         let message_service = app_state.message_service();
 
-        // 4. 募集メッセージを編集してキャンセル状態を明記
+        // 4. 募集メッセージを編集してキャンセル状態を明記（Gatewayを使用）
         let cancelled_content =
             crate::services::recruitment::cancel::create_cancelled_message_content(
                 &txn,
@@ -210,11 +206,14 @@ async fn cancel_recruitment_internal(
                 &original_content,
             )
             .await?;
-        let channel = ChannelId::from(channel_id);
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
         let message_content = MessageContent::text(&cancelled_content);
-        let edit_message = to_edit_message(&message_content);
-        channel
-            .edit_message(&ctx.http(), MessageId::from(message_id), edit_message)
+        gateway
+            .edit_message(
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+                message_content,
+            )
             .await?;
 
         // 5. キャンセル通知メッセージを作成
@@ -461,21 +460,25 @@ async fn is_exit(_ctx: PoiseContext<'_>, can_cancel_result: CanCancelResult) -> 
 
 /// 確認メッセージ表示（内部関数）
 async fn confirm_interaction(ctx: PoiseContext<'_>) -> types::Result<ReplyHandle<'_>> {
-    // 確認メッセージとボタンを作成（ドメインモデル使用）
-    let confirm_button =
-        ButtonContent::new("confirm_cancel", "はい").with_style(ButtonStyleType::Danger);
+    use poise::serenity_prelude::{ButtonStyle, CreateActionRow, CreateButton};
 
-    let cancel_button =
-        ButtonContent::new("deny_cancel", "いいえ").with_style(ButtonStyleType::Secondary);
+    // 確認メッセージとボタンを作成（直接poise型を構築）
+    let confirm_button = CreateButton::new("confirm_cancel")
+        .style(ButtonStyle::Danger)
+        .label("はい");
 
-    let action_row = ActionRowContent::buttons(vec![confirm_button, cancel_button]);
+    let cancel_button = CreateButton::new("deny_cancel")
+        .style(ButtonStyle::Secondary)
+        .label("いいえ");
+
+    let action_row = CreateActionRow::Buttons(vec![confirm_button, cancel_button]);
 
     // 確認メッセージを送信
     let reply = ctx
         .send(
             poise::CreateReply::default()
                 .content("この募集をキャンセルしますか？")
-                .components(vec![to_create_action_row(&action_row)])
+                .components(vec![action_row])
                 .ephemeral(true),
         )
         .await?;
@@ -665,13 +668,12 @@ pub async fn cancel_on_message_deleted(
             None => notification_text,
         };
 
-        // 募集チャンネルに通知を送信
-        let channel_id_obj = ChannelId::from(channel_id);
+        // 募集チャンネルに通知を送信（Gatewayを使用）
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
         let message_content = MessageContent::text(&final_notification_text);
-        let notification_message = to_create_message(&message_content);
 
-        channel_id_obj
-            .send_message(&ctx.http, notification_message)
+        gateway
+            .send_message(DiscordChannelId::new(channel_id), message_content)
             .await
             .map_err(|e| {
                 error!(
@@ -679,7 +681,7 @@ pub async fn cancel_on_message_deleted(
                     recruitment_id = recruitment.id,
                     "キャンセル通知メッセージの送信に失敗しました"
                 );
-                AppError::Discord(Box::new(e))
+                AppError::Generic(e.to_string())
             })?;
 
         info!(

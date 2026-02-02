@@ -2,7 +2,7 @@
 //!
 //! Discord APIとの直接的なやり取りを行い、サービス層のビジネスロジックを呼び出す。
 
-use crate::events::converters::to_edit_message;
+use crate::gateway::{DiscordMessageGateway, PoiseDiscordGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
@@ -11,8 +11,7 @@ use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types;
-use crate::types::discord::{EmbedContent, MessageContent};
-use crate::utils::discord_helper::send_message_with_optional_reply;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent};
 use poise::serenity_prelude::{ChannelId, Context, GetMessages, MessageId, ReactionType};
 use sea_orm::TransactionTrait;
 use std::collections::HashMap;
@@ -281,18 +280,6 @@ async fn update_message(
         channel_id, message_id
     );
 
-    let channel = ChannelId::from(channel_id);
-    let mut message = match channel
-        .message(&ctx.http, MessageId::from(message_id))
-        .await
-    {
-        Ok(message) => message,
-        Err(e) => {
-            error!("更新対象メッセージ取得エラー: {:?}", e);
-            return Err(format!("Failed to get message for update: {e}").into());
-        }
-    };
-
     // 参加者情報を埋め込みに変換
     let participants_text = if participants_by_reaction.is_empty() {
         "現在参加者はいません。".to_string()
@@ -336,13 +323,20 @@ async fn update_message(
         .with_description(&participants_text)
         .with_color(0x0099ff);
 
-    // メッセージを更新
+    // Gatewayを使用してメッセージを更新
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let message_content = MessageContent::new()
         .with_text(content)
         .with_embed(embed_content);
-    let edit_message = to_edit_message(&message_content);
 
-    match message.edit(&ctx.http, edit_message).await {
+    match gateway
+        .edit_message(
+            DiscordChannelId::new(channel_id),
+            DiscordMessageId::new(message_id),
+            message_content,
+        )
+        .await
+    {
         Ok(_) => {
             info!("メッセージ更新成功: message_id={}", message_id);
             Ok(())
@@ -409,18 +403,18 @@ async fn send_recruitment_full_notification(
         participants.len()
     );
 
-    let channel = ChannelId::from(channel_id);
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
 
-    // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-    match send_message_with_optional_reply(
-        &ctx.http,
-        channel,
-        MessageId::from(message_id),
-        notification_message,
-        Some("規定人数到達通知".to_string()),
-    )
-    .await
+    // Gatewayを使用して返信形式で送信（失敗時は文脈情報を付加して通常メッセージ）
+    match gateway
+        .send_reply(
+            DiscordChannelId::new(channel_id),
+            DiscordMessageId::new(message_id),
+            MessageContent::text(&notification_message),
+            Some("規定人数到達通知".to_string()),
+        )
+        .await
     {
         Ok(_) => {
             info!("規定人数到達通知送信成功");
