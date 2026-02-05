@@ -552,11 +552,17 @@ fn parse_numeric_patterns_with_components(s: &str, timezone: Tz) -> Result<Parse
             (hour, minute)
         };
 
-        // 現在の月を使用
+        // 現在の月を使用。今月にその日が存在しない場合（例: 2月30日）は翌月を試す
         let year = now_tz.year();
         let month = now_tz.month();
-        let naive_date =
-            NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| "無効な日付".to_string())?;
+        let naive_date = NaiveDate::from_ymd_opt(year, month, day).or_else(|| {
+            // 今月に日が存在しない場合は翌月を試す（例: 2月30日 → 3月30日）
+            use chrono::Months;
+            let first_of_current = NaiveDate::from_ymd_opt(year, month, 1)?;
+            let first_of_next = first_of_current.checked_add_months(Months::new(1))?;
+            NaiveDate::from_ymd_opt(first_of_next.year(), first_of_next.month(), day)
+        });
+        let naive_date = naive_date.ok_or_else(|| "無効な日付".to_string())?;
         let naive_time =
             NaiveTime::from_hms_opt(hour, minute, 0).ok_or_else(|| "無効な時刻".to_string())?;
         let naive_dt = NaiveDateTime::new(naive_date, naive_time);
