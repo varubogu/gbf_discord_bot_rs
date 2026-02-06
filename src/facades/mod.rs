@@ -1,10 +1,10 @@
 pub mod auto_recruitment;
-pub(crate) mod channel;
+pub mod channel;
 pub(crate) mod environment;
 pub mod guild;
-pub(crate) mod guild_settings;
-pub(crate) mod recruitment;
-pub(crate) mod schedule;
+pub mod guild_settings;
+pub mod recruitment;
+pub mod schedule;
 pub(crate) mod scheduler;
 pub(crate) mod settings;
 pub mod spreadsheet;

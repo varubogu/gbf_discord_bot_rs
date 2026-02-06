@@ -13,4 +13,5 @@ mod utils_test;
 // Recruitment v2 integration tests (button-based recruitment)
 mod recruitment_v2_tests;
 
-// Add more integration test modules as needed
+// Facade integration tests (facade→service→repository結合テスト)
+mod facades;
