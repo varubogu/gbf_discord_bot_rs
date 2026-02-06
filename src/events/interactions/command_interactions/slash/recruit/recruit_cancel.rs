@@ -1,7 +1,7 @@
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::message::helpers::get_message_from_context;
+use crate::events::helpers::get_message_from_context;
 use crate::types;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::PoiseContext;

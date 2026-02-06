@@ -6,7 +6,7 @@ use crate::errors::PresentationError;
 use crate::events::permission::check_bot_admin_server;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
 use crate::services::message::MessageTextId;
-use crate::services::message::helpers::get_message_from_context;
+use crate::events::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::env;

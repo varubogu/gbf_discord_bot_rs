@@ -1,4 +1,4 @@
-use crate::gateway::PoiseDiscordGateway;
+use crate::gateway::DiscordGateway;
 use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
@@ -21,13 +21,15 @@ use tracing::{debug, error, info, warn};
 /// スケジューラーマネージャー
 ///
 /// tokio-cron-schedulerを使用して、定期的にタスクをプリロードし、実行する
-pub struct SchedulerManager<
+pub struct SchedulerManager<G, R, P>
+where
+    G: DiscordGateway + Send + Sync + 'static,
     R: BattleRecruitmentsRepository + 'static,
     P: RecruitmentParticipantsRepository + 'static,
-> {
+{
     scheduler: JobScheduler,
     db: Arc<DatabaseConnection>,
-    gateway: Arc<PoiseDiscordGateway>,
+    gateway: Arc<G>,
     task_repo: Arc<SeaOrmScheduledTaskRepository>,
     dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
     recruitment_repo: Arc<R>,
@@ -35,14 +37,17 @@ pub struct SchedulerManager<
     message_service: Arc<MessageService>,
 }
 
-impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsRepository + 'static>
-    SchedulerManager<R, P>
+impl<G, R, P> SchedulerManager<G, R, P>
+where
+    G: DiscordGateway + Send + Sync + 'static,
+    R: BattleRecruitmentsRepository + 'static,
+    P: RecruitmentParticipantsRepository + 'static,
 {
     /// 新しいSchedulerManagerを作成
     ///
     /// # Arguments
     /// * `db` - データベース接続
-    /// * `gateway` - Discord Gateway（poise依存をサービス層から分離）
+    /// * `gateway` - Discord Gateway（トレイト境界による抽象化）
     /// * `task_repo` - スケジュールタスクリポジトリ
     /// * `dissolution_repo` - 解散タスクリポジトリ
     /// * `recruitment_repo` - 募集リポジトリ
@@ -50,7 +55,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     /// * `message_service` - メッセージサービス
     pub async fn new(
         db: Arc<DatabaseConnection>,
-        gateway: Arc<PoiseDiscordGateway>,
+        gateway: Arc<G>,
         task_repo: Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: Arc<R>,
@@ -143,7 +148,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     /// 現在時刻から20秒先までの未実行タスクを取得し、実行時刻に達しているものを実行する
     async fn preload_and_execute_tasks(
         db: &Arc<DatabaseConnection>,
-        gateway: &Arc<PoiseDiscordGateway>,
+        gateway: &Arc<G>,
         task_repo: &Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: &Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: &Arc<R>,

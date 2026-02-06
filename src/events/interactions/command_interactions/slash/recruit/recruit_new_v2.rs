@@ -1,6 +1,7 @@
 use crate::events::converters::{to_create_action_row, to_create_embed};
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment;
+use crate::gateway::PoiseDiscordGateway;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
@@ -64,9 +65,15 @@ pub async fn recruit_new_v2(
         }
     };
 
+    // Gateway作成
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+
     // Facade呼び出し（データ作成とDB保存、message_id=0で仮保存）
     let result = recruitment::new_recruit::new_recruitment(
-        &ctx,
+        app_state,
+        &gateway,
+        guild_id.get(),
+        ctx.channel_id().get(),
         &quest,
         battle_style,
         Some(parsed_date),

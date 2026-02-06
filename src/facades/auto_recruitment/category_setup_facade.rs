@@ -2,7 +2,7 @@
 //!
 //! カテゴリ登録/解除/日数変更の処理を行う
 
-use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway, PoiseDiscordGateway};
+use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
@@ -52,15 +52,18 @@ pub struct CategoryRegistrationResult {
 /// * `matching_channel_id` - マッチング通知チャンネルID（省略可能）
 /// * `quest_channel_id` - クエスト選択チャンネルID（省略可能）
 #[instrument(level = "info", skip(gateway, app_state))]
-pub async fn register_category(
-    gateway: &PoiseDiscordGateway,
+pub async fn register_category<G>(
+    gateway: &G,
     app_state: &AppState,
     guild_id: u64,
     category_id: u64,
     days: i32,
     matching_channel_id: Option<u64>,
     quest_channel_id: Option<u64>,
-) -> Result<CategoryRegistrationResult> {
+) -> Result<CategoryRegistrationResult>
+where
+    G: DiscordChannelGateway + DiscordMessageGateway + Sync,
+{
     info!(guild_id, category_id, days, "自動募集カテゴリを登録します");
 
     // 日数の検証
@@ -250,12 +253,15 @@ pub async fn register_category(
 /// # エラー
 /// * カテゴリ内のチャンネルでコマンドが実行された場合、`InCategoryChannelError`を返す
 #[instrument(level = "info", skip(gateway, app_state))]
-pub async fn unregister_category(
-    gateway: &PoiseDiscordGateway,
+pub async fn unregister_category<G>(
+    gateway: &G,
     app_state: &AppState,
     guild_id: u64,
     command_channel_id: u64,
-) -> Result<()> {
+) -> Result<()>
+where
+    G: DiscordChannelGateway + DiscordMessageGateway + Sync,
+{
     info!(guild_id, "自動募集カテゴリを解除します");
 
     let conn = app_state.guild_db();
@@ -421,12 +427,15 @@ pub async fn unregister_category(
 /// * `guild_id` - ギルドID
 /// * `new_days` - 新しい募集日数（2-7日）
 #[instrument(level = "info", skip(gateway, app_state))]
-pub async fn change_days(
-    gateway: &PoiseDiscordGateway,
+pub async fn change_days<G>(
+    gateway: &G,
     app_state: &AppState,
     guild_id: u64,
     new_days: i32,
-) -> Result<()> {
+) -> Result<()>
+where
+    G: DiscordChannelGateway + DiscordMessageGateway + Sync,
+{
     info!(guild_id, new_days, "自動募集の募集日数を変更します");
 
     // 日数の検証
@@ -594,14 +603,18 @@ pub async fn change_days(
 }
 
 /// 日時チャンネルを作成
-async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
-    gateway: &PoiseDiscordGateway,
+async fn create_date_channels<G, C>(
+    gateway: &G,
     guild_id: u64,
     category_id: u64,
     days: i32,
     channel_repo: &C,
     txn: &sea_orm::DatabaseTransaction,
-) -> Result<usize> {
+) -> Result<usize>
+where
+    G: DiscordChannelGateway + DiscordMessageGateway + Sync,
+    C: AutoRecruitmentChannelRepository,
+{
     debug!(guild_id, category_id, days, "日時チャンネルを作成します");
 
     // 今日の日付を取得（JST）
@@ -663,10 +676,13 @@ async fn create_date_channels<C: AutoRecruitmentChannelRepository>(
 /// グラブルではAM5:00に日付が変わるため、1/21チャンネルは「1/21 5:00〜1/22 4:00」を対象とする。
 /// 選択肢は降順（夜の時間帯が先）で表示し、翌日分は「翌0:00」のように表記する。
 /// 内部値は0-28（5-23は当日、24-28は翌日0-4時を表す）。
-async fn send_time_selection_message(
-    gateway: &PoiseDiscordGateway,
+async fn send_time_selection_message<G>(
+    gateway: &G,
     channel_id: DiscordChannelId,
-) -> Result<DiscordMessageId> {
+) -> Result<DiscordMessageId>
+where
+    G: DiscordMessageGateway + Sync,
+{
     // ゲーム内日付: 当日5:00〜翌日4:00（24時間）
     // 降順で表示: 翌4:00, 翌3:00, 翌2:00, 翌1:00, 翌0:00, 23:00, 22:00, ..., 5:00
     let mut options: Vec<SelectMenuOptionContent> = Vec::with_capacity(24);
@@ -722,10 +738,13 @@ async fn send_time_selection_message(
 }
 
 /// マッチングチャンネルにメッセージを送信し、メッセージIDを返す
-async fn send_matching_channel_message(
-    gateway: &PoiseDiscordGateway,
+async fn send_matching_channel_message<G>(
+    gateway: &G,
     channel_id: DiscordChannelId,
-) -> Result<DiscordMessageId> {
+) -> Result<DiscordMessageId>
+where
+    G: DiscordMessageGateway + Sync,
+{
     // ドメインモデルでメッセージを作成
     let message_content = MessageContent::text(
         "**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。",
@@ -753,14 +772,18 @@ async fn send_matching_channel_message(
 /// * `quests` - クエストリスト（available_battle_style_ids含む）
 /// * `quest_message_repo` - クエストメッセージリポジトリ
 /// * `txn` - データベーストランザクション
-async fn send_quest_channel_messages<R: AutoRecruitmentQuestMessageRepository>(
-    gateway: &PoiseDiscordGateway,
+async fn send_quest_channel_messages<G, R>(
+    gateway: &G,
     channel_id: DiscordChannelId,
     guild_id: u64,
     quests: &[Quest],
     quest_message_repo: &R,
     txn: &sea_orm::DatabaseTransaction,
-) -> Result<()> {
+) -> Result<()>
+where
+    G: DiscordMessageGateway + Sync,
+    R: AutoRecruitmentQuestMessageRepository,
+{
     if quests.is_empty() {
         // クエストがない場合は説明メッセージのみ
         let message_content = MessageContent::text(

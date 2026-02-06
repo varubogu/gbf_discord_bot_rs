@@ -2,7 +2,7 @@ use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::change_recruitment_information;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::message::helpers::get_message_from_context;
+use crate::events::helpers::get_message_from_context;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
