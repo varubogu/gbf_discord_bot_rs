@@ -122,7 +122,7 @@ pub async fn handle_element_selection(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("エラー: {}", e)),
+                        .content(format!("エラー: {e}")),
                 )
                 .await?;
         }

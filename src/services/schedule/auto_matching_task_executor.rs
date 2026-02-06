@@ -352,7 +352,7 @@ impl AutoMatchingTaskExecutor {
         // 参加者メンション
         let participant_mentions: Vec<String> = users
             .iter()
-            .map(|(user_id, _)| format!("<@{}>", user_id))
+            .map(|(user_id, _)| format!("<@{user_id}>"))
             .collect();
 
         // 属性情報を構築（6属性クエストの場合）
@@ -380,7 +380,7 @@ impl AutoMatchingTaskExecutor {
             .send_message(channel, message_content)
             .await
             .map_err(|e| AppError::Business {
-                message: format!("マッチング通知の送信に失敗しました: {}", e),
+                message: format!("マッチング通知の送信に失敗しました: {e}"),
             })?;
 
         info!(
@@ -424,7 +424,7 @@ impl AutoMatchingTaskExecutor {
                     if s > 0 {
                         element_map
                             .get(&s)
-                            .map(|name| format!("<@{}>: {}", user_id, name))
+                            .map(|name| format!("<@{user_id}>: {name}"))
                     } else {
                         None
                     }

@@ -75,7 +75,7 @@ impl From<crate::errors::ServiceError> for AppError {
 
 impl From<crate::errors::GatewayError> for AppError {
     fn from(err: crate::errors::GatewayError) -> Self {
-        AppError::Generic(format!("Gateway error: {}", err))
+        AppError::Generic(format!("Gateway error: {err}"))
     }
 }
 

@@ -96,10 +96,10 @@ pub async fn auto_recruit_category_register(
             );
 
             if let Some(ch_id) = matching_channel_id {
-                message.push_str(&format!("\n**マッチングチャンネル:** <#{}>", ch_id));
+                message.push_str(&format!("\n**マッチングチャンネル:** <#{ch_id}>"));
             }
             if let Some(ch_id) = quest_channel_id {
-                message.push_str(&format!("\n**クエストチャンネル:** <#{}>", ch_id));
+                message.push_str(&format!("\n**クエストチャンネル:** <#{ch_id}>"));
             }
 
             ctx.send(
@@ -122,7 +122,7 @@ pub async fn auto_recruit_category_register(
                     )
                     .to_string()
                 }
-                _ => format!("エラー: {}", e),
+                _ => format!("エラー: {e}"),
             };
 
             ctx.send(

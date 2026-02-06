@@ -68,7 +68,7 @@ impl ReactionEmoji {
 impl std::fmt::Display for ReactionEmoji {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unicode(emoji) => write!(f, "{}", emoji),
+            Self::Unicode(emoji) => write!(f, "{emoji}"),
             Self::Custom { name, id, animated } => {
                 if *animated {
                     write!(f, "<a:{}:{}>", name, id.get())

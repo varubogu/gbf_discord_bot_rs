@@ -59,7 +59,7 @@ impl AutoRecruitmentNotificationService {
             .map_err(|e| {
                 error!(error = %e, channel_id, "マッチング通知の送信に失敗しました");
                 crate::types::AppError::Business {
-                    message: format!("マッチング通知の送信に失敗しました: {}", e),
+                    message: format!("マッチング通知の送信に失敗しました: {e}"),
                 }
             })?;
 
@@ -112,7 +112,7 @@ impl AutoRecruitmentNotificationService {
             .map_err(|e| {
                 error!(error = %e, channel_id, message_id, "メッセージの編集に失敗しました");
                 crate::types::AppError::Business {
-                    message: format!("メッセージの編集に失敗しました: {}", e),
+                    message: format!("メッセージの編集に失敗しました: {e}"),
                 }
             })?;
 
@@ -151,7 +151,7 @@ impl AutoRecruitmentNotificationService {
             .map_err(|e| {
                 error!(error = %e, channel_id, "再投票メッセージの送信に失敗しました");
                 crate::types::AppError::Business {
-                    message: format!("再投票メッセージの送信に失敗しました: {}", e),
+                    message: format!("再投票メッセージの送信に失敗しました: {e}"),
                 }
             })?;
 
@@ -195,7 +195,7 @@ impl AutoRecruitmentNotificationService {
             .map_err(|e| {
                 error!(error = %e, channel_id, "クエスト決定通知の送信に失敗しました");
                 crate::types::AppError::Business {
-                    message: format!("クエスト決定通知の送信に失敗しました: {}", e),
+                    message: format!("クエスト決定通知の送信に失敗しました: {e}"),
                 }
             })?;
 

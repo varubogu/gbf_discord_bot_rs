@@ -467,7 +467,7 @@ where
 
         if new_days == current_days {
             return Err(AppError::Business {
-                message: format!("募集日数は既に{}日です", new_days),
+                message: format!("募集日数は既に{new_days}日です"),
             });
         }
 
@@ -833,7 +833,7 @@ where
 
     // 最後に「選択済みのクエスト」ボタン付きメッセージを送信（ドメインモデル使用）
     let check_button = ButtonContent::new(
-        format!("auto_quest_selection_check:{}", guild_id),
+        format!("auto_quest_selection_check:{guild_id}"),
         "📋 選択済みのクエスト",
     )
     .with_style(ButtonStyleType::Secondary);

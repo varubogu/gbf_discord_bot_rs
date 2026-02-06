@@ -434,7 +434,7 @@ impl RecruitmentCreationService {
             let user_mentions: Vec<String> = params
                 .participant_user_ids
                 .iter()
-                .map(|user_id| format!("<@{}>", user_id))
+                .map(|user_id| format!("<@{user_id}>"))
                 .collect();
             message_content = format!("{}\n{message_content}", user_mentions.join(" "));
         }

@@ -274,7 +274,7 @@ where
             .edit_channel(channel_id, params)
             .await
             .map_err(|e| AppError::Business {
-                message: format!("チャンネル名の更新に失敗しました: {}", e),
+                message: format!("チャンネル名の更新に失敗しました: {e}"),
             })?;
 
         Ok(())

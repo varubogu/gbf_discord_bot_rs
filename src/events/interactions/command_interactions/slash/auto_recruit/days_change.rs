@@ -45,7 +45,7 @@ pub async fn auto_recruit_days_change(
         Ok(()) => {
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("✅ 自動募集の募集日数を{}日に変更しました。", days))
+                    .content(format!("✅ 自動募集の募集日数を{days}日に変更しました。"))
                     .ephemeral(true),
             )
             .await?;
@@ -63,7 +63,7 @@ pub async fn auto_recruit_days_change(
                     )
                     .to_string()
                 }
-                _ => format!("エラー: {}", e),
+                _ => format!("エラー: {e}"),
             };
 
             ctx.send(

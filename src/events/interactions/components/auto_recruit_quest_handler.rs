@@ -76,7 +76,7 @@ pub async fn handle_quest_selection_interaction(
                 .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new()
-                        .content(format!("✅ {}個のクエストを登録しました。", quest_count)),
+                        .content(format!("✅ {quest_count}個のクエストを登録しました。")),
                 )
                 .await?;
 
@@ -96,7 +96,7 @@ pub async fn handle_quest_selection_interaction(
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
+                    EditInteractionResponse::new().content(format!("エラー: {e}")),
                 )
                 .await?;
         }
