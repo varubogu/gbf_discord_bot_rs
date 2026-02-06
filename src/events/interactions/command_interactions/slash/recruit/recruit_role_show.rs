@@ -23,7 +23,8 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
     let app_state = &ctx.data().app_state;
 
     // Facadeを呼び出し
-    let settings = role_management::show_recruitment_notification_roles(app_state, guild_id.get()).await?;
+    let settings =
+        role_management::show_recruitment_notification_roles(app_state, guild_id.get()).await?;
 
     // 設定が存在しない場合
     if settings.all_recruitment_roles.is_empty() && settings.quest_recruitment_roles.is_empty() {

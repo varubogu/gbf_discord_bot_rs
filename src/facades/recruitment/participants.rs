@@ -325,7 +325,10 @@ where
         .with_text(content)
         .with_embed(embed_content);
 
-    match gateway.edit_message(channel_id, message_id, message_content).await {
+    match gateway
+        .edit_message(channel_id, message_id, message_content)
+        .await
+    {
         Ok(_) => {
             info!("メッセージ更新成功: message_id={}", message_id.get());
             Ok(())

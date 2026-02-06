@@ -485,7 +485,9 @@ where
 
     // Gatewayを使ってメッセージを更新
     let message_content = MessageContent::new().with_embed(embed_content);
-    gateway.edit_message(channel_id, message_id, message_content).await?;
+    gateway
+        .edit_message(channel_id, message_id, message_content)
+        .await?;
 
     info!("募集メッセージの参加者一覧を更新しました");
     Ok(())

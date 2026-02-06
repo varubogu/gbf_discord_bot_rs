@@ -1,10 +1,10 @@
+use crate::events::helpers::get_message_from_context;
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::events::helpers::get_message_from_context;
 use crate::types;
-use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::PoiseContext;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::domain_interface_result::CanCancelResult;
 use poise::serenity_prelude::{
     ButtonStyle, ComponentInteractionCollector, CreateActionRow, CreateButton, Message,
@@ -195,17 +195,13 @@ async fn execute_cancel_with_confirmation(
 
                     // events層でGatewayを作成
                     let app_state = &ctx.data().app_state;
-                    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+                    let gateway =
+                        PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
                     let locale = ctx.locale();
 
                     // キャンセル実行（facade層）
                     match CancelFacade::execute_cancel(
-                        app_state,
-                        &gateway,
-                        guild_id,
-                        channel_id,
-                        message_id,
-                        locale,
+                        app_state, &gateway, guild_id, channel_id, message_id, locale,
                     )
                     .await
                     {

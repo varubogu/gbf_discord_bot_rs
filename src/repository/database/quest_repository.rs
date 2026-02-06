@@ -168,9 +168,10 @@ impl QuestRepository for SeaOrmQuestRepository {
         }
 
         // 除外リストがある場合は、それらのクエストを除外
-        if let Some(ref excluded_ids) = excluded_quest_ids && !excluded_ids.is_empty() {
-            quests_query =
-                quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
+        if let Some(ref excluded_ids) = excluded_quest_ids
+            && !excluded_ids.is_empty()
+        {
+            quests_query = quests_query.filter(quests::Column::Id.is_not_in(excluded_ids.clone()));
         }
 
         let quests_by_name = quests_query

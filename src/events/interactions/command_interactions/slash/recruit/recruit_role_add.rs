@@ -1,7 +1,7 @@
+use crate::events::helpers::get_message_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::role_management;
 use crate::services::message::MessageTextId;
-use crate::events::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Role;
 use std::collections::HashMap;
@@ -89,8 +89,13 @@ pub async fn recruit_role_add(
     let app_state = &ctx.data().app_state;
 
     // Facadeを呼び出し
-    let added_count =
-        role_management::add_recruitment_notification_roles(app_state, guild_id.get(), &quest, role_ids).await?;
+    let added_count = role_management::add_recruitment_notification_roles(
+        app_state,
+        guild_id.get(),
+        &quest,
+        role_ids,
+    )
+    .await?;
 
     // 結果をユーザーに通知
     let mut params = HashMap::new();

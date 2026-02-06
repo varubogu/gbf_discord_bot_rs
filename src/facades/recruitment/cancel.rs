@@ -198,9 +198,13 @@ where
         let original_content = original_message.content.clone();
 
         // 2. リアクションから参加者一覧を取得（Gatewayを使用）
-        let participants =
-            get_participants_from_reactions(gateway, &original_message, channel_id_obj, message_id_obj)
-                .await?;
+        let participants = get_participants_from_reactions(
+            gateway,
+            &original_message,
+            channel_id_obj,
+            message_id_obj,
+        )
+        .await?;
 
         // 3. ロケール情報とguild_id取得
         let guild_id_i64 = Some(guild_id as i64);

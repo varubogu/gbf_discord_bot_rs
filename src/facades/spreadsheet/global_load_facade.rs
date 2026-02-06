@@ -78,7 +78,10 @@ pub async fn execute_global_load(app_state: &AppState) -> Result<GlobalLoadResul
             let app_state_arc = Arc::new(app_state.clone());
             let scheduler_facade = SchedulerFacade::new(app_state_arc);
 
-            let (schedule_generated, schedule_error) = match scheduler_facade.generate_schedules().await {
+            let (schedule_generated, schedule_error) = match scheduler_facade
+                .generate_schedules()
+                .await
+            {
                 Ok(_) => {
                     info!("通知スケジュール生成完了");
                     (true, None)

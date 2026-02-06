@@ -179,9 +179,8 @@ impl RecruitmentScheduleService {
             && recruit_time >= quest_start_time
         {
             return Err(crate::types::AppError::Business {
-                message:
-                    "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
-                        .to_string(),
+                message: "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
+                    .to_string(),
             });
         }
 
