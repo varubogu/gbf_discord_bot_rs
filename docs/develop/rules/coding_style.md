@@ -152,8 +152,19 @@ let result = some_function(param1, param2);
 
 ### 行長制限
 
-- **推奨**: 1行100文字以内
-- **最大**: 120文字
+### 文字列フォーマット（format!マクロ）
+
+- **禁止**: `format!("{}", a)` のようにフォーマット文字列と引数を分離する書き方は使用禁止
+- **推奨**: 変数埋め込みを使用して `format!("{a}")` の形式で記述すること
+- **理由**: 可読性向上と、`cargo clippy` による警告検出の回避のため
+
+```rust
+// ❌ 禁止
+let s = format!("{}", user_name);
+
+// ✅ 推奨
+let s = format!("{user_name}");
+```
 - 長い行は適切な位置で改行する
 
 ## import文の整理
@@ -356,7 +367,7 @@ use tracing::{error, warn, info, debug, trace};
 // ERROR: システムエラー、予期しない例外
 error!(error = %e, user_id = %user_id, "ユーザー作成に失敗しました");
 
-// WARN: 業務例外、リトライ可能なエラー  
+// WARN: 業務例外、リトライ可能なエラー
 warn!(recruitment_id = %id, "募集が満員のため参加を拒否しました");
 
 // INFO: 重要な業務処理の開始・終了
@@ -501,7 +512,7 @@ pub use settings::*;
 pub struct PublicStruct;          // 外部公開が必要
 struct PrivateStruct;             // モジュール内部のみ
 
-pub fn public_function() {}       // 外部公開が必要  
+pub fn public_function() {}       // 外部公開が必要
 fn private_function() {}          // モジュール内部のみ
 
 // ✅ 正しい: 条件付きpub

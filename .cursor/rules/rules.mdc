@@ -201,7 +201,7 @@ let recruitments = battle_recruitment::Entity::find()
 // Discord権限の確認
 pub fn check_admin_permissions(ctx: &PoiseContext) -> Result<(), PermissionError> {
     let member = ctx.author_member().ok_or(PermissionError::MemberInfoRequired)?;
-    
+
     if !member.permissions(ctx.cache())?.contains(Permissions::ADMINISTRATOR) {
         return Err(PermissionError::AdminRequired);
     }
@@ -219,10 +219,10 @@ async fn test_create_recruitment_success() {
     // Arrange
     let mut mock_repo = MockTestBattleRecruitmentRepository::new();
     let service = NewRecruitmentService::new(Arc::new(mock_repo));
-    
+
     // Act
     let result = service.create_recruitment(&create_data, &mock_tx).await;
-    
+
     // Assert
     assert!(result.is_ok());
 }
@@ -247,8 +247,12 @@ async fn test_create_recruitment_end_to_end() {
 ```rust
 // ✅ 推奨: 借用の活用
 pub fn format_message(&self, recruitment: &Recruitment) -> String {
-    format!("募集: {}", recruitment.quest_name())
+    let quest_name = recruitment.quest_name();
+    format!("募集: {quest_name}")
 }
+
+// ルール: `format!("{}", a)` のような書き方は禁止です。`format!("{a}")` の埋め込み形式を使用してください。
+// 守らない場合、`cargo clippy`で警告が検出されます。
 
 // ❌ 避けるべき: 不要なclone
 pub fn bad_format(&self, recruitment: Recruitment) -> String {

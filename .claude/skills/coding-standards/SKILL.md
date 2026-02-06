@@ -115,6 +115,20 @@ info!(quest_name = %quest_name, "募集作成を開始しました");
 debug!(params = ?params, "リクエストパラメータ");
 ```
 
+### 文字列フォーマット（format!マクロ）
+
+- **禁止**: `format!("{}", a)` のような書き方は避けること
+- **推奨**: 変数埋め込み `format!("{a}")` を使うこと
+- **備考**: この規約を守らないと `cargo clippy` による警告が発生します
+
+```rust
+// ❌ 禁止
+let s = format!("{}", user_name);
+
+// ✅ 推奨
+let s = format!("{user_name}");
+```
+
 ### Log Levels
 
 | Level | Purpose | Examples |
