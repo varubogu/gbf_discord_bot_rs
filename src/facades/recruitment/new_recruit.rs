@@ -53,6 +53,7 @@ pub struct RecruitmentResult {
 /// # 戻り値
 /// RecruitmentResult - 募集ID、表示用メッセージ、Embed、コンポーネント等
 /// 注: message_idは0で仮保存されるため、events層でメッセージ送信後に`update_message_id`を呼び出すこと
+#[allow(clippy::too_many_arguments)]
 #[instrument(level = "debug", skip(app_state, gateway))]
 pub async fn new_recruitment<G>(
     app_state: &AppState,
