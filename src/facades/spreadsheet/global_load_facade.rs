@@ -1,46 +1,35 @@
 use crate::facades::scheduler::SchedulerFacade;
-use crate::services::permission::is_bot_admin_server;
 use crate::services::spreadsheet::global_loader_service::{
     GlobalLoaderService, GlobalLoaderServiceImpl,
 };
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
 use std::env;
 use std::sync::Arc;
 use tracing::{error, info, instrument, warn};
 
+/// グローバルスプレッドシート読み込み結果
+#[derive(Debug)]
+pub struct GlobalLoadResult {
+    /// データ読み込みが成功したか
+    pub data_loaded: bool,
+    /// スケジュール生成が成功したか
+    pub schedule_generated: bool,
+    /// スケジュール生成エラーメッセージ（失敗時のみ）
+    pub schedule_error: Option<String>,
+}
+
 /// グローバルスプレッドシートからデータを読み込み
 ///
 /// # 引数
-/// - `ctx`: PoiseContext
+/// - `app_state`: アプリケーション状態
 ///
 /// # 戻り値
-/// - `Result<()>`: 処理結果
-#[instrument(level = "debug", skip(ctx))]
-pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
+/// - `Result<GlobalLoadResult>`: 処理結果
+#[instrument(level = "debug", skip(app_state))]
+pub async fn execute_global_load(app_state: &AppState) -> Result<GlobalLoadResult> {
     info!("GlobalLoadFacade::execute_global_load - グローバルスプレッドシート読み込み処理を開始");
 
-    // 管理者専用サーバーかチェック
-    let is_admin_server = is_bot_admin_server(ctx).await.map_err(|e| {
-        error!("Admin server check failed: {}", e);
-        e
-    })?;
-
-    if !is_admin_server {
-        ctx.say("このコマンドは管理者専用サーバーでのみ実行可能です")
-            .await?;
-        return Ok(());
-    }
-
-    let init_message = "グローバルスプレッドシートからデータ読み込み中...";
-    ctx.say(init_message).await?;
-
-    info!(
-        "User {} started global spreadsheet load in admin server",
-        ctx.author().id
-    );
-
-    let app_state = &ctx.data().app_state;
     // グローバルデータ更新にはGlobalロールを使用
     let txn = app_state.global_db().begin().await?;
 
@@ -82,8 +71,6 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
     match result {
         Ok(_) => {
             txn.commit().await?;
-            ctx.say("グローバルスプレッドシートからデータ読み込み完了")
-                .await?;
             info!("グローバルスプレッドシート読み込み処理完了");
 
             // スケジュール生成を自動実行
@@ -91,25 +78,26 @@ pub async fn execute_global_load(ctx: &PoiseContext<'_>) -> Result<()> {
             let app_state_arc = Arc::new(app_state.clone());
             let scheduler_facade = SchedulerFacade::new(app_state_arc);
 
-            match scheduler_facade.generate_schedules().await {
+            let (schedule_generated, schedule_error) = match scheduler_facade.generate_schedules().await {
                 Ok(_) => {
-                    ctx.say("✅ 通知スケジュールの生成が完了しました").await?;
                     info!("通知スケジュール生成完了");
+                    (true, None)
                 }
                 Err(e) => {
                     warn!(error = %e, "通知スケジュール生成に失敗しました（データ読み込みは成功）");
-                    ctx.say("⚠️ データ読み込みは完了しましたが、スケジュール生成に失敗しました")
-                        .await?;
+                    (false, Some(e.to_string()))
                 }
-            }
+            };
 
-            Ok(())
+            Ok(GlobalLoadResult {
+                data_loaded: true,
+                schedule_generated,
+                schedule_error,
+            })
         }
         Err(e) => {
             txn.rollback().await?;
             error!(error = %e, "グローバルスプレッドシート読み込み処理失敗");
-            ctx.say("グローバルスプレッドシートからデータ読み込み失敗")
-                .await?;
             Err(e)
         }
     }

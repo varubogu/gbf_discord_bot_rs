@@ -1,6 +1,6 @@
 /// メッセージサービス用ヘルパー関数
 use crate::services::message::{MessageService, MessageTextId};
-use crate::types::PoiseContext;
+use sea_orm::DatabaseConnection;
 use std::collections::HashMap;
 
 /// メッセージIDとして使用できる型のトレイト
@@ -26,44 +26,26 @@ impl IntoMessageId for String {
     }
 }
 
-/// PoiseContextから最適なロケールを取得
-///
-/// 優先順位: ユーザーロケール → ギルドロケール → None（デフォルトはmessage_serviceで"en"にフォールバック）
-pub fn get_locale_from_context(ctx: &PoiseContext<'_>) -> Option<String> {
-    // Poiseのコンテキストからユーザーまたはギルドのロケールを取得
-    // Discord APIから返される locale() を使用
-    ctx.locale().map(|s| s.to_string())
-}
-
-/// PoiseContextからギルドIDを取得
-pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
-    ctx.guild_id().map(|id| id.get() as i64)
-}
-
-/// PoiseContextを使用してメッセージを取得
+/// 指定されたコンテキスト情報を使用してメッセージを取得
 ///
 /// # 引数
-/// * `ctx` - Poiseコンテキスト
+/// * `db` - データベース接続
 /// * `message_service` - メッセージサービス
 /// * `message_id` - メッセージID（MessageId enum または &str）
 /// * `params` - パラメータ
-pub async fn get_message_from_context<T: IntoMessageId>(
-    ctx: &PoiseContext<'_>,
+/// * `guild_id` - ギルドID（省略可能）
+/// * `locale` - ロケール（省略可能）
+pub async fn get_message<T: IntoMessageId>(
+    db: &DatabaseConnection,
     message_service: &MessageService,
     message_id: T,
     params: HashMap<String, String>,
+    guild_id: Option<i64>,
+    locale: Option<&str>,
 ) -> Result<String, crate::errors::ServiceError> {
-    let guild_id = get_guild_id_from_context(ctx);
-    let locale = get_locale_from_context(ctx);
     let message_id_str = message_id.into_message_id();
 
     message_service
-        .get_message(
-            ctx.data().app_state.guild_db(),
-            &message_id_str,
-            params,
-            guild_id,
-            locale.as_deref(),
-        )
+        .get_message(db, &message_id_str, params, guild_id, locale)
         .await
 }

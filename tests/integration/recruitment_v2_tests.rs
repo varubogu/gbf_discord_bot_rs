@@ -3,6 +3,7 @@
 use gbf_discord_bot_rs::services::guild_environment_service::ElementEmojis;
 use gbf_discord_bot_rs::services::recruitment::new;
 use gbf_discord_bot_rs::types::RecruitmentComponentId;
+use gbf_discord_bot_rs::types::discord::ComponentContent;
 
 /// ComponentIdのパーステスト
 #[test]
@@ -54,7 +55,7 @@ fn test_component_id_parse_invalid() {
     assert!(result.is_err());
 }
 
-/// ボタン生成のテスト
+/// ボタン生成のテスト（ドメイン型版）
 #[test]
 fn test_create_recruitment_buttons_six_elements() {
     let element_emojis = ElementEmojis::default_emojis();
@@ -63,30 +64,30 @@ fn test_create_recruitment_buttons_six_elements() {
     // 3行のボタンが生成されることを確認
     assert_eq!(buttons.len(), 3);
 
-    // 各行のボタン数を確認
+    // 各行のボタン数を確認（ドメイン型ActionRowContentを使用）
     // 行1: 属性1-3 (3個)
     // 行2: 属性4-6 (3個)
     // 行3: 全属性可能 + 全て取り消し (2個)
-    match &buttons[0] {
-        poise::serenity_prelude::CreateActionRow::Buttons(btns) => {
-            assert_eq!(btns.len(), 3, "第1行は3つのボタンを持つべき");
-        }
-        _ => panic!("第1行はボタン行であるべき"),
-    }
+    let button_count_row1 = buttons[0]
+        .components
+        .iter()
+        .filter(|c| matches!(c, ComponentContent::Button(_)))
+        .count();
+    assert_eq!(button_count_row1, 3, "第1行は3つのボタンを持つべき");
 
-    match &buttons[1] {
-        poise::serenity_prelude::CreateActionRow::Buttons(btns) => {
-            assert_eq!(btns.len(), 3, "第2行は3つのボタンを持つべき");
-        }
-        _ => panic!("第2行はボタン行であるべき"),
-    }
+    let button_count_row2 = buttons[1]
+        .components
+        .iter()
+        .filter(|c| matches!(c, ComponentContent::Button(_)))
+        .count();
+    assert_eq!(button_count_row2, 3, "第2行は3つのボタンを持つべき");
 
-    match &buttons[2] {
-        poise::serenity_prelude::CreateActionRow::Buttons(btns) => {
-            assert_eq!(btns.len(), 2, "第3行は2つのボタンを持つべき");
-        }
-        _ => panic!("第3行はボタン行であるべき"),
-    }
+    let button_count_row3 = buttons[2]
+        .components
+        .iter()
+        .filter(|c| matches!(c, ComponentContent::Button(_)))
+        .count();
+    assert_eq!(button_count_row3, 2, "第3行は2つのボタンを持つべき");
 }
 
 #[test]
@@ -97,13 +98,13 @@ fn test_create_recruitment_buttons_simple() {
     // 1行のボタンが生成されることを確認
     assert_eq!(buttons.len(), 1);
 
-    // 参加ボタン + 全て取り消しボタン (2個)
-    match &buttons[0] {
-        poise::serenity_prelude::CreateActionRow::Buttons(btns) => {
-            assert_eq!(btns.len(), 2, "シンプル参加は2つのボタンを持つべき");
-        }
-        _ => panic!("ボタン行であるべき"),
-    }
+    // 参加ボタン + 全て取り消しボタン (2個)（ドメイン型を使用）
+    let button_count = buttons[0]
+        .components
+        .iter()
+        .filter(|c| matches!(c, ComponentContent::Button(_)))
+        .count();
+    assert_eq!(button_count, 2, "シンプル参加は2つのボタンを持つべき");
 }
 
 #[test]
@@ -114,12 +115,12 @@ fn test_create_recruitment_buttons_other_battle_style() {
 
     assert_eq!(buttons.len(), 1);
 
-    match &buttons[0] {
-        poise::serenity_prelude::CreateActionRow::Buttons(btns) => {
-            assert_eq!(btns.len(), 2, "ワンパンは2つのボタンを持つべき");
-        }
-        _ => panic!("ボタン行であるべき"),
-    }
+    let button_count = buttons[0]
+        .components
+        .iter()
+        .filter(|c| matches!(c, ComponentContent::Button(_)))
+        .count();
+    assert_eq!(button_count, 2, "ワンパンは2つのボタンを持つべき");
 }
 
 // Note: create_message_content関数のテストは、実際のDB接続が必要なため、

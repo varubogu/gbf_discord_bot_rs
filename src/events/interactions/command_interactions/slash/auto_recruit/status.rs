@@ -60,7 +60,7 @@ pub async fn auto_recruit_status(ctx: PoiseContext<'_>) -> Result<()> {
                     let hours_str = slot
                         .hours
                         .iter()
-                        .map(|h| format!("{}時", h))
+                        .map(|h| format!("{h}時"))
                         .collect::<Vec<_>>()
                         .join(", ");
                     message.push_str(&format!(
@@ -81,7 +81,7 @@ pub async fn auto_recruit_status(ctx: PoiseContext<'_>) -> Result<()> {
             error!(error = %e, guild_id = guild_id.get(), user_id, "参加状況の取得に失敗しました");
             ctx.send(
                 poise::CreateReply::default()
-                    .content(format!("エラー: {}", e))
+                    .content(format!("エラー: {e}"))
                     .ephemeral(true),
             )
             .await?;

@@ -1,3 +1,4 @@
+use crate::gateway::DiscordGateway;
 use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
@@ -12,7 +13,6 @@ use crate::services::schedule::recurring_recruitment_task_executor::RecurringRec
 use crate::services::schedule::{NotificationService, RecruitmentScheduleService};
 use crate::types::Result;
 use chrono::{Duration, Utc};
-use poise::serenity_prelude::Http;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -21,13 +21,15 @@ use tracing::{debug, error, info, warn};
 /// スケジューラーマネージャー
 ///
 /// tokio-cron-schedulerを使用して、定期的にタスクをプリロードし、実行する
-pub struct SchedulerManager<
+pub struct SchedulerManager<G, R, P>
+where
+    G: DiscordGateway + Send + Sync + 'static,
     R: BattleRecruitmentsRepository + 'static,
     P: RecruitmentParticipantsRepository + 'static,
-> {
+{
     scheduler: JobScheduler,
     db: Arc<DatabaseConnection>,
-    http: Arc<Http>,
+    gateway: Arc<G>,
     task_repo: Arc<SeaOrmScheduledTaskRepository>,
     dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
     recruitment_repo: Arc<R>,
@@ -35,13 +37,25 @@ pub struct SchedulerManager<
     message_service: Arc<MessageService>,
 }
 
-impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsRepository + 'static>
-    SchedulerManager<R, P>
+impl<G, R, P> SchedulerManager<G, R, P>
+where
+    G: DiscordGateway + Send + Sync + 'static,
+    R: BattleRecruitmentsRepository + 'static,
+    P: RecruitmentParticipantsRepository + 'static,
 {
     /// 新しいSchedulerManagerを作成
+    ///
+    /// # Arguments
+    /// * `db` - データベース接続
+    /// * `gateway` - Discord Gateway（トレイト境界による抽象化）
+    /// * `task_repo` - スケジュールタスクリポジトリ
+    /// * `dissolution_repo` - 解散タスクリポジトリ
+    /// * `recruitment_repo` - 募集リポジトリ
+    /// * `participants_repo` - 参加者リポジトリ
+    /// * `message_service` - メッセージサービス
     pub async fn new(
         db: Arc<DatabaseConnection>,
-        http: Arc<Http>,
+        gateway: Arc<G>,
         task_repo: Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: Arc<R>,
@@ -55,7 +69,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         Ok(Self {
             scheduler,
             db,
-            http,
+            gateway,
             task_repo,
             dissolution_repo,
             recruitment_repo,
@@ -72,7 +86,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
 
         // 10秒間隔でタスクをプリロードするジョブを作成
         let db = Arc::clone(&self.db);
-        let http = Arc::clone(&self.http);
+        let gateway = Arc::clone(&self.gateway);
         let task_repo = Arc::clone(&self.task_repo);
         let dissolution_repo = Arc::clone(&self.dissolution_repo);
         let recruitment_repo = Arc::clone(&self.recruitment_repo);
@@ -81,7 +95,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
 
         let job = Job::new_async("*/10 * * * * *", move |_uuid, _lock| {
             let db = Arc::clone(&db);
-            let http = Arc::clone(&http);
+            let gateway = Arc::clone(&gateway);
             let task_repo = Arc::clone(&task_repo);
             let dissolution_repo = Arc::clone(&dissolution_repo);
             let recruitment_repo = Arc::clone(&recruitment_repo);
@@ -91,7 +105,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
             Box::pin(async move {
                 if let Err(e) = Self::preload_and_execute_tasks(
                     &db,
-                    &http,
+                    &gateway,
                     &task_repo,
                     &dissolution_repo,
                     &recruitment_repo,
@@ -134,7 +148,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
     /// 現在時刻から20秒先までの未実行タスクを取得し、実行時刻に達しているものを実行する
     async fn preload_and_execute_tasks(
         db: &Arc<DatabaseConnection>,
-        http: &Arc<Http>,
+        gateway: &Arc<G>,
         task_repo: &Arc<SeaOrmScheduledTaskRepository>,
         dissolution_repo: &Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: &Arc<R>,
@@ -169,7 +183,8 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
         use crate::repository::database::schedule::SeaOrmNotificationRepository;
         use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
-        let notification_service = NotificationService::new(Arc::clone(http));
+        // Gateway経由でNotificationServiceを作成
+        let notification_service = NotificationService::new(Arc::clone(gateway));
         let notification_repo = SeaOrmNotificationRepository::new();
 
         for task in tasks {
@@ -229,7 +244,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             Arc::clone(message_service),
                         );
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散タスクを実行しました");
                             }
@@ -263,7 +278,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             recruitment_creation_service,
                         );
 
-                        match executor.execute(&txn, db, http, task.id).await {
+                        match executor.execute(&txn, db, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "定期募集タスクを実行しました");
                             }
@@ -278,7 +293,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                         info!(task_id = task.id, "解散（人数不足）タスクを実行します");
                         let executor = DismissalTaskExecutor::new(Arc::clone(message_service));
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "解散（人数不足）タスクを実行しました");
                             }
@@ -303,7 +318,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             channel_repo,
                         );
 
-                        match executor.execute(&txn, http, task.id).await {
+                        match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動募集日付ローテーションタスクを実行しました");
                             }
@@ -325,7 +340,7 @@ impl<R: BattleRecruitmentsRepository + 'static, P: RecruitmentParticipantsReposi
                             recruitment_creation_service,
                         );
 
-                        match executor.execute(&txn, db, http, task.id).await {
+                        match executor.execute(&txn, db, gateway.as_ref(), task.id).await {
                             Ok(result) => {
                                 info!(task_id = task.id, result = ?result, "自動マッチングタスクを実行しました");
                             }

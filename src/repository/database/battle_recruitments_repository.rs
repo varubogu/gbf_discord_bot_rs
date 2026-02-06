@@ -35,9 +35,10 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         params: crate::repository::CreateBattleRecruitmentParams,
     ) -> Result<BattleRecruitments> {
         let mut active_model = ActiveModel::new();
-        active_model.guild_id = Set(params.guild_id as i64); // u64 → i64に変換
-        active_model.channel_id = Set(params.channel_id as i64); // u64 → i64に変換
-        active_model.message_id = Set(params.message_id as i64); // u64 → i64に変換
+        // ドメイン型からi64に変換してDBに保存
+        active_model.guild_id = Set(params.guild_id.get() as i64);
+        active_model.channel_id = Set(params.channel_id.get() as i64);
+        active_model.message_id = Set(params.message_id.get() as i64);
         active_model.quest_id = Set(params.quest_id);
         active_model.battle_style_id = Set(params.battle_style_id);
         active_model.quest_start_at = Set(params.quest_start_at);
@@ -50,17 +51,18 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
     async fn get_by_message<'c, C>(
         &self,
         db: &'c C,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
+        guild_id: crate::types::discord::DiscordGuildId,
+        channel_id: crate::types::discord::DiscordChannelId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<Option<BattleRecruitments>>
     where
         C: sea_orm::ConnectionTrait,
     {
+        // ドメイン型からi64に変換してDBクエリ
         let result = BattleRecruitmentEntity::find()
-            .filter(Column::GuildId.eq(guild_id as i64)) // u64 → i64に変換
-            .filter(Column::ChannelId.eq(channel_id as i64)) // u64 → i64に変換
-            .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
+            .filter(Column::GuildId.eq(guild_id.get() as i64))
+            .filter(Column::ChannelId.eq(channel_id.get() as i64))
+            .filter(Column::MessageId.eq(message_id.get() as i64))
             .one(db)
             .await
             .map_err(AppError::Database)?;
@@ -71,14 +73,15 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
     async fn get_by_message_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
+        guild_id: crate::types::discord::DiscordGuildId,
+        channel_id: crate::types::discord::DiscordChannelId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<Option<BattleRecruitments>> {
+        // ドメイン型からi64に変換してDBクエリ
         let result = BattleRecruitmentEntity::find()
-            .filter(Column::GuildId.eq(guild_id as i64)) // u64 → i64に変換
-            .filter(Column::ChannelId.eq(channel_id as i64)) // u64 → i64に変換
-            .filter(Column::MessageId.eq(message_id as i64)) // u64 → i64に変換
+            .filter(Column::GuildId.eq(guild_id.get() as i64))
+            .filter(Column::ChannelId.eq(channel_id.get() as i64))
+            .filter(Column::MessageId.eq(message_id.get() as i64))
             .one(txn)
             .await
             .map_err(AppError::Database)?;
@@ -103,7 +106,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         &self,
         db: &'c C,
         recruitment_id: i32,
-        message_id: poise::serenity_prelude::MessageId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()>
     where
         C: sea_orm::ConnectionTrait,
@@ -127,7 +130,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         &self,
         txn: &DatabaseTransaction,
         recruitment_id: i32,
-        message_id: poise::serenity_prelude::MessageId,
+        message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()> {
         let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
             .one(txn)
@@ -188,6 +191,30 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
 
         active_model.full_notification_sent = Set(sent);
         active_model.update(txn).await.map_err(AppError::Database)?;
+
+        Ok(())
+    }
+
+    async fn update_message_id<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+        message_id: crate::types::discord::DiscordMessageId,
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        let mut active_model: ActiveModel = BattleRecruitmentEntity::find_by_id(recruitment_id)
+            .one(db)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::Business {
+                message: "募集が見つかりませんでした".to_string(),
+            })?
+            .into();
+
+        active_model.message_id = Set(message_id.get() as i64);
+        active_model.update(db).await.map_err(AppError::Database)?;
 
         Ok(())
     }

@@ -1,4 +1,5 @@
 pub mod facade;
+pub mod gateway;
 pub mod presentation;
 /// エラー型定義モジュール
 ///
@@ -8,6 +9,7 @@ pub mod service;
 
 // Re-exports
 pub use facade::FacadeError;
+pub use gateway::GatewayError;
 pub use presentation::PresentationError;
 pub use repository::RepositoryError;
 pub use service::{BusinessRuleError, ExternalServiceError, ServiceError, ValidationError};

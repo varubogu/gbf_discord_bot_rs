@@ -1,3 +1,4 @@
+use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::database::schedule::{
     SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskRepository,
@@ -10,7 +11,6 @@ use crate::services::recruitment::recruitment_creation_service::RecruitmentCreat
 use crate::services::schedule::{CalculatedRecruitmentTime, RecruitmentScheduleService};
 use crate::types::{AppError, Result};
 use chrono::{Duration, Utc};
-use poise::serenity_prelude::Http;
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -62,7 +62,7 @@ impl RecurringRecruitmentTaskExecutor {
     /// # 引数
     /// * `txn` - データベーストランザクション
     /// * `db_conn` - データベース接続
-    /// * `http` - Discord HTTP クライアント
+    /// * `gateway` - Discord Gateway
     /// * `task_id` - 実行対象のタスクID
     ///
     /// # 戻り値
@@ -71,11 +71,11 @@ impl RecurringRecruitmentTaskExecutor {
     /// # エラー
     /// * タスクが見つからない場合
     /// * DB操作でエラーが発生した場合
-    pub async fn execute(
+    pub async fn execute<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         task_id: i32,
     ) -> Result<RecurringRecruitmentExecutionResult> {
         info!(task_id, "定期募集タスク実行開始");
@@ -159,7 +159,7 @@ impl RecurringRecruitmentTaskExecutor {
         };
 
         self.recruitment_creation_service
-            .create_recruitment_from_schedule(txn, db_conn, http, &calculated_time)
+            .create_recruitment_from_schedule(txn, db_conn, gateway, &calculated_time)
             .await?;
 
         info!(task_id, schedule_id, "マルチ募集を作成しました");
@@ -216,34 +216,34 @@ impl RecurringRecruitmentTaskExecutor {
             )?;
 
             // 最初に見つかった未来の募集開始日時を使用
-            if let Some(next_time) = next_times.first() {
-                if next_time.recruit_start_at > now {
-                    // 未来日時が見つかった場合、scheduled_tasksに登録
-                    let task = self
-                        .task_repo
-                        .create(
-                            txn,
-                            next_time.recruit_start_at,
-                            ScheduledTaskType::RecurringRecruitment as i32,
-                            Some(next_time.guild_id),
-                            Some(next_time.channel_id),
-                        )
-                        .await?;
+            if let Some(next_time) = next_times.first()
+                && next_time.recruit_start_at > now
+            {
+                // 未来日時が見つかった場合、scheduled_tasksに登録
+                let task = self
+                    .task_repo
+                    .create(
+                        txn,
+                        next_time.recruit_start_at,
+                        ScheduledTaskType::RecurringRecruitment as i32,
+                        Some(next_time.guild_id),
+                        Some(next_time.channel_id),
+                    )
+                    .await?;
 
-                    // scheduled_task_recurring_recruitmentsに関連付けを登録
-                    self.recurring_repo
-                        .create(txn, task.id, schedule.id)
-                        .await?;
+                // scheduled_task_recurring_recruitmentsに関連付けを登録
+                self.recurring_repo
+                    .create(txn, task.id, schedule.id)
+                    .await?;
 
-                    info!(
-                        schedule_id = schedule.id,
-                        task_id = task.id,
-                        recruit_start_at = %next_time.recruit_start_at,
-                        "次回実行タスクを登録しました"
-                    );
+                info!(
+                    schedule_id = schedule.id,
+                    task_id = task.id,
+                    recruit_start_at = %next_time.recruit_start_at,
+                    "次回実行タスクを登録しました"
+                );
 
-                    return Ok(task.id);
-                }
+                return Ok(task.id);
             }
 
             // 次の検索範囲に進む

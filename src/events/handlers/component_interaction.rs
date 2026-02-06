@@ -1,6 +1,9 @@
 use crate::facades::recruitment::button_handler;
+use crate::gateway::PoiseDiscordGateway;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::{PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};
+use std::sync::Arc;
 use tracing::{debug, error, info};
 
 /// ComponentInteractionイベントハンドラ
@@ -177,20 +180,70 @@ pub async fn on_component_interaction(
         // ただし、セレクトメニューは複数の属性を一度に登録するため、
         // カスタムIDを動的に生成してhandle_recruitment_buttonを呼び出すのではなく、
         // 直接ロジックを実装する
+
+        // interactionからドメイン型を抽出
+        let guild_id = match interaction.guild_id {
+            Some(gid) => DiscordGuildId::new(gid.get()),
+            None => {
+                error!("ギルドIDが取得できませんでした");
+                if let Err(e) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content("❌ エラー: サーバー内でのみ使用できます"),
+                    )
+                    .await
+                {
+                    error!(error = %e, "エラーメッセージの送信に失敗しました");
+                }
+                return Ok(());
+            }
+        };
+        let channel_id = DiscordChannelId::new(interaction.channel_id.get());
+        let message_id = DiscordMessageId::new(interaction.message.id.get());
+        let user_id = interaction.user.id.get();
+
+        // Gatewayを作成
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+
         match button_handler::handle_recruitment_select_menu(
-            ctx,
-            interaction,
+            &gateway,
             &data.app_state,
+            guild_id,
+            channel_id,
+            message_id,
+            user_id,
             element_ids,
         )
         .await
         {
-            Ok(_) => {
+            Ok(result) => {
                 info!("属性セレクトメニューの処理が正常に完了しました");
+                // events層でedit_responseを呼び出す
+                if let Err(e) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content(&result.message),
+                    )
+                    .await
+                {
+                    error!(error = %e, "応答メッセージの送信に失敗しました");
+                }
             }
             Err(e) => {
                 error!(error = %e, "属性セレクトメニューの処理中にエラーが発生しました");
-                // エラーはFacade層で既にユーザーに通知済み
+                // エラーメッセージをedit_responseで送信
+                if let Err(edit_err) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content(format!("❌ エラー: {}", e.user_message())),
+                    )
+                    .await
+                {
+                    error!(error = %edit_err, "エラーメッセージの送信に失敗しました");
+                }
             }
         }
     }
@@ -204,13 +257,69 @@ pub async fn on_component_interaction(
 
         info!(custom_id = %custom_id, "募集ボタンのクリックを検出");
 
-        match button_handler::handle_recruitment_button(ctx, interaction, &data.app_state).await {
-            Ok(_) => {
+        // interactionからドメイン型を抽出
+        let guild_id = match interaction.guild_id {
+            Some(gid) => DiscordGuildId::new(gid.get()),
+            None => {
+                error!("ギルドIDが取得できませんでした");
+                if let Err(e) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content("❌ エラー: サーバー内でのみ使用できます"),
+                    )
+                    .await
+                {
+                    error!(error = %e, "エラーメッセージの送信に失敗しました");
+                }
+                return Ok(());
+            }
+        };
+        let channel_id = DiscordChannelId::new(interaction.channel_id.get());
+        let message_id = DiscordMessageId::new(interaction.message.id.get());
+        let user_id = interaction.user.id.get();
+
+        // Gatewayを作成
+        let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+
+        match button_handler::handle_recruitment_button(
+            &gateway,
+            &data.app_state,
+            guild_id,
+            channel_id,
+            message_id,
+            user_id,
+            custom_id,
+        )
+        .await
+        {
+            Ok(result) => {
                 info!("募集ボタンの処理が正常に完了しました");
+                // events層でedit_responseを呼び出す
+                if let Err(e) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content(&result.message),
+                    )
+                    .await
+                {
+                    error!(error = %e, "応答メッセージの送信に失敗しました");
+                }
             }
             Err(e) => {
                 error!(error = %e, "募集ボタンの処理中にエラーが発生しました");
-                // エラーはFacade層で既にユーザーに通知済み
+                // エラーメッセージをedit_responseで送信
+                if let Err(edit_err) = interaction
+                    .edit_response(
+                        &ctx.http,
+                        poise::serenity_prelude::EditInteractionResponse::new()
+                            .content(format!("❌ エラー: {}", e.user_message())),
+                    )
+                    .await
+                {
+                    error!(error = %edit_err, "エラーメッセージの送信に失敗しました");
+                }
             }
         }
     } else {

@@ -1,21 +1,18 @@
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::ButtonStyle;
-use poise::serenity_prelude::ReactionType;
-use poise::serenity_prelude::all::{
-    CreateActionRow, CreateButton, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption,
-};
 use std::collections::HashMap;
 use tracing::info;
 
 use crate::models::quests::Quest;
+use crate::presenter::RecruitmentPresenter;
 use crate::repository::QuestRepository;
 use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
-use crate::types::PoiseContext;
+use crate::types::discord::{
+    ActionRowContent, DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent,
+};
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
@@ -28,8 +25,8 @@ pub struct RecruitmentData {
     pub guild_id: u64,
     pub expiry_date: DateTime<chrono::Utc>,
     pub message_content: String,
-    pub embed: CreateEmbed,
-    pub reactions: Vec<poise::serenity_prelude::ReactionType>,
+    pub embed_content: EmbedContent,
+    pub reaction_emojis: Vec<String>,
     pub element_emojis: ElementEmojis,
 }
 
@@ -100,16 +97,13 @@ where
             ))
         })?;
 
-    // reactionsをパース
+    // reactionsをパース（絵文字文字列として取得）
     // 6属性の場合はelement_emojisから取得、それ以外はbattle_styleのreactionsをパース
-    let reactions = if battle_style.display_name == "6属性" {
+    let reaction_emojis: Vec<String> = if battle_style.display_name == "6属性" {
         let emojis_array = element_emojis.as_array();
-        emojis_array
-            .iter()
-            .map(|emoji| ReactionType::Unicode(emoji.to_string()))
-            .collect()
+        emojis_array.iter().map(|emoji| emoji.to_string()).collect()
     } else {
-        parse_reactions(battle_style.reactions.as_deref().unwrap_or("✅"))
+        parse_reaction_emojis(battle_style.reactions.as_deref().unwrap_or("✅"))
     };
 
     // メッセージ内容を作成（解散時刻なし - create_recruitment_dataでは解散時刻情報がないため）
@@ -126,7 +120,8 @@ where
 
     // 初期参加者一覧を作成
     let initial_participants_text =
-        create_initial_participants_text(db, &reactions, Some(params.guild_id as i64)).await?;
+        create_initial_participants_text(db, &reaction_emojis, Some(params.guild_id as i64))
+            .await?;
 
     Ok(RecruitmentData {
         quest,
@@ -136,44 +131,13 @@ where
         guild_id: params.guild_id,
         expiry_date,
         message_content,
-        embed: poise::serenity_prelude::CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff),
-        reactions,
+        embed_content: EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff),
+        reaction_emojis,
         element_emojis: element_emojis.clone(),
     })
-}
-
-/// Discord操作関数（メッセージ送信）
-pub async fn send_recruitment_message(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    use poise::CreateReply;
-
-    // deferした応答を完了させる形でメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(recruitment_data.embed.clone());
-
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
-}
-
-/// Discord操作関数（リアクション追加）
-pub async fn add_recruitment_reactions(
-    ctx: &PoiseContext<'_>,
-    message_id: u64,
-    reactions: &[ReactionType],
-) -> types::Result<()> {
-    let message_id = poise::serenity_prelude::MessageId::new(message_id);
-    let message = ctx.channel_id().message(&ctx.http(), message_id).await?;
-
-    for reaction in reactions {
-        message.react(&ctx.http(), reaction.clone()).await?;
-    }
-    Ok(())
 }
 
 /// データ保存関数
@@ -184,13 +148,14 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
     message_id: u64,
 ) -> types::Result<crate::models::battle_recruitments::BattleRecruitments> {
     // battle_style_idは実際に使用されたものを保存
+    // u64をドメイン型に変換してRepositoryに渡す
     let recruitment = battle_recruitment_repo
         .create_with_txn(
             txn,
             crate::repository::CreateBattleRecruitmentParams {
-                guild_id: recruitment_data.guild_id,
-                channel_id: recruitment_data.channel_id,
-                message_id,
+                guild_id: DiscordGuildId::new(recruitment_data.guild_id),
+                channel_id: DiscordChannelId::new(recruitment_data.channel_id),
+                message_id: DiscordMessageId::new(message_id),
                 quest_id: recruitment_data.quest.id,
                 battle_style_id: recruitment_data.battle_style_id,
                 quest_start_at: recruitment_data.expiry_date,
@@ -264,29 +229,29 @@ where
     ));
 
     // 解散時刻を追加
-    if let Some(dismissal_times_list) = dismissal_times {
-        if !dismissal_times_list.is_empty() {
-            let dismissal_label = message_service
-                .get_message(
-                    db,
-                    MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
-                    HashMap::new(),
-                    guild_id,
-                    Some("ja"),
-                )
-                .await?;
+    if let Some(dismissal_times_list) = dismissal_times
+        && !dismissal_times_list.is_empty()
+    {
+        let dismissal_label = message_service
+            .get_message(
+                db,
+                MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
+                HashMap::new(),
+                guild_id,
+                Some("ja"),
+            )
+            .await?;
 
-            let dismissal_texts: Vec<String> = dismissal_times_list
-                .iter()
-                .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
-                .collect();
+        let dismissal_texts: Vec<String> = dismissal_times_list
+            .iter()
+            .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
+            .collect();
 
-            message_text.push_str(&format!(
-                "\n{}{}",
-                dismissal_label,
-                dismissal_texts.join(", ")
-            ));
-        }
+        message_text.push_str(&format!(
+            "\n{}{}",
+            dismissal_label,
+            dismissal_texts.join(", ")
+        ));
     }
 
     Ok(message_text)
@@ -326,13 +291,13 @@ fn format_dismissal_time(
     }
 }
 
-/// reactionsをパースする（カンマ区切りの絵文字文字列をReactionTypeのVecに変換）
-fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
+/// reactionsをパースする（カンマ区切りの絵文字文字列をStringのVecに変換）
+fn parse_reaction_emojis(reactions_str: &str) -> Vec<String> {
     reactions_str
         .split(',')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(|emoji| ReactionType::Unicode(emoji.to_string()))
+        .map(|s| s.to_string())
         .collect()
 }
 
@@ -340,7 +305,7 @@ fn parse_reactions(reactions_str: &str) -> Vec<ReactionType> {
 /// すべてのリアクション絵文字を「なし」で表示（メッセージサービス使用版）
 async fn create_initial_participants_text<C>(
     db: &C,
-    reactions: &[ReactionType],
+    reaction_emojis: &[String],
     guild_id: Option<i64>,
 ) -> types::Result<String>
 where
@@ -360,12 +325,7 @@ where
         )
         .await?;
 
-    for reaction in reactions {
-        // ReactionTypeから絵文字文字列を取得
-        let emoji = match reaction {
-            ReactionType::Unicode(emoji_str) => emoji_str,
-            _ => continue,
-        };
+    for emoji in reaction_emojis {
         text.push_str(&format!("{emoji} {no_participants}\n"));
     }
 
@@ -377,168 +337,49 @@ where
 }
 
 /// ボタン版用の初期参加者一覧テキストを作成
-/// 修正済みの絵文字を使用
+/// Presenterへのラッパー関数
 pub fn create_initial_participants_text_for_buttons(
     battle_style_name: &str,
     element_emojis: &ElementEmojis,
 ) -> String {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
-
-    if battle_style_name == "6属性" {
-        let mut text = String::new();
-        let emojis_array = element_emojis.as_array();
-        for (emoji, name) in emojis_array.iter().zip(ELEMENT_NAMES.iter()) {
-            text.push_str(&format!("{emoji} {name}: なし\n"));
-        }
-        text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
-        text
-    } else {
-        format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n")
-    }
+    RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis)
 }
 
-/// 属性セレクトメニュー（複数選択可能）を作成する
-///
-/// # 引数
-/// * `element_emojis` - カスタム属性絵文字
-///
-/// # 戻り値
-/// CreateActionRow（セレクトメニュー）
-pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> CreateActionRow {
-    use crate::types::ELEMENT_NAMES;
-
-    let emojis_array = element_emojis.as_array();
-    let mut options = Vec::new();
-
-    // 属性1-6のオプション
-    for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
-        let option = CreateSelectMenuOption::new(format!("{emoji} {name}"), format!("{}", i + 1));
-        options.push(option);
-    }
-
-    let select_menu = CreateSelectMenu::new(
-        "recruit_select_elements",
-        CreateSelectMenuKind::String { options },
-    )
-    .placeholder("複数の属性を選択する")
-    .min_values(1)
-    .max_values(6); // 6属性
-
-    CreateActionRow::SelectMenu(select_menu)
-}
-
-/// 募集用ボタンを作成する（ボタン版募集用）
+/// 募集用ボタンを作成する（ドメイン型版）
 ///
 /// # 引数
 /// * `battle_style_name` - 攻略方法の名前（「6属性」かどうかで分岐）
 /// * `element_emojis` - カスタム属性絵文字
 ///
 /// # 戻り値
-/// CreateActionRowのVec（Discord Message Componentsとして使用）
+/// ActionRowContentのVec（ドメインモデル）
 pub fn create_recruitment_buttons(
     battle_style_name: &str,
     element_emojis: &ElementEmojis,
-) -> Vec<CreateActionRow> {
-    use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES};
-
-    if battle_style_name == "6属性" {
-        // 6属性の場合：属性1-6ボタン + 全属性可能ボタン
-        let mut element_buttons = Vec::new();
-        let emojis_array = element_emojis.as_array();
-        for (i, (emoji, name)) in emojis_array.iter().zip(ELEMENT_NAMES.iter()).enumerate() {
-            let button = CreateButton::new(format!("recruit_join_{}", i + 1))
-                .label(format!("{emoji} {name}"))
-                .style(ButtonStyle::Primary);
-            element_buttons.push(button);
-        }
-
-        // 全属性可能ボタン
-        let all_elements_button = CreateButton::new("recruit_join_0")
-            .label(format!("{ALL_ELEMENTS_EMOJI} 全属性可能"))
-            .style(ButtonStyle::Success);
-
-        // 全て取り消しボタン
-        let leave_all_button = CreateButton::new("recruit_leave_all")
-            .label("❌ 全て取り消し")
-            .style(ButtonStyle::Danger);
-
-        // 行1: 属性1-3
-        let row1 = CreateActionRow::Buttons(element_buttons[0..3].to_vec());
-        // 行2: 属性4-6
-        let row2 = CreateActionRow::Buttons(element_buttons[3..6].to_vec());
-        // 行3: 全属性可能 + 全て取り消し
-        let row3 = CreateActionRow::Buttons(vec![all_elements_button, leave_all_button]);
-
-        vec![row1, row2, row3]
-    } else {
-        // シンプル参加の場合：参加ボタン + 全て取り消しボタン
-        use crate::types::SIMPLE_JOIN_EMOJI;
-
-        let join_button = CreateButton::new("recruit_join")
-            .label(format!("{SIMPLE_JOIN_EMOJI} 参加"))
-            .style(ButtonStyle::Success);
-
-        let leave_all_button = CreateButton::new("recruit_leave_all")
-            .label("❌ 全て取り消し")
-            .style(ButtonStyle::Danger);
-
-        let row = CreateActionRow::Buttons(vec![join_button, leave_all_button]);
-        vec![row]
-    }
+) -> Vec<ActionRowContent> {
+    RecruitmentPresenter::create_recruitment_buttons(battle_style_name, element_emojis)
 }
 
-/// Discord操作関数（ボタン付きメッセージ送信）
-pub async fn send_recruitment_message_with_buttons(
-    ctx: &PoiseContext<'_>,
-    recruitment_data: &RecruitmentData,
-) -> types::Result<u64> {
-    use poise::CreateReply;
-    use poise::serenity_prelude::CreateEmbed;
+/// 属性セレクトメニュー（複数選択可能）を作成する（ドメイン型版）
+///
+/// # 引数
+/// * `element_emojis` - カスタム属性絵文字
+///
+/// # 戻り値
+/// ActionRowContent（ドメインモデル）
+pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowContent {
+    RecruitmentPresenter::create_element_select_menu(element_emojis)
+}
 
-    // ボタンを生成
-    let mut components = create_recruitment_buttons(
-        &recruitment_data.battle_style_name,
-        &recruitment_data.element_emojis,
-    );
-
-    // 6属性の場合のみ、セレクトメニューを最後の行（全属性可能＋全て取り消し）の直前に挿入
-    if recruitment_data.battle_style_name == "6属性" {
-        // 最後の行（全属性可能＋全て取り消し）を取り出す
-        let last_row = components.pop();
-
-        // セレクトメニューを追加（選択時に即座に参加処理が実行される）
-        let select_menu_row = create_element_select_menu(&recruitment_data.element_emojis);
-        components.push(select_menu_row);
-
-        // 最後の行を戻す
-        if let Some(row) = last_row {
-            components.push(row);
-        }
-    }
-
-    // ボタン版用の初期参加者一覧を作成
-    let initial_text = create_initial_participants_text_for_buttons(
-        &recruitment_data.battle_style_name,
-        &recruitment_data.element_emojis,
-    );
-
-    // ボタン版用のembedを作成（絵文字を修正済みのものを使用）
-    let embed = CreateEmbed::new()
-        .title("参加者一覧")
-        .description(&initial_text)
-        .footer(poise::serenity_prelude::CreateEmbedFooter::new(
-            "参加者数: 0人",
-        ))
-        .color(0x0099ff);
-
-    // deferした応答を完了させる形でボタン付きメッセージを送信
-    let reply = CreateReply::default()
-        .content(recruitment_data.message_content.clone())
-        .embed(embed)
-        .components(components);
-
-    let message = ctx.send(reply).await?;
-    Ok(message.message().await?.id.get())
+/// 6属性募集用の全コンポーネント（ボタン + セレクトメニュー）を作成する（ドメイン型版）
+///
+/// # 引数
+/// * `element_emojis` - カスタム属性絵文字
+///
+/// # 戻り値
+/// ActionRowContentのVec（ドメインモデル）
+pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
+    RecruitmentPresenter::create_six_element_full_components(element_emojis)
 }
 
 /// 募集データを作成する（Repository直接アクセス版）

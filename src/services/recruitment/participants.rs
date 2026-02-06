@@ -1,16 +1,18 @@
-use poise::serenity_prelude::all::{
-    ChannelId, Context, CreateEmbed, EditMessage, MessageId, ReactionType,
-};
+//! 募集参加者管理サービス（純粋なビジネスロジック）
+//!
+//! Discord API操作はfacade層で行う。
+//! このファイルはDBアクセスとビジネスロジックのみを担当する。
+
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
-use crate::utils::discord_helper::send_message_with_optional_reply;
 
 /// ParticipantsService - 募集参加者管理を行うサービス
 pub struct ParticipantsService {
@@ -36,9 +38,15 @@ impl ParticipantsService {
         info!("ParticipantsService::update_participants_by_message - 参加者更新開始");
 
         // 募集情報の存在確認（トランザクション対応版を使用）
+        // u64をドメイン型に変換
         let recruitment = self
             .battle_recruitment_repo
-            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+            .get_by_message_with_txn(
+                txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await?
             .ok_or_else(|| AppError::NotFound("募集が見つかりませんでした".to_string()))?;
 
@@ -68,69 +76,6 @@ impl ParticipantsService {
 
         info!(recruitment_id = recruitment.id, "参加者更新処理完了");
         Ok(recruitment)
-    }
-
-    /// 募集メッセージのリアクションとメンバーを取得
-    /// 参加者がいない場合でもリアクション情報を含める
-    pub async fn get_reactions_and_members(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        message_id: u64,
-    ) -> Result<HashMap<String, Vec<String>>> {
-        info!(
-            "リアクション・メンバー取得開始: channel_id={}, message_id={}",
-            channel_id, message_id
-        );
-
-        let channel = ChannelId::from(channel_id);
-        let message = match channel
-            .message(&ctx.http, MessageId::from(message_id))
-            .await
-        {
-            Ok(message) => message,
-            Err(e) => {
-                error!("メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message: {e}").into());
-            }
-        };
-
-        let mut participants_by_reaction = HashMap::new();
-
-        for reaction in &message.reactions {
-            let reaction_emoji = match &reaction.reaction_type {
-                ReactionType::Unicode(emoji) => emoji.clone(),
-                ReactionType::Custom { name, .. } => name.clone().unwrap_or_default(),
-                _ => continue,
-            };
-
-            // リアクションしたユーザーを取得
-            match message
-                .reaction_users(&ctx.http, reaction.reaction_type.clone(), Some(100), None)
-                .await
-            {
-                Ok(users) => {
-                    let user_mentions: Vec<String> = users
-                        .iter()
-                        .filter(|user| !user.bot) // ボットユーザーを除外
-                        .map(|user| format!("<@{}>", user.id))
-                        .collect();
-
-                    // 参加者がいない場合でも空のVecとして追加
-                    participants_by_reaction.insert(reaction_emoji, user_mentions);
-                }
-                Err(e) => {
-                    error!("リアクションユーザー取得エラー: {:?}", e);
-                    // エラーが発生しても他のリアクションの処理は続行
-                }
-            }
-        }
-
-        info!(
-            "リアクション参加者取得完了: {} reactions found",
-            participants_by_reaction.len()
-        );
-        Ok(participants_by_reaction)
     }
 
     /// 一意の参加者数を取得（重複排除）
@@ -166,171 +111,5 @@ impl ParticipantsService {
         }
 
         unique_participants.into_iter().collect()
-    }
-
-    /// メッセージを更新
-    pub async fn update_message(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        message_id: u64,
-        content: &str,
-        participants_by_reaction: &HashMap<String, Vec<String>>,
-    ) -> Result<()> {
-        info!(
-            "メッセージ更新開始: channel_id={}, message_id={}",
-            channel_id, message_id
-        );
-
-        let channel = ChannelId::from(channel_id);
-        let mut message = match channel
-            .message(&ctx.http, MessageId::from(message_id))
-            .await
-        {
-            Ok(message) => message,
-            Err(e) => {
-                error!("更新対象メッセージ取得エラー: {:?}", e);
-                return Err(format!("Failed to get message for update: {e}").into());
-            }
-        };
-
-        // 参加者情報を埋め込みに変換
-        let participants_text = if participants_by_reaction.is_empty() {
-            "現在参加者はいません。".to_string()
-        } else {
-            // BattleType絵文字の順序で表示（🔥💧🌱🌪️✨🌑）
-            let emoji_order = vec!["🔥", "💧", "🌱", "🌪️", "✨", "🌑"];
-            let mut text = String::new();
-
-            // emoji_orderに含まれる絵文字を順序通りに表示
-            for emoji in &emoji_order {
-                if let Some(users) = participants_by_reaction.get(*emoji) {
-                    if users.is_empty() {
-                        text.push_str(&format!("{emoji} なし\n"));
-                    } else {
-                        text.push_str(&format!("{} {}\n", emoji, users.join(" ")));
-                    }
-                }
-            }
-
-            // emoji_orderに含まれない絵文字も追加（カスタム絵文字など）
-            for (emoji, users) in participants_by_reaction {
-                if !emoji_order.contains(&emoji.as_str()) {
-                    if users.is_empty() {
-                        text.push_str(&format!("{emoji} なし\n"));
-                    } else {
-                        text.push_str(&format!("{} {}\n", emoji, users.join(" ")));
-                    }
-                }
-            }
-
-            if text.is_empty() {
-                "現在参加者はいません。".to_string()
-            } else {
-                text
-            }
-        };
-
-        // 埋め込みメッセージを作成
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&participants_text)
-            .color(0x0099ff);
-
-        // メッセージを更新
-        let edit_message = EditMessage::new().content(content).embed(embed);
-
-        match message.edit(&ctx.http, edit_message).await {
-            Ok(_) => {
-                info!("メッセージ更新成功: message_id={}", message_id);
-                Ok(())
-            }
-            Err(e) => {
-                error!("メッセージ更新エラー: {:?}", e);
-                Err(format!("Failed to update message: {e}").into())
-            }
-        }
-    }
-
-    /// 既に規定人数到達通知が送信されているかチェック
-    /// チャンネルの最近のメッセージを確認し、募集メッセージへの返信で
-    /// 「参加人数が集まりました」という内容があるかをチェック
-    pub async fn has_notification_been_sent(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        message_id: u64,
-    ) -> Result<bool> {
-        let channel = ChannelId::from(channel_id);
-        let target_message_id = MessageId::from(message_id);
-
-        // チャンネルの最近のメッセージを取得（最大100件）
-        match channel
-            .messages(
-                &ctx.http,
-                poise::serenity_prelude::GetMessages::new().limit(100),
-            )
-            .await
-        {
-            Ok(messages) => {
-                // 募集メッセージへの返信で「参加人数が集まりました」を含むメッセージを探す
-                for msg in messages {
-                    if let Some(ref_msg) = &msg.referenced_message {
-                        if ref_msg.id == target_message_id
-                            && msg.content.contains("参加人数が集まりました")
-                        {
-                            info!("既に規定人数到達通知が送信済みです");
-                            return Ok(true);
-                        }
-                    }
-                }
-                Ok(false)
-            }
-            Err(e) => {
-                error!("メッセージ履歴取得エラー: {:?}", e);
-                // エラーの場合は安全側に倒して、通知済みとして扱わない
-                Ok(false)
-            }
-        }
-    }
-
-    /// 規定人数到達時の通知メッセージを送信
-    /// 募集メッセージに返信する形で全参加者にメンションを送る
-    pub async fn send_recruitment_full_notification(
-        &self,
-        ctx: &Context,
-        channel_id: u64,
-        message_id: u64,
-        participants: Vec<String>,
-    ) -> Result<()> {
-        info!(
-            "規定人数到達通知を送信: channel_id={}, message_id={}, participants={}",
-            channel_id,
-            message_id,
-            participants.len()
-        );
-
-        let channel = ChannelId::from(channel_id);
-        let notification_message = format!("{}\n参加人数が集まりました。", participants.join(" "));
-
-        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-        match send_message_with_optional_reply(
-            &ctx.http,
-            channel,
-            MessageId::from(message_id),
-            notification_message,
-            Some("規定人数到達通知".to_string()),
-        )
-        .await
-        {
-            Ok(_) => {
-                info!("規定人数到達通知送信成功");
-                Ok(())
-            }
-            Err(e) => {
-                error!("規定人数到達通知送信エラー: {:?}", e);
-                Err(format!("Failed to send notification: {e}").into())
-            }
-        }
     }
 }

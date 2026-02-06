@@ -1,6 +1,8 @@
 use crate::facades::recruitment::cancel::cancel_on_message_deleted;
+use crate::gateway::PoiseDiscordGateway;
 use crate::types::{CancelOnDeleteResult, PoiseData, Result};
 use poise::serenity_prelude::{ChannelId, Context, GuildId, MessageId};
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 /// メッセージ削除イベントハンドラー
@@ -28,9 +30,12 @@ pub async fn on_message_delete(
         }
     };
 
+    // events層でGatewayを作成
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+
     // Facade層を呼び出して削除時キャンセル処理を実行
     match cancel_on_message_deleted(
-        ctx,
+        &gateway,
         guild_id_value,
         channel_id.get(),
         deleted_message_id.get(),

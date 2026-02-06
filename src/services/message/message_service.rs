@@ -68,16 +68,16 @@ impl MessageService {
         );
 
         // 1. Guild固有メッセージを試行
-        if let Some(gid) = guild_id {
-            if let Some(message) = self.get_guild_message(db, gid, message_id, &locale).await? {
-                debug!(
-                    message_id = %message_id,
-                    guild_id = %gid,
-                    locale = %locale,
-                    "Guild固有メッセージを使用"
-                );
-                return Ok(self.replace_parameters(&message, &params));
-            }
+        if let Some(gid) = guild_id
+            && let Some(message) = self.get_guild_message(db, gid, message_id, &locale).await?
+        {
+            debug!(
+                message_id = %message_id,
+                guild_id = %gid,
+                locale = %locale,
+                "Guild固有メッセージを使用"
+            );
+            return Ok(self.replace_parameters(&message, &params));
         }
 
         // 2. グローバルマスターメッセージを試行

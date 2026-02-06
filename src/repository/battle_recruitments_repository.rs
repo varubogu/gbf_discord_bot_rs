@@ -1,14 +1,15 @@
-﻿use crate::models::battle_recruitments::BattleRecruitments;
+use crate::models::battle_recruitments::BattleRecruitments;
 use crate::types::Result;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::MessageId;
 
 /// バトル募集作成パラメータ
+/// Discord識別子にはドメイン型を使用し、Repository層の外部依存を排除
 pub struct CreateBattleRecruitmentParams {
-    pub guild_id: u64,
-    pub channel_id: u64,
-    pub message_id: u64,
+    pub guild_id: DiscordGuildId,
+    pub channel_id: DiscordChannelId,
+    pub message_id: DiscordMessageId,
     pub quest_id: i32,
     pub battle_style_id: i32,
     pub quest_start_at: DateTime<Utc>,
@@ -29,9 +30,9 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     async fn get_by_message<'c, C>(
         &self,
         db: &'c C,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
+        guild_id: DiscordGuildId,
+        channel_id: DiscordChannelId,
+        message_id: DiscordMessageId,
     ) -> Result<Option<BattleRecruitments>>
     where
         C: sea_orm::ConnectionTrait;
@@ -40,9 +41,9 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     async fn get_by_message_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,
-        guild_id: u64,
-        channel_id: u64,
-        message_id: u64,
+        guild_id: DiscordGuildId,
+        channel_id: DiscordChannelId,
+        message_id: DiscordMessageId,
     ) -> Result<Option<BattleRecruitments>>;
 
     /// IDで募集を取得（トランザクション対応）
@@ -57,7 +58,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         &self,
         db: &'c C,
         recruitment_id: i32,
-        message_id: MessageId,
+        message_id: DiscordMessageId,
     ) -> Result<()>
     where
         C: sea_orm::ConnectionTrait;
@@ -67,7 +68,7 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         &self,
         txn: &sea_orm::DatabaseTransaction,
         recruitment_id: i32,
-        message_id: MessageId,
+        message_id: DiscordMessageId,
     ) -> Result<()>;
 
     /// 募集情報を更新（トランザクション対応）
@@ -87,4 +88,14 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         recruitment_id: i32,
         sent: bool,
     ) -> Result<()>;
+
+    /// メッセージIDを更新
+    async fn update_message_id<'c, C>(
+        &self,
+        db: &'c C,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()>
+    where
+        C: sea_orm::ConnectionTrait;
 }

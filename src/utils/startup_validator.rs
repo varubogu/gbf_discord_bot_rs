@@ -248,11 +248,11 @@ impl EnvValidator {
         let mut results = Vec::new();
 
         // Googleサービスアカウントキーファイル
-        if let Ok(key_file_path) = std::env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE") {
-            if !key_file_path.is_empty() {
-                let result = Self::validate_service_account_key(&key_file_path).await;
-                results.push(result);
-            }
+        if let Ok(key_file_path) = std::env::var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE")
+            && !key_file_path.is_empty()
+        {
+            let result = Self::validate_service_account_key(&key_file_path).await;
+            results.push(result);
         }
 
         results

@@ -3,9 +3,9 @@ use crate::repository::GuildSettingsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
+use crate::types::discord::AutocompleteOption;
 use crate::types::{AppError, Result};
 use chrono_tz::Tz;
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -40,7 +40,7 @@ impl GuildSettingsFacade {
     ///
     /// - 文字列 `partial` にマッチする IANA タイムゾーンの候補を最大25件返します。
     /// - トランザクションは不要なため、Facade内でのDB操作は行いません。
-    pub fn get_timezones_for_autocomplete(&self, partial: &str) -> Vec<AutocompleteChoice> {
+    pub fn get_timezones_for_autocomplete(&self, partial: &str) -> Vec<AutocompleteOption> {
         TimezoneService::get_timezones_for_autocomplete(partial)
     }
 

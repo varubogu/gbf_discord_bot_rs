@@ -3,6 +3,7 @@
 //! 毎日0時に実行され、過去日のチャンネル名を新しい日付に更新し、
 //! チャンネルを日付昇順に並び替える
 
+use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentChannelRepository, AutoRecruitmentRepository,
@@ -10,9 +11,9 @@ use crate::repository::auto_recruitment::{
 use crate::repository::database::auto_recruitment::SeaOrmAutoRecruitmentRepository;
 use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
+use crate::types::discord::{ChannelEditParams, DiscordChannelId};
 use crate::types::{AppError, Result};
 use chrono::{Datelike, Duration, NaiveDate, Utc};
-use poise::serenity_prelude::{ChannelId, EditChannel, Http};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -53,15 +54,15 @@ where
     ///
     /// # 引数
     /// * `txn` - データベーストランザクション
-    /// * `http` - Discord HTTP クライアント
+    /// * `gateway` - Discord Gateway
     /// * `task_id` - 実行対象のタスクID
     ///
     /// # 戻り値
     /// * `Ok(AutoRecruitmentRotationResult)` - 実行結果
-    pub async fn execute(
+    pub async fn execute<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
-        http: &Arc<Http>,
+        gateway: &G,
         task_id: i32,
     ) -> Result<AutoRecruitmentRotationResult> {
         info!(task_id, "自動募集日付ローテーションタスク実行開始");
@@ -175,7 +176,7 @@ where
                     let new_channel_name = format!("{}月{}日", new_date.month(), new_date.day());
                     if let Err(e) = self
                         .update_discord_channel_name(
-                            http,
+                            gateway,
                             channel.channel_id as u64,
                             &new_channel_name,
                         )
@@ -194,7 +195,7 @@ where
             }
 
             // チャンネルを日付昇順に並び替え
-            if let Err(e) = self.reorder_channels_by_date(txn, http, guild_id).await {
+            if let Err(e) = self.reorder_channels_by_date(txn, gateway, guild_id).await {
                 error!(
                     guild_id,
                     error = %e,
@@ -259,33 +260,33 @@ where
         Ok(max_date + Duration::days(1))
     }
 
-    /// Discordチャンネル名を更新
-    async fn update_discord_channel_name(
+    /// Discordチャンネル名を更新（Gateway経由）
+    async fn update_discord_channel_name<G: DiscordGateway>(
         &self,
-        http: &Arc<Http>,
+        gateway: &G,
         channel_id: u64,
         new_name: &str,
     ) -> Result<()> {
-        let channel = ChannelId::new(channel_id);
-        let edit = EditChannel::new().name(new_name);
+        let channel_id = DiscordChannelId::new(channel_id);
+        let params = ChannelEditParams::new().with_name(new_name);
 
-        channel
-            .edit(http, edit)
+        gateway
+            .edit_channel(channel_id, params)
             .await
             .map_err(|e| AppError::Business {
-                message: format!("チャンネル名の更新に失敗しました: {}", e),
+                message: format!("チャンネル名の更新に失敗しました: {e}"),
             })?;
 
         Ok(())
     }
 
-    /// チャンネルを日付昇順に並び替え
+    /// チャンネルを日付昇順に並び替え（Gateway経由）
     ///
     /// 順序: マッチング(0) → 日付昇順(1〜n) → クエスト(n+1)
-    async fn reorder_channels_by_date(
+    async fn reorder_channels_by_date<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
-        http: &Arc<Http>,
+        gateway: &G,
         guild_id: i64,
     ) -> Result<()> {
         let mut channels = self.channel_repo.find_by_guild_id(txn, guild_id).await?;
@@ -301,19 +302,17 @@ where
             .await?;
 
         // マッチングチャンネルをposition 0に設定
-        if let Some(ref ar) = auto_recruitment {
-            if let Some(matching_ch_id) = ar.matching_channel_id {
-                let matching_channel = ChannelId::new(matching_ch_id as u64);
-                if let Err(e) = matching_channel
-                    .edit(http, EditChannel::new().position(0))
-                    .await
-                {
-                    warn!(
-                        channel_id = matching_ch_id,
-                        error = %e,
-                        "マッチングチャンネル位置の更新に失敗しました"
-                    );
-                }
+        if let Some(ref ar) = auto_recruitment
+            && let Some(matching_ch_id) = ar.matching_channel_id
+        {
+            let matching_channel_id = DiscordChannelId::new(matching_ch_id as u64);
+            let params = ChannelEditParams::new().with_position(0);
+            if let Err(e) = gateway.edit_channel(matching_channel_id, params).await {
+                warn!(
+                    channel_id = matching_ch_id,
+                    error = %e,
+                    "マッチングチャンネル位置の更新に失敗しました"
+                );
             }
         }
 
@@ -347,13 +346,11 @@ where
 
         // 日付チャンネルの位置を更新（position 1から）
         for (i, channel) in channels.iter().enumerate() {
-            let discord_channel = ChannelId::new(channel.channel_id as u64);
+            let discord_channel_id = DiscordChannelId::new(channel.channel_id as u64);
             let position = (i + 1) as u16; // position 1から開始
+            let params = ChannelEditParams::new().with_position(position);
 
-            if let Err(e) = discord_channel
-                .edit(http, EditChannel::new().position(position))
-                .await
-            {
+            if let Err(e) = gateway.edit_channel(discord_channel_id, params).await {
                 warn!(
                     channel_id = channel.channel_id,
                     position,
@@ -365,21 +362,19 @@ where
         }
 
         // クエストチャンネルを日付チャンネルの後に設定
-        if let Some(ref ar) = auto_recruitment {
-            if let Some(quest_ch_id) = ar.quest_channel_id {
-                let quest_channel = ChannelId::new(quest_ch_id as u64);
-                let quest_position = (channels.len() + 1) as u16;
-                if let Err(e) = quest_channel
-                    .edit(http, EditChannel::new().position(quest_position))
-                    .await
-                {
-                    warn!(
-                        channel_id = quest_ch_id,
-                        position = quest_position,
-                        error = %e,
-                        "クエストチャンネル位置の更新に失敗しました"
-                    );
-                }
+        if let Some(ref ar) = auto_recruitment
+            && let Some(quest_ch_id) = ar.quest_channel_id
+        {
+            let quest_channel_id = DiscordChannelId::new(quest_ch_id as u64);
+            let quest_position = (channels.len() + 1) as u16;
+            let params = ChannelEditParams::new().with_position(quest_position);
+            if let Err(e) = gateway.edit_channel(quest_channel_id, params).await {
+                warn!(
+                    channel_id = quest_ch_id,
+                    position = quest_position,
+                    error = %e,
+                    "クエストチャンネル位置の更新に失敗しました"
+                );
             }
         }
 

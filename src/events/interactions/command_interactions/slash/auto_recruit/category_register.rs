@@ -1,8 +1,9 @@
 //! 自動募集カテゴリ登録コマンド
 
+use crate::events::permission::check_bot_control_role;
 use crate::facades::auto_recruitment;
+use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Channel;
 use rust_i18n::t;
@@ -72,10 +73,10 @@ pub async fn auto_recruit_category_register(
     let days_range = days.unwrap_or(7);
 
     let app_state = &ctx.data().app_state;
-    let serenity_ctx = ctx.serenity_context();
+    let gateway = PoiseDiscordGateway::new(std::sync::Arc::clone(&ctx.serenity_context().http));
 
     match auto_recruitment::register_category(
-        serenity_ctx,
+        &gateway,
         app_state,
         guild_id.get(),
         category_id,
@@ -95,10 +96,10 @@ pub async fn auto_recruit_category_register(
             );
 
             if let Some(ch_id) = matching_channel_id {
-                message.push_str(&format!("\n**マッチングチャンネル:** <#{}>", ch_id));
+                message.push_str(&format!("\n**マッチングチャンネル:** <#{ch_id}>"));
             }
             if let Some(ch_id) = quest_channel_id {
-                message.push_str(&format!("\n**クエストチャンネル:** <#{}>", ch_id));
+                message.push_str(&format!("\n**クエストチャンネル:** <#{ch_id}>"));
             }
 
             ctx.send(
@@ -121,7 +122,7 @@ pub async fn auto_recruit_category_register(
                     )
                     .to_string()
                 }
-                _ => format!("エラー: {}", e),
+                _ => format!("エラー: {e}"),
             };
 
             ctx.send(

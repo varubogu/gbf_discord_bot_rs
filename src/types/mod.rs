@@ -4,6 +4,7 @@ pub(crate) mod app_state;
 pub(crate) mod battle_style_id;
 pub(crate) mod constants;
 pub(crate) mod db_role;
+pub mod discord;
 pub(crate) mod discord_operation;
 pub(crate) mod domain_interface_result;
 pub(crate) mod poise_data;

@@ -4,6 +4,7 @@ use tracing::error;
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 
 /// 募集情報取得サービス
 pub struct GetRecruitmentService {
@@ -29,9 +30,15 @@ impl GetRecruitmentService {
     where
         C: sea_orm::ConnectionTrait,
     {
+        // u64をドメイン型に変換
         match self
             .battle_recruitment_repo
-            .get_by_message(db, guild_id, channel_id, message_id)
+            .get_by_message(
+                db,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
             .await
         {
             Ok(recruitment) => Ok(recruitment),

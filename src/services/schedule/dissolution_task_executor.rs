@@ -1,3 +1,4 @@
+use crate::gateway::DiscordGateway;
 use crate::repository::GuildSettingsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::repository::database::quest_repository::SeaOrmQuestRepository;
@@ -12,9 +13,8 @@ use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     create_cancel_notification_text, create_cancelled_message_content,
 };
+use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, Result};
-use crate::utils::discord_helper::send_message_with_optional_reply;
-use poise::serenity_prelude::{ChannelId, EditMessage, Http, MessageId};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -94,7 +94,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
     ///
     /// # 引数
     /// * `txn` - データベーストランザクション
-    /// * `http` - Discord HTTP クライアント
+    /// * `gateway` - Discord Gateway
     /// * `task_id` - 実行対象のタスクID
     ///
     /// # 戻り値
@@ -103,10 +103,10 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
     /// # エラー
     /// * タスクが見つからない場合
     /// * DB操作でエラーが発生した場合
-    pub async fn execute(
+    pub async fn execute<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
-        http: &Arc<Http>,
+        gateway: &G,
         task_id: i32,
     ) -> Result<DissolutionExecutionResult> {
         info!(task_id, "解散タスク実行開始");
@@ -179,10 +179,10 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         );
 
         // Discordメッセージを取得
-        let channel_id = ChannelId::new(recruitment.channel_id as u64);
-        let message_id = MessageId::new(recruitment.message_id as u64);
+        let channel_id = DiscordChannelId::new(recruitment.channel_id as u64);
+        let message_id = DiscordMessageId::new(recruitment.message_id as u64);
 
-        let message = match channel_id.message(http, message_id).await {
+        let message = match gateway.get_message(channel_id, message_id).await {
             Ok(msg) => msg,
             Err(e) => {
                 warn!(
@@ -217,10 +217,10 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         )
         .await?;
 
-        // Discordメッセージを更新
-        let edit_builder = EditMessage::new().content(cancelled_content);
-        channel_id
-            .edit_message(http, message_id, edit_builder)
+        // Discordメッセージを更新（Gateway経由）
+        let edit_content = MessageContent::text(&cancelled_content);
+        gateway
+            .edit_message(channel_id, message_id, edit_content)
             .await
             .map_err(|e| {
                 error!(
@@ -228,12 +228,12 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
                     recruitment_id = recruitment.id,
                     "Discordメッセージの更新に失敗しました"
                 );
-                e
+                AppError::from(e)
             })?;
 
         // 募集をキャンセル済み状態に更新（cancel_message_id は 0 でキャンセルを表現）
         self.recruitment_repo
-            .set_canceled_with_txn(txn, recruitment.id, MessageId::new(0))
+            .set_canceled_with_txn(txn, recruitment.id, DiscordMessageId::new(0))
             .await?;
 
         // 参加者のユーザーIDリストを取得
@@ -275,23 +275,23 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             None => "解散タスク通知".to_string(),
         };
 
-        // 通知メッセージを送信（元のメッセージに返信、失敗時は文脈情報付きで送信）
-        send_message_with_optional_reply(
-            http,
-            channel_id,
-            message_id,
-            notification_text,
-            Some(fallback_context),
-        )
-        .await
-        .map_err(|e| {
-            error!(
-                error = %e,
-                recruitment_id = recruitment.id,
-                "通知メッセージの送信に失敗しました"
-            );
-            e
-        })?;
+        // 通知メッセージを送信（Gateway経由、元のメッセージに返信、失敗時は文脈情報付きで送信）
+        gateway
+            .send_reply(
+                channel_id,
+                message_id,
+                MessageContent::text(&notification_text),
+                Some(fallback_context),
+            )
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    recruitment_id = recruitment.id,
+                    "通知メッセージの送信に失敗しました"
+                );
+                AppError::from(e)
+            })?;
 
         // タスクを実行済みにマーク
         self.task_repo.mark_as_executed(txn, task_id).await?;

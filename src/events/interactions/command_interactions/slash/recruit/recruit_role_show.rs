@@ -1,5 +1,5 @@
+use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::role_management;
-use crate::services::permission::check_bot_control_role;
 use crate::types::{PoiseContext, Result};
 
 #[poise::command(
@@ -15,8 +15,15 @@ use crate::types::{PoiseContext, Result};
 pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer_ephemeral().await?;
 
+    // ギルドIDを取得
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
+
+    let app_state = &ctx.data().app_state;
+
     // Facadeを呼び出し
-    let settings = role_management::show_recruitment_notification_roles(&ctx).await?;
+    let settings = role_management::show_recruitment_notification_roles(app_state, guild_id.get()).await?;
 
     // 設定が存在しない場合
     if settings.all_recruitment_roles.is_empty() && settings.quest_recruitment_roles.is_empty() {

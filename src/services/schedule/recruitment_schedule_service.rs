@@ -174,14 +174,15 @@ impl RecruitmentScheduleService {
         }
 
         // 募集開始時刻とクエスト開始時刻の整合性チェック
-        if let Some(recruit_time) = recruit_start_time {
-            if recruit_start_day_offset == 0 && recruit_time >= quest_start_time {
-                return Err(crate::types::AppError::Business {
-                    message:
-                        "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
-                            .to_string(),
-                });
-            }
+        if let Some(recruit_time) = recruit_start_time
+            && recruit_start_day_offset == 0
+            && recruit_time >= quest_start_time
+        {
+            return Err(crate::types::AppError::Business {
+                message:
+                    "当日募集の場合、募集開始時刻はクエスト開始時刻より前である必要があります"
+                        .to_string(),
+            });
         }
 
         debug!("入力値のバリデーションが完了しました");

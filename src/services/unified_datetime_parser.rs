@@ -293,10 +293,10 @@ fn parse_single(input: &str, options: &DateTimeParseOptions) -> Result<ParsedDat
     }
 
     // 相対時刻を試行
-    if options.flags.contains(DateTimeParseFlags::RELATIVE_TIME) {
-        if let Ok(relative) = parse_relative_time(input, options) {
-            return Ok(relative);
-        }
+    if options.flags.contains(DateTimeParseFlags::RELATIVE_TIME)
+        && let Ok(relative) = parse_relative_time(input, options)
+    {
+        return Ok(relative);
     }
 
     // 既存のdatetime_parserを使用して絶対日時をパース

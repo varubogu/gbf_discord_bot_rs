@@ -1,10 +1,12 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::change_recruitment_information;
+use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::message::helpers::get_message_from_context;
+use crate::events::helpers::get_message_from_context;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
+use crate::types::discord::{DiscordGuildId, MessageData};
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Message;
 use std::collections::HashMap;
@@ -90,8 +92,22 @@ pub async fn recruit_change(
     };
 
     // 募集内容変更を実行
-    change_recruitment_information(&ctx, &message, quest.as_deref(), parsed_date, battle_style)
-        .await?;
+    // events層でpoise型からドメイン型への変換を行う
+    let app_state = &ctx.data().app_state;
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
+    let message_data = MessageData::from(message.clone());
+    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
+
+    change_recruitment_information(
+        app_state,
+        &gateway,
+        DiscordGuildId::new(guild_id),
+        &message_data,
+        quest.as_deref(),
+        parsed_date,
+        battle_style,
+    )
+    .await?;
 
     // 処理完了をユーザーに通知
     let message = get_message_from_context(

@@ -1,3 +1,4 @@
+use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
@@ -10,31 +11,41 @@ use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::NotificationManagementService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
-use crate::types::PoiseContext;
-use crate::utils::discord_helper::send_message_with_optional_reply;
+use crate::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent, MessageData,
+};
 use chrono::{DateTime, Utc};
-use poise::serenity_prelude::Message;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
-/// 募集内容を更新する（PoiseContext版）
-#[instrument(level = "debug", skip(ctx, message))]
-pub async fn change_recruitment_information(
-    ctx: &PoiseContext<'_>,
-    message: &Message,
+/// 募集内容を更新する
+///
+/// # 引数
+/// * `app_state` - アプリケーション状態
+/// * `gateway` - Discord Gateway
+/// * `guild_id` - ギルドID
+/// * `message` - 対象メッセージ（ドメイン型）
+/// * `quest` - クエスト名（変更する場合）
+/// * `event_date` - 開催日時（変更する場合）
+/// * `battle_style_id` - 攻略方法ID（変更する場合）
+#[instrument(level = "debug", skip(app_state, gateway, message))]
+pub async fn change_recruitment_information<G>(
+    app_state: &crate::types::AppState,
+    gateway: &G,
+    guild_id: DiscordGuildId,
+    message: &MessageData,
     quest: Option<&str>,
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
-) -> types::Result<()> {
-    let app_state = &ctx.data().app_state;
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
-    let http = ctx.http();
-
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     change_recruitment_information_internal(
         app_state,
-        http,
-        guild_id,
+        gateway,
+        guild_id.get(),
         message,
         quest,
         event_date,
@@ -44,16 +55,19 @@ pub async fn change_recruitment_information(
 }
 
 /// 募集内容を更新する（内部実装 - PoiseContextに依存しない）
-#[instrument(level = "debug", skip(app_state, http, message))]
-pub async fn change_recruitment_information_internal(
+#[instrument(level = "debug", skip(app_state, gateway, message))]
+pub async fn change_recruitment_information_internal<G>(
     app_state: &crate::types::AppState,
-    http: &poise::serenity_prelude::Http,
+    gateway: &G,
     guild_id: u64,
-    message: &Message,
+    message: &MessageData,
     quest: Option<&str>,
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
-) -> types::Result<()> {
+) -> types::Result<()>
+where
+    G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
+{
     info!("BattleRecruitmentFacade::update_recruitment_information - 募集内容を更新します");
 
     let txn = app_state.guild_db().begin().await?;
@@ -76,14 +90,12 @@ pub async fn change_recruitment_information_internal(
             guild_id = guild_id,
             channel_id = channel_id,
             message_id = message_id,
-            message_guild_id = ?message.guild_id,
             "募集情報を検索します（guild_idはコンテキストから取得）"
         );
 
-        // Discord APIオブジェクトを作成
-        use poise::serenity_prelude::{ChannelId, MessageId};
-        let channel_id_obj = ChannelId::new(channel_id);
-        let message_id_obj = MessageId::new(message_id);
+        // ドメイン型のIDオブジェクトを使用
+        let channel_id_obj = DiscordChannelId::new(channel_id);
+        let message_id_obj = DiscordMessageId::new(message_id);
 
         // 1. DBから既存の募集情報を取得
         let existing_recruitment = query_service
@@ -139,7 +151,7 @@ pub async fn change_recruitment_information_internal(
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(db, http, guild_id as i64)
+            .get_element_emojis(db, gateway, guild_id as i64)
             .await?;
 
         // 3. メッセージ表示用の募集データを作成
@@ -168,7 +180,6 @@ pub async fn change_recruitment_information_internal(
         use crate::models::entities::worker::recruitment_participants::{
             Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
         };
-        use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter, EditMessage};
         use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
         let (mentions, embed_for_update) = if is_v2 {
@@ -200,35 +211,32 @@ pub async fn change_recruitment_information_internal(
                 &element_emojis,
             );
 
-            // 既存embedのスタイルを保持しつつ、参加者一覧を更新したembedを作成
-            let embed = CreateEmbed::new()
-                .title("参加者一覧")
-                .description(&participants_text)
-                .footer(CreateEmbedFooter::new(format!(
-                    "参加者数: {participant_count}人"
-                )))
-                .color(0x0099ff);
+            // ドメインモデルでEmbedを作成
+            let embed_content = EmbedContent::new()
+                .with_title("参加者一覧")
+                .with_description(&participants_text)
+                .with_footer(format!("参加者数: {participant_count}人"))
+                .with_color(0x0099ff);
 
-            (mentions_str, embed)
+            (mentions_str, embed_content)
         } else {
             // v1: リアクションから参加者を取得
             debug!("v1募集: リアクションから参加者を取得します");
             let mut participant_ids = std::collections::HashSet::new();
             for reaction in &message.reactions {
-                let users = channel_id_obj
-                    .reaction_users(
-                        http,
+                // Gatewayを使用してリアクションユーザーを取得
+                let user_ids = gateway
+                    .get_reaction_users(
+                        channel_id_obj,
                         message_id_obj,
-                        reaction.reaction_type.clone(),
+                        reaction.emoji.clone(),
                         Some(100),
-                        None,
                     )
                     .await?;
 
-                for user in users {
-                    if !user.bot {
-                        participant_ids.insert(user.id);
-                    }
+                // 取得したユーザーIDを追加（Bot判定は省略 - v1は既存参加者のみ）
+                for user_id in user_ids {
+                    participant_ids.insert(user_id.get());
                 }
             }
 
@@ -238,8 +246,8 @@ pub async fn change_recruitment_information_internal(
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            // v1は新規作成用のembedをそのまま使用
-            (mentions_str, recruitment_data.embed.clone())
+            // v1は新規作成用のembedをそのまま使用（ドメインモデル）
+            (mentions_str, recruitment_data.embed_content.clone())
         };
 
         // 5. DBの募集情報を更新
@@ -253,13 +261,13 @@ pub async fn change_recruitment_information_internal(
             )
             .await?;
 
-        // 6. Discordのメッセージを更新
-        let edit_message = EditMessage::new()
-            .content(&recruitment_data.message_content)
-            .embed(embed_for_update);
+        // 6. Discordのメッセージを更新（ドメインモデルを使用）
+        let edit_content = MessageContent::new()
+            .with_text(&recruitment_data.message_content)
+            .with_embed(embed_for_update);
 
-        channel_id_obj
-            .edit_message(http, message_id_obj, edit_message)
+        gateway
+            .edit_message(channel_id_obj, message_id_obj, edit_content)
             .await?;
 
         // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
@@ -290,14 +298,14 @@ pub async fn change_recruitment_information_internal(
         };
 
         // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-        send_message_with_optional_reply(
-            http,
-            channel_id_obj,
-            message_id_obj,
-            update_notification,
-            Some("募集内容変更通知".to_string()),
-        )
-        .await?;
+        gateway
+            .send_reply(
+                channel_id_obj,
+                message_id_obj,
+                MessageContent::text(&update_notification),
+                Some("募集内容変更通知".to_string()),
+            )
+            .await?;
 
         // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
         if event_date.is_some() {

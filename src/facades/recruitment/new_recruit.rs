@@ -1,5 +1,8 @@
+use crate::gateway::DiscordGuildGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::presenter::RecruitmentPresenter;
+use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
@@ -12,39 +15,66 @@ use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types;
-use crate::types::PoiseContext;
+use crate::types::AppState;
+use crate::types::discord::{ActionRowContent, DiscordMessageId, EmbedContent};
 use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
+/// 募集作成結果（events層でのメッセージ送信用）
+#[derive(Debug, Clone)]
+pub struct RecruitmentResult {
+    /// DB保存後の募集ID
+    pub recruitment_id: i32,
+    /// メッセージ本文
+    pub message_content: String,
+    /// Embed内容
+    pub embed_content: EmbedContent,
+    /// ボタン/セレクトメニュー（ボタン版のみ使用）
+    pub components: Vec<ActionRowContent>,
+    /// リアクション絵文字（リアクション版のみ使用）
+    pub reaction_emojis: Vec<String>,
+}
+
 /// 新しい募集を開始する
 ///
 /// # 引数
+/// * `app_state` - アプリケーション状態
+/// * `gateway` - Discord Gateway
+/// * `guild_id` - ギルドID
+/// * `channel_id` - チャンネルID
+/// * `quest_alias` - クエスト名またはエイリアス
+/// * `battle_style_id` - 攻略方法ID（オプション）
+/// * `event_date` - 開催日時（オプション）
 /// * `use_buttons` - ボタンを使用する場合は true、リアクションを使用する場合は false
+/// * `dismissal_times` - 解散時刻（オプション）
 ///
 /// # 戻り値
-/// (message_id, reactions) - メッセージIDとリアクションのリスト
-#[instrument(level = "debug", skip(ctx))]
-pub async fn new_recruitment(
-    ctx: &PoiseContext<'_>,
+/// RecruitmentResult - 募集ID、表示用メッセージ、Embed、コンポーネント等
+/// 注: message_idは0で仮保存されるため、events層でメッセージ送信後に`update_message_id`を呼び出すこと
+#[allow(clippy::too_many_arguments)]
+#[instrument(level = "debug", skip(app_state, gateway))]
+pub async fn new_recruitment<G>(
+    app_state: &AppState,
+    gateway: &G,
+    guild_id: u64,
+    channel_id: u64,
     quest_alias: &str,
     battle_style_id: Option<i32>,
     event_date: Option<DateTime<Utc>>,
     use_buttons: bool,
     dismissal_times: Option<String>,
-) -> types::Result<(u64, Vec<poise::serenity_prelude::ReactionType>)> {
+) -> types::Result<RecruitmentResult>
+where
+    G: DiscordGuildGateway + Sync,
+{
     info!("BattleRecruitmentFacade::new_recruitment - 新しい募集を開始します");
-    let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
 
-    // Discord固有情報を取得
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
-
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
-    let channel_id = ctx.channel_id().get();
 
     let result = async {
         // RepositoryContainerの取得
@@ -59,7 +89,7 @@ pub async fn new_recruitment(
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service.get_element_emojis(conn, ctx.http(), guild_id as i64).await?;
+        let element_emojis = guild_env_service.get_element_emojis(conn, gateway, guild_id as i64).await?;
 
         // 1. 募集データ作成（Serviceラッパー関数を使用）
         let mut recruitment_data = new::create_recruitment_data_with_repos(
@@ -157,15 +187,8 @@ pub async fn new_recruitment(
             info!("ロールメンションを募集メッセージに追加しました");
         }
 
-        // 2. メッセージ送信（ボタンまたはリアクション用）
-        let message_id = if use_buttons {
-            new::send_recruitment_message_with_buttons(ctx, &recruitment_data).await?
-        } else {
-            new::send_recruitment_message(ctx, &recruitment_data).await?
-        };
-
-        // 3. データ保存
-        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, message_id).await?;
+        // 2. データ保存（message_id=0で仮保存、events層でメッセージ送信後に更新）
+        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, 0).await?;
 
         // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(
@@ -211,19 +234,77 @@ pub async fn new_recruitment(
             );
         }
 
-        // message_idとreactionsを返す
-        Ok((message_id, recruitment_data.reactions.clone()))
+        // 3. 表示用データを準備
+        let (embed_content, components) = if use_buttons {
+            // ボタン版用のEmbed・コンポーネントを作成
+            let components = if recruitment_data.battle_style_name == "6属性" {
+                RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
+            } else {
+                RecruitmentPresenter::create_recruitment_buttons(
+                    &recruitment_data.battle_style_name,
+                    &recruitment_data.element_emojis,
+                )
+            };
+
+            let initial_text = RecruitmentPresenter::create_initial_participants_text(
+                &recruitment_data.battle_style_name,
+                &recruitment_data.element_emojis,
+            );
+            let embed = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
+            (embed, components)
+        } else {
+            // リアクション版用のEmbed（コンポーネントなし）
+            (recruitment_data.embed_content.clone(), vec![])
+        };
+
+        Ok(RecruitmentResult {
+            recruitment_id: recruitment.id,
+            message_content: recruitment_data.message_content.clone(),
+            embed_content,
+            components,
+            reaction_emojis: recruitment_data.reaction_emojis.clone(),
+        })
     }
     .await;
 
     match result {
-        Ok((msg_id, reactions)) => {
+        Ok(recruitment_result) => {
             txn.commit().await?;
-            Ok((msg_id, reactions))
+            Ok(recruitment_result)
         }
         Err(e) => {
             txn.rollback().await?;
             Err(e)
         }
     }
+}
+
+/// メッセージ送信後にmessage_idを更新する
+///
+/// events層でメッセージ送信後に呼び出し、DBのmessage_idを更新する
+#[instrument(level = "debug", skip(db))]
+pub async fn update_message_id(
+    db: &sea_orm::DatabaseConnection,
+    recruitment_id: i32,
+    message_id: u64,
+) -> types::Result<()> {
+    info!(
+        recruitment_id = recruitment_id,
+        message_id = message_id,
+        "募集のmessage_idを更新します"
+    );
+
+    let repos = RepositoryContainer::new();
+    let battle_recruitment_repo = repos.battle_recruitment();
+
+    battle_recruitment_repo
+        .update_message_id(db, recruitment_id, DiscordMessageId::new(message_id))
+        .await?;
+
+    info!(
+        recruitment_id = recruitment_id,
+        message_id = message_id,
+        "message_idの更新が完了しました"
+    );
+    Ok(())
 }

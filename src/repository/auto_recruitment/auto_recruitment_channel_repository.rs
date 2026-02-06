@@ -7,6 +7,7 @@ use sea_orm::DatabaseTransaction;
 
 /// 自動募集日時チャンネルリポジトリの抽象インターフェース
 #[async_trait]
+#[allow(clippy::too_many_arguments)]
 pub trait AutoRecruitmentChannelRepository: Send + Sync {
     /// 全ての日時チャンネルを取得
     async fn find_all(

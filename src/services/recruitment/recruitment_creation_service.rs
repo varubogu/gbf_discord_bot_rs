@@ -1,5 +1,8 @@
+// Note: converters are no longer needed as we use domain types directly with Gateway
+use crate::gateway::DiscordGateway;
 use crate::infrastructure::database::container::RepositoryContainer;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::presenter::RecruitmentPresenter;
 use crate::repository::GuildChannelRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
 use crate::repository::database::battle_style_repository::{
@@ -13,17 +16,16 @@ use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismis
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
-use crate::services::recruitment::new::{
-    create_initial_participants_text_for_buttons, create_message_content,
-    create_recruitment_buttons,
-};
+use crate::services::recruitment::new::create_message_content;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
+use crate::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
+};
 use chrono::{TimeZone, Utc};
-use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -57,11 +59,11 @@ impl RecruitmentCreationService {
 
     /// スケジュールから募集を作成
     /// 定期募集スケジュールに基づいて実際の募集を作成
-    pub async fn create_recruitment_from_schedule(
+    pub async fn create_recruitment_from_schedule<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         calculated_time: &crate::services::schedule::CalculatedRecruitmentTime,
     ) -> Result<()> {
         debug!(
@@ -218,39 +220,41 @@ impl RecruitmentCreationService {
             message_content = format!("{role_mentions}\n{message_content}");
         }
 
-        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(txn, http, calculated_time.guild_id)
+            .get_element_emojis(txn, gateway, calculated_time.guild_id)
             .await?;
 
-        // 4. Embedを作成
-        let initial_participants_text = create_initial_participants_text_for_buttons(
+        // 4. Embedを作成（Presenterを使用）
+        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
             &battle_style.display_name,
             &element_emojis,
         );
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff);
+        let embed_content = EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff);
 
-        // 5. ボタンを作成
-        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        // 5. ボタンを作成（Presenterのドメインモデル）
+        let button_components = RecruitmentPresenter::create_recruitment_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
-        let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
-        let message = channel_id
-            .send_message(
-                http,
-                CreateMessage::new()
-                    .content(message_content)
-                    .embed(embed)
-                    .components(buttons),
-            )
+        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
+        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
+        let domain_message_content = MessageContent::new()
+            .with_text(&message_content)
+            .with_embed(embed_content)
+            .with_components(button_components);
+
+        let sent_message_id = gateway
+            .send_message(channel_id, domain_message_content)
             .await?;
 
-        let message_id = message.id.get();
+        let message_id = sent_message_id.get();
 
         debug!(
             message_id = %message_id,
@@ -261,13 +265,14 @@ impl RecruitmentCreationService {
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
+        // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
-                    guild_id: calculated_time.guild_id as u64,
-                    channel_id: recruitment_channel_id as u64,
-                    message_id,
+                    guild_id: DiscordGuildId::new(calculated_time.guild_id as u64),
+                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    message_id: DiscordMessageId::new(message_id),
                     quest_id: quest.id,
                     battle_style_id: calculated_time.battle_style_id,
                     quest_start_at: calculated_time.quest_start_at,
@@ -332,11 +337,11 @@ impl RecruitmentCreationService {
     ///
     /// # 戻り値
     /// 作成された募集のID
-    pub async fn create_recruitment_from_matching(
+    pub async fn create_recruitment_from_matching<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
-        http: &Arc<Http>,
+        gateway: &G,
         params: &MatchingRecruitmentParams,
     ) -> Result<i32> {
         debug!(
@@ -429,44 +434,46 @@ impl RecruitmentCreationService {
             let user_mentions: Vec<String> = params
                 .participant_user_ids
                 .iter()
-                .map(|user_id| format!("<@{}>", user_id))
+                .map(|user_id| format!("<@{user_id}>"))
                 .collect();
             message_content = format!("{}\n{message_content}", user_mentions.join(" "));
         }
 
-        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
+        // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
         let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
-            .get_element_emojis(txn, http, params.guild_id)
+            .get_element_emojis(txn, gateway, params.guild_id)
             .await?;
 
-        // 4. Embedを作成
-        let initial_participants_text = create_initial_participants_text_for_buttons(
+        // 4. Embedを作成（Presenterを使用）
+        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
             &battle_style.display_name,
             &element_emojis,
         );
-        let embed = CreateEmbed::new()
-            .title("参加者一覧")
-            .description(&initial_participants_text)
-            .color(0x0099ff);
+        let embed_content = EmbedContent::new()
+            .with_title("参加者一覧")
+            .with_description(&initial_participants_text)
+            .with_color(0x0099ff);
 
-        // 5. ボタンを作成
-        let buttons = create_recruitment_buttons(&battle_style.display_name, &element_emojis);
+        // 5. ボタンを作成（Presenterのドメインモデル）
+        let button_components = RecruitmentPresenter::create_recruitment_buttons(
+            &battle_style.display_name,
+            &element_emojis,
+        );
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）
-        let channel_id = poise::serenity_prelude::ChannelId::new(recruitment_channel_id as u64);
-        let message = channel_id
-            .send_message(
-                http,
-                CreateMessage::new()
-                    .content(message_content)
-                    .embed(embed)
-                    .components(buttons),
-            )
+        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
+        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
+        let domain_message_content = MessageContent::new()
+            .with_text(&message_content)
+            .with_embed(embed_content)
+            .with_components(button_components);
+
+        let sent_message_id = gateway
+            .send_message(channel_id, domain_message_content)
             .await?;
 
-        let message_id = message.id.get();
+        let message_id = sent_message_id.get();
 
         debug!(
             message_id = %message_id,
@@ -477,13 +484,14 @@ impl RecruitmentCreationService {
         let repos = RepositoryContainer::new();
         let battle_recruitment_repo = repos.battle_recruitment();
 
+        // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
-                    guild_id: params.guild_id as u64,
-                    channel_id: recruitment_channel_id as u64,
-                    message_id,
+                    guild_id: DiscordGuildId::new(params.guild_id as u64),
+                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    message_id: DiscordMessageId::new(message_id),
                     quest_id: quest.id,
                     battle_style_id: quest.default_battle_style_id,
                     quest_start_at: params.quest_start_at,

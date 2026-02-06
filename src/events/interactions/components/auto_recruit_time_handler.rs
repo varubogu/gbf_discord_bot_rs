@@ -89,7 +89,6 @@ pub async fn handle_time_selection_interaction(
     let app_state = &data.app_state;
 
     match auto_recruitment::handle_time_selection(
-        ctx,
         app_state,
         guild_id,
         user_id,
@@ -102,7 +101,7 @@ pub async fn handle_time_selection_interaction(
         Ok(_result) => {
             let hours_str = selected_hours
                 .iter()
-                .map(|h| format!("{}時", h))
+                .map(|h| format!("{h}時"))
                 .collect::<Vec<_>>()
                 .join(", ");
 
@@ -111,8 +110,7 @@ pub async fn handle_time_selection_interaction(
                 .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new().content(format!(
-                        "✅ {}月{}日の参加可能時間を登録しました。\n登録した時間: {}",
-                        month, day, hours_str
+                        "✅ {month}月{day}日の参加可能時間を登録しました。\n登録した時間: {hours_str}"
                     )),
                 )
                 .await?;
@@ -135,7 +133,7 @@ pub async fn handle_time_selection_interaction(
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
+                    EditInteractionResponse::new().content(format!("エラー: {e}")),
                 )
                 .await?;
         }

@@ -1,10 +1,10 @@
 use crate::repository::GuildSettingsRepository;
 use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::types::discord::AutocompleteOption;
 use crate::types::{AppError, Result};
 use chrono::{Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 use lazy_static::lazy_static;
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use tracing::{debug, error, info};
@@ -183,7 +183,7 @@ impl TimezoneService {
     /// オートコンプリート用のタイムゾーンリストを取得
     /// 部分文字列でフィルタリングし、UTC+9:00形式のオフセット付きで表示
     /// キャッシュを使用してパフォーマンスを最適化
-    pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteChoice> {
+    pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteOption> {
         // 部分文字列でフィルタリング
         let partial_lower = partial.to_lowercase();
         TIMEZONE_CHOICE_DATA
@@ -194,7 +194,7 @@ impl TimezoneService {
                     || data.value.to_lowercase().contains(&partial_lower)
             })
             .take(25) // Discordの制限
-            .map(|data| AutocompleteChoice::new(data.display_name.clone(), data.value.clone()))
+            .map(|data| AutocompleteOption::new(data.display_name.clone(), data.value.clone()))
             .collect()
     }
 

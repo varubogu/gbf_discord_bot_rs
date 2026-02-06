@@ -73,6 +73,12 @@ impl From<crate::errors::ServiceError> for AppError {
     }
 }
 
+impl From<crate::errors::GatewayError> for AppError {
+    fn from(err: crate::errors::GatewayError) -> Self {
+        AppError::Generic(format!("Gateway error: {err}"))
+    }
+}
+
 impl AppError {
     /// Discord上でユーザーに表示するメッセージを取得
     /// 技術的な詳細は含めず、ユーザーフレンドリーなメッセージのみ返す

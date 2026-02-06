@@ -104,7 +104,7 @@ pub async fn handle_selection_check_button(
 
             let line = if element_names.is_empty() {
                 // 属性指定なしクエスト
-                format!("🎮 {}", quest_name)
+                format!("🎮 {quest_name}")
             } else {
                 // 6属性クエスト
                 format!("🎮 {}（{}）", quest_name, element_names.join("、"))
@@ -133,7 +133,7 @@ pub async fn handle_selection_check_button(
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!("エラー: {}", e)),
+                    EditInteractionResponse::new().content(format!("エラー: {e}")),
                 )
                 .await?;
         }

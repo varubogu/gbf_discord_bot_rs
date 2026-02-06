@@ -9,7 +9,13 @@ use crate::types::{PoiseContext, Result};
 )]
 pub async fn environ_load(ctx: PoiseContext<'_>) -> Result<()> {
     ctx.defer().await?;
-    match environment::load(&ctx).await {
+
+    // ギルドIDを取得
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
+
+    match environment::load(guild_id.get()).await {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }

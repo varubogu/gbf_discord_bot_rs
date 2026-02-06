@@ -4,7 +4,7 @@ use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
-use crate::types::PoiseContext;
+use crate::types::AppState;
 use sea_orm::TransactionTrait;
 use std::collections::HashMap;
 use tracing::{info, instrument, warn};
@@ -23,15 +23,17 @@ pub struct RecruitmentRoleSettings {
 /// 募集通知ロールを追加するFacade
 ///
 /// # 引数
-/// * `ctx` - Poiseコンテキスト
+/// * `app_state` - アプリケーション状態
+/// * `guild_id` - ギルドID
 /// * `quest_name_or_alias` - クエスト名またはエイリアス（"すべて"の場合は全募集通知）
 /// * `role_ids` - 追加するロールIDのリスト（最大6個）
 ///
 /// # 戻り値
 /// 追加された個数
-#[instrument(level = "debug", skip(ctx))]
+#[instrument(level = "debug", skip(app_state))]
 pub async fn add_recruitment_notification_roles(
-    ctx: &PoiseContext<'_>,
+    app_state: &AppState,
+    guild_id: u64,
     quest_name_or_alias: &str,
     role_ids: Vec<u64>,
 ) -> types::Result<usize> {
@@ -41,12 +43,8 @@ pub async fn add_recruitment_notification_roles(
         "募集通知ロールを追加します"
     );
 
-    let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
-
-    // Discord固有情報を取得
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
@@ -112,15 +110,17 @@ pub async fn add_recruitment_notification_roles(
 /// 募集通知ロールを削除するFacade
 ///
 /// # 引数
-/// * `ctx` - Poiseコンテキスト
+/// * `app_state` - アプリケーション状態
+/// * `guild_id` - ギルドID
 /// * `quest_name_or_alias` - クエスト名またはエイリアス（"すべて"の場合は全募集通知）
 /// * `role_ids` - 削除するロールIDのリスト（最大6個）
 ///
 /// # 戻り値
 /// 削除された個数
-#[instrument(level = "debug", skip(ctx))]
+#[instrument(level = "debug", skip(app_state))]
 pub async fn remove_recruitment_notification_roles(
-    ctx: &PoiseContext<'_>,
+    app_state: &AppState,
+    guild_id: u64,
     quest_name_or_alias: &str,
     role_ids: Vec<u64>,
 ) -> types::Result<u64> {
@@ -130,12 +130,8 @@ pub async fn remove_recruitment_notification_roles(
         "募集通知ロールを削除します"
     );
 
-    let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
-
-    // Discord固有情報を取得
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
@@ -197,22 +193,20 @@ pub async fn remove_recruitment_notification_roles(
 /// 募集通知ロール設定を取得するFacade
 ///
 /// # 引数
-/// * `ctx` - Poiseコンテキスト
+/// * `app_state` - アプリケーション状態
+/// * `guild_id` - ギルドID
 ///
 /// # 戻り値
 /// 募集通知ロール設定情報
-#[instrument(level = "debug", skip(ctx))]
+#[instrument(level = "debug", skip(app_state))]
 pub async fn show_recruitment_notification_roles(
-    ctx: &PoiseContext<'_>,
+    app_state: &AppState,
+    guild_id: u64,
 ) -> types::Result<RecruitmentRoleSettings> {
     info!("募集通知ロール設定を取得します");
 
-    let app_state = &ctx.data().app_state;
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
-
-    // Discord固有情報を取得
-    let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;

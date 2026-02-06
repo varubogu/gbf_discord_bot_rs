@@ -5,8 +5,8 @@ use crate::services::channel::channel_display_service::{
 };
 use crate::services::channel::channel_type_query_service::ChannelTypeQueryService;
 use crate::types::app_state::AppState;
+use crate::types::discord::AutocompleteOption;
 use crate::types::{AppError, Result};
-use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -44,7 +44,7 @@ impl ChannelManagementFacade {
     ///
     /// - DBの参照のみでトランザクションは不要。
     /// - Facade 層から Service を経由して Repository へアクセス。
-    pub async fn get_channel_types_for_autocomplete(&self) -> Result<Vec<AutocompleteChoice>> {
+    pub async fn get_channel_types_for_autocomplete(&self) -> Result<Vec<AutocompleteOption>> {
         let conn = self.app_state.guild_db();
         let service = ChannelTypeQueryService::new();
         service.get_channel_types_for_autocomplete(conn).await

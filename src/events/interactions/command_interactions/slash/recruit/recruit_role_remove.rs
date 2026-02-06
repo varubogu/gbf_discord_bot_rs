@@ -1,7 +1,7 @@
+use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::role_management;
 use crate::services::message::MessageTextId;
-use crate::services::message::helpers::get_message_from_context;
-use crate::services::permission::check_bot_control_role;
+use crate::events::helpers::get_message_from_context;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::Role;
 use std::collections::HashMap;
@@ -81,9 +81,16 @@ pub async fn recruit_role_remove(
         role_ids.push(r.id.get());
     }
 
+    // ギルドIDを取得
+    let guild_id = ctx.guild_id().ok_or_else(|| {
+        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
+    })?;
+
+    let app_state = &ctx.data().app_state;
+
     // Facadeを呼び出し
     let deleted_count =
-        role_management::remove_recruitment_notification_roles(&ctx, &quest, role_ids).await?;
+        role_management::remove_recruitment_notification_roles(app_state, guild_id.get(), &quest, role_ids).await?;
 
     // 結果をユーザーに通知
     let mut params = HashMap::new();

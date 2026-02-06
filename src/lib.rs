@@ -1,9 +1,12 @@
 pub mod constants;
+pub mod di;
 pub mod errors;
 pub mod events;
 pub mod facades;
+pub mod gateway;
 pub mod infrastructure;
 pub mod models;
+pub mod presenter;
 pub mod repository;
 pub mod services;
 pub mod types;

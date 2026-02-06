@@ -119,13 +119,13 @@ impl ErrorFormatter {
     /// データベースURLをマスク（パスワード部分を隠す）
     pub fn mask_database_url(db_url: &str) -> String {
         // postgresql://user:password@host:port/database の形式
-        if let Some(at_pos) = db_url.rfind('@') {
-            if let Some(colon_pos) = db_url[..at_pos].rfind(':') {
-                // パスワード部分をマスク
-                let before_password = &db_url[..colon_pos + 1];
-                let after_password = &db_url[at_pos..];
-                return format!("{before_password}***{after_password}");
-            }
+        if let Some(at_pos) = db_url.rfind('@')
+            && let Some(colon_pos) = db_url[..at_pos].rfind(':')
+        {
+            // パスワード部分をマスク
+            let before_password = &db_url[..colon_pos + 1];
+            let after_password = &db_url[at_pos..];
+            return format!("{before_password}***{after_password}");
         }
         // マスクできない場合はそのまま返す（パスワードがない形式の可能性）
         db_url.to_string()

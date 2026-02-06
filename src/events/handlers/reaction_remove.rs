@@ -1,6 +1,8 @@
 use crate::facades::recruitment::participants::update_participants;
+use crate::gateway::PoiseDiscordGateway;
 use crate::types::PoiseData;
 use poise::serenity_prelude::{Context, Reaction};
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 pub async fn on_reaction_remove(
@@ -45,9 +47,12 @@ pub async fn on_reaction_remove(
         guild_id, channel_id, message_id, user_id
     );
 
+    // events層でGatewayを作成
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+
     // Facade層を呼び出して参加者を更新（DB登録含む）
     match update_participants(
-        ctx,
+        &gateway,
         guild_id,
         channel_id,
         message_id,

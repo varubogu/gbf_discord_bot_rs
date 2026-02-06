@@ -99,7 +99,7 @@ pub async fn handle_quest_join_button(
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("エラー: {}", e)),
+                        .content(format!("エラー: {e}")),
                 )
                 .await?;
         }

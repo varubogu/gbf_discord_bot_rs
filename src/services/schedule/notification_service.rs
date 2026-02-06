@@ -1,3 +1,4 @@
+use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::{battle_recruitments, notifications};
 use crate::repository::GuildSettingsRepository;
 use crate::repository::RecruitmentParticipantsRepository;
@@ -10,10 +11,9 @@ use crate::repository::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
 use crate::services::message::MessageService;
-use crate::types::Result;
-use crate::utils::discord_helper::send_message_with_optional_reply;
+use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
+use crate::types::{AppError, Result};
 use chrono::Utc;
-use poise::serenity_prelude::{ChannelId, CreateMessage, Http, MessageId};
 use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,16 +22,16 @@ use tracing::{debug, error, info};
 /// 通知実行サービス
 /// - DatabaseConnection を保持しない
 /// - すべてのDB操作はFacade層から渡されたトランザクション経由で実行する
-pub struct NotificationService {
+pub struct NotificationService<G: DiscordGateway> {
     notification_repo: SeaOrmNotificationRepository,
     rel_repo: SeaOrmNotificationRelBattleRecruitmentRepository,
     guild_timezone_repo: SeaOrmGuildSettingsRepository,
     message_service: MessageService,
-    http: Arc<Http>,
+    gateway: Arc<G>,
 }
 
-impl NotificationService {
-    pub fn new(http: Arc<Http>) -> Self {
+impl<G: DiscordGateway> NotificationService<G> {
+    pub fn new(gateway: Arc<G>) -> Self {
         let notification_repo = SeaOrmNotificationRepository::new();
         let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
         let guild_timezone_repo = SeaOrmGuildSettingsRepository::new();
@@ -41,7 +41,7 @@ impl NotificationService {
             rel_repo,
             guild_timezone_repo,
             message_service,
-            http,
+            gateway,
         }
     }
 
@@ -231,8 +231,8 @@ impl NotificationService {
             .await?;
 
         // チャンネルとメッセージIDを取得（i64 → u64にキャスト）
-        let channel_id = ChannelId::new(recruitment.channel_id as u64);
-        let message_id = MessageId::new(recruitment.message_id as u64);
+        let channel_id = DiscordChannelId::new(recruitment.channel_id as u64);
+        let message_id = DiscordMessageId::new(recruitment.message_id as u64);
 
         // recruitment_participantsテーブルから参加者を取得
         let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
@@ -256,22 +256,23 @@ impl NotificationService {
             format!("{mentions}\n{message_text}")
         };
 
-        // 返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
-        match send_message_with_optional_reply(
-            &self.http,
-            channel_id,
-            message_id,
-            content,
-            Some("スケジュール通知".to_string()),
-        )
-        .await
+        // Gateway経由で返信形式で送信を試み、失敗時は文脈情報を付加して通常メッセージとして送信
+        match self
+            .gateway
+            .send_reply(
+                channel_id,
+                message_id,
+                MessageContent::text(&content),
+                Some("スケジュール通知".to_string()),
+            )
+            .await
         {
-            Ok(sent_message) => {
+            Ok(sent_message_id) => {
                 info!(
                     notification_id = notification.id,
                     recruit_id = recruit_id,
                     channel_id = recruitment.channel_id,
-                    message_id = sent_message.id.get(),
+                    message_id = sent_message_id.get(),
                     participants_count = participants_count,
                     "マルチ募集通知を送信しました"
                 );
@@ -284,7 +285,7 @@ impl NotificationService {
                     channel_id = recruitment.channel_id,
                     "マルチ募集通知の送信に失敗しました"
                 );
-                Err(e.into())
+                Err(AppError::from(e))
             }
         }
     }
@@ -311,18 +312,17 @@ impl NotificationService {
             )
             .await?;
 
-        // チャンネルにメッセージを送信
-        let channel_id = ChannelId::new(notification.channel_id as u64);
+        // チャンネルにメッセージを送信（Gateway経由）
+        let channel_id = DiscordChannelId::new(notification.channel_id as u64);
+        let message_content = MessageContent::text(&message_text);
 
-        let message = CreateMessage::new().content(&message_text);
-
-        match channel_id.send_message(&self.http, message).await {
-            Ok(sent_message) => {
+        match self.gateway.send_message(channel_id, message_content).await {
+            Ok(sent_message_id) => {
                 info!(
                     notification_id = notification.id,
                     guild_id = notification.guild_id,
                     channel_id = notification.channel_id,
-                    message_id = sent_message.id.get(),
+                    message_id = sent_message_id.get(),
                     "通知を送信しました"
                 );
                 Ok(())
@@ -334,7 +334,7 @@ impl NotificationService {
                     channel_id = notification.channel_id,
                     "メッセージの送信に失敗しました"
                 );
-                Err(e.into())
+                Err(AppError::from(e))
             }
         }
     }
