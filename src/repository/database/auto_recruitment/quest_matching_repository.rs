@@ -9,6 +9,7 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 /// マッチングリポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmQuestMatchingRepository;
 
 #[async_trait]
@@ -34,6 +35,28 @@ impl QuestMatchingRepositoryTrait for SeaOrmQuestMatchingRepository {
             guild_id,
             count = result.len(),
             "アクティブなマッチングを取得しました"
+        );
+        Ok(result)
+    }
+
+    async fn find_all_active(
+        &self,
+        txn: &DatabaseTransaction,
+    ) -> Result<Vec<quest_matchings::Model>> {
+        debug!("全ギルドのアクティブなマッチングを取得します");
+
+        let result = quest_matchings::Entity::find()
+            .filter(quest_matchings::Column::Status.eq("active"))
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "マッチングの取得に失敗しました");
+                e
+            })?;
+
+        debug!(
+            count = result.len(),
+            "全ギルドのアクティブなマッチングを取得しました"
         );
         Ok(result)
     }

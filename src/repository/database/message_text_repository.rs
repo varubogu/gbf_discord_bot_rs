@@ -4,7 +4,7 @@ use crate::repository::MessageTextRepository;
 use async_trait::async_trait;
 use sea_orm::{DbErr, EntityTrait};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct SeaOrmMessageTextRepository;
 
 impl SeaOrmMessageTextRepository {

@@ -3,7 +3,6 @@
 //! カテゴリ登録/解除/日数変更の処理を行う
 
 use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway};
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
 use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
@@ -13,13 +12,7 @@ use crate::repository::auto_recruitment::{
     AutoRecruitmentRepository, CreateAutoRecruitmentParams, QuestMatchingRepository,
     QuestMatchingUserRepository,
 };
-use crate::repository::database::auto_recruitment::{
-    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentQuestMessageRepository,
-    SeaOrmAutoRecruitmentRepository, SeaOrmQuestMatchingRepository,
-    SeaOrmQuestMatchingUserRepository,
-};
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{
@@ -80,8 +73,8 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let channel_repo = SeaOrmAutoRecruitmentChannelRepository::new();
+        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
+        let channel_repo = app_state.repositories.auto_recruitment_channel;
 
         // 既存の登録をチェック
         if auto_recruitment_repo
@@ -129,8 +122,8 @@ where
             };
 
         // クエスト一覧を取得（有効なクエストのみ）
-        let quest_repo = SeaOrmQuestRepository::new();
-        let quest_message_repo = SeaOrmAutoRecruitmentQuestMessageRepository::new();
+        let quest_repo = app_state.repositories.quest;
+        let quest_message_repo = app_state.repositories.auto_recruitment_quest_message;
 
         // 有効なクエストIDを取得
         let enabled_quest_results = quest_repo
@@ -210,7 +203,7 @@ where
             .await;
 
         // ローテーションタスクを初期登録（翌日0時）
-        let task_repo = SeaOrmScheduledTaskRepository::new();
+        let task_repo = app_state.repositories.scheduled_task;
         create_initial_rotation_task(&task_repo, &txn).await?;
 
         // 自動マッチングタスクを初期登録（10秒後）
@@ -271,8 +264,8 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let channel_repo = SeaOrmAutoRecruitmentChannelRepository::new();
+        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
+        let channel_repo = app_state.repositories.auto_recruitment_channel;
 
         // 自動募集設定を取得
         let auto_recruitment = auto_recruitment_repo
@@ -318,7 +311,7 @@ where
         }
 
         // クエストチャンネルの処理
-        let quest_message_repo = SeaOrmAutoRecruitmentQuestMessageRepository::new();
+        let quest_message_repo = app_state.repositories.auto_recruitment_quest_message;
         if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
             let channel_id = DiscordChannelId::new(quest_ch_id as u64);
             if auto_recruitment.quest_channel_is_bot_created {
@@ -385,8 +378,8 @@ where
         }
 
         // マッチング関連データを削除（外部キー制約のためquest_matching_usersを先に削除）
-        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
-        let matching_repo = SeaOrmQuestMatchingRepository::new();
+        let matching_user_repo = app_state.repositories.quest_matching_user;
+        let matching_repo = app_state.repositories.quest_matching;
 
         matching_user_repo
             .delete_all_by_guild(&txn, guild_id as i64)
@@ -452,8 +445,8 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let channel_repo = SeaOrmAutoRecruitmentChannelRepository::new();
+        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
+        let channel_repo = app_state.repositories.auto_recruitment_channel;
 
         // 自動募集設定を取得
         let auto_recruitment = auto_recruitment_repo
@@ -866,8 +859,8 @@ where
 }
 
 /// 初期ローテーションタスクを作成
-async fn create_initial_rotation_task(
-    task_repo: &SeaOrmScheduledTaskRepository,
+async fn create_initial_rotation_task<T: ScheduledTaskRepository>(
+    task_repo: &T,
     txn: &sea_orm::DatabaseTransaction,
 ) -> Result<()> {
     // 翌日の0時（JST）をUTCに変換
@@ -911,8 +904,8 @@ async fn create_initial_rotation_task(
 }
 
 /// 初期自動マッチングタスクを作成
-async fn create_initial_auto_matching_task(
-    task_repo: &SeaOrmScheduledTaskRepository,
+async fn create_initial_auto_matching_task<T: ScheduledTaskRepository>(
+    task_repo: &T,
     txn: &sea_orm::DatabaseTransaction,
 ) -> Result<()> {
     // 10秒後に実行

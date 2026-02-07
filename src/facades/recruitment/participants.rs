@@ -3,20 +3,18 @@
 //! Gateway経由でDiscord APIを操作し、サービス層のビジネスロジックを呼び出す。
 
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::recruitment::participants::ParticipantsService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::types;
+use crate::types::AppState;
 use crate::types::discord::{
     DiscordChannelId, DiscordMessageId, EmbedContent, MessageContent, MessageData,
 };
 use sea_orm::TransactionTrait;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::{error, info, instrument, warn};
 
 /// 参加者を更新する
@@ -28,8 +26,8 @@ use tracing::{error, info, instrument, warn};
 /// * `message_id` - メッセージID
 /// * `user_id` - リアクション追加/削除を行ったユーザーID（DB登録用、Noneの場合はDB登録なし）
 /// * `reaction_emoji` - 追加/削除されたリアクション絵文字（DB登録用）
-/// * `db` - データベース接続
-#[instrument(level = "debug", skip(gateway, db))]
+/// * `app_state` - アプリケーション状態
+#[instrument(level = "debug", skip(gateway, app_state))]
 pub async fn update_participants<G>(
     gateway: &G,
     guild_id: u64,
@@ -37,12 +35,13 @@ pub async fn update_participants<G>(
     message_id: u64,
     user_id: Option<u64>,
     reaction_emoji: Option<String>,
-    db: &sea_orm::DatabaseConnection,
+    app_state: &AppState,
 ) -> types::Result<()>
 where
     G: DiscordMessageGateway + DiscordReactionGateway + Sync,
 {
     info!("BattleRecruitmentFacade::update_participants - 参加者を更新します");
+    let db = app_state.guild_db();
     let txn = db.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
@@ -53,10 +52,12 @@ where
 
     let result = async {
         // Service層のインスタンスを作成
-        let battle_recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
         let participants_service = ParticipantsService::new(battle_recruitment_repo);
-        let query_service = RecruitmentQueryService::new();
-        let quest_query_service = QuestQueryService::new();
+        let battle_style_repo = app_state.repositories.battle_style;
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let query_service = RecruitmentQueryService::new(battle_style_repo, battle_recruitment_repo);
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
         // メッセージを取得してv2かどうかを判定（Gatewayを使用）
         let message = gateway.get_message(channel_id_obj, message_id_obj).await?;
@@ -103,11 +104,8 @@ where
             };
 
             // DBに参加者を登録/削除（toggle）
-            let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
-            let participants_svc =
-                RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
-                    Arc::new(participants_repo),
-                );
+            let participants_repo = app_state.repositories.recruitment_participants;
+            let participants_svc = RecruitmentParticipantsService::new(participants_repo);
 
             match participants_svc
                 .toggle_participation(&txn, recruitment.id, uid, element_id)

@@ -1,11 +1,10 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
+use crate::types::AppState;
 use crate::types::discord::AutocompleteOption;
-use sea_orm::{DatabaseConnection, TransactionTrait};
-use std::sync::Arc;
+use sea_orm::TransactionTrait;
 use tracing::warn;
 
 /// 募集スケジュールの入力候補を取得するファサード
@@ -15,14 +14,16 @@ use tracing::warn;
 /// - 表示整形（サービス）
 ///
 /// # 引数
-/// * `conn` - データベース接続
+/// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `user_id` - ユーザーID
 pub async fn get_schedules_for_autocomplete(
-    conn: &DatabaseConnection,
+    app_state: &AppState,
     guild_id: i64,
     user_id: i64,
 ) -> Vec<AutocompleteOption> {
+    let conn = app_state.guild_db();
+
     // Tx開始
     let txn = match conn.begin().await {
         Ok(t) => t,
@@ -40,7 +41,12 @@ pub async fn get_schedules_for_autocomplete(
     }
 
     // スケジュール一覧（自分が作成したもの）
-    let schedule_query_service = ScheduleQueryService::new();
+    let schedule_query_service = ScheduleQueryService::new(
+        app_state.repositories.battle_recruitment_schedule,
+        app_state.repositories.quest,
+        app_state.repositories.battle_recruitment_schedule_dismissal,
+        app_state.repositories.notification,
+    );
     let schedules = match schedule_query_service
         .get_schedules_by_user(&txn, user_id)
         .await
@@ -54,8 +60,8 @@ pub async fn get_schedules_for_autocomplete(
     };
 
     // タイムゾーンを取得（トランザクション内）
-    let timezone_repo = SeaOrmGuildSettingsRepository::new();
-    let timezone_service = TimezoneService::new(Arc::new(timezone_repo));
+    let guild_settings_repo = app_state.repositories.guild_settings;
+    let timezone_service = TimezoneService::new(guild_settings_repo);
     let timezone = match timezone_service.get_guild_timezone(conn, guild_id).await {
         Ok(tz) => tz,
         Err(e) => {

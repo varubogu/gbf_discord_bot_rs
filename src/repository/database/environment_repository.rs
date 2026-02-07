@@ -4,6 +4,7 @@ use crate::repository::EnvironmentRepository;
 use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set};
 
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmEnvironmentRepository;
 
 impl SeaOrmEnvironmentRepository {

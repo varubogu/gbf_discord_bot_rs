@@ -1,7 +1,12 @@
-use std::{env, path::Path};
+use std::{env, path::Path, sync::Arc};
 
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
+use gbf_discord_bot_rs::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use gbf_discord_bot_rs::repository::database::schedule::{
+    SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
+};
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
+use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 /// データクリーンアップバッチのエントリーポイント
@@ -30,12 +35,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db = manager.connection().clone();
 
+    // リポジトリ初期化
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+
     // クリーンアップサービス初期化
-    let cleanup_service = DataCleanupService::new(db);
+    let cleanup_service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
+
+    // トランザクション開始
+    let txn = db.begin().await.map_err(|e| {
+        error!(error = %e, "トランザクション開始に失敗しました");
+        e
+    })?;
 
     // クリーンアップ実行
-    match cleanup_service.execute().await {
+    match cleanup_service.execute(&txn).await {
         Ok(stats) => {
+            // トランザクションコミット
+            txn.commit().await.map_err(|e| {
+                error!(error = %e, "トランザクションコミットに失敗しました");
+                e
+            })?;
+
             info!(
                 recruitments = stats.deleted_recruitments,
                 notifications = stats.deleted_notifications,
@@ -46,6 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Err(e) => {
+            // エラー時はトランザクションロールバック（自動）
             error!(error = %e, "データクリーンアップに失敗しました");
             Err(e.into())
         }

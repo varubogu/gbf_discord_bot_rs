@@ -1,5 +1,4 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::quest_repository::QuestRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
@@ -50,8 +49,10 @@ pub async fn add_recruitment_notification_roles(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let role_service = RoleNotificationService::new();
-        let quest_query_service = QuestQueryService::new();
+        let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
+        let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
+        let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
         let mut added_count = 0;
 
@@ -137,8 +138,10 @@ pub async fn remove_recruitment_notification_roles(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let role_service = RoleNotificationService::new();
-        let quest_query_service = QuestQueryService::new();
+        let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
+        let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
+        let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
         let mut deleted_count: u64 = 0;
 
@@ -212,8 +215,10 @@ pub async fn show_recruitment_notification_roles(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let role_service = RoleNotificationService::new();
-        let quest_repo = SeaOrmQuestRepository::new();
+        let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
+        let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
+        let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
+        let quest_repo = app_state.repositories.quest;
 
         // 全募集通知ロール取得
         let all_roles = role_service

@@ -1,5 +1,3 @@
-use crate::repository::database::all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
-use crate::repository::database::quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository;
 use crate::repository::{
     AllRecruitmentNotificationRolesRepository, QuestRecruitmentNotificationRolesRepository,
 };
@@ -8,22 +6,24 @@ use sea_orm::DatabaseTransaction;
 use tracing::{debug, info};
 
 /// ロール通知サービス
-pub struct RoleNotificationService {
-    all_roles_repo: SeaOrmAllRecruitmentNotificationRolesRepository,
-    quest_roles_repo: SeaOrmQuestRecruitmentNotificationRolesRepository,
+pub struct RoleNotificationService<A, Q>
+where
+    A: AllRecruitmentNotificationRolesRepository,
+    Q: QuestRecruitmentNotificationRolesRepository,
+{
+    all_roles_repo: A,
+    quest_roles_repo: Q,
 }
 
-impl Default for RoleNotificationService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RoleNotificationService {
-    pub fn new() -> Self {
+impl<A, Q> RoleNotificationService<A, Q>
+where
+    A: AllRecruitmentNotificationRolesRepository,
+    Q: QuestRecruitmentNotificationRolesRepository,
+{
+    pub fn new(all_roles_repo: A, quest_roles_repo: Q) -> Self {
         Self {
-            all_roles_repo: SeaOrmAllRecruitmentNotificationRolesRepository::new(),
-            quest_roles_repo: SeaOrmQuestRecruitmentNotificationRolesRepository::new(),
+            all_roles_repo,
+            quest_roles_repo,
         }
     }
 

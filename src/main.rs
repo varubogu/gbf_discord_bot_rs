@@ -5,8 +5,9 @@ use gbf_discord_bot_rs::events::{
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
 use gbf_discord_bot_rs::repository::database::{
     battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
+    guild_message_text_repository::SeaOrmGuildMessageTextRepository,
+    message_text_repository::SeaOrmMessageTextRepository,
     recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
-    schedule::{SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository},
 };
 use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
@@ -43,7 +44,7 @@ async fn main() -> Result<()> {
 
     // タイムゾーンキャッシュを初期化
     info!("Initializing timezone cache...");
-    gbf_discord_bot_rs::services::timezone_service::TimezoneService::initialize_timezone_cache();
+    gbf_discord_bot_rs::services::timezone_service::initialize_timezone_cache();
 
     let mut client = create_discord_client(&app_state).await?;
 
@@ -280,23 +281,23 @@ async fn create_discord_client(app_state: &AppState) -> Result<serenity::Client>
 
 /// SchedulerManagerを初期化してバックグラウンドで起動する
 async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Result<()> {
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
-    let dissolution_repo = Arc::new(SeaOrmScheduledTaskDissolutionRepository::new());
     let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
     let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
-    let message_service = Arc::new(MessageService::new());
+    let message_service = Arc::new(MessageService::new(
+        SeaOrmGuildMessageTextRepository::new(),
+        SeaOrmMessageTextRepository::new(),
+    ));
+    let repos = app_state.repositories;
 
     // poise依存をサービス層から分離するため、ここでGatewayを作成
     let gateway = Arc::new(PoiseDiscordGateway::new(http));
 
     let mut scheduler_manager = SchedulerManager::new(
-        Arc::new(app_state.system_db().clone()),
         gateway,
-        task_repo,
-        dissolution_repo,
         recruitment_repo,
         participants_repo,
         message_service,
+        repos,
     )
     .await
     .map_err(|e| {
@@ -305,8 +306,9 @@ async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Res
     })?;
 
     // SchedulerManagerをバックグラウンドで起動
+    let db = Arc::new(app_state.system_db().clone());
     tokio::spawn(async move {
-        if let Err(e) = scheduler_manager.start().await {
+        if let Err(e) = scheduler_manager.start(db).await {
             error!(error = %e, "SchedulerManagerの起動に失敗しました");
         }
     });

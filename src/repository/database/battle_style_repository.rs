@@ -2,28 +2,11 @@ use async_trait::async_trait;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 
 use crate::models::entities::master::battle_styles;
+use crate::repository::battle_style_repository::BattleStyleRepository;
 use crate::types;
 
-/// BattleStyleRepositoryトレイト
-#[async_trait]
-pub trait BattleStyleRepository: Send + Sync {
-    /// IDからBattleStyleを取得
-    async fn get_by_id<'c, C>(
-        &self,
-        db: &'c C,
-        id: i32,
-    ) -> types::Result<Option<battle_styles::Model>>
-    where
-        C: sea_orm::ConnectionTrait;
-
-    /// すべてのBattleStyleを取得（sort_order順）
-    async fn get_all<'c, C>(&self, db: &'c C) -> types::Result<Vec<battle_styles::Model>>
-    where
-        C: sea_orm::ConnectionTrait;
-}
-
 /// SeaORMを使ったBattleStyleRepository実装
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmBattleStyleRepository;
 
 impl SeaOrmBattleStyleRepository {

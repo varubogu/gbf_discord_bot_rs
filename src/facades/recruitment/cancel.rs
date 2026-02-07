@@ -4,16 +4,11 @@
 //! サービス層のビジネスロジックを呼び出す。
 
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::infrastructure::database::container::RepositoryContainer;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::{
     GuildSettingsRepository, QuestRepository, RecruitmentParticipantsRepository,
 };
-use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
     cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
 };
@@ -86,9 +81,8 @@ where
     set_current_guild_id(&txn, guild_id.get() as i64).await?;
 
     let result = async {
-        // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
+        // Repositoryの取得
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
 
         // Gateway経由でDBの募集情報とDiscordメッセージの状況をチェック
         let can_cancel_result = check_can_cancel_recruitment(
@@ -96,7 +90,7 @@ where
             guild_id.get(),
             channel_id.get(),
             message_id.get(),
-            battle_recruitment_repo,
+            &battle_recruitment_repo,
             &txn,
         )
         .await?;
@@ -160,9 +154,8 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
+        // Repositoryの取得
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
 
         info!(
             "キャンセル処理開始: guild_id={}, channel_id={}, message_id={}",
@@ -248,7 +241,7 @@ where
         // 6. DBから募集情報を取得し、キャンセル済み状態に更新
         let recruitment = cancel_recruitment_by_message(
             &txn,
-            battle_recruitment_repo,
+            &battle_recruitment_repo,
             guild_id,
             channel_id,
             message_id,
@@ -257,7 +250,11 @@ where
         .await?;
 
         // 7. キャンセルした募集の関連通知を削除
-        let notification_management_service = NotificationManagementService::new();
+        let notification_management_service = NotificationManagementService::new(
+            app_state.repositories.notification,
+            app_state.repositories.notification_rel_battle_recruitment,
+            app_state.repositories.scheduled_task,
+        );
         let deleted_count = notification_management_service
             .delete_recruitment_notifications(&txn, recruitment.id)
             .await?;
@@ -335,9 +332,8 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        // RepositoryContainerとRepositoryの取得
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
+        // Repositoryの取得
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
 
         // 募集メッセージかどうか確認
         // u64をドメイン型に変換
@@ -393,7 +389,7 @@ where
         // メッセージ削除時は元の募集メッセージIDをrecruit_end_message_idに設定
         cancel_recruitment_by_message(
             &txn,
-            battle_recruitment_repo,
+            &battle_recruitment_repo,
             guild_id,
             channel_id,
             message_id,
@@ -402,15 +398,19 @@ where
         .await?;
 
         // 関連通知スケジュールを削除
-        let notification_management_service = NotificationManagementService::new();
+        let notification_management_service = NotificationManagementService::new(
+            app_state.repositories.notification,
+            app_state.repositories.notification_rel_battle_recruitment,
+            app_state.repositories.scheduled_task,
+        );
         notification_management_service
             .delete_recruitment_notifications(&txn, recruitment.id)
             .await?;
 
         // DBから参加者情報を取得
-        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
+        let participants_repo = app_state.repositories.recruitment_participants;
         let participant_user_ids = participants_repo
-            .get_all_participant_user_ids(&txn, recruitment.id)
+            .get_all_participant_user_ids_with_txn(&txn, recruitment.id)
             .await?;
 
         // 参加者メンションを作成
@@ -420,7 +420,7 @@ where
             .collect();
 
         // ギルド設定からロケールを取得
-        let guild_settings_repo = SeaOrmGuildSettingsRepository::new();
+        let guild_settings_repo = app_state.repositories.guild_settings;
         let locale = match guild_settings_repo
             .find_by_guild_id_with_txn(&txn, guild_id as i64)
             .await?
@@ -430,10 +430,10 @@ where
         };
 
         // キャンセル通知メッセージを作成
-        let message_service = MessageService::new();
+        let message_service = app_state.message_service();
         let notification_text = create_cancel_notification_text(
             &txn,
-            &message_service,
+            message_service,
             Some(guild_id as i64),
             Some(&locale),
             &participant_mentions,
@@ -441,7 +441,7 @@ where
         .await?;
 
         // クエスト情報を取得して通知メッセージに追加
-        let quest_repo = SeaOrmQuestRepository::new();
+        let quest_repo = app_state.repositories.quest;
         let final_notification_text = match quest_repo
             .get_by_target_id(&txn, recruitment.quest_id)
             .await?

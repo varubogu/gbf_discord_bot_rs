@@ -80,7 +80,11 @@ async fn show_quest_selection_menu(
     message_id: u64,
 ) -> Result<()> {
     // クエストリストを取得（Facade経由）
-    let pairs = quest_list::list_quests_for_select_with_db(data.app_state.guild_db()).await;
+    let pairs = quest_list::list_quests_for_select(
+        data.app_state.guild_db(),
+        data.app_state.repositories.quest,
+    )
+    .await;
     let options: Vec<CreateSelectMenuOption> = pairs
         .into_iter()
         .map(|(name, id)| CreateSelectMenuOption::new(name, id.to_string()))
@@ -114,8 +118,7 @@ async fn show_battle_style_selection_menu(
     message_id: u64,
 ) -> Result<()> {
     // 攻略方法リストを取得（Facade経由）
-    let pairs =
-        battle_style_list::list_battle_styles_for_select_with_db(data.app_state.guild_db()).await;
+    let pairs = battle_style_list::list_battle_styles_for_select(&data.app_state).await;
     let options: Vec<CreateSelectMenuOption> = pairs
         .into_iter()
         .map(|(display_name, id)| CreateSelectMenuOption::new(display_name, id.to_string()))
@@ -188,9 +191,13 @@ async fn handle_quest_selection(
         .parse()
         .map_err(|_| AppError::Generic("クエストIDの解析に失敗しました".to_string()))?;
 
-    let quest_name = quest_list::get_quest_name_by_id_with_db(data.app_state.guild_db(), quest_id)
-        .await
-        .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
+    let quest_name = quest_list::get_quest_name_by_id(
+        data.app_state.guild_db(),
+        data.app_state.repositories.quest,
+        quest_id,
+    )
+    .await
+    .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
 
     info!(
         message_id = %message_id,
@@ -284,12 +291,10 @@ async fn handle_battle_style_selection(
         .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
 
     // 攻略方法名をFacade経由で取得
-    let battle_style_name = battle_style_list::get_battle_style_name_by_id_with_db(
-        data.app_state.guild_db(),
-        battle_style_id,
-    )
-    .await
-    .unwrap_or_else(|| format!("ID:{battle_style_id}"));
+    let battle_style_name =
+        battle_style_list::get_battle_style_name_by_id(&data.app_state, battle_style_id)
+            .await
+            .unwrap_or_else(|| format!("ID:{battle_style_id}"));
 
     info!(
         message_id = %message_id,

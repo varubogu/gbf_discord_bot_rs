@@ -1,9 +1,7 @@
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
+use crate::repository::db_helper::set_current_guild_id;
+use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
 use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
 use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
@@ -15,7 +13,6 @@ use crate::types::discord::{
 };
 use crate::types::{AppError, AppState, RecruitmentComponentId, Result};
 use sea_orm::TransactionTrait;
-use std::sync::Arc;
 use tracing::{error, info, instrument};
 
 /// ボタンハンドラーの処理結果
@@ -78,7 +75,10 @@ where
 
     let result = async {
         // 1. メッセージIDから募集情報を取得
-        let query_service = RecruitmentQueryService::new();
+        let battle_style_repo = app_state.repositories.battle_style;
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let query_service =
+            RecruitmentQueryService::new(battle_style_repo, battle_recruitment_repo);
         let recruitment = query_service
             .get_recruitment_by_message(&txn, guild_id.get(), channel_id.get(), message_id.get())
             .await?
@@ -104,11 +104,8 @@ where
         }
 
         // 4. Service層を使って複数属性の参加処理
-        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
-        let service =
-            RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
-                Arc::new(participants_repo),
-            );
+        let participants_repo = app_state.repositories.recruitment_participants;
+        let service = RecruitmentParticipantsService::new(participants_repo);
 
         let mut joined_elements = Vec::new();
         let mut left_elements = Vec::new();
@@ -179,11 +176,20 @@ where
         let participant_count_usize = participant_count.max(0) as usize;
 
         // 6. メッセージを更新して参加者一覧を反映
-        update_recruitment_message(gateway, &txn, &recruitment, message_id, channel_id).await?;
+        update_recruitment_message(
+            gateway,
+            app_state,
+            &txn,
+            &recruitment,
+            message_id,
+            channel_id,
+        )
+        .await?;
 
         // 7. 規定人数到達の通知処理
         check_and_notify_recruitment_full(
             gateway,
+            app_state,
             &txn,
             &recruitment,
             participant_count_usize,
@@ -259,7 +265,10 @@ where
 
     let result = async {
         // 1. メッセージIDから募集情報を取得
-        let query_service = RecruitmentQueryService::new();
+        let battle_style_repo = app_state.repositories.battle_style;
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let query_service =
+            RecruitmentQueryService::new(battle_style_repo, battle_recruitment_repo);
         let recruitment = query_service
             .get_recruitment_by_message(&txn, guild_id.get(), channel_id.get(), message_id.get())
             .await?
@@ -285,11 +294,8 @@ where
         }
 
         // 4. Service層を使って参加/退出処理
-        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
-        let service =
-            RecruitmentParticipantsService::<SeaOrmRecruitmentParticipantsRepository>::new(
-                Arc::new(participants_repo),
-            );
+        let participants_repo = app_state.repositories.recruitment_participants;
+        let service = RecruitmentParticipantsService::new(participants_repo);
 
         let response_message: String = match component_id {
             RecruitmentComponentId::Join => {
@@ -362,11 +368,20 @@ where
         let participant_count_usize = participant_count.max(0) as usize;
 
         // 6. メッセージを更新して参加者一覧を反映
-        update_recruitment_message(gateway, &txn, &recruitment, message_id, channel_id).await?;
+        update_recruitment_message(
+            gateway,
+            app_state,
+            &txn,
+            &recruitment,
+            message_id,
+            channel_id,
+        )
+        .await?;
 
         // 7. 規定人数到達の通知処理
         check_and_notify_recruitment_full(
             gateway,
+            app_state,
             &txn,
             &recruitment,
             participant_count_usize,
@@ -401,13 +416,15 @@ where
 ///
 /// # 引数
 /// * `gateway` - Discord Gateway
+/// * `app_state` - アプリケーション状態
 /// * `txn` - データベーストランザクション
 /// * `recruitment` - 募集情報
 /// * `message_id` - メッセージID
 /// * `channel_id` - チャンネルID
-#[instrument(level = "info", skip(gateway, txn))]
+#[instrument(level = "info", skip(gateway, app_state, txn))]
 async fn update_recruitment_message<G>(
     gateway: &G,
+    app_state: &AppState,
     txn: &sea_orm::DatabaseTransaction,
     recruitment: &crate::models::battle_recruitments::BattleRecruitments,
     message_id: DiscordMessageId,
@@ -419,7 +436,9 @@ where
     info!("募集メッセージの参加者一覧を更新します");
 
     // 1. battle_styleの情報を取得（属性・絵文字の情報）
-    let query_service = RecruitmentQueryService::new();
+    let battle_style_repo = app_state.repositories.battle_style;
+    let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+    let query_service = RecruitmentQueryService::new(battle_style_repo, battle_recruitment_repo);
     let battle_style = query_service
         .get_battle_style_by_id(txn, recruitment.battle_style_id)
         .await?
@@ -428,19 +447,13 @@ where
         })?;
 
     // 2. DBから参加者一覧を取得
-    use crate::models::entities::worker::recruitment_participants::{
-        Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
-    };
-    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-
-    let participants = RecruitmentParticipantEntity::find()
-        .filter(ParticipantColumn::RecruitmentId.eq(recruitment.id))
-        .all(txn)
-        .await
-        .map_err(AppError::Database)?;
+    let participants_repo = app_state.repositories.recruitment_participants;
+    let participants = participants_repo
+        .find_by_recruitment_id_with_txn(txn, recruitment.id)
+        .await?;
 
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
-    let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+    let guild_env_repo = app_state.repositories.guild_environment;
     let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
     let element_emojis = guild_env_service
         .get_element_emojis(txn, gateway, recruitment.guild_id as i64)
@@ -579,14 +592,16 @@ async fn create_participants_text(
 ///
 /// # 引数
 /// * `gateway` - Discord Gateway
+/// * `app_state` - アプリケーション状態
 /// * `txn` - データベーストランザクション
 /// * `recruitment` - 募集情報
 /// * `participant_count` - 現在の参加者数
 /// * `channel_id` - チャンネルID
 /// * `message_id` - メッセージID
-#[instrument(level = "info", skip(gateway, txn))]
+#[instrument(level = "info", skip(gateway, app_state, txn))]
 async fn check_and_notify_recruitment_full<G>(
     gateway: &G,
+    app_state: &AppState,
     txn: &sea_orm::DatabaseTransaction,
     recruitment: &crate::models::battle_recruitments::BattleRecruitments,
     participant_count: usize,
@@ -600,8 +615,7 @@ where
 
     // クエスト情報を取得して規定人数を確認
     use crate::repository::QuestRepository;
-    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-    let quest_repository = SeaOrmQuestRepository::new();
+    let quest_repository = app_state.repositories.quest;
     let quest = quest_repository
         .get_by_target_id(txn, recruitment.quest_id)
         .await?
@@ -621,8 +635,8 @@ where
         "人数チェック結果"
     );
 
-    // リポジトリを作成
-    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    // リポジトリを取得
+    let recruitment_repo = app_state.repositories.battle_recruitments;
 
     match (notification_sent, is_full) {
         (false, false) => {
@@ -635,7 +649,7 @@ where
             info!("規定人数に到達しました。通知を送信します");
 
             // 全参加者のメンションを取得
-            let participants = get_all_participant_mentions(txn, recruitment.id).await?;
+            let participants = get_all_participant_mentions(app_state, txn, recruitment.id).await?;
 
             // 通知メッセージを送信
             send_full_notification(gateway, channel_id, message_id, participants).await?;
@@ -677,20 +691,16 @@ where
 /// * `txn` - データベーストランザクション
 /// * `recruitment_id` - 募集ID
 async fn get_all_participant_mentions(
+    app_state: &AppState,
     txn: &sea_orm::DatabaseTransaction,
     recruitment_id: i32,
 ) -> Result<Vec<String>> {
-    use crate::models::entities::worker::recruitment_participants::{
-        Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
-    };
-    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
     use std::collections::HashSet;
 
-    let participants = RecruitmentParticipantEntity::find()
-        .filter(ParticipantColumn::RecruitmentId.eq(recruitment_id))
-        .all(txn)
-        .await
-        .map_err(AppError::Database)?;
+    let participants_repo = app_state.repositories.recruitment_participants;
+    let participants = participants_repo
+        .find_by_recruitment_id_with_txn(txn, recruitment_id)
+        .await?;
 
     // ユニークなユーザーIDを取得（重複排除）
     let unique_user_ids: HashSet<i64> = participants.iter().map(|p| p.user_id).collect();

@@ -11,7 +11,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// last_process_timesリポジトリ
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmLastProcessTimeRepository;
 
 impl SeaOrmLastProcessTimeRepository {

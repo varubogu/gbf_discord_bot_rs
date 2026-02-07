@@ -6,7 +6,7 @@ use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error};
 
 /// guildsテーブルのRepository
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmGuildRepository;
 
 impl SeaOrmGuildRepository {

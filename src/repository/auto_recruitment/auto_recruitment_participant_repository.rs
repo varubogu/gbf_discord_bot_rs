@@ -86,4 +86,10 @@ pub trait AutoRecruitmentParticipantRepository: Send + Sync {
         month: i32,
         day: i32,
     ) -> Result<u64>;
+
+    /// 全ての参加可能時間を取得
+    async fn find_all(
+        &self,
+        txn: &DatabaseTransaction,
+    ) -> Result<Vec<auto_recruitment_participants::Model>>;
 }

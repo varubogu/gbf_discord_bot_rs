@@ -1,4 +1,5 @@
 /// メッセージサービス用ヘルパー関数
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::message::{MessageService, MessageTextId};
 use sea_orm::DatabaseConnection;
 use std::collections::HashMap;
@@ -35,9 +36,13 @@ impl IntoMessageId for String {
 /// * `params` - パラメータ
 /// * `guild_id` - ギルドID（省略可能）
 /// * `locale` - ロケール（省略可能）
-pub async fn get_message<T: IntoMessageId>(
+pub async fn get_message<
+    T: IntoMessageId,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
+>(
     db: &DatabaseConnection,
-    message_service: &MessageService,
+    message_service: &MessageService<GM, MT>,
     message_id: T,
     params: HashMap<String, String>,
     guild_id: Option<i64>,

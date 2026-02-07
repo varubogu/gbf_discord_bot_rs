@@ -1,16 +1,23 @@
+use crate::di::Repositories;
 use crate::gateway::DiscordGateway;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskDissolutionRepository,
-    SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
-};
 use crate::repository::schedule::ScheduledTaskRepository;
-use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
+use crate::repository::{
+    BattleRecruitmentsRepository, GuildMessageTextRepository, MessageTextRepository,
+    RecruitmentParticipantsRepository,
+};
+use crate::services::auto_recruitment::PeriodicMatchingService;
+use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::message::MessageService;
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;
+use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::dismissal_task_executor::DismissalTaskExecutor;
 use crate::services::schedule::dissolution_task_executor::DissolutionTaskExecutor;
 use crate::services::schedule::recurring_recruitment_task_executor::RecurringRecruitmentTaskExecutor;
-use crate::services::schedule::{NotificationService, RecruitmentScheduleService};
+use crate::services::schedule::{
+    DismissalManagementService, NotificationManagementService, NotificationService,
+    RecruitmentScheduleService,
+};
+use crate::services::timezone_service::TimezoneService;
 use crate::types::Result;
 use chrono::{Duration, Utc};
 use sea_orm::{DatabaseConnection, TransactionTrait};
@@ -21,46 +28,44 @@ use tracing::{debug, error, info, warn};
 /// スケジューラーマネージャー
 ///
 /// tokio-cron-schedulerを使用して、定期的にタスクをプリロードし、実行する
-pub struct SchedulerManager<G, R, P>
+pub struct SchedulerManager<G, R, P, GM, MT>
 where
     G: DiscordGateway + Send + Sync + 'static,
     R: BattleRecruitmentsRepository + 'static,
     P: RecruitmentParticipantsRepository + 'static,
+    GM: GuildMessageTextRepository + Clone + Send + Sync + 'static,
+    MT: MessageTextRepository + Clone + Send + Sync + 'static,
 {
     scheduler: JobScheduler,
-    db: Arc<DatabaseConnection>,
     gateway: Arc<G>,
-    task_repo: Arc<SeaOrmScheduledTaskRepository>,
-    dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
     recruitment_repo: Arc<R>,
     participants_repo: Arc<P>,
-    message_service: Arc<MessageService>,
+    message_service: Arc<MessageService<GM, MT>>,
+    repos: Repositories,
 }
 
-impl<G, R, P> SchedulerManager<G, R, P>
+impl<G, R, P, GM, MT> SchedulerManager<G, R, P, GM, MT>
 where
     G: DiscordGateway + Send + Sync + 'static,
     R: BattleRecruitmentsRepository + 'static,
     P: RecruitmentParticipantsRepository + 'static,
+    GM: GuildMessageTextRepository + Clone + Send + Sync + 'static,
+    MT: MessageTextRepository + Clone + Send + Sync + 'static,
 {
     /// 新しいSchedulerManagerを作成
     ///
     /// # Arguments
-    /// * `db` - データベース接続
     /// * `gateway` - Discord Gateway（トレイト境界による抽象化）
-    /// * `task_repo` - スケジュールタスクリポジトリ
-    /// * `dissolution_repo` - 解散タスクリポジトリ
     /// * `recruitment_repo` - 募集リポジトリ
     /// * `participants_repo` - 参加者リポジトリ
     /// * `message_service` - メッセージサービス
+    /// * `repos` - リポジトリコンテナ
     pub async fn new(
-        db: Arc<DatabaseConnection>,
         gateway: Arc<G>,
-        task_repo: Arc<SeaOrmScheduledTaskRepository>,
-        dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: Arc<R>,
         participants_repo: Arc<P>,
-        message_service: Arc<MessageService>,
+        message_service: Arc<MessageService<GM, MT>>,
+        repos: Repositories,
     ) -> Result<Self> {
         let scheduler = JobScheduler::new().await.map_err(|e| {
             crate::types::AppError::Generic(format!("JobScheduler creation failed: {e}"))
@@ -68,36 +73,33 @@ where
 
         Ok(Self {
             scheduler,
-            db,
             gateway,
-            task_repo,
-            dissolution_repo,
             recruitment_repo,
             participants_repo,
             message_service,
+            repos,
         })
     }
 
     /// スケジューラーを開始
     ///
     /// 10秒間隔でタスクをプリロードするジョブを登録し、スケジューラーを起動する
-    pub async fn start(&mut self) -> Result<()> {
+    ///
+    /// # Arguments
+    /// * `db` - データベース接続
+    pub async fn start(&mut self, db: Arc<DatabaseConnection>) -> Result<()> {
         info!("SchedulerManagerを起動します");
 
         // 10秒間隔でタスクをプリロードするジョブを作成
-        let db = Arc::clone(&self.db);
         let gateway = Arc::clone(&self.gateway);
-        let task_repo = Arc::clone(&self.task_repo);
-        let dissolution_repo = Arc::clone(&self.dissolution_repo);
         let recruitment_repo = Arc::clone(&self.recruitment_repo);
         let participants_repo = Arc::clone(&self.participants_repo);
         let message_service = Arc::clone(&self.message_service);
+        let repos = self.repos;
 
         let job = Job::new_async("*/10 * * * * *", move |_uuid, _lock| {
             let db = Arc::clone(&db);
             let gateway = Arc::clone(&gateway);
-            let task_repo = Arc::clone(&task_repo);
-            let dissolution_repo = Arc::clone(&dissolution_repo);
             let recruitment_repo = Arc::clone(&recruitment_repo);
             let participants_repo = Arc::clone(&participants_repo);
             let message_service = Arc::clone(&message_service);
@@ -106,11 +108,10 @@ where
                 if let Err(e) = Self::preload_and_execute_tasks(
                     &db,
                     &gateway,
-                    &task_repo,
-                    &dissolution_repo,
                     &recruitment_repo,
                     &participants_repo,
                     &message_service,
+                    &repos,
                 )
                 .await
                 {
@@ -149,11 +150,10 @@ where
     async fn preload_and_execute_tasks(
         db: &Arc<DatabaseConnection>,
         gateway: &Arc<G>,
-        task_repo: &Arc<SeaOrmScheduledTaskRepository>,
-        dissolution_repo: &Arc<SeaOrmScheduledTaskDissolutionRepository>,
         recruitment_repo: &Arc<R>,
         participants_repo: &Arc<P>,
-        message_service: &Arc<MessageService>,
+        message_service: &Arc<MessageService<GM, MT>>,
+        repos: &Repositories,
     ) -> Result<()> {
         let now = Utc::now();
         let preload_until = now + Duration::seconds(20);
@@ -168,7 +168,10 @@ where
 
         // 未実行タスクを取得（scheduled_tasks）
         // is_executed=falseで絞り込んでいるため、過去の未実行タスクも取得される
-        let tasks = task_repo.find_pending_to(&txn, preload_until).await?;
+        let tasks: Vec<crate::models::entities::worker::scheduled_tasks::Model> = repos
+            .scheduled_task
+            .find_pending_to(&txn, preload_until)
+            .await?;
 
         if tasks.is_empty() {
             debug!("プリロード対象のタスクはありません");
@@ -180,12 +183,18 @@ where
 
         // scheduled_tasksを実行
 
-        use crate::repository::database::schedule::SeaOrmNotificationRepository;
         use crate::repository::schedule::NotificationRepository as NotificationRepositoryTrait;
 
         // Gateway経由でNotificationServiceを作成
-        let notification_service = NotificationService::new(Arc::clone(gateway));
-        let notification_repo = SeaOrmNotificationRepository::new();
+        let notification_service = NotificationService::new(
+            Arc::clone(gateway),
+            Arc::clone(recruitment_repo),
+            repos.notification,
+            repos.notification_rel_battle_recruitment,
+            repos.guild_settings,
+            repos.recruitment_participants,
+            MessageService::new(repos.guild_message_text, repos.message_text),
+        );
 
         for task in tasks {
             if task.schedule_datetime <= now {
@@ -196,7 +205,7 @@ where
                         info!(task_id = task.id, "通知タスクを実行します");
 
                         // task_idからnotificationsテーブルを検索
-                        match notification_repo.find_by_task_id(&txn, task.id).await {
+                        match repos.notification.find_by_task_id(&txn, task.id).await {
                             Ok(Some(notification)) => {
                                 // 通知を送信
                                 match notification_service
@@ -205,8 +214,10 @@ where
                                 {
                                     Ok(_) => {
                                         // タスクを完了としてマーク
-                                        if let Err(e) =
-                                            task_repo.mark_as_executed(&txn, task.id).await
+                                        if let Err(e) = repos
+                                            .scheduled_task
+                                            .mark_as_executed(&txn, task.id)
+                                            .await
                                         {
                                             error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                         }
@@ -224,7 +235,9 @@ where
                                     task_id = task.id,
                                     "通知が見つかりません（データ不整合）。タスクを実行済みとしてマークします"
                                 );
-                                if let Err(e) = task_repo.mark_as_executed(&txn, task.id).await {
+                                if let Err(e) =
+                                    repos.scheduled_task.mark_as_executed(&txn, task.id).await
+                                {
                                     error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                 }
                             }
@@ -237,11 +250,13 @@ where
                         // Dissolution
                         info!(task_id = task.id, "解散タスクを実行します");
                         let executor = DissolutionTaskExecutor::new(
-                            Arc::clone(task_repo),
-                            Arc::clone(dissolution_repo),
+                            Arc::new(repos.scheduled_task),
+                            Arc::new(repos.scheduled_task_dissolution),
                             Arc::clone(recruitment_repo),
                             Arc::clone(participants_repo),
                             Arc::clone(message_service),
+                            Arc::new(repos.guild_settings),
+                            repos.quest,
                         );
 
                         match executor.execute(&txn, gateway.as_ref(), task.id).await {
@@ -262,18 +277,50 @@ where
                     4 => {
                         // RecurringRecruitment
                         info!(task_id = task.id, "定期募集タスクを実行します");
-                        let recurring_repo =
-                            Arc::new(SeaOrmScheduledTaskRecurringRecruitmentRepository::new());
-                        let schedule_repo =
-                            Arc::new(SeaOrmBattleRecruitmentScheduleRepository::new());
+
                         let schedule_service = Arc::new(RecruitmentScheduleService::new());
+
+                        let role_service = RoleNotificationService::new(
+                            repos.all_recruitment_notification_roles,
+                            repos.quest_recruitment_notification_roles,
+                        );
+
+                        let timezone_service = TimezoneService::new(repos.guild_settings);
+
+                        let guild_env_service =
+                            GuildEnvironmentService::new(repos.guild_environment);
+
+                        let notification_management_service = NotificationManagementService::new(
+                            repos.notification,
+                            repos.notification_rel_battle_recruitment,
+                            repos.scheduled_task,
+                        );
+
+                        let dismissal_service = DismissalManagementService::new(
+                            repos.battle_recruitment_dismissal,
+                            repos.scheduled_task,
+                            repos.scheduled_task_dismissal,
+                        );
+
                         let recruitment_creation_service =
-                            Arc::new(RecruitmentCreationService::new());
+                            Arc::new(RecruitmentCreationService::new(
+                                repos.guild_channel,
+                                repos.quest,
+                                repos.battle_style,
+                                role_service,
+                                timezone_service,
+                                guild_env_service,
+                                repos.battle_recruitment_schedule_dismissal,
+                                MessageService::new(repos.guild_message_text, repos.message_text),
+                                notification_management_service,
+                                dismissal_service,
+                                repos.battle_recruitments,
+                            ));
 
                         let executor = RecurringRecruitmentTaskExecutor::new(
-                            Arc::clone(task_repo),
-                            recurring_repo,
-                            schedule_repo,
+                            repos.scheduled_task,
+                            repos.scheduled_task_recurring,
+                            repos.battle_recruitment_schedule,
                             schedule_service,
                             recruitment_creation_service,
                         );
@@ -291,7 +338,19 @@ where
                     5 => {
                         // Dismissal
                         info!(task_id = task.id, "解散（人数不足）タスクを実行します");
-                        let executor = DismissalTaskExecutor::new(Arc::clone(message_service));
+
+                        let executor = DismissalTaskExecutor::new(
+                            Arc::clone(message_service),
+                            Arc::new(repos.scheduled_task),
+                            Arc::new(repos.scheduled_task_dismissal),
+                            Arc::new(repos.battle_recruitment_dismissal),
+                            Arc::clone(recruitment_repo),
+                            Arc::clone(participants_repo),
+                            Arc::new(repos.quest),
+                            Arc::new(repos.guild_settings),
+                            Arc::new(repos.notification),
+                            Arc::new(repos.notification_rel_battle_recruitment),
+                        );
 
                         match executor.execute(&txn, gateway.as_ref(), task.id).await {
                             Ok(result) => {
@@ -309,13 +368,12 @@ where
                             task_id = task.id,
                             "自動募集日付ローテーションタスクを実行します"
                         );
-                        use crate::repository::database::auto_recruitment::SeaOrmAutoRecruitmentChannelRepository;
                         use crate::services::schedule::auto_recruitment_rotation_task_executor::AutoRecruitmentRotationTaskExecutor;
 
-                        let channel_repo = Arc::new(SeaOrmAutoRecruitmentChannelRepository::new());
                         let executor = AutoRecruitmentRotationTaskExecutor::new(
-                            Arc::clone(task_repo),
-                            channel_repo,
+                            Arc::new(repos.scheduled_task),
+                            Arc::new(repos.auto_recruitment_channel),
+                            repos.auto_recruitment,
                         );
 
                         match executor.execute(&txn, gateway.as_ref(), task.id).await {
@@ -333,11 +391,59 @@ where
                         info!(task_id = task.id, "自動マッチングタスクを実行します");
                         use crate::services::schedule::auto_matching_task_executor::AutoMatchingTaskExecutor;
 
+                        let role_service = RoleNotificationService::new(
+                            repos.all_recruitment_notification_roles,
+                            repos.quest_recruitment_notification_roles,
+                        );
+
+                        let timezone_service = TimezoneService::new(repos.guild_settings);
+
+                        let guild_env_service =
+                            GuildEnvironmentService::new(repos.guild_environment);
+
+                        let notification_management_service = NotificationManagementService::new(
+                            repos.notification,
+                            repos.notification_rel_battle_recruitment,
+                            repos.scheduled_task,
+                        );
+
+                        let dismissal_service = DismissalManagementService::new(
+                            repos.battle_recruitment_dismissal,
+                            repos.scheduled_task,
+                            repos.scheduled_task_dismissal,
+                        );
+
                         let recruitment_creation_service =
-                            Arc::new(RecruitmentCreationService::new());
+                            Arc::new(RecruitmentCreationService::new(
+                                repos.guild_channel,
+                                repos.quest,
+                                repos.battle_style,
+                                role_service,
+                                timezone_service,
+                                guild_env_service,
+                                repos.battle_recruitment_schedule_dismissal,
+                                MessageService::new(repos.guild_message_text, repos.message_text),
+                                notification_management_service,
+                                dismissal_service,
+                                repos.battle_recruitments,
+                            ));
+
+                        let matching_service = PeriodicMatchingService::new(
+                            repos.auto_recruitment_participant,
+                            repos.user_desired_quest,
+                            repos.quest_matching,
+                            repos.quest_matching_user,
+                            repos.quest,
+                        );
+
                         let executor = AutoMatchingTaskExecutor::new(
-                            Arc::clone(task_repo),
+                            Arc::new(repos.scheduled_task),
                             recruitment_creation_service,
+                            matching_service,
+                            repos.auto_recruitment,
+                            repos.quest_matching_user,
+                            repos.quest_matching,
+                            repos.quest,
                         );
 
                         match executor.execute(&txn, db, gateway.as_ref(), task.id).await {

@@ -6,7 +6,7 @@ use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
 /// channel_typesテーブルのRepository
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmChannelTypeRepository;
 
 impl SeaOrmChannelTypeRepository {

@@ -26,21 +26,19 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         params: CreateBattleRecruitmentParams,
     ) -> Result<BattleRecruitments>;
 
-    /// メッセージIDで募集を取得
-    async fn get_by_message<'c, C>(
-        &self,
-        db: &'c C,
-        guild_id: DiscordGuildId,
-        channel_id: DiscordChannelId,
-        message_id: DiscordMessageId,
-    ) -> Result<Option<BattleRecruitments>>
-    where
-        C: sea_orm::ConnectionTrait;
-
     /// メッセージIDで募集を取得（トランザクション対応）
     async fn get_by_message_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,
+        guild_id: DiscordGuildId,
+        channel_id: DiscordChannelId,
+        message_id: DiscordMessageId,
+    ) -> Result<Option<BattleRecruitments>>;
+
+    /// メッセージIDで募集を取得（通常接続）
+    async fn get_by_message_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
         guild_id: DiscordGuildId,
         channel_id: DiscordChannelId,
         message_id: DiscordMessageId,
@@ -53,15 +51,21 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         recruitment_id: i32,
     ) -> Result<Option<BattleRecruitments>>;
 
-    /// 募集終了メッセージを更新
-    async fn set_end_message<'c, C>(
+    /// 募集終了メッセージを更新（トランザクション対応）
+    async fn set_end_message_with_txn(
         &self,
-        db: &'c C,
+        txn: &sea_orm::DatabaseTransaction,
         recruitment_id: i32,
         message_id: DiscordMessageId,
-    ) -> Result<()>
-    where
-        C: sea_orm::ConnectionTrait;
+    ) -> Result<()>;
+
+    /// 募集終了メッセージを更新（通常接続）
+    async fn set_end_message_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()>;
 
     /// 募集をキャンセル済み状態に更新（トランザクション対応）
     async fn set_canceled_with_txn(
@@ -89,13 +93,167 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         sent: bool,
     ) -> Result<()>;
 
-    /// メッセージIDを更新
-    async fn update_message_id<'c, C>(
+    /// メッセージIDを更新（トランザクション対応）
+    async fn update_message_id_with_txn(
         &self,
-        db: &'c C,
+        txn: &sea_orm::DatabaseTransaction,
         recruitment_id: i32,
         message_id: DiscordMessageId,
-    ) -> Result<()>
-    where
-        C: sea_orm::ConnectionTrait;
+    ) -> Result<()>;
+
+    /// メッセージIDを更新（通常接続）
+    async fn update_message_id_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()>;
+
+    /// 指定日時より前の募集を削除（クリーンアップ用）
+    async fn delete_before_date_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        before: DateTime<Utc>,
+    ) -> Result<u64>;
+}
+
+/// Arc<T>に対するBattleRecruitmentsRepositoryの実装
+/// これによりArc<ConcreteRepository>を直接使用できる
+#[async_trait]
+impl<T> BattleRecruitmentsRepository for std::sync::Arc<T>
+where
+    T: BattleRecruitmentsRepository + ?Sized,
+{
+    async fn create_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        params: CreateBattleRecruitmentParams,
+    ) -> Result<BattleRecruitments> {
+        (**self).create_with_txn(txn, params).await
+    }
+
+    async fn get_by_message_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: DiscordGuildId,
+        channel_id: DiscordChannelId,
+        message_id: DiscordMessageId,
+    ) -> Result<Option<BattleRecruitments>> {
+        (**self)
+            .get_by_message_with_txn(txn, guild_id, channel_id, message_id)
+            .await
+    }
+
+    async fn get_by_message_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        guild_id: DiscordGuildId,
+        channel_id: DiscordChannelId,
+        message_id: DiscordMessageId,
+    ) -> Result<Option<BattleRecruitments>> {
+        (**self)
+            .get_by_message_with_db(db, guild_id, channel_id, message_id)
+            .await
+    }
+
+    async fn get_by_id_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<Option<BattleRecruitments>> {
+        (**self).get_by_id_with_txn(txn, recruitment_id).await
+    }
+
+    async fn set_end_message_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()> {
+        (**self)
+            .set_end_message_with_txn(txn, recruitment_id, message_id)
+            .await
+    }
+
+    async fn set_end_message_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()> {
+        (**self)
+            .set_end_message_with_db(db, recruitment_id, message_id)
+            .await
+    }
+
+    async fn set_canceled_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()> {
+        (**self)
+            .set_canceled_with_txn(txn, recruitment_id, message_id)
+            .await
+    }
+
+    async fn update_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        quest_id: i32,
+        battle_style_id: i32,
+        quest_start_at: DateTime<Utc>,
+    ) -> Result<()> {
+        (**self)
+            .update_with_txn(
+                txn,
+                recruitment_id,
+                quest_id,
+                battle_style_id,
+                quest_start_at,
+            )
+            .await
+    }
+
+    async fn set_full_notification_sent_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        sent: bool,
+    ) -> Result<()> {
+        (**self)
+            .set_full_notification_sent_with_txn(txn, recruitment_id, sent)
+            .await
+    }
+
+    async fn update_message_id_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()> {
+        (**self)
+            .update_message_id_with_txn(txn, recruitment_id, message_id)
+            .await
+    }
+
+    async fn update_message_id_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        recruitment_id: i32,
+        message_id: DiscordMessageId,
+    ) -> Result<()> {
+        (**self)
+            .update_message_id_with_db(db, recruitment_id, message_id)
+            .await
+    }
+
+    async fn delete_before_date_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        before: DateTime<Utc>,
+    ) -> Result<u64> {
+        (**self).delete_before_date_with_txn(txn, before).await
+    }
 }

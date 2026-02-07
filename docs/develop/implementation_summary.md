@@ -218,8 +218,7 @@ use crate::services::schedule::SchedulerManager;
 
 // Bot起動時
 let mut scheduler_manager = SchedulerManager::new(
-    db,
-    http,
+    gateway,
     task_repo,
     dissolution_repo,
     recruitment_repo,
@@ -227,7 +226,8 @@ let mut scheduler_manager = SchedulerManager::new(
     message_service,
 ).await?;
 
-scheduler_manager.start().await?;
+let db = Arc::new(app_state.system_db().clone());
+scheduler_manager.start(db).await?;
 
 // Bot終了時
 scheduler_manager.stop().await?;

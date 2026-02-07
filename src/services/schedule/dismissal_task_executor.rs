@@ -1,21 +1,14 @@
 use crate::gateway::DiscordGateway;
 use crate::repository::GuildSettingsRepository;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentDismissalRepository, SeaOrmScheduledTaskDismissalRepository,
-    SeaOrmScheduledTaskRepository,
-};
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
 use crate::repository::schedule::{
-    BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
+    BattleRecruitmentDismissalRepository, NotificationRelBattleRecruitmentRepository,
+    NotificationRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::message::{MessageService, MessageTextId};
-use crate::services::schedule::NotificationManagementService;
 use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
@@ -39,16 +32,71 @@ pub enum DismissalExecutionResult {
 }
 
 /// 解散タスク実行サービス
-pub struct DismissalTaskExecutor {
-    message_service: Arc<MessageService>,
-    guild_settings_repo: Arc<SeaOrmGuildSettingsRepository>,
+pub struct DismissalTaskExecutor<ST, SD, RD, BR, RP, Q, GS, N, NR, GM, MT>
+where
+    ST: ScheduledTaskRepository,
+    SD: ScheduledTaskDismissalRepository,
+    RD: BattleRecruitmentDismissalRepository,
+    BR: BattleRecruitmentsRepository,
+    RP: RecruitmentParticipantsRepository,
+    Q: QuestRepository,
+    GS: GuildSettingsRepository,
+    N: NotificationRepository,
+    NR: NotificationRelBattleRecruitmentRepository,
+    GM: GuildMessageTextRepository + Clone + Send + Sync + 'static,
+    MT: MessageTextRepository + Clone + Send + Sync + 'static,
+{
+    message_service: Arc<MessageService<GM, MT>>,
+    task_repo: Arc<ST>,
+    dismissal_repo: Arc<SD>,
+    dismissal_setting_repo: Arc<RD>,
+    recruitment_repo: Arc<BR>,
+    participants_repo: Arc<RP>,
+    quest_repo: Arc<Q>,
+    guild_settings_repo: Arc<GS>,
+    notification_repo: Arc<N>,
+    notification_rel_repo: Arc<NR>,
 }
 
-impl DismissalTaskExecutor {
-    pub fn new(message_service: Arc<MessageService>) -> Self {
+impl<ST, SD, RD, BR, RP, Q, GS, N, NR, GM, MT>
+    DismissalTaskExecutor<ST, SD, RD, BR, RP, Q, GS, N, NR, GM, MT>
+where
+    ST: ScheduledTaskRepository,
+    SD: ScheduledTaskDismissalRepository,
+    RD: BattleRecruitmentDismissalRepository,
+    BR: BattleRecruitmentsRepository,
+    RP: RecruitmentParticipantsRepository,
+    Q: QuestRepository,
+    GS: GuildSettingsRepository,
+    N: NotificationRepository,
+    NR: NotificationRelBattleRecruitmentRepository,
+    GM: GuildMessageTextRepository + Clone + Send + Sync + 'static,
+    MT: MessageTextRepository + Clone + Send + Sync + 'static,
+{
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        message_service: Arc<MessageService<GM, MT>>,
+        task_repo: Arc<ST>,
+        dismissal_repo: Arc<SD>,
+        dismissal_setting_repo: Arc<RD>,
+        recruitment_repo: Arc<BR>,
+        participants_repo: Arc<RP>,
+        quest_repo: Arc<Q>,
+        guild_settings_repo: Arc<GS>,
+        notification_repo: Arc<N>,
+        notification_rel_repo: Arc<NR>,
+    ) -> Self {
         Self {
             message_service,
-            guild_settings_repo: Arc::new(SeaOrmGuildSettingsRepository::new()),
+            task_repo,
+            dismissal_repo,
+            dismissal_setting_repo,
+            recruitment_repo,
+            participants_repo,
+            quest_repo,
+            guild_settings_repo,
+            notification_repo,
+            notification_rel_repo,
         }
     }
 
@@ -81,15 +129,8 @@ impl DismissalTaskExecutor {
     ) -> Result<DismissalExecutionResult> {
         info!(task_id, "解散タスク実行開始");
 
-        let task_repo = SeaOrmScheduledTaskRepository::new();
-        let dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
-        let dismissal_setting_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
-        let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
-        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
-        let quest_repo = SeaOrmQuestRepository::new();
-
         // タスクが存在し、未実行であることを確認
-        let task = match task_repo.find_by_id(txn, task_id).await? {
+        let task = match self.task_repo.find_by_id(txn, task_id).await? {
             Some(task) if !task.is_executed => task,
             Some(_) => {
                 warn!(task_id, "タスクは既に実行済みです");
@@ -106,7 +147,7 @@ impl DismissalTaskExecutor {
         };
 
         // 解散情報を取得
-        let dismissal_rel = match dismissal_repo.find_by_task_id(txn, task_id).await? {
+        let dismissal_rel = match self.dismissal_repo.find_by_task_id(txn, task_id).await? {
             Some(d) => d,
             None => {
                 error!(task_id, "解散情報が見つかりません");
@@ -119,7 +160,8 @@ impl DismissalTaskExecutor {
         let recruitment_dismissal_id = dismissal_rel.recruitment_dismissal_id;
 
         // 解散設定から募集IDを取得
-        let dismissal_setting = match dismissal_setting_repo
+        let dismissal_setting = match self
+            .dismissal_setting_repo
             .find_by_id(txn, recruitment_dismissal_id)
             .await?
         {
@@ -138,7 +180,8 @@ impl DismissalTaskExecutor {
         let recruitment_id = dismissal_setting.recruitment_id;
 
         // 募集情報を取得
-        let recruitment = match recruitment_repo
+        let recruitment = match self
+            .recruitment_repo
             .get_by_id_with_txn(txn, recruitment_id)
             .await?
         {
@@ -148,7 +191,7 @@ impl DismissalTaskExecutor {
                     task_id,
                     recruitment_id, "募集が見つかりません（既に削除済み）"
                 );
-                task_repo.mark_as_executed(txn, task_id).await?;
+                self.task_repo.mark_as_executed(txn, task_id).await?;
                 return Ok(DismissalExecutionResult::RecruitmentNotFound);
             }
         };
@@ -156,17 +199,19 @@ impl DismissalTaskExecutor {
         // 既にキャンセル済みかチェック
         if recruitment.is_canceled {
             info!(task_id, recruitment_id, "募集は既にキャンセル済みです");
-            task_repo.mark_as_executed(txn, task_id).await?;
+            self.task_repo.mark_as_executed(txn, task_id).await?;
             return Ok(DismissalExecutionResult::AlreadyCancelled { recruitment_id });
         }
 
         // 参加者数を取得
-        let participant_count = participants_repo
-            .count_unique_users(txn, recruitment_id)
+        let participant_count = self
+            .participants_repo
+            .count_unique_users_with_txn(txn, recruitment_id)
             .await? as usize;
 
         // クエスト情報から定員を取得
-        let quest = quest_repo
+        let quest = self
+            .quest_repo
             .get_by_target_id(txn, recruitment.quest_id)
             .await?
             .ok_or_else(|| AppError::Business {
@@ -189,7 +234,7 @@ impl DismissalTaskExecutor {
                 max_participants,
                 "定員に達しているため解散をスキップします"
             );
-            task_repo.mark_as_executed(txn, task_id).await?;
+            self.task_repo.mark_as_executed(txn, task_id).await?;
             return Ok(
                 DismissalExecutionResult::SkippedDueToSufficientParticipants { recruitment_id },
             );
@@ -217,7 +262,7 @@ impl DismissalTaskExecutor {
                     error = %e,
                     "Discordメッセージが見つかりません"
                 );
-                task_repo.mark_as_executed(txn, task_id).await?;
+                self.task_repo.mark_as_executed(txn, task_id).await?;
                 return Ok(DismissalExecutionResult::DiscordMessageNotFound { recruitment_id });
             }
         };
@@ -255,8 +300,9 @@ impl DismissalTaskExecutor {
             })?;
 
         // 参加者リストを取得
-        let participant_user_ids = participants_repo
-            .get_all_participant_user_ids(txn, recruitment_id)
+        let participant_user_ids = self
+            .participants_repo
+            .get_all_participant_user_ids_with_txn(txn, recruitment_id)
             .await?;
 
         // 解散通知メッセージを送信（元の募集メッセージへの返信として）
@@ -316,13 +362,12 @@ impl DismissalTaskExecutor {
             })?;
 
         // 募集をキャンセル状態に更新
-        recruitment_repo
+        self.recruitment_repo
             .set_canceled_with_txn(txn, recruitment_id, message_id)
             .await?;
 
         // 募集に紐づく他の通知（出発5分前、出発時刻）を削除
-        let notification_management_service = NotificationManagementService::new();
-        let deleted_count = notification_management_service
+        let deleted_count = self
             .delete_recruitment_notifications(txn, recruitment_id)
             .await?;
 
@@ -334,7 +379,7 @@ impl DismissalTaskExecutor {
         );
 
         // タスクを実行済みにマーク
-        task_repo.mark_as_executed(txn, task_id).await?;
+        self.task_repo.mark_as_executed(txn, task_id).await?;
 
         info!(
             task_id,
@@ -342,5 +387,66 @@ impl DismissalTaskExecutor {
         );
 
         Ok(DismissalExecutionResult::Dismissed { recruitment_id })
+    }
+
+    /// 募集に紐づく通知とリレーションを削除
+    async fn delete_recruitment_notifications(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<usize> {
+        use tracing::debug;
+
+        // 募集に紐づく通知を検索
+        let relations = self
+            .notification_rel_repo
+            .find_by_recruit_id_with_txn(txn, recruitment_id)
+            .await?;
+
+        let relations_count = relations.len();
+
+        debug!(
+            recruitment_id = recruitment_id,
+            relations_count = relations_count,
+            "募集に紐づく通知とリレーションを削除します"
+        );
+
+        // 外部キー制約を考慮し、rel → scheduled_task の順で削除
+        // (scheduled_tasks削除でnotificationsもCASCADE削除される)
+        for relation in relations {
+            // リレーションを削除
+            self.notification_rel_repo
+                .delete_by_notification_id_with_txn(txn, relation.notification_id)
+                .await?;
+            debug!(
+                notification_id = relation.notification_id,
+                "リレーションを削除しました"
+            );
+
+            // notification_idからtask_idを取得
+            if let Some(notification) = self
+                .notification_repo
+                .find_by_id_with_txn(txn, relation.notification_id)
+                .await?
+            {
+                // scheduled_taskを削除（CASCADE で notifications も削除される）
+                self.task_repo
+                    .delete_by_id(txn, notification.task_id)
+                    .await?;
+                debug!(
+                    task_id = notification.task_id,
+                    notification_id = notification.id,
+                    "scheduled_taskと通知を削除しました"
+                );
+            }
+        }
+
+        info!(
+            recruitment_id = recruitment_id,
+            deleted_count = relations_count,
+            "募集に紐づく通知とリレーションの削除が完了しました"
+        );
+
+        Ok(relations_count)
     }
 }

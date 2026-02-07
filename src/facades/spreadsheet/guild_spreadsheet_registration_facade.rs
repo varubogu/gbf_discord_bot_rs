@@ -6,8 +6,8 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument};
 
 use crate::errors::FacadeError;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::GuildSpreadsheetConfigRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::spreadsheet::{
     GoogleAuthService, GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait,
     SpreadsheetUrlService, SpreadsheetUrlServiceTrait,

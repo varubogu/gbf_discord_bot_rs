@@ -1,12 +1,10 @@
 use crate::repository::GuildSettingsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::types::discord::AutocompleteOption;
 use crate::types::{AppError, Result};
 use chrono::{Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 use lazy_static::lazy_static;
 use sea_orm::DatabaseConnection;
-use std::sync::Arc;
 use tracing::{debug, error, info};
 
 /// タイムゾーンのオートコンプリート用データ
@@ -100,12 +98,12 @@ lazy_static! {
 }
 
 /// タイムゾーン取得・設定サービス
-pub struct TimezoneService {
-    repository: Arc<SeaOrmGuildSettingsRepository>,
+pub struct TimezoneService<R: GuildSettingsRepository> {
+    repository: R,
 }
 
-impl TimezoneService {
-    pub fn new(repository: Arc<SeaOrmGuildSettingsRepository>) -> Self {
+impl<R: GuildSettingsRepository> TimezoneService<R> {
+    pub fn new(repository: R) -> Self {
         Self { repository }
     }
 
@@ -168,41 +166,41 @@ impl TimezoneService {
 
         Ok(())
     }
+}
 
-    /// タイムゾーン名のバリデーション
-    pub fn validate_timezone(timezone_str: &str) -> Result<Tz> {
-        timezone_str.parse::<Tz>().map_err(|_| {
-            AppError::Validation {
-                field: format!(
-                    "timezone: {timezone_str}（IANAタイムゾーン名を指定してください。例: Asia/Tokyo, America/New_York）"
-                ),
-            }
+/// タイムゾーン名のバリデーション
+pub fn validate_timezone(timezone_str: &str) -> Result<Tz> {
+    timezone_str.parse::<Tz>().map_err(|_| {
+        AppError::Validation {
+            field: format!(
+                "timezone: {timezone_str}（IANAタイムゾーン名を指定してください。例: Asia/Tokyo, America/New_York）"
+            ),
+        }
+    })
+}
+
+/// オートコンプリート用のタイムゾーンリストを取得
+/// 部分文字列でフィルタリングし、UTC+9:00形式のオフセット付きで表示
+/// キャッシュを使用してパフォーマンスを最適化
+pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteOption> {
+    // 部分文字列でフィルタリング
+    let partial_lower = partial.to_lowercase();
+    TIMEZONE_CHOICE_DATA
+        .iter()
+        .filter(|data| {
+            // 表示名または値に部分文字列が含まれる
+            data.display_name.to_lowercase().contains(&partial_lower)
+                || data.value.to_lowercase().contains(&partial_lower)
         })
-    }
+        .take(25) // Discordの制限
+        .map(|data| AutocompleteOption::new(data.display_name.clone(), data.value.clone()))
+        .collect()
+}
 
-    /// オートコンプリート用のタイムゾーンリストを取得
-    /// 部分文字列でフィルタリングし、UTC+9:00形式のオフセット付きで表示
-    /// キャッシュを使用してパフォーマンスを最適化
-    pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteOption> {
-        // 部分文字列でフィルタリング
-        let partial_lower = partial.to_lowercase();
-        TIMEZONE_CHOICE_DATA
-            .iter()
-            .filter(|data| {
-                // 表示名または値に部分文字列が含まれる
-                data.display_name.to_lowercase().contains(&partial_lower)
-                    || data.value.to_lowercase().contains(&partial_lower)
-            })
-            .take(25) // Discordの制限
-            .map(|data| AutocompleteOption::new(data.display_name.clone(), data.value.clone()))
-            .collect()
-    }
-
-    /// タイムゾーンキャッシュを初期化する
-    /// プログラム起動時に呼び出すことで、事前に計算を完了させる
-    pub fn initialize_timezone_cache() {
-        // TIMEZONE_CHOICE_DATAにアクセスして初期化を強制
-        let _count = TIMEZONE_CHOICE_DATA.len();
-        info!("タイムゾーンキャッシュを初期化しました（{}件）", _count);
-    }
+/// タイムゾーンキャッシュを初期化する
+/// プログラム起動時に呼び出すことで、事前に計算を完了させる
+pub fn initialize_timezone_cache() {
+    // TIMEZONE_CHOICE_DATAにアクセスして初期化を強制
+    let _count = TIMEZONE_CHOICE_DATA.len();
+    info!("タイムゾーンキャッシュを初期化しました（{}件）", _count);
 }

@@ -7,6 +7,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// スケジュールタスクリポジトリ
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmScheduledTaskRepository;
 
 #[async_trait]
@@ -244,16 +245,85 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
         Ok(delete_result.rows_affected)
     }
+
+    async fn find_many_by_ids_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        Self::find_many_by_ids_internal(txn, ids).await
+    }
+
+    async fn find_many_by_ids_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        Self::find_many_by_ids_internal(db, ids).await
+    }
+
+    async fn delete_before_date_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        before: DateTime<Utc>,
+    ) -> Result<u64> {
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+        debug!(%before, "指定日時より前のタスクを削除します");
+
+        let delete_result = scheduled_tasks::Entity::delete_many()
+            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(before))
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, %before, "タスクの削除に失敗しました");
+                e
+            })?;
+
+        debug!(
+            %before,
+            deleted_count = delete_result.rows_affected,
+            "タスクを削除しました"
+        );
+
+        Ok(delete_result.rows_affected)
+    }
+}
+
+impl SeaOrmScheduledTaskRepository {
+    /// 複数IDでタスクを取得する内部実装
+    async fn find_many_by_ids_internal<'c, C>(
+        db: &'c C,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        debug!(?ids, "複数IDでタスクを取得します");
+
+        scheduled_tasks::Entity::find()
+            .filter(scheduled_tasks::Column::Id.is_in(ids))
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "タスクの取得に失敗しました");
+                e.into()
+            })
+    }
+
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for SeaOrmScheduledTaskRepository {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl SeaOrmScheduledTaskRepository {
-    pub fn new() -> Self {
-        Self
     }
 }

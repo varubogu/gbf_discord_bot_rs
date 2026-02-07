@@ -6,7 +6,7 @@ use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 
 /// notification_rel_battle_recruitmentsテーブルのRepository
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmNotificationRelBattleRecruitmentRepository;
 
 #[async_trait]

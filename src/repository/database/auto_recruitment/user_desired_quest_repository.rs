@@ -8,6 +8,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// ユーザー希望クエストリポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmUserDesiredQuestRepository;
 
 #[async_trait]
@@ -251,6 +252,21 @@ impl UserDesiredQuestRepositoryTrait for SeaOrmUserDesiredQuestRepository {
             "希望クエストを削除しました"
         );
         Ok(result.rows_affected)
+    }
+
+    async fn find_all(&self, txn: &DatabaseTransaction) -> Result<Vec<user_desired_quests::Model>> {
+        debug!("全ての希望クエストを取得します");
+
+        let result = user_desired_quests::Entity::find()
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "希望クエストの取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = result.len(), "希望クエストを取得しました");
+        Ok(result)
     }
 }
 

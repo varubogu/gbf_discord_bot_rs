@@ -5,7 +5,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::presenter::auto_recruitment_presenter::get_six_elements;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
-use crate::repository::database::auto_recruitment::SeaOrmUserDesiredQuestRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, ComponentInteractionDataKind, Context};
 use sea_orm::TransactionTrait;
@@ -61,7 +60,7 @@ pub async fn handle_element_selection(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result: Result<Vec<i32>> = async {
-        let quest_repo = SeaOrmUserDesiredQuestRepository::new();
+        let quest_repo = app_state.repositories.user_desired_quest;
 
         // 既存の登録を全て削除
         quest_repo

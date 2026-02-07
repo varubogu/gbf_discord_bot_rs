@@ -72,4 +72,7 @@ pub trait UserDesiredQuestRepository: Send + Sync {
 
     /// ギルドの全ての希望クエストを削除
     async fn delete_all_by_guild(&self, txn: &DatabaseTransaction, guild_id: i64) -> Result<u64>;
+
+    /// 全ての希望クエストを取得
+    async fn find_all(&self, txn: &DatabaseTransaction) -> Result<Vec<user_desired_quests::Model>>;
 }

@@ -10,28 +10,55 @@ use crate::models::entities::guild_master::battle_recruitment_schedules;
 use crate::models::entities::worker::last_process_times::LastProcessType;
 use crate::models::last_process_times::LastProcessTime;
 use crate::repository::LastProcessTimeRepository;
-use crate::repository::database::last_process_time_repository::SeaOrmLastProcessTimeRepository;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmNotificationRelEventScheduleRepository,
-    SeaOrmNotificationRepository, SeaOrmScheduleRepository,
-};
 use crate::repository::schedule::{
     BattleRecruitmentScheduleRepository, NotificationRelEventScheduleRepository,
     NotificationRepository, ScheduleRepository, ScheduledTaskRepository,
 };
 use sea_orm::DatabaseConnection;
 
-pub struct SchedulerService;
-
-impl Default for SchedulerService {
-    fn default() -> Self {
-        Self::new()
-    }
+/// スケジューラーサービス
+pub struct SchedulerService<SR, NR, NRER, STR, BRSR, LPTR>
+where
+    SR: ScheduleRepository,
+    NR: NotificationRepository,
+    NRER: NotificationRelEventScheduleRepository,
+    STR: ScheduledTaskRepository,
+    BRSR: BattleRecruitmentScheduleRepository,
+    LPTR: LastProcessTimeRepository,
+{
+    schedule_repo: SR,
+    notification_repo: NR,
+    rel_repo: NRER,
+    scheduled_task_repo: STR,
+    battle_recruitment_schedule_repo: BRSR,
+    last_process_time_repo: LPTR,
 }
 
-impl SchedulerService {
-    pub fn new() -> Self {
-        Self
+impl<SR, NR, NRER, STR, BRSR, LPTR> SchedulerService<SR, NR, NRER, STR, BRSR, LPTR>
+where
+    SR: ScheduleRepository,
+    NR: NotificationRepository,
+    NRER: NotificationRelEventScheduleRepository,
+    STR: ScheduledTaskRepository,
+    BRSR: BattleRecruitmentScheduleRepository,
+    LPTR: LastProcessTimeRepository,
+{
+    pub fn new(
+        schedule_repo: SR,
+        notification_repo: NR,
+        rel_repo: NRER,
+        scheduled_task_repo: STR,
+        battle_recruitment_schedule_repo: BRSR,
+        last_process_time_repo: LPTR,
+    ) -> Self {
+        Self {
+            schedule_repo,
+            notification_repo,
+            rel_repo,
+            scheduled_task_repo,
+            battle_recruitment_schedule_repo,
+            last_process_time_repo,
+        }
     }
 
     /// イベントスケジュールから通知スケジュールを計算し保存する
@@ -42,21 +69,18 @@ impl SchedulerService {
         app_state: &AppState,
     ) -> Result<()> {
         use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 
-        let schedule_repo = SeaOrmScheduleRepository::new();
-        let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
         let calculator = ScheduleCalculator::new(app_state.config.max_schedule_days_outside_event);
 
         // 既存のスケジュールとリレーションをクリア
         debug!("既存のスケジュールを削除します");
 
         // 1. notification_rel_event_schedulesを削除
-        rel_repo.delete_all_with_txn(txn).await?;
+        self.rel_repo.delete_all_with_txn(txn).await?;
 
         // 2. 通知タイプのscheduled_tasksを削除（CASCADE でnotificationsも削除される）
-        let deleted_tasks = scheduled_task_repo
+        let deleted_tasks = self
+            .scheduled_task_repo
             .delete_all_by_task_type(txn, ScheduledTaskType::Notification.as_i32())
             .await?;
 
@@ -66,10 +90,12 @@ impl SchedulerService {
         );
 
         // イベントスケジュールと詳細を取得
-        let event_schedules = schedule_repo
+        let event_schedules = self
+            .schedule_repo
             .find_all_event_schedules(app_state.system_db())
             .await?;
-        let event_schedule_details = schedule_repo
+        let event_schedule_details = self
+            .schedule_repo
             .find_all_event_schedule_details(app_state.system_db())
             .await?;
 
@@ -146,12 +172,8 @@ impl SchedulerService {
         schedules: Vec<CalculatedSchedule>,
     ) -> Result<()> {
         use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
         use chrono::Utc;
 
-        let notification_repo = SeaOrmNotificationRepository::new();
-        let rel_repo = SeaOrmNotificationRelEventScheduleRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
         let now = Utc::now();
 
         let mut created_count = 0;
@@ -164,7 +186,8 @@ impl SchedulerService {
             }
 
             // 1. scheduled_taskを作成（task_type=1: Notification）
-            let scheduled_task = scheduled_task_repo
+            let scheduled_task = self
+                .scheduled_task_repo
                 .create(
                     txn,
                     schedule.schedule_datetime,
@@ -175,7 +198,8 @@ impl SchedulerService {
                 .await?;
 
             // 2. notificationを作成（task_idを指定）
-            let notification = notification_repo
+            let notification = self
+                .notification_repo
                 .create_with_txn(
                     txn,
                     scheduled_task.id,
@@ -186,7 +210,7 @@ impl SchedulerService {
                 .await?;
 
             // 3. notification_relを作成
-            rel_repo
+            self.rel_repo
                 .create_with_txn(
                     txn,
                     schedule.event_schedule_id,
@@ -217,14 +241,17 @@ impl SchedulerService {
         db: &DatabaseConnection,
         process_type: LastProcessType,
     ) -> Result<Option<LastProcessTime>> {
-        let last_process_time_repo = SeaOrmLastProcessTimeRepository::new();
         match process_type {
             LastProcessType::Schedule => {
-                last_process_time_repo
+                self.last_process_time_repo
                     .find_schedule_last_process_time(db)
                     .await
             }
-            _ => last_process_time_repo.find_by_type(db, process_type).await,
+            _ => {
+                self.last_process_time_repo
+                    .find_by_type(db, process_type)
+                    .await
+            }
         }
     }
 
@@ -240,8 +267,7 @@ impl SchedulerService {
         process_type: LastProcessType,
         execute_time: chrono::DateTime<chrono::Utc>,
     ) -> Result<()> {
-        let last_process_time_repo = SeaOrmLastProcessTimeRepository::new();
-        last_process_time_repo
+        self.last_process_time_repo
             .upsert_with_txn(txn, process_type, execute_time)
             .await
             .map(|_| ())
@@ -257,7 +283,8 @@ impl SchedulerService {
             Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
-        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-        schedule_repo.find_all_enabled_schedules_with_days(db).await
+        self.battle_recruitment_schedule_repo
+            .find_all_enabled_schedules_with_days(db)
+            .await
     }
 }

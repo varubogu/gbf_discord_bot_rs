@@ -1,10 +1,7 @@
 use crate::gateway::DiscordGuildGateway;
-use crate::infrastructure::database::container::RepositoryContainer;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;
@@ -19,7 +16,6 @@ use crate::types::AppState;
 use crate::types::discord::{ActionRowContent, DiscordMessageId, EmbedContent};
 use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
-use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
 /// 募集作成結果（events層でのメッセージ送信用）
@@ -77,24 +73,30 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        // RepositoryContainerの取得
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
+        // Repositoryの取得
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
 
         // タイムゾーンを取得
-        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+        let timezone_repo = app_state.repositories.guild_settings;
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service.get_guild_timezone(conn, guild_id as i64).await?;
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
-        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+        let guild_env_repo = app_state.repositories.guild_environment;
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service.get_element_emojis(conn, gateway, guild_id as i64).await?;
 
-        // 1. 募集データ作成（Serviceラッパー関数を使用）
-        let mut recruitment_data = new::create_recruitment_data_with_repos(
+        // 1. 募集データ作成（Repository DI）
+        let quest_repository = app_state.repositories.quest;
+        let battle_style_repository = app_state.repositories.battle_style;
+
+        let message_service = app_state.message_service();
+        let mut recruitment_data = new::create_recruitment_data(
             conn,
+            &quest_repository,
+            &battle_style_repository,
             &element_emojis,
+            message_service,
             new::RecruitmentParams {
                 quest_name_or_alias: quest_alias,
                 battle_style_id,
@@ -107,7 +109,9 @@ where
         .await?;
 
         // 1.5. ロールメンションを取得してメッセージの先頭に追加
-        let role_service = RoleNotificationService::new();
+        let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
+        let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
+        let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
         let role_mentions = role_service
             .get_role_mentions(&txn, guild_id as i64, recruitment_data.quest.id)
             .await?;
@@ -161,8 +165,10 @@ where
                 .collect();
 
             // 解散時刻を含むメッセージを生成
+            let message_service = app_state.message_service();
             let message_content_with_dismissal = new::create_message_content(
                 &txn,
+                message_service,
                 &recruitment_data.quest.name,
                 &recruitment_data.battle_style_name,
                 &recruitment_data.expiry_date,
@@ -188,7 +194,7 @@ where
         }
 
         // 2. データ保存（message_id=0で仮保存、events層でメッセージ送信後に更新）
-        let recruitment = new::save_recruitment(&txn, battle_recruitment_repo, &recruitment_data, 0).await?;
+        let recruitment = new::save_recruitment(&txn, &battle_recruitment_repo, &recruitment_data, 0).await?;
 
         // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(
@@ -196,7 +202,11 @@ where
             "募集の出発通知を登録します"
         );
 
-        let notification_management_service = NotificationManagementService::new();
+        let notification_management_service = NotificationManagementService::new(
+            app_state.repositories.notification,
+            app_state.repositories.notification_rel_battle_recruitment,
+            app_state.repositories.scheduled_task,
+        );
         notification_management_service
             .create_recruitment_departure_notification(
                 &txn,
@@ -216,7 +226,11 @@ where
             );
 
             // 解散時刻を登録
-            let dismissal_service = DismissalManagementService::new();
+            let dismissal_service = DismissalManagementService::new(
+                app_state.repositories.battle_recruitment_dismissal,
+                app_state.repositories.scheduled_task,
+                app_state.repositories.scheduled_task_dismissal,
+            );
             dismissal_service
                 .create_recruitment_dismissals(
                     &txn,
@@ -282,9 +296,9 @@ where
 /// メッセージ送信後にmessage_idを更新する
 ///
 /// events層でメッセージ送信後に呼び出し、DBのmessage_idを更新する
-#[instrument(level = "debug", skip(db))]
+#[instrument(level = "debug", skip(app_state))]
 pub async fn update_message_id(
-    db: &sea_orm::DatabaseConnection,
+    app_state: &AppState,
     recruitment_id: i32,
     message_id: u64,
 ) -> types::Result<()> {
@@ -294,11 +308,11 @@ pub async fn update_message_id(
         "募集のmessage_idを更新します"
     );
 
-    let repos = RepositoryContainer::new();
-    let battle_recruitment_repo = repos.battle_recruitment();
+    let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+    let db = app_state.guild_db();
 
     battle_recruitment_repo
-        .update_message_id(db, recruitment_id, DiscordMessageId::new(message_id))
+        .update_message_id_with_db(db, recruitment_id, DiscordMessageId::new(message_id))
         .await?;
 
     info!(

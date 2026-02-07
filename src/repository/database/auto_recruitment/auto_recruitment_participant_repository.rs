@@ -8,6 +8,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// 自動募集参加可能時間リポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmAutoRecruitmentParticipantRepository;
 
 #[async_trait]
@@ -301,6 +302,24 @@ impl AutoRecruitmentParticipantRepositoryTrait for SeaOrmAutoRecruitmentParticip
             "参加可能時間を削除しました"
         );
         Ok(result.rows_affected)
+    }
+
+    async fn find_all(
+        &self,
+        txn: &DatabaseTransaction,
+    ) -> Result<Vec<auto_recruitment_participants::Model>> {
+        debug!("全ての参加可能時間を取得します");
+
+        let result = auto_recruitment_participants::Entity::find()
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "参加可能時間の取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = result.len(), "参加可能時間を取得しました");
+        Ok(result)
     }
 }
 

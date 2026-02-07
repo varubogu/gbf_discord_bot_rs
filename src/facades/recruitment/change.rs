@@ -1,7 +1,6 @@
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::db_helper::set_current_guild_id;
+use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
@@ -16,7 +15,6 @@ use crate::types::discord::{
 };
 use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
-use std::sync::Arc;
 use tracing::{debug, error, info, instrument};
 
 /// 募集内容を更新する
@@ -78,10 +76,17 @@ where
     let result = async {
         // Serviceの取得
         let db = app_state.guild_db();
-        let query_service = RecruitmentQueryService::new();
-        let quest_query_service = QuestQueryService::new();
-        let update_service = RecruitmentUpdateService::new();
-        let notification_service = NotificationManagementService::new();
+        let battle_style_repo = app_state.repositories.battle_style;
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let query_service =
+            RecruitmentQueryService::new(battle_style_repo, battle_recruitment_repo);
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
+        let update_service = RecruitmentUpdateService::new(battle_recruitment_repo);
+        let notification_service = NotificationManagementService::new(
+            app_state.repositories.notification,
+            app_state.repositories.notification_rel_battle_recruitment,
+            app_state.repositories.scheduled_task,
+        );
 
         let channel_id = message.channel_id.get();
         let message_id = message.id.get();
@@ -141,14 +146,14 @@ where
         let new_expiry_date = event_date.unwrap_or(existing_recruitment.quest_start_at);
 
         // タイムゾーンを取得
-        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+        let timezone_repo = app_state.repositories.guild_settings;
         let timezone_service = TimezoneService::new(timezone_repo);
         let timezone = timezone_service
             .get_guild_timezone(db, guild_id as i64)
             .await?;
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
-        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
+        let guild_env_repo = app_state.repositories.guild_environment;
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
         let element_emojis = guild_env_service
             .get_element_emojis(db, gateway, guild_id as i64)
@@ -158,9 +163,15 @@ where
         let quest = quest_query_service
             .get_quest_by_id(db, new_quest_id)
             .await?;
-        let recruitment_data = new::create_recruitment_data_with_repos(
+        let quest_repo = app_state.repositories.quest;
+        let battle_style_repo2 = app_state.repositories.battle_style;
+        let message_service = app_state.message_service();
+        let recruitment_data = new::create_recruitment_data(
             db,
+            &quest_repo,
+            &battle_style_repo2,
             &element_emojis,
+            message_service,
             new::RecruitmentParams {
                 quest_name_or_alias: &quest.name,
                 battle_style_id: Some(new_battle_style_id),
@@ -176,21 +187,14 @@ where
         // メッセージにコンポーネント（ボタン）があればv2、なければv1と判定
         let is_v2 = !message.components.is_empty();
 
-        // v2用: DBから参加者一覧を取得
-        use crate::models::entities::worker::recruitment_participants::{
-            Column as ParticipantColumn, Entity as RecruitmentParticipantEntity,
-        };
-        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-
         let (mentions, embed_for_update) = if is_v2 {
             // v2: DBから参加者を取得し、embed用のテキストも作成
             debug!("v2募集: DBから参加者を取得します");
 
-            let participants = RecruitmentParticipantEntity::find()
-                .filter(ParticipantColumn::RecruitmentId.eq(existing_recruitment.id))
-                .all(&txn)
-                .await
-                .map_err(types::AppError::Database)?;
+            let participants_repo = app_state.repositories.recruitment_participants;
+            let participants = participants_repo
+                .find_by_recruitment_id_with_txn(&txn, existing_recruitment.id)
+                .await?;
 
             // ユニークなユーザーIDを取得（重複排除）
             let unique_user_ids: std::collections::HashSet<i64> =
@@ -272,7 +276,9 @@ where
 
         // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
         // ロールメンションを取得
-        let role_service = RoleNotificationService::new();
+        let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
+        let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
+        let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
         let role_mentions = role_service
             .get_role_mentions(&txn, guild_id as i64, new_quest_id)
             .await?;

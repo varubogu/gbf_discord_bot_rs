@@ -1,4 +1,3 @@
-use crate::infrastructure::database::container::RepositoryContainer;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::types::Result;
 use chrono::{DateTime, Utc};
@@ -7,17 +6,15 @@ use tracing::info;
 
 /// 募集情報更新Service
 /// 募集情報の更新操作の責務を持つ
-pub struct RecruitmentUpdateService;
-
-impl Default for RecruitmentUpdateService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct RecruitmentUpdateService<BR: BattleRecruitmentsRepository> {
+    battle_recruitment_repo: BR,
 }
 
-impl RecruitmentUpdateService {
-    pub fn new() -> Self {
-        Self
+impl<BR: BattleRecruitmentsRepository> RecruitmentUpdateService<BR> {
+    pub fn new(battle_recruitment_repo: BR) -> Self {
+        Self {
+            battle_recruitment_repo,
+        }
     }
 
     /// 募集情報を更新
@@ -29,10 +26,7 @@ impl RecruitmentUpdateService {
         battle_style_id: i32,
         expiry_date: DateTime<Utc>,
     ) -> Result<()> {
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
-
-        battle_recruitment_repo
+        self.battle_recruitment_repo
             .update_with_txn(txn, recruitment_id, quest_id, battle_style_id, expiry_date)
             .await?;
 

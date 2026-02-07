@@ -1,5 +1,4 @@
 use crate::repository::ChannelTypeRepository;
-use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
 use crate::types::Result;
 use crate::types::discord::AutocompleteOption;
 use sea_orm::ConnectionTrait;
@@ -7,11 +6,19 @@ use sea_orm::ConnectionTrait;
 /// チャンネル種別クエリサービス
 ///
 /// オートコンプリート等、読み取り系のユースケースを担当。
-pub struct ChannelTypeQueryService;
+pub struct ChannelTypeQueryService<R>
+where
+    R: ChannelTypeRepository,
+{
+    channel_type_repo: R,
+}
 
-impl ChannelTypeQueryService {
-    pub fn new() -> Self {
-        Self
+impl<R> ChannelTypeQueryService<R>
+where
+    R: ChannelTypeRepository,
+{
+    pub fn new(channel_type_repo: R) -> Self {
+        Self { channel_type_repo }
     }
 
     /// オートコンプリート用にチャンネル種別一覧を取得（最大25件）
@@ -19,8 +26,7 @@ impl ChannelTypeQueryService {
         &self,
         db: &C,
     ) -> Result<Vec<AutocompleteOption>> {
-        let repo = SeaOrmChannelTypeRepository::new();
-        let items = repo.get_all(db).await?;
+        let items = self.channel_type_repo.get_all(db).await?;
 
         let mut choices: Vec<AutocompleteOption> = items
             .into_iter()
@@ -28,11 +34,5 @@ impl ChannelTypeQueryService {
             .collect();
         choices.truncate(25);
         Ok(choices)
-    }
-}
-
-impl Default for ChannelTypeQueryService {
-    fn default() -> Self {
-        Self::new()
     }
 }

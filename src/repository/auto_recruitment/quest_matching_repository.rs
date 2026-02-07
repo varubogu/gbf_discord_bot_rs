@@ -16,6 +16,12 @@ pub trait QuestMatchingRepository: Send + Sync {
         guild_id: i64,
     ) -> Result<Vec<quest_matchings::Model>>;
 
+    /// 全ギルドのアクティブなマッチングを全て取得
+    async fn find_all_active(
+        &self,
+        txn: &DatabaseTransaction,
+    ) -> Result<Vec<quest_matchings::Model>>;
+
     /// 特定の時間・クエストのマッチングを取得
     async fn find_by_schedule(
         &self,

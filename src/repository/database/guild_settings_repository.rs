@@ -7,6 +7,7 @@ use sea_orm::{DatabaseConnection, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error, info};
 
 /// guild_settingsテーブルのRepository
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmGuildSettingsRepository;
 
 impl Default for SeaOrmGuildSettingsRepository {

@@ -2,13 +2,10 @@
 //!
 //! ユーザーの参加可能時間選択を処理する
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentParticipantRepository, AutoRecruitmentRepository,
 };
-use crate::repository::database::auto_recruitment::{
-    SeaOrmAutoRecruitmentParticipantRepository, SeaOrmAutoRecruitmentRepository,
-};
+use crate::repository::db_helper::set_current_guild_id;
 use crate::types::{AppError, AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
@@ -58,8 +55,8 @@ pub async fn handle_time_selection(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let participant_repo = SeaOrmAutoRecruitmentParticipantRepository::new();
+        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
+        let participant_repo = app_state.repositories.auto_recruitment_participant;
 
         // 自動募集設定を確認
         let _auto_recruitment = auto_recruitment_repo

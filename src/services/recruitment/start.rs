@@ -1,21 +1,19 @@
 use sea_orm::DatabaseTransaction;
-use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::{AppError, Result};
 
 /// StartRecruitmentService - 募集開始処理を行うサービス
-pub struct StartRecruitmentService {
-    repo: Arc<SeaOrmBattleRecruitmentsRepository>,
+pub struct StartRecruitmentService<R: BattleRecruitmentsRepository> {
+    repo: R,
 }
 
-impl StartRecruitmentService {
+impl<R: BattleRecruitmentsRepository> StartRecruitmentService<R> {
     /// 新しいStartRecruitmentServiceを作成（依存性注入）
-    pub fn new(repo: Arc<SeaOrmBattleRecruitmentsRepository>) -> Self {
+    pub fn new(repo: R) -> Self {
         Self { repo }
     }
 
@@ -42,17 +40,14 @@ impl StartRecruitmentService {
         Ok(recruitment)
     }
 
-    /// DBから募集情報を取得
-    pub async fn get_recruitment_from_db<C>(
+    /// DBから募集情報を取得（トランザクション内で実行）
+    pub async fn get_recruitment_from_db(
         &self,
-        db: &C,
+        txn: &sea_orm::DatabaseTransaction,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<BattleRecruitments>
-    where
-        C: sea_orm::ConnectionTrait,
-    {
+    ) -> Result<BattleRecruitments> {
         info!(
             "DB募集情報取得開始: guild_id={}, channel_id={}, message_id={}",
             guild_id, channel_id, message_id
@@ -61,8 +56,8 @@ impl StartRecruitmentService {
         // u64をドメイン型に変換
         match self
             .repo
-            .get_by_message(
-                db,
+            .get_by_message_with_txn(
+                txn,
                 DiscordGuildId::new(guild_id),
                 DiscordChannelId::new(channel_id),
                 DiscordMessageId::new(message_id),
@@ -100,26 +95,23 @@ impl StartRecruitmentService {
         Ok(message)
     }
 
-    /// 募集を開始済み状態に更新
+    /// 募集を開始済み状態に更新（トランザクション内で実行）
     /// 注意: 現在のBattleRecruitmentRepositoryトレイトには開始済み状態更新メソッドがないため、
     /// set_end_messageを使用して終了メッセージIDを設定することで開始状態を表現します。
-    pub async fn mark_recruitment_as_started<C>(
+    pub async fn mark_recruitment_as_started(
         &self,
-        db: &C,
+        txn: &sea_orm::DatabaseTransaction,
         recruitment_id: i64,
         end_message_id: u64,
-    ) -> Result<()>
-    where
-        C: sea_orm::ConnectionTrait,
-    {
+    ) -> Result<()> {
         info!(
             "募集開始済み状態更新開始: recruitment_id={}, end_message_id={}",
             recruitment_id, end_message_id
         );
 
         self.repo
-            .set_end_message(
-                db,
+            .set_end_message_with_txn(
+                txn,
                 recruitment_id as i32,
                 DiscordMessageId::new(end_message_id),
             )

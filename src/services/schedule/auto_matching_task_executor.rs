@@ -5,16 +5,9 @@
 
 use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::QuestRepository;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentRepository, QuestMatchingRepository, QuestMatchingUserRepository,
 };
-use crate::repository::database::auto_recruitment::{
-    SeaOrmAutoRecruitmentRepository, SeaOrmQuestMatchingRepository,
-    SeaOrmQuestMatchingUserRepository,
-};
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::auto_recruitment::PeriodicMatchingService;
 use crate::services::recruitment::recruitment_creation_service::{
@@ -43,19 +36,197 @@ pub enum AutoMatchingResult {
 }
 
 /// 自動マッチングタスク実行サービス
-pub struct AutoMatchingTaskExecutor {
-    task_repo: Arc<SeaOrmScheduledTaskRepository>,
-    recruitment_creation_service: Arc<RecruitmentCreationService>,
+pub struct AutoMatchingTaskExecutor<
+    GC,
+    Q,
+    BS,
+    A,
+    QR,
+    GE,
+    SD,
+    GM,
+    MT,
+    NMN,
+    NMR,
+    NMS,
+    DR,
+    TR,
+    TDR,
+    GS,
+    BR,
+    ST,
+    ARR,
+    QMR,
+    QMUR,
+    APR,
+    UDR,
+> where
+    GC: crate::repository::GuildChannelRepository,
+    Q: crate::repository::QuestRepository,
+    BS: crate::repository::BattleStyleRepository,
+    A: crate::repository::AllRecruitmentNotificationRolesRepository,
+    QR: crate::repository::QuestRecruitmentNotificationRolesRepository,
+    GE: crate::repository::GuildEnvironmentRepository,
+    SD: crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository,
+    GM: crate::repository::GuildMessageTextRepository,
+    MT: crate::repository::MessageTextRepository,
+    NMN: crate::repository::schedule::NotificationRepository,
+    NMR: crate::repository::schedule::NotificationRelBattleRecruitmentRepository,
+    NMS: crate::repository::schedule::ScheduledTaskRepository,
+    DR: crate::repository::schedule::BattleRecruitmentDismissalRepository,
+    TR: crate::repository::schedule::ScheduledTaskRepository,
+    TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
+    GS: crate::repository::GuildSettingsRepository,
+    BR: crate::repository::BattleRecruitmentsRepository,
+    ST: ScheduledTaskRepository,
+    ARR: AutoRecruitmentRepository,
+    QMR: QuestMatchingRepository,
+    QMUR: QuestMatchingUserRepository,
+    APR: crate::repository::auto_recruitment::AutoRecruitmentParticipantRepository,
+    UDR: crate::repository::auto_recruitment::UserDesiredQuestRepository,
+{
+    task_repo: Arc<ST>,
+    recruitment_creation_service: Arc<
+        RecruitmentCreationService<
+            GC,
+            Q,
+            BS,
+            A,
+            QR,
+            GE,
+            SD,
+            GM,
+            MT,
+            NMN,
+            NMR,
+            NMS,
+            DR,
+            TR,
+            TDR,
+            GS,
+            BR,
+        >,
+    >,
+    matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q>,
+    auto_recruitment_repo: ARR,
+    matching_user_repo: QMUR,
+    matching_repo: QMR,
+    quest_repo: Q,
 }
 
-impl AutoMatchingTaskExecutor {
+impl<
+    GC,
+    Q,
+    BS,
+    A,
+    QR,
+    GE,
+    SD,
+    GM,
+    MT,
+    NMN,
+    NMR,
+    NMS,
+    DR,
+    TR,
+    TDR,
+    GS,
+    BR,
+    ST,
+    ARR,
+    QMR,
+    QMUR,
+    APR,
+    UDR,
+>
+    AutoMatchingTaskExecutor<
+        GC,
+        Q,
+        BS,
+        A,
+        QR,
+        GE,
+        SD,
+        GM,
+        MT,
+        NMN,
+        NMR,
+        NMS,
+        DR,
+        TR,
+        TDR,
+        GS,
+        BR,
+        ST,
+        ARR,
+        QMR,
+        QMUR,
+        APR,
+        UDR,
+    >
+where
+    GC: crate::repository::GuildChannelRepository,
+    Q: crate::repository::QuestRepository + Clone,
+    BS: crate::repository::BattleStyleRepository,
+    A: crate::repository::AllRecruitmentNotificationRolesRepository,
+    QR: crate::repository::QuestRecruitmentNotificationRolesRepository,
+    GE: crate::repository::GuildEnvironmentRepository,
+    SD: crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository,
+    GM: crate::repository::GuildMessageTextRepository,
+    MT: crate::repository::MessageTextRepository,
+    NMN: crate::repository::schedule::NotificationRepository,
+    NMR: crate::repository::schedule::NotificationRelBattleRecruitmentRepository,
+    NMS: crate::repository::schedule::ScheduledTaskRepository,
+    DR: crate::repository::schedule::BattleRecruitmentDismissalRepository,
+    TR: crate::repository::schedule::ScheduledTaskRepository,
+    TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
+    GS: crate::repository::GuildSettingsRepository,
+    BR: crate::repository::BattleRecruitmentsRepository,
+    ST: ScheduledTaskRepository,
+    ARR: AutoRecruitmentRepository,
+    QMR: QuestMatchingRepository,
+    QMUR: QuestMatchingUserRepository,
+    APR: crate::repository::auto_recruitment::AutoRecruitmentParticipantRepository,
+    UDR: crate::repository::auto_recruitment::UserDesiredQuestRepository,
+{
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        task_repo: Arc<SeaOrmScheduledTaskRepository>,
-        recruitment_creation_service: Arc<RecruitmentCreationService>,
+        task_repo: Arc<ST>,
+        recruitment_creation_service: Arc<
+            RecruitmentCreationService<
+                GC,
+                Q,
+                BS,
+                A,
+                QR,
+                GE,
+                SD,
+                GM,
+                MT,
+                NMN,
+                NMR,
+                NMS,
+                DR,
+                TR,
+                TDR,
+                GS,
+                BR,
+            >,
+        >,
+        matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q>,
+        auto_recruitment_repo: ARR,
+        matching_user_repo: QMUR,
+        matching_repo: QMR,
+        quest_repo: Q,
     ) -> Self {
         Self {
             task_repo,
             recruitment_creation_service,
+            matching_service,
+            auto_recruitment_repo,
+            matching_user_repo,
+            matching_repo,
+            quest_repo,
         }
     }
 
@@ -96,8 +267,7 @@ impl AutoMatchingTaskExecutor {
         };
 
         // マッチング処理を実行
-        let matching_service = PeriodicMatchingService::new();
-        let matchings = matching_service.process_matching(txn).await?;
+        let matchings = self.matching_service.process_matching(txn).await?;
 
         let matched_groups = matchings.len();
 
@@ -138,11 +308,6 @@ impl AutoMatchingTaskExecutor {
         gateway: &G,
         matchings: &[crate::models::entities::worker::quest_matchings::Model],
     ) -> Result<()> {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
-        let matching_repo = SeaOrmQuestMatchingRepository::new();
-        let quest_repo = SeaOrmQuestRepository::new();
-
         // ギルドごとにグルーピング
         let mut guild_matchings: HashMap<i64, Vec<_>> = HashMap::new();
         for matching in matchings {
@@ -154,7 +319,8 @@ impl AutoMatchingTaskExecutor {
 
         for (guild_id, guild_matches) in guild_matchings {
             // 自動募集設定を取得
-            let auto_recruitment = match auto_recruitment_repo
+            let auto_recruitment = match self
+                .auto_recruitment_repo
                 .find_by_guild_id(txn, guild_id)
                 .await?
             {
@@ -175,7 +341,11 @@ impl AutoMatchingTaskExecutor {
 
             for matching in guild_matches {
                 // クエスト情報を取得
-                let quest = match quest_repo.get_by_target_id(txn, matching.quest_id).await? {
+                let quest = match self
+                    .quest_repo
+                    .get_by_target_id(txn, matching.quest_id)
+                    .await?
+                {
                     Some(q) => q,
                     None => {
                         warn!(
@@ -188,7 +358,8 @@ impl AutoMatchingTaskExecutor {
                 };
 
                 // 参加ユーザーを取得
-                let users = matching_user_repo
+                let users = self
+                    .matching_user_repo
                     .find_active_by_matching(txn, guild_id, matching.id)
                     .await?;
 
@@ -265,7 +436,8 @@ impl AutoMatchingTaskExecutor {
                         );
 
                         // マッチングに募集IDを設定
-                        if let Err(e) = matching_repo
+                        if let Err(e) = self
+                            .matching_repo
                             .set_recruitment_id(txn, guild_id, matching.id, recruitment_id)
                             .await
                         {

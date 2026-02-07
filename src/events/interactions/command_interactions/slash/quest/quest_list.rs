@@ -1,8 +1,6 @@
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::GuildQuestDisableRepository;
 use crate::repository::QuestRepository;
-use crate::repository::database::guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::types::{PoiseContext, Result};
 use poise::ChoiceParameter;
 use sea_orm::TransactionTrait;
@@ -47,9 +45,10 @@ pub async fn quest_list(
         })?
         .get() as i64;
 
-    let db_conn = ctx.data().app_state.guild_db();
-    let quest_repository = SeaOrmQuestRepository::new();
-    let disable_repository = SeaOrmGuildQuestDisableRepository::new();
+    let app_state = &ctx.data().app_state;
+    let db_conn = app_state.guild_db();
+    let quest_repository = app_state.repositories.quest;
+    let disable_repository = app_state.repositories.guild_quest_disable;
 
     // トランザクション開始
     let txn = db_conn.begin().await?;

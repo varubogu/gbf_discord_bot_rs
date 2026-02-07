@@ -1,13 +1,9 @@
 use crate::gateway::DiscordGateway;
 use crate::repository::GuildSettingsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{
-    SeaOrmScheduledTaskDissolutionRepository, SeaOrmScheduledTaskRepository,
-};
 use crate::repository::schedule::{ScheduledTaskDissolutionRepository, ScheduledTaskRepository};
 use crate::repository::{
-    BattleRecruitmentsRepository, QuestRepository, RecruitmentParticipantsRepository,
+    BattleRecruitmentsRepository, GuildMessageTextRepository, MessageTextRepository,
+    QuestRepository, RecruitmentParticipantsRepository,
 };
 use crate::services::message::MessageService;
 use crate::services::recruitment::cancel::{
@@ -38,27 +34,46 @@ pub enum DissolutionExecutionResult {
 ///
 /// 設計: scheduled_task_dissolutions から募集情報を取得し、
 /// 参加者数をチェックして、条件を満たさない場合は募集をキャンセルする
-pub struct DissolutionTaskExecutor<
+pub struct DissolutionTaskExecutor<R, P, ST, SD, GS, Q, GM, MT>
+where
     R: BattleRecruitmentsRepository,
     P: RecruitmentParticipantsRepository,
-> {
-    task_repo: Arc<SeaOrmScheduledTaskRepository>,
-    dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
+    ST: ScheduledTaskRepository,
+    SD: ScheduledTaskDissolutionRepository,
+    GS: GuildSettingsRepository,
+    Q: QuestRepository,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
+{
+    task_repo: Arc<ST>,
+    dissolution_repo: Arc<SD>,
     recruitment_repo: Arc<R>,
     participants_repo: Arc<P>,
-    message_service: Arc<MessageService>,
-    guild_settings_repo: Arc<SeaOrmGuildSettingsRepository>,
+    message_service: Arc<MessageService<GM, MT>>,
+    guild_settings_repo: Arc<GS>,
+    quest_repo: Q,
 }
 
-impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
-    DissolutionTaskExecutor<R, P>
+impl<R, P, ST, SD, GS, Q, GM, MT> DissolutionTaskExecutor<R, P, ST, SD, GS, Q, GM, MT>
+where
+    R: BattleRecruitmentsRepository,
+    P: RecruitmentParticipantsRepository,
+    ST: ScheduledTaskRepository,
+    SD: ScheduledTaskDissolutionRepository,
+    GS: GuildSettingsRepository,
+    Q: QuestRepository,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        task_repo: Arc<SeaOrmScheduledTaskRepository>,
-        dissolution_repo: Arc<SeaOrmScheduledTaskDissolutionRepository>,
+        task_repo: Arc<ST>,
+        dissolution_repo: Arc<SD>,
         recruitment_repo: Arc<R>,
         participants_repo: Arc<P>,
-        message_service: Arc<MessageService>,
+        message_service: Arc<MessageService<GM, MT>>,
+        guild_settings_repo: Arc<GS>,
+        quest_repo: Q,
     ) -> Self {
         Self {
             task_repo,
@@ -66,7 +81,8 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
             recruitment_repo,
             participants_repo,
             message_service,
-            guild_settings_repo: Arc::new(SeaOrmGuildSettingsRepository::new()),
+            guild_settings_repo,
+            quest_repo,
         }
     }
 
@@ -210,7 +226,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         // キャンセル済みメッセージを作成
         let cancelled_content = create_cancelled_message_content(
             txn,
-            &self.message_service,
+            self.message_service.as_ref(),
             guild_id,
             Some(&locale),
             &message.content,
@@ -239,7 +255,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         // 参加者のユーザーIDリストを取得
         let participant_user_ids = self
             .participants_repo
-            .get_all_participant_user_ids(txn, recruitment.id)
+            .get_all_participant_user_ids_with_txn(txn, recruitment.id)
             .await?;
 
         let participant_mentions: Vec<String> = participant_user_ids
@@ -249,7 +265,7 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
 
         let notification_text = create_cancel_notification_text(
             txn,
-            &self.message_service,
+            self.message_service.as_ref(),
             guild_id,
             Some(&locale),
             &participant_mentions,
@@ -257,8 +273,8 @@ impl<R: BattleRecruitmentsRepository, P: RecruitmentParticipantsRepository>
         .await?;
 
         // クエスト情報を取得してフォールバックコンテキストを作成
-        let quest_repo = SeaOrmQuestRepository::new();
-        let fallback_context = match quest_repo
+        let fallback_context = match self
+            .quest_repo
             .get_by_target_id(txn, recruitment.quest_id)
             .await?
         {

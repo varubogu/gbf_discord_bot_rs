@@ -11,16 +11,14 @@
 //! 4. 6属性クエストの場合は属性被りを考慮してグループ分け
 //! 5. quest_matchingsとquest_matching_usersに登録
 
-use crate::models::entities::guild_master::{auto_recruitment_participants, user_desired_quests};
 use crate::models::entities::worker::quest_matchings;
 use crate::repository::QuestRepository;
-use crate::repository::auto_recruitment::{QuestMatchingRepository, QuestMatchingUserRepository};
-use crate::repository::database::auto_recruitment::{
-    SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
+use crate::repository::auto_recruitment::{
+    AutoRecruitmentParticipantRepository, QuestMatchingRepository, QuestMatchingUserRepository,
+    UserDesiredQuestRepository,
 };
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::types::Result;
-use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
+use sea_orm::DatabaseTransaction;
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, info};
 
@@ -62,17 +60,54 @@ pub struct MatchGroup {
 /// 周期マッチング処理用サービス
 ///
 /// 10秒間隔で実行される周期マッチング処理で使用する
-pub struct PeriodicMatchingService;
-
-impl Default for PeriodicMatchingService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct PeriodicMatchingService<PR, DR, MR, MUR, QR>
+where
+    PR: AutoRecruitmentParticipantRepository,
+    DR: UserDesiredQuestRepository,
+    MR: QuestMatchingRepository,
+    MUR: QuestMatchingUserRepository,
+    QR: QuestRepository,
+{
+    participant_repo: PR,
+    desired_quest_repo: DR,
+    matching_repo: MR,
+    matching_user_repo: MUR,
+    quest_repo: QR,
 }
 
-impl PeriodicMatchingService {
-    pub fn new() -> Self {
-        Self
+impl<PR, DR, MR, MUR, QR> PeriodicMatchingService<PR, DR, MR, MUR, QR>
+where
+    PR: AutoRecruitmentParticipantRepository,
+    DR: UserDesiredQuestRepository,
+    MR: QuestMatchingRepository,
+    MUR: QuestMatchingUserRepository,
+    QR: QuestRepository,
+{
+    /// 新しいPeriodicMatchingServiceインスタンスを作成
+    ///
+    /// # 引数
+    /// * `participant_repo` - 自動募集参加可能時間リポジトリ
+    /// * `desired_quest_repo` - ユーザー希望クエストリポジトリ
+    /// * `matching_repo` - クエストマッチングリポジトリ
+    /// * `matching_user_repo` - クエストマッチングユーザーリポジトリ
+    /// * `quest_repo` - クエストリポジトリ
+    ///
+    /// # 戻り値
+    /// 新しいPeriodicMatchingServiceインスタンス
+    pub fn new(
+        participant_repo: PR,
+        desired_quest_repo: DR,
+        matching_repo: MR,
+        matching_user_repo: MUR,
+        quest_repo: QR,
+    ) -> Self {
+        Self {
+            participant_repo,
+            desired_quest_repo,
+            matching_repo,
+            matching_user_repo,
+            quest_repo,
+        }
     }
 
     /// マッチング候補を検出
@@ -84,27 +119,20 @@ impl PeriodicMatchingService {
         txn: &DatabaseTransaction,
     ) -> Result<Vec<MatchCandidate>> {
         // 全ての参加可能時間を取得
-        let participants = auto_recruitment_participants::Entity::find()
-            .all(txn)
-            .await?;
+        let participants = self.participant_repo.find_all(txn).await?;
 
         // 全ての希望クエストを取得
-        let desired_quests = user_desired_quests::Entity::find().all(txn).await?;
-
-        // ギルドごとの既存マッチングユーザーを取得
-        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
+        let desired_quests = self.desired_quest_repo.find_all(txn).await?;
 
         // guild_id -> (quest_id, month, day, hour, user_id) のセットを構築
         let mut existing_matches: ExistingMatchesMap = HashMap::new();
 
         // アクティブなマッチングを取得
-        let active_matchings = quest_matchings::Entity::find()
-            .filter(quest_matchings::Column::Status.eq("active"))
-            .all(txn)
-            .await?;
+        let active_matchings = self.matching_repo.find_all_active(txn).await?;
 
         for matching in active_matchings {
-            let users = matching_user_repo
+            let users = self
+                .matching_user_repo
                 .find_active_by_matching(txn, matching.guild_id, matching.id)
                 .await?;
 
@@ -213,12 +241,14 @@ impl PeriodicMatchingService {
         txn: &DatabaseTransaction,
         candidates: Vec<MatchCandidate>,
     ) -> Result<Vec<MatchGroup>> {
-        let quest_repo = SeaOrmQuestRepository::new();
         let mut all_groups: Vec<MatchGroup> = Vec::new();
 
         for candidate in candidates {
             // クエスト情報を取得して人数上限を確認
-            let quest = quest_repo.get_by_target_id(txn, candidate.quest_id).await?;
+            let quest = self
+                .quest_repo
+                .get_by_target_id(txn, candidate.quest_id)
+                .await?;
 
             let recruit_count = quest.as_ref().map(|q| q.recruit_count).unwrap_or(6) as usize;
 
@@ -362,13 +392,12 @@ impl PeriodicMatchingService {
         txn: &DatabaseTransaction,
         groups: Vec<MatchGroup>,
     ) -> Result<Vec<quest_matchings::Model>> {
-        let matching_repo = SeaOrmQuestMatchingRepository::new();
-        let matching_user_repo = SeaOrmQuestMatchingUserRepository::new();
         let mut created_matchings: Vec<quest_matchings::Model> = Vec::new();
 
         for group in groups {
             // quest_matchingsに登録（UUIDはリポジトリ側で生成）
-            let matching = matching_repo
+            let matching = self
+                .matching_repo
                 .create(
                     txn,
                     group.guild_id,
@@ -381,7 +410,7 @@ impl PeriodicMatchingService {
 
             // quest_matching_usersに参加者を登録
             for (user_id, battle_style_id) in &group.users {
-                matching_user_repo
+                self.matching_user_repo
                     .create(txn, group.guild_id, matching.id, *user_id, *battle_style_id)
                     .await?;
             }
@@ -431,10 +460,32 @@ impl PeriodicMatchingService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repository::database::auto_recruitment::{
+        SeaOrmAutoRecruitmentParticipantRepository, SeaOrmQuestMatchingRepository,
+        SeaOrmQuestMatchingUserRepository, SeaOrmUserDesiredQuestRepository,
+    };
+    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+
+    /// テスト用のサービスインスタンスを作成
+    fn create_test_service() -> PeriodicMatchingService<
+        SeaOrmAutoRecruitmentParticipantRepository,
+        SeaOrmUserDesiredQuestRepository,
+        SeaOrmQuestMatchingRepository,
+        SeaOrmQuestMatchingUserRepository,
+        SeaOrmQuestRepository,
+    > {
+        PeriodicMatchingService::new(
+            SeaOrmAutoRecruitmentParticipantRepository::new(),
+            SeaOrmUserDesiredQuestRepository::new(),
+            SeaOrmQuestMatchingRepository::new(),
+            SeaOrmQuestMatchingUserRepository::new(),
+            SeaOrmQuestRepository::new(),
+        )
+    }
 
     #[test]
     fn test_grouping_algorithm_basic() {
-        let service = PeriodicMatchingService::new();
+        let service = create_test_service();
 
         // 3人のユーザーが同じクエストを希望（属性指定なし）
         let candidate = MatchCandidate {
@@ -454,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_grouping_algorithm_with_elements() {
-        let service = PeriodicMatchingService::new();
+        let service = create_test_service();
 
         // 3人のユーザーが6属性クエストを希望
         // ユーザー100: 火(1), 水(2)
@@ -478,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_grouping_algorithm_with_conflict() {
-        let service = PeriodicMatchingService::new();
+        let service = create_test_service();
 
         // 3人のユーザーが6属性クエストを希望（火属性のみ）
         // 全員火属性のみ希望 → 別グループになる
@@ -499,7 +550,7 @@ mod tests {
 
     #[test]
     fn test_grouping_algorithm_overflow() {
-        let service = PeriodicMatchingService::new();
+        let service = create_test_service();
 
         // 8人のユーザーが同じクエストを希望（属性指定なし、上限6人）
         let candidate = MatchCandidate {

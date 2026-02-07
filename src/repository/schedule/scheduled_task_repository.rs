@@ -62,4 +62,125 @@ pub trait ScheduledTaskRepository: Send + Sync {
         txn: &DatabaseTransaction,
         task_type: i32,
     ) -> Result<u64>;
+
+    /// 複数IDでタスクを取得（N+1問題解消用、トランザクション対応）
+    async fn find_many_by_ids_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>>;
+
+    /// 複数IDでタスクを取得（N+1問題解消用、DB接続対応）
+    async fn find_many_by_ids_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>>;
+
+    /// 指定日時より前のタスクを削除（クリーンアップ用）
+    async fn delete_before_date_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        before: DateTime<Utc>,
+    ) -> Result<u64>;
+}
+
+/// Arc<T>に対するScheduledTaskRepositoryの実装
+/// これによりArc<ConcreteRepository>を直接使用できる
+#[async_trait]
+impl<T> ScheduledTaskRepository for std::sync::Arc<T>
+where
+    T: ScheduledTaskRepository + ?Sized,
+{
+    async fn find_pending_in_range(
+        &self,
+        txn: &DatabaseTransaction,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        (**self).find_pending_in_range(txn, from, to).await
+    }
+
+    async fn find_pending_to(
+        &self,
+        txn: &DatabaseTransaction,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        (**self).find_pending_to(txn, to).await
+    }
+
+    async fn find_by_id(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<Option<scheduled_tasks::Model>> {
+        (**self).find_by_id(txn, task_id).await
+    }
+
+    async fn create(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_datetime: DateTime<Utc>,
+        task_type: i32,
+        guild_id: Option<i64>,
+        channel_id: Option<i64>,
+    ) -> Result<scheduled_tasks::Model> {
+        (**self)
+            .create(txn, schedule_datetime, task_type, guild_id, channel_id)
+            .await
+    }
+
+    async fn mark_as_executed(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model> {
+        (**self).mark_as_executed(txn, task_id).await
+    }
+
+    async fn delete_by_id(&self, txn: &DatabaseTransaction, task_id: i32) -> Result<u64> {
+        (**self).delete_by_id(txn, task_id).await
+    }
+
+    async fn delete_dissolutions_by_recruit_id(
+        &self,
+        txn: &DatabaseTransaction,
+        recruit_id: i32,
+    ) -> Result<u64> {
+        (**self)
+            .delete_dissolutions_by_recruit_id(txn, recruit_id)
+            .await
+    }
+
+    async fn delete_all_by_task_type(
+        &self,
+        txn: &DatabaseTransaction,
+        task_type: i32,
+    ) -> Result<u64> {
+        (**self).delete_all_by_task_type(txn, task_type).await
+    }
+
+    async fn find_many_by_ids_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        (**self).find_many_by_ids_with_txn(txn, ids).await
+    }
+
+    async fn find_many_by_ids_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        ids: Vec<i32>,
+    ) -> Result<Vec<scheduled_tasks::Model>> {
+        (**self).find_many_by_ids_with_db(db, ids).await
+    }
+
+    async fn delete_before_date_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        before: DateTime<Utc>,
+    ) -> Result<u64> {
+        (**self).delete_before_date_with_txn(txn, before).await
+    }
 }

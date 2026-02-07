@@ -10,6 +10,7 @@ use sea_orm::{
 use tracing::{debug, error};
 
 /// 自動募集日時チャンネルリポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmAutoRecruitmentChannelRepository;
 
 #[async_trait]

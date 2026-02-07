@@ -17,7 +17,7 @@ pub trait GuildMessageTextRepository: Send + Sync {
 }
 
 /// SeaORMを使用したギルド固有メッセージテキストリポジトリ実装
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmGuildMessageTextRepository;
 
 impl SeaOrmGuildMessageTextRepository {

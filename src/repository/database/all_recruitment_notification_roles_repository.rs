@@ -6,7 +6,7 @@ use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryO
 use tracing::{debug, error, info};
 
 /// all_recruitment_notification_rolesテーブルのRepository
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmAllRecruitmentNotificationRolesRepository;
 
 impl SeaOrmAllRecruitmentNotificationRolesRepository {

@@ -11,7 +11,7 @@ use sea_orm::{
 use tracing::{debug, error};
 
 /// マルチ募集スケジュールリポジトリ
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmBattleRecruitmentScheduleRepository;
 
 #[async_trait]

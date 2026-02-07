@@ -1,39 +1,34 @@
-use std::sync::Arc;
 use tracing::error;
 
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 
 /// 募集情報取得サービス
-pub struct GetRecruitmentService {
-    battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>,
+pub struct GetRecruitmentService<R: BattleRecruitmentsRepository> {
+    battle_recruitment_repo: R,
 }
 
-impl GetRecruitmentService {
+impl<R: BattleRecruitmentsRepository> GetRecruitmentService<R> {
     /// 依存性注入パターンに従ったコンストラクタ
-    pub fn new(battle_recruitment_repo: Arc<SeaOrmBattleRecruitmentsRepository>) -> Self {
+    pub fn new(battle_recruitment_repo: R) -> Self {
         Self {
             battle_recruitment_repo,
         }
     }
 
-    /// メッセージIDから募集情報を取得する
-    pub async fn get_by_message<C>(
+    /// メッセージIDから募集情報を取得する（通常接続版）
+    pub async fn get_by_message(
         &self,
-        db: &C,
+        db: &sea_orm::DatabaseConnection,
         guild_id: u64,
         channel_id: u64,
         message_id: u64,
-    ) -> Result<Option<BattleRecruitments>, String>
-    where
-        C: sea_orm::ConnectionTrait,
-    {
+    ) -> Result<Option<BattleRecruitments>, String> {
         // u64をドメイン型に変換
         match self
             .battle_recruitment_repo
-            .get_by_message(
+            .get_by_message_with_db(
                 db,
                 DiscordGuildId::new(guild_id),
                 DiscordChannelId::new(channel_id),
