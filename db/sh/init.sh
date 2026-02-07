@@ -16,6 +16,8 @@ SYSTEM_DB_PASSWORD="${SYSTEM_DB_PASSWORD:-change_this_system_password}"
 GUILD_DB_PASSWORD="${GUILD_DB_PASSWORD:-change_this_guild_password}"
 GLOBAL_DB_PASSWORD="${GLOBAL_DB_PASSWORD:-change_this_global_password}"
 ADMIN_DB_PASSWORD="${ADMIN_DB_PASSWORD:-change_this_admin_password}"
+CLEANUP_DB_PASSWORD="${CLEANUP_DB_PASSWORD:-change_this_cleanup_password}"
+
 DB_NAME="${DB_NAME:-gbf_bot_db}"
 DB_HOST="${DB_HOST:-localhost}"
 DB_USER="${DB_USER:-postgres}"
@@ -27,6 +29,7 @@ echo "  - SYSTEM_DB_PASSWORD: $([ -n "$SYSTEM_DB_PASSWORD" ] && echo '設定済�
 echo "  - GUILD_DB_PASSWORD: $([ -n "$GUILD_DB_PASSWORD" ] && echo '設定済み' || echo '未設定')"
 echo "  - GLOBAL_DB_PASSWORD: $([ -n "$GLOBAL_DB_PASSWORD" ] && echo '設定済み' || echo '未設定')"
 echo "  - ADMIN_DB_PASSWORD: $([ -n "$ADMIN_DB_PASSWORD" ] && echo '設定済み' || echo '未設定')"
+echo "  - CLEANUP_DB_PASSWORD: $([ -n "$CLEANUP_DB_PASSWORD" ] && echo '設定済み' || echo '未設定')"
 
 # init.sql を実行（psql変数で環境変数を渡す）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,6 +46,7 @@ psql -v ON_ERROR_STOP=1 \
      -v guild_password="$GUILD_DB_PASSWORD" \
      -v global_password="$GLOBAL_DB_PASSWORD" \
      -v admin_password="$ADMIN_DB_PASSWORD" \
+     -v cleanup_password="$CLEANUP_DB_PASSWORD" \
      -v db_name="$DB_NAME" \
      -f "$SCRIPT_DIR/../sql/init.sql"
 
