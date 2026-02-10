@@ -7,7 +7,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// マルチ募集解散リポジトリ
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmBattleRecruitmentDismissalRepository;
 
 #[async_trait]

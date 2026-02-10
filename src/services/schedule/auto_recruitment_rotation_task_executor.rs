@@ -8,8 +8,6 @@ use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentChannelRepository, AutoRecruitmentRepository,
 };
-use crate::repository::database::auto_recruitment::SeaOrmAutoRecruitmentRepository;
-use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::types::discord::{ChannelEditParams, DiscordChannelId};
 use crate::types::{AppError, Result};
@@ -31,22 +29,28 @@ pub enum AutoRecruitmentRotationResult {
 }
 
 /// 自動募集日付ローテーションタスク実行サービス
-pub struct AutoRecruitmentRotationTaskExecutor<C>
+pub struct AutoRecruitmentRotationTaskExecutor<C, ST, AR>
 where
     C: AutoRecruitmentChannelRepository,
+    ST: ScheduledTaskRepository,
+    AR: AutoRecruitmentRepository,
 {
-    task_repo: Arc<SeaOrmScheduledTaskRepository>,
+    task_repo: Arc<ST>,
     channel_repo: Arc<C>,
+    auto_recruitment_repo: AR,
 }
 
-impl<C> AutoRecruitmentRotationTaskExecutor<C>
+impl<C, ST, AR> AutoRecruitmentRotationTaskExecutor<C, ST, AR>
 where
     C: AutoRecruitmentChannelRepository,
+    ST: ScheduledTaskRepository,
+    AR: AutoRecruitmentRepository,
 {
-    pub fn new(task_repo: Arc<SeaOrmScheduledTaskRepository>, channel_repo: Arc<C>) -> Self {
+    pub fn new(task_repo: Arc<ST>, channel_repo: Arc<C>, auto_recruitment_repo: AR) -> Self {
         Self {
             task_repo,
             channel_repo,
+            auto_recruitment_repo,
         }
     }
 
@@ -296,8 +300,8 @@ where
         }
 
         // 自動募集設定を取得（マッチング/クエストチャンネルID）
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let auto_recruitment = auto_recruitment_repo
+        let auto_recruitment = self
+            .auto_recruitment_repo
             .find_by_guild_id(txn, guild_id)
             .await?;
 

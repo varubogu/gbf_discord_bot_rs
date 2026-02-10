@@ -1,21 +1,13 @@
 // Note: converters are no longer needed as we use domain types directly with Gateway
 use crate::gateway::DiscordGateway;
-use crate::infrastructure::database::container::RepositoryContainer;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
+use crate::repository::BattleRecruitmentsRepository;
+use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
-use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
-use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
-use crate::repository::database::guild_environment_repository::SeaOrmGuildEnvironmentRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::SeaOrmBattleRecruitmentScheduleDismissalRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::quest_repository::QuestRepository;
-use crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
+use crate::services::message::MessageService;
 use crate::services::recruitment::new::create_message_content;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
@@ -27,7 +19,6 @@ use crate::types::discord::{
 };
 use chrono::{TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
-use std::sync::Arc;
 use tracing::{debug, info};
 
 /// マッチングから募集を作成するためのパラメータ
@@ -44,17 +35,104 @@ pub struct MatchingRecruitmentParams {
 
 /// 募集作成Service
 /// スケジュールから募集を作成する責務を持つ
-pub struct RecruitmentCreationService;
-
-impl Default for RecruitmentCreationService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct RecruitmentCreationService<
+    GC,
+    Q,
+    BS,
+    A,
+    QR,
+    GE,
+    SD,
+    GM,
+    MT,
+    NMN,
+    NMR,
+    NMS,
+    DR,
+    TR,
+    TDR,
+    GS,
+    BR,
+> where
+    GC: GuildChannelRepository,
+    Q: QuestRepository,
+    BS: BattleStyleRepository,
+    A: crate::repository::AllRecruitmentNotificationRolesRepository,
+    QR: crate::repository::QuestRecruitmentNotificationRolesRepository,
+    GE: crate::repository::GuildEnvironmentRepository,
+    SD: crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository,
+    GM: crate::repository::GuildMessageTextRepository,
+    MT: crate::repository::MessageTextRepository,
+    NMN: crate::repository::schedule::NotificationRepository,
+    NMR: crate::repository::schedule::NotificationRelBattleRecruitmentRepository,
+    NMS: crate::repository::schedule::ScheduledTaskRepository,
+    DR: crate::repository::schedule::BattleRecruitmentDismissalRepository,
+    TR: crate::repository::schedule::ScheduledTaskRepository,
+    TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
+    GS: crate::repository::GuildSettingsRepository,
+    BR: BattleRecruitmentsRepository,
+{
+    guild_channel_repo: GC,
+    quest_repo: Q,
+    battle_style_repo: BS,
+    role_service: RoleNotificationService<A, QR>,
+    timezone_service: TimezoneService<GS>,
+    guild_env_service: GuildEnvironmentService<GE>,
+    schedule_dismissal_repo: SD,
+    message_service: MessageService<GM, MT>,
+    notification_management_service: NotificationManagementService<NMN, NMR, NMS>,
+    dismissal_service: DismissalManagementService<DR, TR, TDR>,
+    battle_recruitment_repo: BR,
 }
 
-impl RecruitmentCreationService {
-    pub fn new() -> Self {
-        Self
+impl<GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR>
+    RecruitmentCreationService<GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR>
+where
+    GC: GuildChannelRepository,
+    Q: QuestRepository,
+    BS: BattleStyleRepository,
+    A: crate::repository::AllRecruitmentNotificationRolesRepository,
+    QR: crate::repository::QuestRecruitmentNotificationRolesRepository,
+    GE: crate::repository::GuildEnvironmentRepository,
+    SD: crate::repository::schedule::BattleRecruitmentScheduleDismissalRepository,
+    GM: crate::repository::GuildMessageTextRepository,
+    MT: crate::repository::MessageTextRepository,
+    NMN: crate::repository::schedule::NotificationRepository,
+    NMR: crate::repository::schedule::NotificationRelBattleRecruitmentRepository,
+    NMS: crate::repository::schedule::ScheduledTaskRepository,
+    DR: crate::repository::schedule::BattleRecruitmentDismissalRepository,
+    TR: crate::repository::schedule::ScheduledTaskRepository,
+    TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
+    GS: crate::repository::GuildSettingsRepository,
+    BR: BattleRecruitmentsRepository,
+{
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        guild_channel_repo: GC,
+        quest_repo: Q,
+        battle_style_repo: BS,
+        role_service: RoleNotificationService<A, QR>,
+        timezone_service: TimezoneService<GS>,
+        guild_env_service: GuildEnvironmentService<GE>,
+        schedule_dismissal_repo: SD,
+        message_service: MessageService<GM, MT>,
+        notification_management_service: NotificationManagementService<NMN, NMR, NMS>,
+        dismissal_service: DismissalManagementService<DR, TR, TDR>,
+        battle_recruitment_repo: BR,
+    ) -> Self {
+        Self {
+            guild_channel_repo,
+            quest_repo,
+            battle_style_repo,
+            role_service,
+            timezone_service,
+            guild_env_service,
+            schedule_dismissal_repo,
+            message_service,
+            notification_management_service,
+            dismissal_service,
+            battle_recruitment_repo,
+        }
     }
 
     /// スケジュールから募集を作成
@@ -76,8 +154,8 @@ impl RecruitmentCreationService {
         set_current_guild_id(txn, calculated_time.guild_id).await?;
 
         // 0. マルチ募集チャンネルを取得（channel_type = 2）
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        let guild_channel = guild_channel_repo
+        let guild_channel = self
+            .guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, calculated_time.guild_id, 2)
             .await?
             .ok_or_else(|| {
@@ -94,12 +172,8 @@ impl RecruitmentCreationService {
         );
 
         // 1. Quest, BattleStyle, タイムゾーンを取得
-        let quest_repo = SeaOrmQuestRepository::new();
-        let battle_style_repo = SeaOrmBattleStyleRepository::new();
-        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
-        let timezone_service = TimezoneService::new(timezone_repo);
-
-        let quest = quest_repo
+        let quest = self
+            .quest_repo
             .get_by_target_id(db_conn, calculated_time.quest_id)
             .await?
             .ok_or_else(|| {
@@ -109,7 +183,8 @@ impl RecruitmentCreationService {
                 ))
             })?;
 
-        let battle_style = battle_style_repo
+        let battle_style = self
+            .battle_style_repo
             .get_by_id(db_conn, calculated_time.battle_style_id)
             .await?
             .ok_or_else(|| {
@@ -119,19 +194,20 @@ impl RecruitmentCreationService {
                 ))
             })?;
 
-        let timezone = timezone_service
+        let timezone = self
+            .timezone_service
             .get_guild_timezone(db_conn, calculated_time.guild_id)
             .await?;
 
         // 2. ロールメンションを取得
-        let role_service = RoleNotificationService::new();
-        let role_mentions = role_service
+        let role_mentions = self
+            .role_service
             .get_role_mentions(txn, calculated_time.guild_id, quest.id)
             .await?;
 
         // 2.5. 定期募集スケジュールの解散時刻を取得
-        let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
-        let schedule_dismissals = dismissal_repo
+        let schedule_dismissals = self
+            .schedule_dismissal_repo
             .find_by_schedule_id(txn, calculated_time.schedule_id)
             .await?;
 
@@ -197,6 +273,7 @@ impl RecruitmentCreationService {
 
         let mut message_content = create_message_content(
             txn,
+            &self.message_service,
             &quest.name,
             &battle_style.display_name,
             &calculated_time.quest_start_at,
@@ -221,9 +298,8 @@ impl RecruitmentCreationService {
         }
 
         // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
-        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
-        let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service
+        let element_emojis = self
+            .guild_env_service
             .get_element_emojis(txn, gateway, calculated_time.guild_id)
             .await?;
 
@@ -262,11 +338,9 @@ impl RecruitmentCreationService {
         );
 
         // 7. battle_recruitmentsに保存
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
-
         // i64/u64をドメイン型に変換してRepositoryに渡す
-        let recruitment = battle_recruitment_repo
+        let recruitment = self
+            .battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
@@ -291,8 +365,7 @@ impl RecruitmentCreationService {
             "募集の出発通知を登録します"
         );
 
-        let notification_management_service = NotificationManagementService::new();
-        notification_management_service
+        self.notification_management_service
             .create_recruitment_departure_notification(
                 txn,
                 calculated_time.quest_start_at,
@@ -310,8 +383,7 @@ impl RecruitmentCreationService {
                 "募集の解散時刻を登録します"
             );
 
-            let dismissal_service = DismissalManagementService::new();
-            dismissal_service
+            self.dismissal_service
                 .create_recruitment_dismissals(
                     txn,
                     recruitment.id,
@@ -354,8 +426,8 @@ impl RecruitmentCreationService {
         set_current_guild_id(txn, params.guild_id).await?;
 
         // 0. マルチ募集チャンネルを取得（channel_type = 2）
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        let guild_channel = guild_channel_repo
+        let guild_channel = self
+            .guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, params.guild_id, 2)
             .await?
             .ok_or_else(|| {
@@ -372,12 +444,8 @@ impl RecruitmentCreationService {
         );
 
         // 1. Quest, BattleStyle（デフォルト）, タイムゾーンを取得
-        let quest_repo = SeaOrmQuestRepository::new();
-        let battle_style_repo = SeaOrmBattleStyleRepository::new();
-        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
-        let timezone_service = TimezoneService::new(timezone_repo);
-
-        let quest = quest_repo
+        let quest = self
+            .quest_repo
             .get_by_target_id(db_conn, params.quest_id)
             .await?
             .ok_or_else(|| {
@@ -388,7 +456,8 @@ impl RecruitmentCreationService {
             })?;
 
         // クエストのデフォルト攻略方法を使用
-        let battle_style = battle_style_repo
+        let battle_style = self
+            .battle_style_repo
             .get_by_id(db_conn, quest.default_battle_style_id)
             .await?
             .ok_or_else(|| {
@@ -398,19 +467,21 @@ impl RecruitmentCreationService {
                 ))
             })?;
 
-        let timezone = timezone_service
+        let timezone = self
+            .timezone_service
             .get_guild_timezone(db_conn, params.guild_id)
             .await?;
 
         // 2. ロールメンションを取得
-        let role_service = RoleNotificationService::new();
-        let role_mentions = role_service
+        let role_mentions = self
+            .role_service
             .get_role_mentions(txn, params.guild_id, quest.id)
             .await?;
 
         // 3. メッセージ内容を作成（マッチングでは解散時刻なし）
         let mut message_content = create_message_content(
             txn,
+            &self.message_service,
             &quest.name,
             &battle_style.display_name,
             &params.quest_start_at,
@@ -440,9 +511,8 @@ impl RecruitmentCreationService {
         }
 
         // 3.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）（Gateway経由）
-        let guild_env_repo = Arc::new(SeaOrmGuildEnvironmentRepository::new());
-        let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service
+        let element_emojis = self
+            .guild_env_service
             .get_element_emojis(txn, gateway, params.guild_id)
             .await?;
 
@@ -481,11 +551,9 @@ impl RecruitmentCreationService {
         );
 
         // 7. battle_recruitmentsに保存
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
-
         // i64/u64をドメイン型に変換してRepositoryに渡す
-        let recruitment = battle_recruitment_repo
+        let recruitment = self
+            .battle_recruitment_repo
             .create_with_txn(
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
@@ -510,8 +578,7 @@ impl RecruitmentCreationService {
             "募集の出発通知を登録します"
         );
 
-        let notification_management_service = NotificationManagementService::new();
-        notification_management_service
+        self.notification_management_service
             .create_recruitment_departure_notification(
                 txn,
                 params.quest_start_at,

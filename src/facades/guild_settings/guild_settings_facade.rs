@@ -1,7 +1,6 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::GuildSettingsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::services::timezone_service::TimezoneService;
+use crate::repository::db_helper::set_current_guild_id;
+use crate::services::timezone_service::{self, TimezoneService};
 use crate::types::app_state::AppState;
 use crate::types::discord::AutocompleteOption;
 use crate::types::{AppError, Result};
@@ -41,7 +40,7 @@ impl GuildSettingsFacade {
     /// - 文字列 `partial` にマッチする IANA タイムゾーンの候補を最大25件返します。
     /// - トランザクションは不要なため、Facade内でのDB操作は行いません。
     pub fn get_timezones_for_autocomplete(&self, partial: &str) -> Vec<AutocompleteOption> {
-        TimezoneService::get_timezones_for_autocomplete(partial)
+        timezone_service::get_timezones_for_autocomplete(partial)
     }
 
     /// タイムゾーンを取得
@@ -55,7 +54,7 @@ impl GuildSettingsFacade {
         info!(guild_id = guild_id, "タイムゾーン取得を開始します");
 
         let conn = self.app_state.guild_db();
-        let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+        let timezone_repo = self.app_state.repositories.guild_settings;
         let timezone_service = TimezoneService::new(timezone_repo);
 
         let timezone = timezone_service.get_guild_timezone(conn, guild_id).await?;
@@ -80,7 +79,7 @@ impl GuildSettingsFacade {
         info!(guild_id = guild_id, "ギルド設定取得を開始します");
 
         let conn = self.app_state.guild_db();
-        let settings_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+        let settings_repo = self.app_state.repositories.guild_settings;
 
         let settings = settings_repo.find_by_guild_id(conn, guild_id).await?;
 
@@ -122,7 +121,7 @@ impl GuildSettingsFacade {
         );
 
         // タイムゾーンバリデーション
-        let timezone = TimezoneService::validate_timezone(timezone_str)?;
+        let timezone = timezone_service::validate_timezone(timezone_str)?;
 
         // トランザクション開始（Facade層の責務）
         let conn = self.app_state.guild_db();
@@ -132,7 +131,7 @@ impl GuildSettingsFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+            let timezone_repo = self.app_state.repositories.guild_settings;
             let timezone_service = TimezoneService::new(timezone_repo);
 
             // タイムゾーンとロケールをupsert

@@ -1,8 +1,4 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleRepository, SeaOrmScheduledTaskRecurringRecruitmentRepository,
-    SeaOrmScheduledTaskRepository,
-};
 use crate::repository::schedule::{
     BattleRecruitmentScheduleRepository, ScheduledTaskRecurringRecruitmentRepository,
     ScheduledTaskRepository,
@@ -17,11 +13,29 @@ use tracing::{debug, info};
 ///
 /// Facade層から呼び出され、Repository層への具体的なアクセスを集約する。
 /// RLS設定はFacade層で行われるため、このService層では行わない。
-pub struct ScheduleCommandService;
+pub struct ScheduleCommandService<S, T, R>
+where
+    S: BattleRecruitmentScheduleRepository,
+    T: ScheduledTaskRepository,
+    R: ScheduledTaskRecurringRecruitmentRepository,
+{
+    schedule_repo: S,
+    task_repo: T,
+    recurring_repo: R,
+}
 
-impl ScheduleCommandService {
-    pub fn new() -> Self {
-        Self
+impl<S, T, R> ScheduleCommandService<S, T, R>
+where
+    S: BattleRecruitmentScheduleRepository,
+    T: ScheduledTaskRepository,
+    R: ScheduledTaskRecurringRecruitmentRepository,
+{
+    pub fn new(schedule_repo: S, task_repo: T, recurring_repo: R) -> Self {
+        Self {
+            schedule_repo,
+            task_repo,
+            recurring_repo,
+        }
     }
 
     /// スケジュールを削除
@@ -32,8 +46,7 @@ impl ScheduleCommandService {
         self.disable_schedule(txn, schedule_id).await?;
 
         // 2. battle_recruitment_schedules を削除
-        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-        schedule_repo.delete_with_txn(txn, schedule_id).await?;
+        self.schedule_repo.delete_with_txn(txn, schedule_id).await?;
 
         Ok(())
     }
@@ -46,13 +59,15 @@ impl ScheduleCommandService {
         txn: &DatabaseTransaction,
         schedule_id: i32,
     ) -> Result<bool> {
-        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-
-        let (schedule, _) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
-            crate::types::AppError::NotFound(format!(
-                "スケジュールID {schedule_id} が見つかりません"
-            ))
-        })?;
+        let (schedule, _) = self
+            .schedule_repo
+            .find_by_id(txn, schedule_id)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "スケジュールID {schedule_id} が見つかりません"
+                ))
+            })?;
 
         Ok(schedule.is_enabled)
     }
@@ -62,17 +77,21 @@ impl ScheduleCommandService {
     /// 次回実行タスクをscheduled_tasksに登録する
     /// RLS設定は呼び出し元のFacade層で既に行われている前提
     pub async fn enable_schedule(&self, txn: &DatabaseTransaction, schedule_id: i32) -> Result<()> {
-        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-
         // スケジュールを取得
-        let (schedule, days) = repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
-            crate::types::AppError::NotFound(format!(
-                "スケジュールID {schedule_id} が見つかりません"
-            ))
-        })?;
+        let (schedule, days) = self
+            .schedule_repo
+            .find_by_id(txn, schedule_id)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "スケジュールID {schedule_id} が見つかりません"
+                ))
+            })?;
 
         // 有効化
-        repo.toggle_enabled_with_txn(txn, schedule_id, true).await?;
+        self.schedule_repo
+            .toggle_enabled_with_txn(txn, schedule_id, true)
+            .await?;
 
         // 次回実行タスクを登録
         self.create_next_scheduled_task(txn, &schedule, &days)
@@ -91,29 +110,29 @@ impl ScheduleCommandService {
         txn: &DatabaseTransaction,
         schedule_id: i32,
     ) -> Result<()> {
-        let repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-
         // スケジュールが存在することを確認
-        repo.find_by_id(txn, schedule_id).await?.ok_or_else(|| {
-            crate::types::AppError::NotFound(format!(
-                "スケジュールID {schedule_id} が見つかりません"
-            ))
-        })?;
-
-        let recurring_task_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
+        self.schedule_repo
+            .find_by_id(txn, schedule_id)
+            .await?
+            .ok_or_else(|| {
+                crate::types::AppError::NotFound(format!(
+                    "スケジュールID {schedule_id} が見つかりません"
+                ))
+            })?;
 
         // 未実行の scheduled_tasks を削除
-        recurring_task_repo
+        self.recurring_repo
             .delete_pending_tasks_by_recruitment_schedule_id(txn, schedule_id)
             .await?;
 
         // scheduled_task_recurring_recruitments を削除
-        recurring_task_repo
+        self.recurring_repo
             .delete_by_recruitment_schedule_id(txn, schedule_id)
             .await?;
 
         // 無効化
-        repo.toggle_enabled_with_txn(txn, schedule_id, false)
+        self.schedule_repo
+            .toggle_enabled_with_txn(txn, schedule_id, false)
             .await?;
 
         Ok(())
@@ -163,8 +182,8 @@ impl ScheduleCommandService {
                 && next_time.recruit_start_at > now
             {
                 // 未来日時が見つかった場合、scheduled_tasksに登録
-                let task_repo = SeaOrmScheduledTaskRepository::new();
-                let task = task_repo
+                let task = self
+                    .task_repo
                     .create(
                         txn,
                         next_time.recruit_start_at,
@@ -175,8 +194,9 @@ impl ScheduleCommandService {
                     .await?;
 
                 // scheduled_task_recurring_recruitmentsに関連付けを登録
-                let recurring_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
-                recurring_repo.create(txn, task.id, schedule.id).await?;
+                self.recurring_repo
+                    .create(txn, task.id, schedule.id)
+                    .await?;
 
                 info!(
                     schedule_id = schedule.id,
@@ -200,11 +220,5 @@ impl ScheduleCommandService {
                 });
             }
         }
-    }
-}
-
-impl Default for ScheduleCommandService {
-    fn default() -> Self {
-        Self::new()
     }
 }

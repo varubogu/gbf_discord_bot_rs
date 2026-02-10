@@ -1,20 +1,17 @@
 use crate::gateway::DiscordGateway;
-use crate::models::entities::worker::{battle_recruitments, notifications};
+use crate::models::entities::worker::notifications;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::GuildSettingsRepository;
 use crate::repository::RecruitmentParticipantsRepository;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
-use crate::repository::database::schedule::{
-    SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
-};
 use crate::repository::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository,
 };
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::message::MessageService;
 use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, Result};
 use chrono::Utc;
-use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter};
+use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info};
@@ -22,24 +19,53 @@ use tracing::{debug, error, info};
 /// 通知実行サービス
 /// - DatabaseConnection を保持しない
 /// - すべてのDB操作はFacade層から渡されたトランザクション経由で実行する
-pub struct NotificationService<G: DiscordGateway> {
-    notification_repo: SeaOrmNotificationRepository,
-    rel_repo: SeaOrmNotificationRelBattleRecruitmentRepository,
-    guild_timezone_repo: SeaOrmGuildSettingsRepository,
-    message_service: MessageService,
+pub struct NotificationService<G, R, N, NR, GS, RP, GM, MT>
+where
+    G: DiscordGateway,
+    R: BattleRecruitmentsRepository,
+    N: NotificationRepository,
+    NR: NotificationRelBattleRecruitmentRepository,
+    GS: GuildSettingsRepository,
+    RP: RecruitmentParticipantsRepository,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
+{
+    notification_repo: N,
+    rel_repo: NR,
+    guild_timezone_repo: GS,
+    battle_recruitment_repo: Arc<R>,
+    participants_repo: RP,
+    message_service: MessageService<GM, MT>,
     gateway: Arc<G>,
 }
 
-impl<G: DiscordGateway> NotificationService<G> {
-    pub fn new(gateway: Arc<G>) -> Self {
-        let notification_repo = SeaOrmNotificationRepository::new();
-        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
-        let guild_timezone_repo = SeaOrmGuildSettingsRepository::new();
-        let message_service = MessageService::new();
+impl<G, R, N, NR, GS, RP, GM, MT> NotificationService<G, R, N, NR, GS, RP, GM, MT>
+where
+    G: DiscordGateway,
+    R: BattleRecruitmentsRepository,
+    N: NotificationRepository,
+    NR: NotificationRelBattleRecruitmentRepository,
+    GS: GuildSettingsRepository,
+    RP: RecruitmentParticipantsRepository,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
+{
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        gateway: Arc<G>,
+        battle_recruitment_repo: Arc<R>,
+        notification_repo: N,
+        rel_repo: NR,
+        guild_timezone_repo: GS,
+        participants_repo: RP,
+        message_service: MessageService<GM, MT>,
+    ) -> Self {
         Self {
             notification_repo,
             rel_repo,
             guild_timezone_repo,
+            battle_recruitment_repo,
+            participants_repo,
             message_service,
             gateway,
         }
@@ -206,9 +232,9 @@ impl<G: DiscordGateway> NotificationService<G> {
         recruit_id: i32,
     ) -> Result<()> {
         // 募集情報を取得
-        let recruitment = battle_recruitments::Entity::find()
-            .filter(battle_recruitments::Column::Id.eq(recruit_id))
-            .one(txn)
+        let recruitment = self
+            .battle_recruitment_repo
+            .get_by_id_with_txn(txn, recruit_id)
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!("募集ID {recruit_id} が見つかりません"))
@@ -235,9 +261,9 @@ impl<G: DiscordGateway> NotificationService<G> {
         let message_id = DiscordMessageId::new(recruitment.message_id as u64);
 
         // recruitment_participantsテーブルから参加者を取得
-        let participants_repo = SeaOrmRecruitmentParticipantsRepository::new();
-        let participant_user_ids = participants_repo
-            .get_all_participant_user_ids(txn, recruit_id)
+        let participant_user_ids = self
+            .participants_repo
+            .get_all_participant_user_ids_with_txn(txn, recruit_id)
             .await?;
 
         // 参加者数を保存

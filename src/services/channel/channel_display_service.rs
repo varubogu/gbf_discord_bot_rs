@@ -1,5 +1,3 @@
-use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
 use crate::repository::{ChannelTypeRepository, GuildChannelRepository};
 use crate::types::Result;
 use sea_orm::DatabaseTransaction;
@@ -21,11 +19,25 @@ pub struct ChannelTypeSetting {
 /// チャンネル設定表示サービス
 ///
 /// チャンネル設定の表示用データ整形を担当するサービス。
-pub struct ChannelDisplayService;
+pub struct ChannelDisplayService<CTR, GCR>
+where
+    CTR: ChannelTypeRepository,
+    GCR: GuildChannelRepository,
+{
+    channel_type_repo: CTR,
+    guild_channel_repo: GCR,
+}
 
-impl ChannelDisplayService {
-    pub fn new() -> Self {
-        Self
+impl<CTR, GCR> ChannelDisplayService<CTR, GCR>
+where
+    CTR: ChannelTypeRepository,
+    GCR: GuildChannelRepository,
+{
+    pub fn new(channel_type_repo: CTR, guild_channel_repo: GCR) -> Self {
+        Self {
+            channel_type_repo,
+            guild_channel_repo,
+        }
     }
 
     /// ギルドのチャンネル設定を取得して表示用に整形
@@ -41,14 +53,12 @@ impl ChannelDisplayService {
         txn: &DatabaseTransaction,
         guild_id: i64,
     ) -> Result<ChannelSettingsDisplay> {
-        let channel_type_repo = SeaOrmChannelTypeRepository::new();
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-
         // 全チャンネル種別を取得
-        let all_channel_types = channel_type_repo.get_all(txn).await?;
+        let all_channel_types = self.channel_type_repo.get_all(txn).await?;
 
         // ギルドのチャンネル設定を取得
-        let guild_channels = guild_channel_repo
+        let guild_channels = self
+            .guild_channel_repo
             .get_all_by_guild_with_txn(txn, guild_id)
             .await?;
 
@@ -92,11 +102,5 @@ impl ChannelDisplayService {
         }
 
         lines.join("")
-    }
-}
-
-impl Default for ChannelDisplayService {
-    fn default() -> Self {
-        Self::new()
     }
 }

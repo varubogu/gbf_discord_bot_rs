@@ -1,7 +1,4 @@
 use crate::models::entities::{guild_master::guild_channels, master::channel_types};
-use crate::repository::database::channel_type_repository::SeaOrmChannelTypeRepository;
-use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
-use crate::repository::database::guild_repository::SeaOrmGuildRepository;
 use crate::repository::{ChannelTypeRepository, GuildChannelRepository, GuildRepository};
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
@@ -9,17 +6,29 @@ use tracing::{debug, info};
 
 /// チャンネル管理Service
 /// チャンネル登録・削除のビジネスロジックの責務を持つ
-pub struct ChannelManagementService;
-
-impl Default for ChannelManagementService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct ChannelManagementService<GR, CTR, GCR>
+where
+    GR: GuildRepository,
+    CTR: ChannelTypeRepository,
+    GCR: GuildChannelRepository,
+{
+    guild_repo: GR,
+    channel_type_repo: CTR,
+    guild_channel_repo: GCR,
 }
 
-impl ChannelManagementService {
-    pub fn new() -> Self {
-        Self
+impl<GR, CTR, GCR> ChannelManagementService<GR, CTR, GCR>
+where
+    GR: GuildRepository,
+    CTR: ChannelTypeRepository,
+    GCR: GuildChannelRepository,
+{
+    pub fn new(guild_repo: GR, channel_type_repo: CTR, guild_channel_repo: GCR) -> Self {
+        Self {
+            guild_repo,
+            channel_type_repo,
+            guild_channel_repo,
+        }
     }
 
     /// ギルドを登録または更新
@@ -29,8 +38,7 @@ impl ChannelManagementService {
         guild_id: i64,
         guild_name: String,
     ) -> Result<()> {
-        let guild_repo = SeaOrmGuildRepository::new();
-        guild_repo
+        self.guild_repo
             .upsert_with_txn(txn, guild_id, guild_name)
             .await?;
 
@@ -44,8 +52,8 @@ impl ChannelManagementService {
         txn: &DatabaseTransaction,
         channel_type_id: i32,
     ) -> Result<channel_types::Model> {
-        let channel_type_repo = SeaOrmChannelTypeRepository::new();
-        let channel_type = channel_type_repo
+        let channel_type = self
+            .channel_type_repo
             .get_by_id(txn, channel_type_id)
             .await?
             .ok_or_else(|| {
@@ -71,8 +79,7 @@ impl ChannelManagementService {
         channel_type_id: i32,
         channel_id: i64,
     ) -> Result<()> {
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        guild_channel_repo
+        self.guild_channel_repo
             .upsert_with_txn(txn, guild_id, channel_type_id, channel_id)
             .await?;
 
@@ -93,8 +100,8 @@ impl ChannelManagementService {
         guild_id: i64,
         channel_type_id: i32,
     ) -> Result<Option<guild_channels::Model>> {
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        let channel = guild_channel_repo
+        let channel = self
+            .guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, guild_id, channel_type_id)
             .await?;
 
@@ -115,8 +122,7 @@ impl ChannelManagementService {
         guild_id: i64,
         channel_type_id: i32,
     ) -> Result<()> {
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        guild_channel_repo
+        self.guild_channel_repo
             .delete_with_txn(txn, guild_id, channel_type_id)
             .await?;
 

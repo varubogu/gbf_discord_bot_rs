@@ -40,19 +40,18 @@ let message_service = Arc::new(MessageService::new());
 
 // SchedulerManagerの作成
 let mut scheduler_manager = SchedulerManager::new(
-    Arc::new(app_state.system_db().clone()),  // DatabaseConnection
-    client.http.clone(),                       // Arc<Http>
+    gateway,
     task_repo,
     dissolution_repo,
-    notification_repo,
     recruitment_repo,
     participants_repo,
     message_service,
 ).await?;
 
 // SchedulerManagerをバックグラウンドで起動
+let db = Arc::new(app_state.system_db().clone());
 tokio::spawn(async move {
-    if let Err(e) = scheduler_manager.start().await {
+    if let Err(e) = scheduler_manager.start(db).await {
         error!(error = %e, "SchedulerManagerの起動に失敗しました");
     }
 

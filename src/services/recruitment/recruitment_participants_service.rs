@@ -1,7 +1,6 @@
 use crate::repository::RecruitmentParticipantsRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
-use std::sync::Arc;
 use tracing::{debug, info};
 
 /// ボタンによる募集参加の結果
@@ -16,12 +15,12 @@ pub enum ParticipationAction {
 /// RecruitmentParticipantsService - ボタン方式の募集参加者管理を行うサービス
 #[derive(Debug)]
 pub struct RecruitmentParticipantsService<R: RecruitmentParticipantsRepository> {
-    participants_repo: Arc<R>,
+    participants_repo: R,
 }
 
 impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
     /// 新しいRecruitmentParticipantsServiceを作成（依存性注入）
-    pub fn new(participants_repo: Arc<R>) -> Self {
+    pub fn new(participants_repo: R) -> Self {
         Self { participants_repo }
     }
 
@@ -53,7 +52,7 @@ impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
         // 既に参加しているかチェック
         let is_participating = self
             .participants_repo
-            .get_by_user_and_element(txn, recruitment_id, user_id, element_id)
+            .get_by_user_and_element_with_txn(txn, recruitment_id, user_id, element_id)
             .await?;
 
         if is_participating {
@@ -152,7 +151,7 @@ impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
     ) -> Result<i64> {
         let count = self
             .participants_repo
-            .count_unique_users(txn, recruitment_id)
+            .count_unique_users_with_txn(txn, recruitment_id)
             .await?;
 
         debug!(
@@ -181,7 +180,7 @@ impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
     ) -> Result<Vec<Option<i32>>> {
         let elements = self
             .participants_repo
-            .get_user_elements(txn, recruitment_id, user_id)
+            .get_user_elements_with_txn(txn, recruitment_id, user_id)
             .await?;
 
         debug!(

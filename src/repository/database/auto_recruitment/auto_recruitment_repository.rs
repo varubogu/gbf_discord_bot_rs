@@ -10,6 +10,7 @@ use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use tracing::{debug, error};
 
 /// 自動募集設定リポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmAutoRecruitmentRepository;
 
 #[async_trait]

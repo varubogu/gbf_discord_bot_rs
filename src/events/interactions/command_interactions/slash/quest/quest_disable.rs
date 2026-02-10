@@ -2,8 +2,6 @@ use crate::events::permission::check_bot_control_role;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::GuildQuestDisableRepository;
 use crate::repository::QuestRepository;
-use crate::repository::database::guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::AutocompleteChoice;
 use sea_orm::TransactionTrait;
@@ -20,8 +18,9 @@ async fn quest_name_autocomplete(ctx: PoiseContext<'_>, partial: &str) -> Vec<Au
         }
     };
 
-    let db_conn = ctx.data().app_state.guild_db().clone();
-    let quest_repository = SeaOrmQuestRepository::new();
+    let app_state = &ctx.data().app_state;
+    let db_conn = app_state.guild_db().clone();
+    let quest_repository = app_state.repositories.quest;
 
     // トランザクションを開始してguild_idを設定
     let txn = match db_conn.begin().await {
@@ -151,9 +150,10 @@ pub async fn quest_disable(
         .into_iter()
         .collect();
 
-    let db_conn = ctx.data().app_state.guild_db();
-    let quest_repository = SeaOrmQuestRepository::new();
-    let disable_repository = SeaOrmGuildQuestDisableRepository::new();
+    let app_state = &ctx.data().app_state;
+    let db_conn = app_state.guild_db();
+    let quest_repository = app_state.repositories.quest;
+    let disable_repository = app_state.repositories.guild_quest_disable;
 
     // トランザクション開始
     let txn = db_conn.begin().await?;

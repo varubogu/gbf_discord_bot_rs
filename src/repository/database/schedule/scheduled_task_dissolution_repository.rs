@@ -7,6 +7,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// 解散タスクリポジトリ
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmScheduledTaskDissolutionRepository;
 
 #[async_trait]

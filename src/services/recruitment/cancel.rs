@@ -9,6 +9,7 @@ use tracing::{info, warn};
 
 use crate::gateway::DiscordMessageGateway;
 use crate::models::battle_recruitments::BattleRecruitments;
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::message::MessageService;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
@@ -177,15 +178,17 @@ pub async fn mark_recruitment_as_cancelled<R: crate::repository::BattleRecruitme
 }
 
 /// キャンセル済みメッセージ作成
-pub async fn create_cancelled_message_content<C>(
+pub async fn create_cancelled_message_content<C, GM, MT>(
     db: &C,
-    message_service: &MessageService,
+    message_service: &MessageService<GM, MT>,
     guild_id: Option<i64>,
     locale: Option<&str>,
     original_content: &str,
 ) -> Result<String>
 where
     C: ConnectionTrait,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
 {
     // メッセージサービスからキャンセル済みサフィックスを取得
     let cancelled_suffix = message_service
@@ -204,15 +207,17 @@ where
 }
 
 /// キャンセル通知メッセージ作成
-pub async fn create_cancel_notification_text<C>(
+pub async fn create_cancel_notification_text<C, GM, MT>(
     db: &C,
-    message_service: &MessageService,
+    message_service: &MessageService<GM, MT>,
     guild_id: Option<i64>,
     locale: Option<&str>,
     participants: &[String],
 ) -> Result<String>
 where
     C: ConnectionTrait,
+    GM: GuildMessageTextRepository,
+    MT: MessageTextRepository,
 {
     if participants.is_empty() {
         // 参加者なしの場合

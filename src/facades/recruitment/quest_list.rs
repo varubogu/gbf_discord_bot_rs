@@ -1,5 +1,5 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+use crate::repository::QuestRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::quest::search::QuestSearchService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::types::discord::AutocompleteOption;
@@ -16,13 +16,12 @@ use tracing::error;
 /// * `conn` - データベース接続
 /// * `guild_id` - ギルドID
 /// * `partial` - 部分一致検索文字列
-pub async fn search_quests_for_autocomplete(
+pub async fn search_quests_for_autocomplete<R: QuestRepository>(
     conn: &DatabaseConnection,
+    quest_repository: &R,
     guild_id: i64,
     partial: &str,
 ) -> Vec<AutocompleteOption> {
-    let quest_repository = SeaOrmQuestRepository::new();
-
     // トランザクションを開始してguild_idを設定
     let txn = match conn.begin().await {
         Ok(t) => t,
@@ -39,7 +38,7 @@ pub async fn search_quests_for_autocomplete(
     }
 
     // Service層を使って検索
-    let search_service = QuestSearchService::new(&quest_repository);
+    let search_service = QuestSearchService::new(quest_repository);
     let results = search_service
         .search_for_autocomplete_for_guild(&txn, guild_id, partial)
         .await
@@ -58,9 +57,12 @@ pub async fn search_quests_for_autocomplete(
         .collect()
 }
 
-/// セレクトメニュー用にクエスト一覧（最大25件）を返す（DB直渡し版）
-pub async fn list_quests_for_select_with_db(db: &DatabaseConnection) -> Vec<(String, i32)> {
-    let service = QuestQueryService::new();
+/// セレクトメニュー用にクエスト一覧（最大25件）を返す
+pub async fn list_quests_for_select<R: QuestRepository>(
+    db: &DatabaseConnection,
+    quest_repository: R,
+) -> Vec<(String, i32)> {
+    let service = QuestQueryService::new(quest_repository);
     match service.get_all_quests(db).await {
         Ok(list) => list.into_iter().take(25).map(|q| (q.name, q.id)).collect(),
         Err(e) => {
@@ -70,12 +72,13 @@ pub async fn list_quests_for_select_with_db(db: &DatabaseConnection) -> Vec<(Str
     }
 }
 
-/// クエストIDから名称を取得（DB直渡し版）
-pub async fn get_quest_name_by_id_with_db(
+/// クエストIDから名称を取得
+pub async fn get_quest_name_by_id<R: QuestRepository>(
     db: &DatabaseConnection,
+    quest_repository: R,
     quest_id: i32,
 ) -> Option<String> {
-    let service = QuestQueryService::new();
+    let service = QuestQueryService::new(quest_repository);
     match service.get_quest_by_id(db, quest_id).await {
         Ok(quest) => Some(quest.name),
         _ => None,

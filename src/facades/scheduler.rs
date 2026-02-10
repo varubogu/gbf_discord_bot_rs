@@ -23,8 +23,16 @@ impl SchedulerFacade {
         // スケジュール生成はSystemロールを使用（全ギルド対象）
         let txn = self.app_state.system_db().begin().await?;
 
+        let repos = &self.app_state.repositories;
         let result = async {
-            let service = SchedulerService::new();
+            let service = SchedulerService::new(
+                repos.schedule,
+                repos.notification,
+                repos.notification_rel_event_schedule,
+                repos.scheduled_task,
+                repos.battle_recruitment_schedule,
+                repos.last_process_time,
+            );
             service
                 .generate_and_persist_schedules(&txn, &self.app_state)
                 .await?;

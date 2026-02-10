@@ -58,7 +58,7 @@ pub async fn on_reaction_remove(
         message_id,
         Some(user_id.get()),
         reaction_emoji,
-        data.app_state.guild_db(),
+        &data.app_state,
     )
     .await
     {

@@ -4,8 +4,6 @@
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
-use crate::repository::database::auto_recruitment::SeaOrmUserDesiredQuestRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
 use crate::repository::quest_repository::QuestRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context, EditInteractionResponse};
@@ -56,8 +54,8 @@ pub async fn handle_selection_check_button(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result: Result<String> = async {
-        let quest_repo = SeaOrmUserDesiredQuestRepository::new();
-        let master_quest_repo = SeaOrmQuestRepository::new();
+        let quest_repo = app_state.repositories.user_desired_quest;
+        let master_quest_repo = app_state.repositories.quest;
 
         // ユーザーの選択クエストを取得
         let user_quests = quest_repo.find_by_user(&txn, guild_id, user_id).await?;

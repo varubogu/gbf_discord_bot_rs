@@ -1,8 +1,4 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentDismissalRepository, SeaOrmScheduledTaskDismissalRepository,
-    SeaOrmScheduledTaskRepository,
-};
 use crate::repository::schedule::{
     BattleRecruitmentDismissalRepository, ScheduledTaskDismissalRepository, ScheduledTaskRepository,
 };
@@ -14,17 +10,29 @@ use tracing::{debug, info};
 
 /// 解散日時管理サービス
 /// 解散日時の登録・削除を管理する
-pub struct DismissalManagementService;
-
-impl Default for DismissalManagementService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct DismissalManagementService<DR, TR, TDR>
+where
+    DR: BattleRecruitmentDismissalRepository,
+    TR: ScheduledTaskRepository,
+    TDR: ScheduledTaskDismissalRepository,
+{
+    dismissal_repo: DR,
+    task_repo: TR,
+    task_dismissal_repo: TDR,
 }
 
-impl DismissalManagementService {
-    pub fn new() -> Self {
-        Self
+impl<DR, TR, TDR> DismissalManagementService<DR, TR, TDR>
+where
+    DR: BattleRecruitmentDismissalRepository,
+    TR: ScheduledTaskRepository,
+    TDR: ScheduledTaskDismissalRepository,
+{
+    pub fn new(dismissal_repo: DR, task_repo: TR, task_dismissal_repo: TDR) -> Self {
+        Self {
+            dismissal_repo,
+            task_repo,
+            task_dismissal_repo,
+        }
     }
 
     /// マルチ募集の解散時刻を登録
@@ -51,10 +59,6 @@ impl DismissalManagementService {
             "マルチ募集の解散時刻を登録します"
         );
 
-        let dismissal_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-        let task_dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
-
         for dismissal_time in &dismissal_times {
             // 1. 解散日時を計算
             let dismissal_datetime = match &dismissal_time {
@@ -78,7 +82,7 @@ impl DismissalManagementService {
                     input_value,
                     datetime,
                 } => {
-                    dismissal_repo
+                    self.dismissal_repo
                         .create_absolute(txn, recruitment_id, input_value.clone(), *datetime)
                         .await?
                 }
@@ -88,7 +92,7 @@ impl DismissalManagementService {
                     hours,
                     minutes,
                 } => {
-                    dismissal_repo
+                    self.dismissal_repo
                         .create_relative(
                             txn,
                             recruitment_id,
@@ -102,7 +106,8 @@ impl DismissalManagementService {
             };
 
             // 3. scheduled_tasks テーブルにタスク作成（task_type=2: Dismissal）
-            let scheduled_task = scheduled_task_repo
+            let scheduled_task = self
+                .task_repo
                 .create(
                     txn,
                     dismissal_datetime,
@@ -113,7 +118,7 @@ impl DismissalManagementService {
                 .await?;
 
             // 4. scheduled_task_dismissals テーブルに紐付け作成
-            task_dismissal_repo
+            self.task_dismissal_repo
                 .create(txn, scheduled_task.id, dismissal_record.id)
                 .await?;
 
@@ -150,17 +155,14 @@ impl DismissalManagementService {
     ) -> Result<usize> {
         use tracing::debug;
 
-        let dismissal_repo = SeaOrmBattleRecruitmentDismissalRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-        let task_dismissal_repo = SeaOrmScheduledTaskDismissalRepository::new();
-
         debug!(
             recruitment_id,
             "マルチ募集の解散時刻とリレーションを削除します"
         );
 
         // 募集に紐づく解散時刻を検索
-        let dismissals = dismissal_repo
+        let dismissals = self
+            .dismissal_repo
             .find_by_recruitment_id(txn, recruitment_id)
             .await?;
 
@@ -174,12 +176,13 @@ impl DismissalManagementService {
         // 外部キー制約を考慮し、scheduled_task_dismissals → scheduled_task → dismissal の順で削除
         for dismissal in dismissals {
             // scheduled_task_dismissals を検索して削除
-            if let Some(task_dismissal_rel) = task_dismissal_repo
+            if let Some(task_dismissal_rel) = self
+                .task_dismissal_repo
                 .find_by_recruitment_dismissal_id(txn, dismissal.id)
                 .await?
             {
                 // scheduled_task を削除（CASCADE で scheduled_task_dismissals も削除される）
-                scheduled_task_repo
+                self.task_repo
                     .delete_by_id(txn, task_dismissal_rel.task_id)
                     .await?;
                 debug!(

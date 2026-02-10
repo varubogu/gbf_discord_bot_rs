@@ -4,7 +4,6 @@ use crate::types::constants::ELEMENT_EMOJIS;
 use crate::types::discord::{DiscordGuildId, GuildEmoji};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::{debug, warn};
 
 /// 環境変数キー定数
@@ -79,11 +78,11 @@ pub struct GuildEnvironmentService<R>
 where
     R: GuildEnvironmentRepository,
 {
-    repository: Arc<R>,
+    repository: R,
 }
 
 impl<R: GuildEnvironmentRepository> GuildEnvironmentService<R> {
-    pub fn new(repository: Arc<R>) -> Self {
+    pub fn new(repository: R) -> Self {
         Self { repository }
     }
 

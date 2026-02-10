@@ -4,7 +4,6 @@
 
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
-use crate::repository::database::auto_recruitment::SeaOrmUserDesiredQuestRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};
 use sea_orm::TransactionTrait;
@@ -44,7 +43,7 @@ pub async fn handle_quest_join_button(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result: Result<bool> = async {
-        let quest_repo = SeaOrmUserDesiredQuestRepository::new();
+        let quest_repo = app_state.repositories.user_desired_quest;
 
         // 現在の登録状況を確認
         let existing = quest_repo

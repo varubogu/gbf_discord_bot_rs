@@ -1,8 +1,4 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::database::schedule::{
-    SeaOrmNotificationRelBattleRecruitmentRepository, SeaOrmNotificationRepository,
-    SeaOrmScheduledTaskRepository,
-};
 use crate::repository::schedule::{
     NotificationRelBattleRecruitmentRepository, NotificationRepository, ScheduledTaskRepository,
 };
@@ -14,17 +10,29 @@ use tracing::info;
 
 /// 通知管理Service
 /// 通知の作成・削除・リレーション管理の責務を持つ
-pub struct NotificationManagementService;
-
-impl Default for NotificationManagementService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct NotificationManagementService<N, R, S>
+where
+    N: NotificationRepository,
+    R: NotificationRelBattleRecruitmentRepository,
+    S: ScheduledTaskRepository,
+{
+    notification_repo: N,
+    rel_repo: R,
+    scheduled_task_repo: S,
 }
 
-impl NotificationManagementService {
-    pub fn new() -> Self {
-        Self
+impl<N, R, S> NotificationManagementService<N, R, S>
+where
+    N: NotificationRepository,
+    R: NotificationRelBattleRecruitmentRepository,
+    S: ScheduledTaskRepository,
+{
+    pub fn new(notification_repo: N, rel_repo: R, scheduled_task_repo: S) -> Self {
+        Self {
+            notification_repo,
+            rel_repo,
+            scheduled_task_repo,
+        }
     }
 
     /// 募集の出発通知を作成し、募集とのリレーションを作成
@@ -40,17 +48,14 @@ impl NotificationManagementService {
         channel_id: i64,
         recruitment_id: i32,
     ) -> Result<()> {
-        let notification_repo = SeaOrmNotificationRepository::new();
-        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-
         let now = Utc::now();
         let five_minutes_before = departure_time - chrono::Duration::minutes(5);
 
         // 5分前通知: 現在時刻より未来の場合のみ作成
         if five_minutes_before > now {
             // 1. scheduled_taskを作成（task_type=1: Notification）
-            let scheduled_task = scheduled_task_repo
+            let scheduled_task = self
+                .scheduled_task_repo
                 .create(
                     txn,
                     five_minutes_before,
@@ -61,7 +66,8 @@ impl NotificationManagementService {
                 .await?;
 
             // 2. notificationを作成（task_idを指定）
-            let notification = notification_repo
+            let notification = self
+                .notification_repo
                 .create_with_txn(
                     txn,
                     scheduled_task.id,
@@ -74,7 +80,7 @@ impl NotificationManagementService {
                 .await?;
 
             // 3. notification_relを作成
-            rel_repo
+            self.rel_repo
                 .create_with_txn(txn, recruitment_id, notification.id)
                 .await?;
 
@@ -85,7 +91,8 @@ impl NotificationManagementService {
 
         // 出発時刻ちょうどの通知: 必ず作成
         // 1. scheduled_taskを作成（task_type=1: Notification）
-        let scheduled_task = scheduled_task_repo
+        let scheduled_task = self
+            .scheduled_task_repo
             .create(
                 txn,
                 departure_time,
@@ -96,7 +103,8 @@ impl NotificationManagementService {
             .await?;
 
         // 2. notificationを作成（task_idを指定）
-        let notification = notification_repo
+        let notification = self
+            .notification_repo
             .create_with_txn(
                 txn,
                 scheduled_task.id,
@@ -109,7 +117,7 @@ impl NotificationManagementService {
             .await?;
 
         // 3. notification_relを作成
-        rel_repo
+        self.rel_repo
             .create_with_txn(txn, recruitment_id, notification.id)
             .await?;
 
@@ -126,11 +134,9 @@ impl NotificationManagementService {
     ) -> Result<usize> {
         use tracing::debug;
 
-        let rel_repo = SeaOrmNotificationRelBattleRecruitmentRepository::new();
-        let scheduled_task_repo = SeaOrmScheduledTaskRepository::new();
-
         // 募集に紐づく通知を検索
-        let relations = rel_repo
+        let relations = self
+            .rel_repo
             .find_by_recruit_id_with_txn(txn, recruitment_id)
             .await?;
 
@@ -146,7 +152,7 @@ impl NotificationManagementService {
         // (scheduled_tasks削除でnotificationsもCASCADE削除される)
         for relation in relations {
             // リレーションを削除
-            rel_repo
+            self.rel_repo
                 .delete_by_notification_id_with_txn(txn, relation.notification_id)
                 .await?;
             debug!(
@@ -154,17 +160,14 @@ impl NotificationManagementService {
                 "リレーションを削除しました"
             );
 
-            // notification_idからscheduled_tasksテーブルを検索してtask_idを取得
-            use crate::models::entities::worker::notifications;
-            use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-
-            if let Some(notification) = notifications::Entity::find()
-                .filter(notifications::Column::Id.eq(relation.notification_id))
-                .one(txn)
+            // notification_idからtask_idを取得
+            if let Some(notification) = self
+                .notification_repo
+                .find_by_id_with_txn(txn, relation.notification_id)
                 .await?
             {
                 // scheduled_taskを削除（CASCADE で notifications も削除される）
-                scheduled_task_repo
+                self.scheduled_task_repo
                     .delete_by_id(txn, notification.task_id)
                     .await?;
                 debug!(

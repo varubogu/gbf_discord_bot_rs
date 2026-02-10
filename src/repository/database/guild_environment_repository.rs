@@ -9,7 +9,7 @@ use sea_orm::{
 };
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmGuildEnvironmentRepository;
 
 impl SeaOrmGuildEnvironmentRepository {

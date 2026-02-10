@@ -6,7 +6,7 @@ use sea_orm::EntityTrait;
 use tracing::{debug, error};
 
 /// スケジュールリポジトリ
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmScheduleRepository;
 
 #[async_trait]

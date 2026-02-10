@@ -3,6 +3,8 @@
 //! PoiseContextを使用する処理を集約。servicesレイヤーに依存しつつ、
 //! poise依存をeventsレイヤーに閉じ込める。
 
+use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
@@ -53,7 +55,7 @@ pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
 /// * `params` - パラメータ
 pub async fn get_message_from_context<T: IntoMessageId>(
     ctx: &PoiseContext<'_>,
-    message_service: &MessageService,
+    message_service: &MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>,
     message_id: T,
     params: HashMap<String, String>,
 ) -> Result<String, crate::errors::ServiceError> {

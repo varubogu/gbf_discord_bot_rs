@@ -3,7 +3,7 @@ use tracing::error;
 
 use sea_orm::TransactionTrait;
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::channel::ChannelManagementService;
 use crate::types::{AppError, Result, app_state::AppState};
 
@@ -28,7 +28,11 @@ impl GuildManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let service = ChannelManagementService::new();
+            let guild_repo = self.app_state.repositories.guild;
+            let channel_type_repo = self.app_state.repositories.channel_type;
+            let guild_channel_repo = self.app_state.repositories.guild_channel;
+            let service =
+                ChannelManagementService::new(guild_repo, channel_type_repo, guild_channel_repo);
             // 既存なければ作成、あれば更新
             service
                 .register_guild(&txn, guild_id, guild_name.to_string())

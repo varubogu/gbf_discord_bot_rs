@@ -1,5 +1,4 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
@@ -75,7 +74,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 1. タイムゾーン取得Service
-            let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+            let timezone_repo = self.app_state.repositories.guild_settings;
             let timezone_service = TimezoneService::new(timezone_repo);
             let timezone = timezone_service
                 .get_guild_timezone(conn, guild_id as i64)
@@ -88,7 +87,17 @@ impl RecruitmentScheduleFacade {
             );
 
             // 2. スケジュール作成Service
-            let schedule_service = ScheduleCreateService::new();
+            let schedule_service = ScheduleCreateService::new(
+                self.app_state.repositories.quest,
+                self.app_state.repositories.battle_style,
+                self.app_state.repositories.guild_channel,
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.scheduled_task,
+                self.app_state.repositories.scheduled_task_recurring,
+                self.app_state
+                    .repositories
+                    .battle_recruitment_schedule_dismissal,
+            );
             let schedule_data = schedule_service
                 .create_schedule(
                     &txn,
@@ -149,12 +158,18 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // タイムゾーン取得
-            let timezone_service =
-                TimezoneService::new(Arc::new(SeaOrmGuildSettingsRepository::new()));
+            let timezone_service = TimezoneService::new(self.app_state.repositories.guild_settings);
             let tz = timezone_service.get_guild_timezone(conn, guild_id).await?;
 
             // 一覧取得
-            let service = ScheduleQueryService::new();
+            let service = ScheduleQueryService::new(
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.quest,
+                self.app_state
+                    .repositories
+                    .battle_recruitment_schedule_dismissal,
+                self.app_state.repositories.notification,
+            );
             let list = service
                 .get_schedule_list(&txn, conn, guild_id, user_id, show_all, tz)
                 .await?;
@@ -199,8 +214,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 権限チェック：スケジュールの作成者を確認
-            use crate::repository::database::schedule::battle_recruitment_schedule_repository::SeaOrmBattleRecruitmentScheduleRepository;
-            let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
+            let schedule_repo = &self.app_state.repositories.battle_recruitment_schedule;
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {
@@ -215,7 +229,11 @@ impl RecruitmentScheduleFacade {
             }
 
             // Service層に委譲
-            let service = ScheduleCommandService::new();
+            let service = ScheduleCommandService::new(
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.scheduled_task,
+                self.app_state.repositories.scheduled_task_recurring,
+            );
             service.delete_schedule(&txn, schedule_id).await?;
             Ok::<_, AppError>(())
         }
@@ -263,8 +281,7 @@ impl RecruitmentScheduleFacade {
 
         let result = async {
             // 権限チェック：スケジュールの作成者を確認
-            use crate::repository::database::schedule::battle_recruitment_schedule_repository::SeaOrmBattleRecruitmentScheduleRepository;
-            let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
+            let schedule_repo = &self.app_state.repositories.battle_recruitment_schedule;
             let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
 
             let schedule = schedule_opt.ok_or_else(|| AppError::Business {
@@ -278,7 +295,11 @@ impl RecruitmentScheduleFacade {
                 });
             }
 
-            let service = ScheduleCommandService::new();
+            let service = ScheduleCommandService::new(
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.scheduled_task,
+                self.app_state.repositories.scheduled_task_recurring,
+            );
 
             // 現在の状態を取得
             let is_enabled = service

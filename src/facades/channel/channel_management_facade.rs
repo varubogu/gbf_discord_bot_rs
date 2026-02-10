@@ -1,4 +1,4 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::channel::ChannelManagementService;
 use crate::services::channel::channel_display_service::{
     ChannelDisplayService, ChannelSettingsDisplay,
@@ -46,7 +46,8 @@ impl ChannelManagementFacade {
     /// - Facade 層から Service を経由して Repository へアクセス。
     pub async fn get_channel_types_for_autocomplete(&self) -> Result<Vec<AutocompleteOption>> {
         let conn = self.app_state.guild_db();
-        let service = ChannelTypeQueryService::new();
+        let channel_type_repo = self.app_state.repositories.channel_type;
+        let service = ChannelTypeQueryService::new(channel_type_repo);
         service.get_channel_types_for_autocomplete(conn).await
     }
 
@@ -85,8 +86,17 @@ impl ChannelManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let management_service = ChannelManagementService::new();
-            let display_service = ChannelDisplayService::new();
+            let guild_repo = self.app_state.repositories.guild;
+            let channel_type_repo = self.app_state.repositories.channel_type;
+            let guild_channel_repo = self.app_state.repositories.guild_channel;
+
+            let management_service =
+                ChannelManagementService::new(guild_repo, channel_type_repo, guild_channel_repo);
+
+            let channel_type_repo2 = self.app_state.repositories.channel_type;
+            let guild_channel_repo2 = self.app_state.repositories.guild_channel;
+            let display_service =
+                ChannelDisplayService::new(channel_type_repo2, guild_channel_repo2);
 
             // 1. ギルドが存在しない場合は自動登録
             management_service
@@ -175,8 +185,17 @@ impl ChannelManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let management_service = ChannelManagementService::new();
-            let display_service = ChannelDisplayService::new();
+            let guild_repo = self.app_state.repositories.guild;
+            let channel_type_repo = self.app_state.repositories.channel_type;
+            let guild_channel_repo = self.app_state.repositories.guild_channel;
+
+            let management_service =
+                ChannelManagementService::new(guild_repo, channel_type_repo, guild_channel_repo);
+
+            let channel_type_repo2 = self.app_state.repositories.channel_type;
+            let guild_channel_repo2 = self.app_state.repositories.guild_channel;
+            let display_service =
+                ChannelDisplayService::new(channel_type_repo2, guild_channel_repo2);
 
             // 1. チャンネル種別が存在するか確認
             let channel_type_model = management_service
@@ -266,7 +285,9 @@ impl ChannelManagementFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let display_service = ChannelDisplayService::new();
+            let channel_type_repo = self.app_state.repositories.channel_type;
+            let guild_channel_repo = self.app_state.repositories.guild_channel;
+            let display_service = ChannelDisplayService::new(channel_type_repo, guild_channel_repo);
 
             // 設定状況を取得
             let settings_display = display_service.get_channel_settings(&txn, guild_id).await?;

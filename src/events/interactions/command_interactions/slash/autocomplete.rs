@@ -18,10 +18,14 @@ pub async fn quest_auto_complete(ctx: PoiseContext<'_>, partial: &str) -> Vec<Au
             return vec![];
         }
     };
-    let conn = ctx.data().app_state.guild_db();
+    let app_state = &ctx.data().app_state;
+    let conn = app_state.guild_db();
+    let quest_repository = app_state.repositories.quest;
 
     // facade層にはpoise依存のない値を渡す
-    let quest_list = quest_list::search_quests_for_autocomplete(conn, guild_id, partial).await;
+    let quest_list =
+        quest_list::search_quests_for_autocomplete(conn, &quest_repository, guild_id, partial)
+            .await;
     to_autocomplete_choices(quest_list)
 }
 
@@ -30,11 +34,10 @@ pub async fn battle_style_auto_complete(
     ctx: PoiseContext<'_>,
     _partial: &str,
 ) -> Vec<AutocompleteChoice> {
-    // events層でPoiseContextから値を抽出
-    let conn = ctx.data().app_state.guild_db();
+    let app_state = &ctx.data().app_state;
 
     // facade層にはpoise依存のない値を渡す
-    let options = battle_style_list::get_battle_styles_for_autocomplete(conn).await;
+    let options = battle_style_list::get_battle_styles_for_autocomplete(app_state).await;
     to_autocomplete_choices(options)
 }
 
@@ -64,11 +67,12 @@ pub async fn recruitment_schedule_auto_complete(
         }
     };
     let user_id = ctx.author().id.get() as i64;
-    let conn = ctx.data().app_state.guild_db();
+    let app_state = &ctx.data().app_state;
 
     // facade層にはpoise依存のない値を渡す
     let options =
-        recruitment_schedule_list::get_schedules_for_autocomplete(conn, guild_id, user_id).await;
+        recruitment_schedule_list::get_schedules_for_autocomplete(app_state, guild_id, user_id)
+            .await;
     to_autocomplete_choices(options)
 }
 

@@ -4,8 +4,8 @@ use tracing::info;
 
 use crate::models::quests::Quest;
 use crate::presenter::RecruitmentPresenter;
+use crate::repository::BattleStyleRepository;
 use crate::repository::QuestRepository;
-use crate::repository::database::battle_style_repository::BattleStyleRepository;
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
@@ -41,17 +41,20 @@ pub struct RecruitmentParams<'a> {
 }
 
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
-pub async fn create_recruitment_data<C, Q, B>(
+pub async fn create_recruitment_data<C, Q, B, GM, MT>(
     db: &C,
     quest_repository: &Q,
     battle_style_repository: &B,
     element_emojis: &ElementEmojis,
+    message_service: &MessageService<GM, MT>,
     params: RecruitmentParams<'_>,
 ) -> types::Result<RecruitmentData>
 where
     C: sea_orm::ConnectionTrait,
     Q: QuestRepository,
     B: BattleStyleRepository,
+    GM: crate::repository::GuildMessageTextRepository,
+    MT: crate::repository::MessageTextRepository,
 {
     // クエスト名またはエイリアスで検索
     let search_results = quest_repository
@@ -109,6 +112,7 @@ where
     // メッセージ内容を作成（解散時刻なし - create_recruitment_dataでは解散時刻情報がないため）
     let message_content = create_message_content(
         db,
+        message_service,
         &quest.name,
         &battle_style.display_name,
         &expiry_date,
@@ -119,9 +123,13 @@ where
     .await?;
 
     // 初期参加者一覧を作成
-    let initial_participants_text =
-        create_initial_participants_text(db, &reaction_emojis, Some(params.guild_id as i64))
-            .await?;
+    let initial_participants_text = create_initial_participants_text(
+        db,
+        message_service,
+        &reaction_emojis,
+        Some(params.guild_id as i64),
+    )
+    .await?;
 
     Ok(RecruitmentData {
         quest,
@@ -168,8 +176,9 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
 }
 
 /// メッセージ内容を作成する（メッセージサービス使用版）
-pub async fn create_message_content<C>(
+pub async fn create_message_content<C, G, M>(
     db: &C,
+    message_service: &MessageService<G, M>,
     quest_name: &str,
     battle_style_name: &str,
     expiry_date: &DateTime<chrono::Utc>,
@@ -179,9 +188,9 @@ pub async fn create_message_content<C>(
 ) -> types::Result<String>
 where
     C: sea_orm::ConnectionTrait,
+    G: crate::repository::GuildMessageTextRepository,
+    M: crate::repository::MessageTextRepository,
 {
-    let message_service = MessageService::new();
-
     // メッセージIDを決定
     let message_id = if battle_style_name == "6属性" {
         MessageTextId::RecruitmentDisplaySixElements
@@ -303,15 +312,17 @@ fn parse_reaction_emojis(reactions_str: &str) -> Vec<String> {
 
 /// 初期参加者一覧テキストを作成
 /// すべてのリアクション絵文字を「なし」で表示（メッセージサービス使用版）
-async fn create_initial_participants_text<C>(
+async fn create_initial_participants_text<C, G, M>(
     db: &C,
+    message_service: &MessageService<G, M>,
     reaction_emojis: &[String],
     guild_id: Option<i64>,
 ) -> types::Result<String>
 where
     C: sea_orm::ConnectionTrait,
+    G: crate::repository::GuildMessageTextRepository,
+    M: crate::repository::MessageTextRepository,
 {
-    let message_service = MessageService::new();
     let mut text = String::new();
 
     // 「なし」テキストを取得
@@ -380,30 +391,4 @@ pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowCo
 /// ActionRowContentのVec（ドメインモデル）
 pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
     RecruitmentPresenter::create_six_element_full_components(element_emojis)
-}
-
-/// 募集データを作成する（Repository直接アクセス版）
-/// Facade層から呼び出すためのラッパー関数
-pub async fn create_recruitment_data_with_repos<C>(
-    db: &C,
-    element_emojis: &ElementEmojis,
-    params: RecruitmentParams<'_>,
-) -> types::Result<RecruitmentData>
-where
-    C: sea_orm::ConnectionTrait,
-{
-    use crate::repository::database::battle_style_repository::SeaOrmBattleStyleRepository;
-    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-
-    let quest_repository = SeaOrmQuestRepository::new();
-    let battle_style_repository = SeaOrmBattleStyleRepository::new();
-
-    create_recruitment_data(
-        db,
-        &quest_repository,
-        &battle_style_repository,
-        element_emojis,
-        params,
-    )
-    .await
 }

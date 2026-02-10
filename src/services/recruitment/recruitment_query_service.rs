@@ -1,9 +1,7 @@
 use crate::models::battle_recruitments::BattleRecruitments;
 use crate::models::entities::master::battle_styles;
 use crate::repository::BattleRecruitmentsRepository;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
+use crate::repository::BattleStyleRepository;
 use crate::types::Result;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use sea_orm::DatabaseTransaction;
@@ -11,17 +9,25 @@ use tracing::debug;
 
 /// 募集情報クエリService
 /// 募集情報とBattleStyleの取得を担当
-pub struct RecruitmentQueryService;
-
-impl Default for RecruitmentQueryService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct RecruitmentQueryService<BS, BR>
+where
+    BS: BattleStyleRepository,
+    BR: BattleRecruitmentsRepository,
+{
+    battle_style_repo: BS,
+    battle_recruitment_repo: BR,
 }
 
-impl RecruitmentQueryService {
-    pub fn new() -> Self {
-        Self
+impl<BS, BR> RecruitmentQueryService<BS, BR>
+where
+    BS: BattleStyleRepository,
+    BR: BattleRecruitmentsRepository,
+{
+    pub fn new(battle_style_repo: BS, battle_recruitment_repo: BR) -> Self {
+        Self {
+            battle_style_repo,
+            battle_recruitment_repo,
+        }
     }
 
     /// メッセージIDから募集情報を取得
@@ -32,13 +38,9 @@ impl RecruitmentQueryService {
         channel_id: u64,
         message_id: u64,
     ) -> Result<Option<BattleRecruitments>> {
-        use crate::infrastructure::database::container::RepositoryContainer;
-
-        let repos = RepositoryContainer::new();
-        let battle_recruitment_repo = repos.battle_recruitment();
-
         // u64をドメイン型に変換
-        let recruitment = battle_recruitment_repo
+        let recruitment = self
+            .battle_recruitment_repo
             .get_by_message_with_txn(
                 txn,
                 DiscordGuildId::new(guild_id),
@@ -64,8 +66,10 @@ impl RecruitmentQueryService {
         txn: &DatabaseTransaction,
         battle_style_id: i32,
     ) -> Result<Option<battle_styles::Model>> {
-        let battle_style_repo = SeaOrmBattleStyleRepository::new();
-        let battle_style = battle_style_repo.get_by_id(txn, battle_style_id).await?;
+        let battle_style = self
+            .battle_style_repo
+            .get_by_id(txn, battle_style_id)
+            .await?;
 
         debug!(
             battle_style_id = battle_style_id,

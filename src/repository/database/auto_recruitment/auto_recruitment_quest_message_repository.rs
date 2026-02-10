@@ -8,6 +8,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// 自動募集クエストメッセージリポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmAutoRecruitmentQuestMessageRepository;
 
 #[async_trait]

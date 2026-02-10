@@ -7,57 +7,19 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, Q
 use tracing::{debug, error};
 
 /// 通知リポジトリ
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmNotificationRepository;
 
 #[async_trait]
 impl NotificationRepository for SeaOrmNotificationRepository {
-    /// 指定した日時範囲内の未送信通知を取得
-    async fn find_by_datetime_range<C>(
+    /// 指定した日時範囲内の未送信通知を取得（DatabaseConnection）
+    async fn find_by_datetime_range_with_db(
         &self,
-        db: &C,
+        db: &sea_orm::DatabaseConnection,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<notifications::Model>>
-    where
-        C: sea_orm::ConnectionTrait,
-    {
-        debug!(
-            from = %from,
-            to = %to,
-            "指定範囲内の未送信通知を取得します"
-        );
-
-        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを取得
-        let tasks = scheduled_tasks::Entity::find()
-            .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
-            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::TaskType.eq(1)) // Notification
-            .all(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "タスクの取得に失敗しました");
-                e
-            })?;
-
-        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
-
-        if task_ids.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let notifications = notifications::Entity::find()
-            .filter(notifications::Column::TaskId.is_in(task_ids))
-            .filter(notifications::Column::IsSent.eq(false))
-            .all(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "通知の取得に失敗しました");
-                e
-            })?;
-
-        debug!(count = notifications.len(), "未送信通知を取得しました");
-        Ok(notifications)
+    ) -> Result<Vec<notifications::Model>> {
+        Self::find_by_datetime_range_internal(db, from, to).await
     }
 
     /// 指定した日時範囲内の未送信通知を取得（トランザクション内）
@@ -67,42 +29,7 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<Vec<notifications::Model>> {
-        debug!(
-            from = %from,
-            to = %to,
-            "指定範囲内の未送信通知を取得します（トランザクション内）"
-        );
-
-        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを取得
-        let tasks = scheduled_tasks::Entity::find()
-            .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
-            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::TaskType.eq(1)) // Notification
-            .all(txn)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "タスクの取得に失敗しました");
-                e
-            })?;
-
-        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
-
-        if task_ids.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let notifications = notifications::Entity::find()
-            .filter(notifications::Column::TaskId.is_in(task_ids))
-            .filter(notifications::Column::IsSent.eq(false))
-            .all(txn)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "通知の取得に失敗しました");
-                e
-            })?;
-
-        debug!(count = notifications.len(), "未送信通知を取得しました");
-        Ok(notifications)
+        Self::find_by_datetime_range_internal(txn, from, to).await
     }
 
     /// 通知を作成（トランザクション付き）
@@ -245,6 +172,30 @@ impl NotificationRepository for SeaOrmNotificationRepository {
     //     Ok(notifications)
     // }
 
+    /// IDで通知を取得（トランザクション付き）
+    async fn find_by_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        notification_id: i32,
+    ) -> Result<Option<notifications::Model>> {
+        debug!(notification_id = %notification_id, "通知を取得します");
+
+        let notification = notifications::Entity::find_by_id(notification_id)
+            .one(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, notification_id = %notification_id, "通知の取得に失敗しました");
+                e
+            })?;
+
+        debug!(
+            notification_id = %notification_id,
+            found = notification.is_some(),
+            "通知を取得しました"
+        );
+        Ok(notification)
+    }
+
     /// 通知IDで通知を削除（トランザクション付き）
     async fn delete_by_id_with_txn(
         &self,
@@ -320,5 +271,52 @@ impl NotificationRepository for SeaOrmNotificationRepository {
 impl SeaOrmNotificationRepository {
     pub fn new() -> Self {
         Self
+    }
+
+    /// 指定した日時範囲内の未送信通知を取得（内部実装）
+    async fn find_by_datetime_range_internal<C>(
+        db: &C,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        debug!(
+            from = %from,
+            to = %to,
+            "指定範囲内の未送信通知を取得します"
+        );
+
+        // scheduled_tasksでフィルタリングしてから、対応するnotificationsを取得
+        let tasks = scheduled_tasks::Entity::find()
+            .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
+            .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
+            .filter(scheduled_tasks::Column::TaskType.eq(1)) // Notification
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "タスクの取得に失敗しました");
+                e
+            })?;
+
+        let task_ids: Vec<i32> = tasks.into_iter().map(|t| t.id).collect();
+
+        if task_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let notifications = notifications::Entity::find()
+            .filter(notifications::Column::TaskId.is_in(task_ids))
+            .filter(notifications::Column::IsSent.eq(false))
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "通知の取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = notifications.len(), "未送信通知を取得しました");
+        Ok(notifications)
     }
 }

@@ -1,6 +1,4 @@
 use crate::errors::ServiceError;
-use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use regex::Regex;
 use sea_orm::ConnectionTrait;
@@ -17,18 +15,26 @@ use super::yaml_loader;
 /// 2. グローバルマスターメッセージ (master.message_texts)
 /// 3. YAMLファイルから読み込んだデフォルトメッセージ
 /// 4. システムエラー
-#[derive(Debug)]
-pub struct MessageService {
-    guild_message_repo: SeaOrmGuildMessageTextRepository,
-    message_repo: SeaOrmMessageTextRepository,
+#[derive(Debug, Clone)]
+pub struct MessageService<G, M>
+where
+    G: GuildMessageTextRepository,
+    M: MessageTextRepository,
+{
+    guild_message_repo: G,
+    message_repo: M,
 }
 
-impl MessageService {
+impl<G, M> MessageService<G, M>
+where
+    G: GuildMessageTextRepository,
+    M: MessageTextRepository,
+{
     /// 新しいメッセージサービスインスタンスを作成
-    pub fn new() -> Self {
+    pub fn new(guild_message_repo: G, message_repo: M) -> Self {
         Self {
-            guild_message_repo: SeaOrmGuildMessageTextRepository::new(),
-            message_repo: SeaOrmMessageTextRepository::new(),
+            guild_message_repo,
+            message_repo,
         }
     }
 
@@ -243,19 +249,18 @@ impl MessageService {
     }
 }
 
-impl Default for MessageService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+    use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 
     #[test]
     fn test_determine_locale() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
 
         assert_eq!(service.determine_locale(Some("ja")), "ja");
         assert_eq!(service.determine_locale(Some("ja-JP")), "ja");
@@ -267,7 +272,10 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_basic() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
         let mut params = HashMap::new();
         params.insert("name".to_string(), "テスト".to_string());
         params.insert("value".to_string(), "123".to_string());
@@ -279,7 +287,10 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_missing() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
         let params = HashMap::new();
 
         let template = "値: {{missing}}";
@@ -290,7 +301,10 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_escaped() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
         let mut params = HashMap::new();
         params.insert("var".to_string(), "置換".to_string());
 
@@ -302,7 +316,10 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_double_backslash() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
         let mut params = HashMap::new();
         params.insert("var".to_string(), "値".to_string());
 
@@ -314,7 +331,10 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_complex() {
-        let service = MessageService::new();
+        let service = MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        );
         let mut params = HashMap::new();
         params.insert("quest".to_string(), "ドラゴンクエスト".to_string());
         params.insert("count".to_string(), "5".to_string());

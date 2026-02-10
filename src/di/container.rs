@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 use crate::di::Repositories;
 use crate::gateway::DiscordGateway;
+use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
 use crate::services::message::MessageService;
 
 /// アプリケーション全体のDIコンテナ（静的ディスパッチ版）
@@ -24,7 +26,8 @@ where
     /// リポジトリ群
     pub repositories: Repositories,
     /// メッセージサービス（Gateway非依存）
-    pub message_service: Arc<MessageService>,
+    pub message_service:
+        Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>>,
 }
 
 impl<G> AppContainer<G>
@@ -39,7 +42,10 @@ where
         global_db: Arc<DatabaseConnection>,
     ) -> Self {
         let repositories = Repositories::new(guild_db, system_db, global_db);
-        let message_service = Arc::new(MessageService::new());
+        let message_service = Arc::new(MessageService::new(
+            SeaOrmGuildMessageTextRepository::new(),
+            SeaOrmMessageTextRepository::new(),
+        ));
 
         Self {
             gateway,
@@ -59,23 +65,10 @@ where
     }
 
     /// MessageServiceを取得する
-    pub fn message_service(&self) -> &Arc<MessageService> {
+    pub fn message_service(
+        &self,
+    ) -> &Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>> {
         &self.message_service
-    }
-
-    /// Guild ロール用DB接続を取得（通常のコマンド実行用）
-    pub fn guild_db(&self) -> &DatabaseConnection {
-        self.repositories.guild_db()
-    }
-
-    /// System ロール用DB接続を取得（スケジューラー用）
-    pub fn system_db(&self) -> &DatabaseConnection {
-        self.repositories.system_db()
-    }
-
-    /// Global ロール用DB接続を取得（マスターデータ更新用）
-    pub fn global_db(&self) -> &DatabaseConnection {
-        self.repositories.global_db()
     }
 }
 

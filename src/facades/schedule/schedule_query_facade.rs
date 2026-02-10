@@ -1,4 +1,4 @@
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::services::schedule::{ScheduleQueryService, ScheduleStats};
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
@@ -46,7 +46,14 @@ impl ScheduleQueryFacade {
             let from = now - Duration::days(days);
 
             // 通知統計取得
-            let query_service = ScheduleQueryService::new();
+            let query_service = ScheduleQueryService::new(
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.quest,
+                self.app_state
+                    .repositories
+                    .battle_recruitment_schedule_dismissal,
+                self.app_state.repositories.notification,
+            );
             let stats = query_service
                 .get_notification_stats(&txn, guild_id, from, now)
                 .await?;

@@ -9,6 +9,7 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 /// マッチングユーザーリポジトリのSeaORM実装
+#[derive(Debug, Clone, Copy)]
 pub struct SeaOrmQuestMatchingUserRepository;
 
 #[async_trait]

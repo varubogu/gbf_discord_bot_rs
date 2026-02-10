@@ -1,5 +1,4 @@
 use crate::events::interactions::components::recruit_change_handler;
-use crate::repository::database::guild_settings_repository::SeaOrmGuildSettingsRepository;
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
@@ -9,7 +8,6 @@ use poise::serenity_prelude::{
     ActionRowComponent, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
     EditInteractionResponse, ModalInteraction,
 };
-use std::sync::Arc;
 use tracing::{error, info};
 
 /// 日時入力モーダルからの送信を処理
@@ -65,7 +63,7 @@ pub async fn handle_recruit_change_date_modal(
         .await?;
 
     // タイムゾーンを取得
-    let timezone_repo = Arc::new(SeaOrmGuildSettingsRepository::new());
+    let timezone_repo = data.app_state.repositories.guild_settings;
     let timezone_service = TimezoneService::new(timezone_repo);
     let timezone = timezone_service
         .get_guild_timezone(data.app_state.guild_db(), guild_id as i64)

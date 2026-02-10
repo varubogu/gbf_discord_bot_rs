@@ -1,8 +1,3 @@
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleDismissalRepository, SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmNotificationRepository,
-};
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
@@ -44,11 +39,38 @@ pub struct ScheduleStats {
 /// スケジュールクエリサービス
 ///
 /// スケジュール一覧取得・統計取得のビジネスロジックを担当するサービス。
-pub struct ScheduleQueryService;
+pub struct ScheduleQueryService<SR, QR, DR, NR>
+where
+    SR: BattleRecruitmentScheduleRepository,
+    QR: QuestRepository,
+    DR: BattleRecruitmentScheduleDismissalRepository,
+    NR: NotificationRepository,
+{
+    schedule_repo: SR,
+    quest_repo: QR,
+    dismissal_repo: DR,
+    notification_repo: NR,
+}
 
-impl ScheduleQueryService {
-    pub fn new() -> Self {
-        Self
+impl<SR, QR, DR, NR> ScheduleQueryService<SR, QR, DR, NR>
+where
+    SR: BattleRecruitmentScheduleRepository,
+    QR: QuestRepository,
+    DR: BattleRecruitmentScheduleDismissalRepository,
+    NR: NotificationRepository,
+{
+    pub fn new(
+        schedule_repo: SR,
+        quest_repo: QR,
+        dismissal_repo: DR,
+        notification_repo: NR,
+    ) -> Self {
+        Self {
+            schedule_repo,
+            quest_repo,
+            dismissal_repo,
+            notification_repo,
+        }
     }
 
     /// ユーザーが作成したスケジュールを取得（オートコンプリート用）
@@ -69,8 +91,7 @@ impl ScheduleQueryService {
             Vec<crate::models::entities::guild_master::battle_recruitment_schedule_days::Model>,
         )>,
     > {
-        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-        schedule_repo.find_by_created_by(txn, user_id).await
+        self.schedule_repo.find_by_created_by(txn, user_id).await
     }
 
     /// スケジュール一覧を取得
@@ -94,12 +115,9 @@ impl ScheduleQueryService {
         show_all: bool,
         timezone: Tz,
     ) -> Result<Vec<ScheduleListItem>> {
-        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-        let quest_repo = SeaOrmQuestRepository::new();
-
         // スケジュールを取得
         // RLSによりguild_idでフィルタリング済み
-        let schedules = schedule_repo.find_by_guild_id(txn, guild_id).await?;
+        let schedules = self.schedule_repo.find_by_guild_id(txn, guild_id).await?;
 
         // show_all=falseの場合は、さらに作成者でフィルタリング
         let schedules = if show_all {
@@ -115,7 +133,11 @@ impl ScheduleQueryService {
         let mut items = Vec::new();
         for (schedule, days) in schedules {
             // クエスト名を取得
-            let quest_name = match quest_repo.get_by_target_id(db, schedule.quest_id).await {
+            let quest_name = match self
+                .quest_repo
+                .get_by_target_id(db, schedule.quest_id)
+                .await
+            {
                 Ok(Some(quest)) => quest.name,
                 _ => format!("クエストID {}", schedule.quest_id),
             };
@@ -146,8 +168,10 @@ impl ScheduleQueryService {
             };
 
             // 解散時刻を取得
-            let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
-            let dismissals = dismissal_repo.find_by_schedule_id(txn, schedule.id).await?;
+            let dismissals = self
+                .dismissal_repo
+                .find_by_schedule_id(txn, schedule.id)
+                .await?;
 
             let dismissal_times = if dismissals.is_empty() {
                 None
@@ -197,10 +221,9 @@ impl ScheduleQueryService {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<ScheduleStats> {
-        let notification_repo = SeaOrmNotificationRepository::new();
-
         // 統計を取得
-        let all_notifications = notification_repo
+        let all_notifications = self
+            .notification_repo
             .find_by_datetime_range_with_txn(txn, from, to)
             .await?;
 
@@ -246,11 +269,5 @@ impl ScheduleQueryService {
             .collect();
 
         day_names.join(", ")
-    }
-}
-
-impl Default for ScheduleQueryService {
-    fn default() -> Self {
-        Self::new()
     }
 }

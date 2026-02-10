@@ -1,14 +1,6 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
-use crate::repository::database::guild_channel_repository::SeaOrmGuildChannelRepository;
-use crate::repository::database::quest_repository::SeaOrmQuestRepository;
-use crate::repository::database::schedule::{
-    SeaOrmBattleRecruitmentScheduleDismissalRepository, SeaOrmBattleRecruitmentScheduleRepository,
-    SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
-};
 use crate::repository::quest_repository::QuestRepository;
 use crate::repository::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
@@ -47,14 +39,54 @@ pub struct ScheduleCreationResult {
 /// スケジュール作成サービス
 ///
 /// 定期募集スケジュールの作成ビジネスロジックを担当するサービス。
-pub struct ScheduleCreateService {
+pub struct ScheduleCreateService<Q, B, G, S, T, R, D>
+where
+    Q: QuestRepository,
+    B: BattleStyleRepository,
+    G: GuildChannelRepository,
+    S: BattleRecruitmentScheduleRepository,
+    T: ScheduledTaskRepository,
+    R: ScheduledTaskRecurringRecruitmentRepository,
+    D: BattleRecruitmentScheduleDismissalRepository,
+{
+    quest_repo: Q,
+    battle_style_repo: B,
+    guild_channel_repo: G,
+    schedule_repo: S,
+    task_repo: T,
+    recurring_repo: R,
+    dismissal_repo: D,
     days_parser: DaysParserService,
     schedule_service: RecruitmentScheduleService,
 }
 
-impl ScheduleCreateService {
-    pub fn new() -> Self {
+impl<Q, B, G, S, T, R, D> ScheduleCreateService<Q, B, G, S, T, R, D>
+where
+    Q: QuestRepository,
+    B: BattleStyleRepository,
+    G: GuildChannelRepository,
+    S: BattleRecruitmentScheduleRepository,
+    T: ScheduledTaskRepository,
+    R: ScheduledTaskRecurringRecruitmentRepository,
+    D: BattleRecruitmentScheduleDismissalRepository,
+{
+    pub fn new(
+        quest_repo: Q,
+        battle_style_repo: B,
+        guild_channel_repo: G,
+        schedule_repo: S,
+        task_repo: T,
+        recurring_repo: R,
+        dismissal_repo: D,
+    ) -> Self {
         Self {
+            quest_repo,
+            battle_style_repo,
+            guild_channel_repo,
+            schedule_repo,
+            task_repo,
+            recurring_repo,
+            dismissal_repo,
             days_parser: DaysParserService::new(),
             schedule_service: RecruitmentScheduleService::new(),
         }
@@ -183,8 +215,8 @@ impl ScheduleCreateService {
         let channel_id = self.get_recruitment_channel(txn, guild_id).await?;
 
         // 8. スケジュール保存
-        let schedule_repo = SeaOrmBattleRecruitmentScheduleRepository::new();
-        let (schedule, days) = schedule_repo
+        let (schedule, days) = self
+            .schedule_repo
             .create_with_txn(
                 txn,
                 crate::repository::schedule::CreateScheduleParams {
@@ -250,10 +282,11 @@ impl ScheduleCreateService {
         txn: &DatabaseTransaction,
         quest_alias: &str,
     ) -> Result<(i32, String, i32)> {
-        let quest_repo = SeaOrmQuestRepository::new();
-
         // クエスト検索
-        let search_results = quest_repo.search_by_name_or_alias(txn, quest_alias).await?;
+        let search_results = self
+            .quest_repo
+            .search_by_name_or_alias(txn, quest_alias)
+            .await?;
 
         let quest_search_result = search_results.first().ok_or_else(|| {
             AppError::NotFound(format!("クエスト '{quest_alias}' が見つかりませんでした"))
@@ -262,7 +295,8 @@ impl ScheduleCreateService {
         let quest_id = quest_search_result.quest_id;
 
         // クエスト詳細取得
-        let quest_detail = quest_repo
+        let quest_detail = self
+            .quest_repo
             .get_by_target_id(txn, quest_id)
             .await?
             .ok_or_else(|| {
@@ -284,8 +318,8 @@ impl ScheduleCreateService {
         txn: &DatabaseTransaction,
         battle_style_id: i32,
     ) -> Result<String> {
-        let battle_style_repo = SeaOrmBattleStyleRepository::new();
-        let battle_style = battle_style_repo
+        let battle_style = self
+            .battle_style_repo
             .get_by_id(txn, battle_style_id)
             .await?
             .ok_or_else(|| {
@@ -303,8 +337,8 @@ impl ScheduleCreateService {
         txn: &DatabaseTransaction,
         guild_id: i64,
     ) -> Result<i64> {
-        let guild_channel_repo = SeaOrmGuildChannelRepository::new();
-        let guild_channel = guild_channel_repo
+        let guild_channel = self
+            .guild_channel_repo
             .get_by_guild_and_type_with_txn(txn, guild_id, 2)
             .await?
             .ok_or_else(|| AppError::Business {
@@ -360,8 +394,8 @@ impl ScheduleCreateService {
                 && next_time.recruit_start_at > now
             {
                 // 未来日時が見つかった場合、scheduled_tasksに登録
-                let task_repo = SeaOrmScheduledTaskRepository::new();
-                let task = task_repo
+                let task = self
+                    .task_repo
                     .create(
                         txn,
                         next_time.recruit_start_at,
@@ -372,8 +406,9 @@ impl ScheduleCreateService {
                     .await?;
 
                 // scheduled_task_recurring_recruitmentsに関連付けを登録
-                let recurring_repo = SeaOrmScheduledTaskRecurringRecruitmentRepository::new();
-                recurring_repo.create(txn, task.id, schedule.id).await?;
+                self.recurring_repo
+                    .create(txn, task.id, schedule.id)
+                    .await?;
 
                 info!(
                     schedule_id = schedule.id,
@@ -429,8 +464,6 @@ impl ScheduleCreateService {
         let parsed_dismissal_times = parse_datetime(dismissal_times_str, &options)?;
 
         // データベースに保存
-        let dismissal_repo = SeaOrmBattleRecruitmentScheduleDismissalRepository::new();
-
         // 元の入力値を分割（トリムして空文字除去）
         let input_values: Vec<&str> = dismissal_times_str
             .split(',')
@@ -453,7 +486,7 @@ impl ScheduleCreateService {
                     .map_err(|e| AppError::Business {
                         message: format!("解散時刻の変換に失敗しました: {e}"),
                     })?;
-                    dismissal_repo
+                    self.dismissal_repo
                         .create_absolute(txn, schedule_id, input_value, dismissal_time)
                         .await?;
                 }
@@ -462,7 +495,7 @@ impl ScheduleCreateService {
                     hours,
                     minutes,
                 } => {
-                    dismissal_repo
+                    self.dismissal_repo
                         .create_relative(txn, schedule_id, input_value, *days, *hours, *minutes)
                         .await?;
                 }
@@ -481,11 +514,5 @@ impl ScheduleCreateService {
         );
 
         Ok(())
-    }
-}
-
-impl Default for ScheduleCreateService {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -7,7 +7,7 @@ use sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
 use tracing::{debug, error, info};
 
 /// guild_channelsテーブルのRepository
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct SeaOrmGuildChannelRepository;
 
 impl SeaOrmGuildChannelRepository {

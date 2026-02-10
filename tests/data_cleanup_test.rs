@@ -4,8 +4,13 @@ use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::ScheduledTask
 use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
+use gbf_discord_bot_rs::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use gbf_discord_bot_rs::repository::database::schedule::{
+    SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
+};
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
+use std::sync::Arc;
 
 /// テストデータベース接続を取得
 async fn get_test_db() -> sea_orm::DatabaseConnection {
@@ -19,7 +24,13 @@ async fn get_test_db() -> sea_orm::DatabaseConnection {
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_integration() {
     let db = get_test_db().await;
-    let service = DataCleanupService::new(db.clone());
+
+    // リポジトリ初期化
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+
+    let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
     // テストデータ作成（31日前の募集終了データ）
     let old_recruitment = battle_recruitments::ActiveModel {
@@ -74,8 +85,14 @@ async fn test_data_cleanup_integration() {
     };
     let recent_recruitment_id = recent_recruitment.insert(&db).await.unwrap().id;
 
+    // トランザクション開始
+    let txn = db.begin().await.unwrap();
+
     // クリーンアップ実行
-    let stats = service.execute().await.unwrap();
+    let stats = service.execute(&txn).await.unwrap();
+
+    // トランザクションコミット
+    txn.commit().await.unwrap();
 
     // 削除されたことを確認
     assert!(stats.deleted_recruitments >= 1);
@@ -119,7 +136,13 @@ async fn test_data_cleanup_integration() {
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_active_recruitment() {
     let db = get_test_db().await;
-    let service = DataCleanupService::new(db.clone());
+
+    // リポジトリ初期化
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+
+    let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
     // テストデータ作成（31日前だが募集中のデータ）
     let active_recruitment = battle_recruitments::ActiveModel {
@@ -137,8 +160,14 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
     };
     let inserted = active_recruitment.insert(&db).await.unwrap();
 
+    // トランザクション開始
+    let txn = db.begin().await.unwrap();
+
     // クリーンアップ実行
-    let _stats = service.execute().await.unwrap();
+    let _stats = service.execute(&txn).await.unwrap();
+
+    // トランザクションコミット
+    txn.commit().await.unwrap();
 
     // データが削除されていないことを確認
     let found = battle_recruitments::Entity::find_by_id(inserted.id)
@@ -158,7 +187,13 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_unsent_notification() {
     let db = get_test_db().await;
-    let service = DataCleanupService::new(db.clone());
+
+    // リポジトリ初期化
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+
+    let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
     // テストデータ作成（31日前だが未送信の通知）
     let unsent_notification = notifications::ActiveModel {
@@ -170,8 +205,14 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
     };
     let inserted = unsent_notification.insert(&db).await.unwrap();
 
+    // トランザクション開始
+    let txn = db.begin().await.unwrap();
+
     // クリーンアップ実行
-    let _stats = service.execute().await.unwrap();
+    let _stats = service.execute(&txn).await.unwrap();
+
+    // トランザクションコミット
+    txn.commit().await.unwrap();
 
     // データが削除されていないことを確認
     let found = notifications::Entity::find_by_id(inserted.id)
@@ -191,7 +232,13 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
     let db = get_test_db().await;
-    let service = DataCleanupService::new(db.clone());
+
+    // リポジトリ初期化
+    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
+    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
+    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+
+    let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
     // テストデータ作成（31日前の実行済みDataCleanupタスク）
     let cleanup_task = scheduled_tasks::ActiveModel {
@@ -204,8 +251,14 @@ async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
     };
     let inserted = cleanup_task.insert(&db).await.unwrap();
 
+    // トランザクション開始
+    let txn = db.begin().await.unwrap();
+
     // クリーンアップ実行
-    let _stats = service.execute().await.unwrap();
+    let _stats = service.execute(&txn).await.unwrap();
+
+    // トランザクションコミット
+    txn.commit().await.unwrap();
 
     // DataCleanupタスクが削除されていないことを確認
     let found = scheduled_tasks::Entity::find_by_id(inserted.id)

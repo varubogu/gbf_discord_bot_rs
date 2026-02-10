@@ -2,14 +2,10 @@
 //!
 //! ユーザーの自動募集参加状況を取得する
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentParticipantRepository, AutoRecruitmentRepository, UserDesiredQuestRepository,
 };
-use crate::repository::database::auto_recruitment::{
-    SeaOrmAutoRecruitmentParticipantRepository, SeaOrmAutoRecruitmentRepository,
-    SeaOrmUserDesiredQuestRepository,
-};
+use crate::repository::db_helper::set_current_guild_id;
 use crate::types::{AppError, AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
@@ -55,9 +51,9 @@ pub async fn get_participation_status(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = SeaOrmAutoRecruitmentRepository::new();
-        let quest_repo = SeaOrmUserDesiredQuestRepository::new();
-        let participant_repo = SeaOrmAutoRecruitmentParticipantRepository::new();
+        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
+        let quest_repo = app_state.repositories.user_desired_quest;
+        let participant_repo = app_state.repositories.auto_recruitment_participant;
 
         // 自動募集設定を確認
         let _auto_recruitment = auto_recruitment_repo

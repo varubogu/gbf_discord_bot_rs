@@ -33,7 +33,9 @@ impl NotificationScheduleFacade {
 
         let result = async {
             // 未来の通知は履歴サービスから30日先まで取得
-            let history = NotificationHistoryService::new();
+            let notification_repo = self.app_state.repositories.notification;
+            let task_repo = self.app_state.repositories.scheduled_task;
+            let history = NotificationHistoryService::new(notification_repo, task_repo);
             let mut items = history
                 .get_upcoming_notifications(conn, guild_id, 30)
                 .await?;
@@ -77,7 +79,9 @@ impl NotificationScheduleFacade {
         let txn = conn.begin().await?;
 
         let result = async {
-            let history_service = NotificationHistoryService::new();
+            let notification_repo = self.app_state.repositories.notification;
+            let task_repo = self.app_state.repositories.scheduled_task;
+            let history_service = NotificationHistoryService::new(notification_repo, task_repo);
             // 日数を計算（最低1日）
             let now = Utc::now();
             let days = (now - from).num_days().max(1);
@@ -86,9 +90,16 @@ impl NotificationScheduleFacade {
                 .await?;
 
             // 統計はScheduleQueryServiceを使用（from/to含む）
-            let stats = ScheduleQueryService::new()
-                .get_notification_stats(&txn, guild_id, from, now)
-                .await?;
+            let stats = ScheduleQueryService::new(
+                self.app_state.repositories.battle_recruitment_schedule,
+                self.app_state.repositories.quest,
+                self.app_state
+                    .repositories
+                    .battle_recruitment_schedule_dismissal,
+                self.app_state.repositories.notification,
+            )
+            .get_notification_stats(&txn, guild_id, from, now)
+            .await?;
 
             let mut s = String::new();
             for (i, n) in items.iter().take(limit).enumerate() {

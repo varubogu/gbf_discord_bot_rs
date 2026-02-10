@@ -1,31 +1,29 @@
 use crate::models::battle_styles::BattleStyle;
-use crate::repository::database::battle_style_repository::{
-    BattleStyleRepository, SeaOrmBattleStyleRepository,
-};
+use crate::repository::BattleStyleRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseConnection;
 use tracing::debug;
 
 /// 攻略方法クエリService
 /// 攻略方法検索・取得の責務を持つ
-pub struct BattleStyleQueryService;
-
-impl Default for BattleStyleQueryService {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct BattleStyleQueryService<B>
+where
+    B: BattleStyleRepository,
+{
+    repository: B,
 }
 
-impl BattleStyleQueryService {
-    pub fn new() -> Self {
-        Self
+impl<B> BattleStyleQueryService<B>
+where
+    B: BattleStyleRepository,
+{
+    pub fn new(repository: B) -> Self {
+        Self { repository }
     }
 
     /// すべての攻略方法を取得
     pub async fn get_all_battle_styles(&self, db: &DatabaseConnection) -> Result<Vec<BattleStyle>> {
-        let repository = SeaOrmBattleStyleRepository::new();
-
-        let models = repository.get_all(db).await?;
+        let models = self.repository.get_all(db).await?;
         let battle_styles: Vec<BattleStyle> = models.into_iter().map(|m| m.into()).collect();
 
         debug!(count = battle_styles.len(), "攻略方法一覧を取得しました");
@@ -39,9 +37,8 @@ impl BattleStyleQueryService {
         db: &DatabaseConnection,
         battle_style_id: i32,
     ) -> Result<BattleStyle> {
-        let repository = SeaOrmBattleStyleRepository::new();
-
-        let model = repository
+        let model = self
+            .repository
             .get_by_id(db, battle_style_id)
             .await?
             .ok_or_else(|| {

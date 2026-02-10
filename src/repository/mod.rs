@@ -4,6 +4,7 @@ pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
 pub mod database;
+pub mod db_helper;
 pub mod guild_channel_repository;
 pub mod guild_environment_repository;
 pub mod guild_message_text_repository;

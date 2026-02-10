@@ -8,7 +8,7 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
     DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,

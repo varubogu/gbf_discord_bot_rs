@@ -147,6 +147,39 @@ impl From<crate::errors::RepositoryError> for BusinessRuleError {
     }
 }
 
+// AppErrorからServiceErrorへの変換
+impl From<crate::types::AppError> for ServiceError {
+    fn from(err: crate::types::AppError) -> Self {
+        match err {
+            crate::types::AppError::Database(e) => ServiceError::Database(e.to_string()),
+            crate::types::AppError::NotFound(msg) => ServiceError::NotFound(msg),
+            crate::types::AppError::Business { message } => {
+                ServiceError::BusinessRule(BusinessRuleError::InvalidState {
+                    entity: "Unknown".to_string(),
+                    current_state: message,
+                })
+            }
+            crate::types::AppError::Validation { field } => {
+                ServiceError::Validation(ValidationError::InvalidFormat {
+                    field,
+                    reason: "Validation failed".to_string(),
+                })
+            }
+            crate::types::AppError::Discord(e) => {
+                ServiceError::ExternalService(ExternalServiceError::DiscordApiError {
+                    message: e.to_string(),
+                })
+            }
+            crate::types::AppError::DiscordOperation(e) => {
+                ServiceError::ExternalService(ExternalServiceError::DiscordApiError {
+                    message: e.to_string(),
+                })
+            }
+            _ => ServiceError::Internal(err.to_string()),
+        }
+    }
+}
+
 // SeaORM DbErrからServiceErrorへの変換
 impl From<sea_orm::DbErr> for ServiceError {
     fn from(err: sea_orm::DbErr) -> Self {

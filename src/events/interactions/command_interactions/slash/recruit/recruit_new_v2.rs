@@ -96,12 +96,8 @@ pub async fn recruit_new_v2(
     let message_id = message.message().await?.id.get();
 
     // message_idをDBに更新
-    recruitment::new_recruit::update_message_id(
-        app_state.guild_db(),
-        result.recruitment_id,
-        message_id,
-    )
-    .await?;
+    recruitment::new_recruit::update_message_id(app_state, result.recruitment_id, message_id)
+        .await?;
 
     Ok(())
 }

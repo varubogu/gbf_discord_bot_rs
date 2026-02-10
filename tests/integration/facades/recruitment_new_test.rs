@@ -59,8 +59,7 @@ async fn test_update_message_id_success() {
 
     // message_id更新
     let new_message_id = 12345678_u64;
-    let result =
-        new_recruit::update_message_id(app_state.guild_db(), inserted.id, new_message_id).await;
+    let result = new_recruit::update_message_id(&app_state, inserted.id, new_message_id).await;
     assert!(result.is_ok(), "message_id更新に失敗: {:?}", result.err());
 
     // DBで確認
