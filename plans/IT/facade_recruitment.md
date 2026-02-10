@@ -15,8 +15,9 @@
 
 - 実際のPostgreSQLデータベースを使用する結合テスト（`#[ignore]`付き）
 - Gateway依存の関数は`MockDiscordGateway`を使用
-- テストデータ（quest, battle_style等のマスターデータ）はDBに事前登録が必要
-- テストデータは各テスト内で作成・テスト後にクリーンアップ
+- テストデータ（quest, battle_style等のマスターデータ含む）は各テストのArrangeで投入し、テスト間の独立性を担保する
+- テスト後に必ずクリーンアップを実施する
+- Gateway失敗時にDB更新がロールバックされることを検証する
 
 ---
 
@@ -31,15 +32,16 @@
 | 1-3 | 正常系：battle_style_id指定あり | 有効なbattle_style_id | 対応する攻略方法が反映された募集が作成される |
 | 1-4 | 正常系：event_date指定あり | 有効なevent_date | 指定日時が開催日時として設定され、出発通知が登録される |
 | 1-5 | 正常系：dismissal_times指定あり | 有効な解散時刻文字列 | 解散時刻がDBに登録され、メッセージに反映される |
-| 1-6 | 異常系：存在しないquest_alias | 存在しないクエスト名を指定 | エラーが返る |
-| 1-7 | 異常系：存在しないbattle_style_id | 無効なbattle_style_idを指定 | エラーが返る |
+| 1-6 | 異常系：存在しないquest_alias | 存在しないクエスト名を指定 | `AppError::NotFound`が返る |
+| 1-7 | 異常系：存在しないbattle_style_id | 無効なbattle_style_idを指定 | `AppError::NotFound`が返る |
+| 1-8 | 異常系：Gateway処理失敗時のロールバック | メッセージ更新処理などでGatewayを失敗させる | エラーが返り、募集レコード/通知レコードが作成途中で残らない |
 
 ### 2. `update_message_id`（メッセージID更新）
 
 | No | ケース | 前提条件 | 期待結果 |
 |----|--------|----------|----------|
 | 2-1 | 正常系：message_id更新 | 募集レコードがDB上に存在 | DBのmessage_idが更新される |
-| 2-2 | 異常系：存在しないrecruitment_id | 存在しないrecruitment_id | エラーが返る |
+| 2-2 | 異常系：存在しないrecruitment_id | 存在しないrecruitment_id | `AppError::Business`（募集未存在）が返る |
 
 ### 3. `can_cancel`（キャンセル可否確認）
 
@@ -56,6 +58,7 @@
 | 4-1 | 正常系：募集キャンセル | 募集中・開催日時前のレコードがDB上に存在、MockGateway設定済み | is_canceled=trueに更新、通知が削除される |
 | 4-2 | 異常系：開催日時を過ぎた募集のキャンセル | quest_start_atが過去 | `AppError::Business`（開催日時を過ぎている）が返る |
 | 4-3 | 異常系：存在しない募集のキャンセル | DBに該当レコードなし | `AppError::Business`が返る |
+| 4-4 | 異常系：Gateway編集失敗時のロールバック | `edit_message`または`send_reply`を失敗させる | エラーが返り、`is_canceled`は`false`のまま、通知削除も実行されない |
 
 ### 5. `cancel_on_message_deleted`（メッセージ削除時のキャンセル）
 
@@ -74,6 +77,7 @@
 | 6-2 | 正常系：開催日時変更 | 募集中のレコード、有効なevent_date | DBのquest_start_atが更新され、通知が再作成される |
 | 6-3 | 正常系：攻略方法変更 | 募集中のレコード、有効なbattle_style_id | DBのbattle_style_idが更新される |
 | 6-4 | 異常系：存在しない募集の変更 | DBに該当レコードなし | `AppError::NotFound`が返る |
+| 6-5 | 異常系：Gateway編集失敗時のロールバック | `edit_message`を失敗させる | エラーが返り、募集レコードは変更前の値を保持する |
 
 ### 7. `handle_recruitment_button`（ボタン操作）
 

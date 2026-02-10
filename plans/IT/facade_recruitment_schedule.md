@@ -9,8 +9,8 @@
 
 - 実際のPostgreSQLデータベースを使用する結合テスト（`#[ignore]`付き）
 - Gateway依存なし（DB操作のみ）
-- テストデータ（quest, battle_style等のマスターデータ）はDBに事前登録が必要
-- テストデータは各テスト内で作成・テスト後にクリーンアップ
+- テストデータ（quest, battle_style等のマスターデータ含む）は各テストのArrangeで投入し、テスト間の独立性を担保する
+- テスト後に必ずクリーンアップを実施する
 
 ---
 
@@ -24,8 +24,8 @@
 | 1-2 | 正常系：battle_style_id指定あり | 有効なbattle_style_idを指定 | 攻略方法付きスケジュールが作成される |
 | 1-3 | 正常系：note指定あり | noteパラメータを指定 | メモ付きスケジュールが作成される |
 | 1-4 | 正常系：dismissal_times指定あり | 解散時刻文字列を指定 | 解散時刻付きスケジュールが作成される |
-| 1-5 | 異常系：存在しないquest_alias | 存在しないクエスト名 | エラーが返る |
-| 1-6 | 異常系：無効な時刻フォーマット | quest_start_time="invalid" | バリデーションエラーが返る |
+| 1-5 | 異常系：存在しないquest_alias | 存在しないクエスト名 | `AppError::NotFound`が返る |
+| 1-6 | 異常系：無効な時刻フォーマット | quest_start_time="invalid" | `AppError::Business`（時刻形式エラー）が返る |
 
 ### 2. `list_recruitment_schedules`（スケジュール一覧取得）
 
@@ -41,8 +41,8 @@
 |----|--------|----------|----------|
 | 3-1 | 正常系：作成者による削除 | スケジュール作成者と同一user_id | スケジュールがDBから削除される |
 | 3-2 | 正常系：管理者による削除 | is_admin=true、異なるuser_id | スケジュールがDBから削除される |
-| 3-3 | 異常系：権限のない削除 | 作成者でなくis_admin=false | 権限エラーが返る |
-| 3-4 | 異常系：存在しないスケジュールの削除 | 存在しないschedule_id | エラーが返る |
+| 3-3 | 異常系：権限のない削除 | 作成者でなくis_admin=false | `AppError::Business`（権限なし）が返る |
+| 3-4 | 異常系：存在しないスケジュールの削除 | 存在しないschedule_id | `AppError::Business`（未存在）が返る |
 
 ### 4. `toggle_recruitment_schedule`（スケジュール有効/無効切替）
 
@@ -51,7 +51,7 @@
 | 4-1 | 正常系：有効→無効への切替 | enabled=trueのスケジュール、作成者 | enabled=falseに更新される |
 | 4-2 | 正常系：無効→有効への切替 | enabled=falseのスケジュール、作成者 | enabled=trueに更新される |
 | 4-3 | 正常系：管理者による切替 | is_admin=true、異なるuser_id | 切替が正常に行われる |
-| 4-4 | 異常系：権限のない切替 | 作成者でなくis_admin=false | 権限エラーが返る |
+| 4-4 | 異常系：権限のない切替 | 作成者でなくis_admin=false | `AppError::Business`（権限なし）が返る |
 
 ### 5. `get_schedules_for_autocomplete`（スケジュール候補取得）
 

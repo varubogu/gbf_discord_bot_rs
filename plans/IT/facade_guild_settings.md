@@ -42,5 +42,5 @@
 |----|--------|----------|----------|
 | 4-1 | 正常系：新規タイムゾーン設定 | guild_settingsが未設定 | `TimezoneSetResult`が返り、DBに設定が保存される |
 | 4-2 | 正常系：タイムゾーン変更 | 既に`Asia/Tokyo`が設定済み | `America/New_York`に更新され、DBに反映される |
-| 4-3 | 異常系：無効なタイムゾーン文字列 | `timezone_str = "Invalid/Timezone"` | バリデーションエラーが返る |
+| 4-3 | 異常系：無効なタイムゾーン文字列 | `timezone_str = "Invalid/Timezone"` | `AppError::Validation`が返る |
 | 4-4 | 正常系：ロケール変更 | 既に`ja`ロケール設定済み | `en`ロケールに更新される |
