@@ -1,96 +1,130 @@
 # AGENTS.md
 
-## 目的
-本ドキュメントは、GBF Discord Bot (Rust) リポジトリで活動するAIエージェント向けの行動指針です。`CLAUDE.md`、`.cursor/rules/rules.mdc`、および`docs/develop`配下の設計書を統合し、役割横断で守るべき原則と各エージェントの期待値を整理します。
+## Purpose
+This document defines how AI agents should behave when working in the GBF Discord Bot (Rust) repository.  
+It consolidates rules from `CLAUDE.md`, `.cursor/rules/rules.mdc`, and `docs/develop/**` into a compact guide.
 
-## 参照ドキュメント
-- `CLAUDE.md`: 開発全体の基本方針と代表的なコマンド
-- `.cursor/rules/rules.mdc`: ルール集へのエントリーポイント
-- `docs/develop/architecture/`: プロジェクト構造とアーキテクチャ指針
-- `docs/develop/rules/`: コーディング、テスト、セキュリティ等の詳細ルール
-- `docs/develop/design/database/`: DB接続・トランザクション設計
-- `docs/develop/features/`: 機能別の要件と設計（例: `quest_recruitment.md`, `schedule_notification.md`）
+## Key References
+- `CLAUDE.md`: Core development workflow and common commands
+- `.cursor/rules/rules.mdc`: Global coding and architecture rules
+- `docs/develop/architecture/`: Project structure and architecture principles
+- `docs/develop/rules/`: Coding, testing, security, performance rules
+- `docs/develop/design/database/`: DB connection and transaction design
+- `docs/develop/features/`: Feature-level requirements and design
 
-## プロジェクト概要
-- Rust + poise + SeaORM + PostgreSQL で実装されたGranblue Fantasy向けDiscord Bot
-- クリーンアーキテクチャをベースに、`events → facades → services → repository`の単方向依存を徹底
-- `AppState`パターンで依存性を注入し、単一DB接続を共有
-- ドキュメント・コメント・エラーメッセージは日本語、コードは英語命名が原則
+## Project Summary
+- Tech stack: Rust + poise + SeaORM + PostgreSQL
+- Architecture: strict one-way dependencies `events → facades → services → repository`
+- Dependencies are built via `AppState` and shared DB connection
+- **All comments/docs/error messages in code must be Japanese; code identifiers are in English**
 
-## 共通原則
-### 言語とスタイル
-- コメント、ドキュメント、エラーメッセージは日本語で記述
-- 命名規則: 構造体/列挙体はPascalCase、関数/変数はsnake_case、定数はSCREAMING_SNAKE_CASE
-- `unwrap()`禁止、`panic!()`は非回復例外のみ
+## Commands & Workflow
 
-### アーキテクチャと責務
-- 層を跨いだ直接呼び出し禁止（例: Facade→Repositoryは不可、Service経由）
-- Facade層のみがトランザクションを begin/commit/rollback する
-- Service層は引数で受け取ったトランザクションをそのままRepositoryに渡す
-- Repository層はビジネスロジックを持たず、永続化と取得に専念
-- `AppState`で依存を組み立て、各層で独自にDB接続を生成しない
+### Development Commands
+```bash
+cargo build                    # Build (dev only)
+cargo run                      # Run bot (.env required)
+cargo test                     # Run tests
+cargo test test_name           # Run specific test
+cargo test -- --nocapture      # Run tests with logging
+```
+- **Never run**: `cargo build --release` or other release builds in this repo.
 
-### エラーハンドリングとログ
-- `thiserror`で層ごとのエラー型を定義し、`#[from]`で変換
-- `tracing`を用いた構造化ログを出力（error/warn/info/debugの使い分け）
-- ログに機密情報を含めない。業務例外はwarn、システム障害はerror
+### Lint / Format
+```bash
+cargo clippy                   # Lint
+cargo fmt                      # Format
+cargo fmt -- --check           # Format check only
+cargo run --bin schema_lint    # Schema consistency check
+```
 
-### パフォーマンスと設計
-- 不要な`clone()`を避け、借用/参照で処理する
-- `Arc<T>`の多用を避け、必要な箇所に限定
-- 並行処理可能箇所は`try_join_all`等を活用しつつ、トランザクション長期化は避ける
-- Builderパターンなど、Rustらしいゼロコスト抽象化を優先
+### Database Migrations
+```bash
+cargo run -- migrate
+cd migration && sea-orm-cli migrate generate migration_name
+```
 
-### セキュリティ
-- 入力検証は必ずプレゼンテーション層で実施（Regex・許可リスト・型変換）
-- Discord権限チェックとアプリ固有権限の確認を徹底
-- SQLインジェクション対策としてSeaORMのクエリビルダを利用し、生SQLは準備済みステートメントで保護
-- Discordメッセージへ出力する際は必要に応じてサニタイゼーション
+### Quality Flow (must follow in this order)
+1. **Docs**: Update relevant design/feature docs first.
+2. **Code**: Implement or modify code.
+3. **Lint**: Run `cargo clippy`.
+4. **Format**: Run `cargo fmt`.
+5. **Test**: Run focused tests, then `cargo test` for full suite.
 
-### テスト
-- 各層に単体テストを用意し、`mockall`等で依存を分離
-- Facade層で結合テスト、Repository層は実DB（テスト用）で検証
-- Arrange-Act-Assertパターンで可読性を維持
-- `cargo test`, `cargo clippy`, `cargo fmt`での検証を前提
+## Core Rules
 
-### ワークフロー
-- 変更は必ずテスト・ドキュメント更新を伴う（`docs/`と`locales/`を含め確認）
-- 影響範囲を設計書で確認し、該当する`docs/develop/features/`や`docs/develop/architecture/`を更新
-- ブランチ命名: `feature/`, `fix/`, `refactor/`, `remove/`, `docs/`
-- 追加→修正→削除の各フェーズでチェックリスト（設計→実装→ドキュメント→検証）を順守
+### Language & Style
+- Code comments, design docs, and error messages: **Japanese**
+- Naming: Types `PascalCase`, functions/vars `snake_case`, consts `SCREAMING_SNAKE_CASE`
+- No `unwrap()` in production; `panic!()` only for unrecoverable failures
 
-## エージェント別ガイド
-### 実装エージェント（例: Coding, Fixer）
-1. 要件・影響範囲を`docs/develop/features/`とルール群で調査
-2. 層の責務とトランザクション境界を再確認してから実装
-3. 新規コードには日本語コメント/エラーメッセージ、`thiserror`エラー、`tracing`ログを適用
-4. 単体テスト・結合テストを追加/更新し、必要に応じてモックを整備
-5. 実装後に`cargo fmt`, `cargo clippy`, `cargo test`を実行し、結果を報告
+### Architecture & Responsibilities
+- No cross-layer shortcuts (e.g. Events → Services/Repository, Facade → Repository)
+- **Only Facades** start/commit/rollback transactions
+- Services receive a transaction and pass it to Repositories
+- Repositories contain no business logic, only persistence
+- DB connections are obtained via `AppState`; no ad-hoc connections per layer
 
-### レビューエージェント
-1. 変更がクリーンアーキテクチャとトランザクション規約に従っているか確認
-2. エラー型、ログ、入力検証、セキュリティ対策が仕様通りかをチェック
-3. テスト網羅性（層別単体テスト、Facade結合テスト、DBテスト）とドキュメント更新の有無を確認
-4. パフォーマンス影響（不要な`clone`やArcなど）と長時間トランザクションを警告
-5. 問題があれば具体的な修正提案と参照ドキュメントを提示
+### Errors & Logging
+- Use `thiserror` for layer-specific error types and `#[from]` conversions
+- Use `tracing` for structured logs (error / warn / info / debug)
+- Do not log secrets; business exceptions are `warn`, system failures `error`
 
-### ドキュメントエージェント
-1. 変更対象機能の設計書を特定し、`docs/develop/architecture/`・`docs/develop/features/`を更新
-2. 抽象度を保ち、具体的なコード例ではなく責務・フロー・制約を説明
-3. ドキュメント更新時は関連するルールファイルとの整合性を確認
-4. ユーザー向け資料（`docs/user/`や`locales/`）への影響もレビュー
-5. 必要に応じて図表（Mermaid等）で処理フローを追記
+### Performance & Design
+- Avoid unnecessary `clone()`, prefer borrowing
+- Use `Arc<T>` only when needed
+- Use concurrency (`try_join_all`) where appropriate but do not hold long transactions
+- Prefer small, single-responsibility functions (≤100 lines, ≤5 nesting levels)
 
-## 作業チェックリスト
-- [ ] 対象機能の設計書・ルールを事前に確認した
-- [ ] 層別責務・トランザクション規約を守っている
-- [ ] `thiserror`エラーと`tracing`ログを適切に実装した
-- [ ] `cargo fmt`, `cargo clippy`, `cargo test`を実行した
-- [ ] docs・ローカライズ・マイグレーション等の関連成果物を更新した
-- [ ] セキュリティ／パフォーマンス影響を評価し、懸念を記録した
+### Security
+- Always validate inputs in the presentation layer (regex/whitelists/type checks)
+- Check Discord permissions and app-level permissions
+- Use SeaORM query builder; avoid raw SQL except safe prepared statements
+- Sanitize Discord output where needed
 
-## 判断に迷った場合
-- 設計意図は`docs/develop/architecture/`と`docs/develop/design/database/`を優先参照
-- 機能仕様は`docs/develop/features/`を参照し、実装との差異をドキュメント側で補正
-- ルールの競合が起きたら最も具体的な設計書を優先し、必要ならドキュメントを更新
-- 未定義の挙動や外部依存が関係する場合は、GitHub Issueや設計書への追記を提案
+### Testing
+- Provide unit tests for each layer and integration tests at Facade/DB level
+- Use AAA pattern (Arrange–Act–Assert)
+- Regularly run `cargo test`, `cargo clippy`, `cargo fmt`
+
+### Workflow
+- Every change must include tests and documentation updates where applicable (`docs/`, `locales/`, migrations, etc.)
+- Use branch names like `feature/...`, `fix/...`, `refactor/...`, `remove/...`, `docs/...`
+
+## Agent Guidelines
+
+### Implementation Agents (e.g. Coding, Fixer)
+1. Check relevant `docs/develop/features/` and rule docs for requirements and impact.
+2. Reconfirm layer responsibilities and transaction boundaries before coding.
+3. Add Japanese comments, `thiserror` errors, and `tracing` logs for new code.
+4. Add/update unit and integration tests, including mocks when needed.
+5. After changes, run `cargo fmt`, `cargo clippy`, and appropriate `cargo test` commands.
+
+### Review Agents
+1. Verify changes follow clean architecture and transaction rules.
+2. Check error types, logging, input validation, and security measures.
+3. Confirm test coverage and doc updates.
+4. Watch for performance issues (unnecessary `clone`, excessive `Arc`, long transactions).
+5. Provide concrete improvement suggestions with references to relevant docs.
+
+### Documentation Agents
+1. Identify affected design docs and update `docs/develop/architecture/` and/or `docs/develop/features/`.
+2. Keep abstraction high-level (responsibilities/flows/constraints, not code).
+3. Ensure consistency with rule files.
+4. Consider impacts on user docs (`docs/user/`) and `locales/`.
+5. Add diagrams (e.g. Mermaid) where flows benefit from visualization.
+
+## Checklist for Any Change
+- [ ] Read relevant design/rule docs
+- [ ] Respect layer responsibilities and transaction rules
+- [ ] Implement `thiserror` + `tracing` correctly
+- [ ] Run `cargo fmt`, `cargo clippy`, `cargo test`
+- [ ] Update docs / localization / migrations as needed
+- [ ] Evaluate security and performance impact
+
+## When in Doubt
+- Prefer `docs/develop/architecture/` and `docs/develop/design/database/` for design intent
+- Use `docs/develop/features/` for feature specs and align implementation to them
+- If rules conflict, follow the most specific design doc and update docs if necessary
+- For undefined behavior or external dependencies, propose a design doc update or GitHub issue
+
