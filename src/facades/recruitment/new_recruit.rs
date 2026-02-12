@@ -79,12 +79,16 @@ where
         // タイムゾーンを取得
         let timezone_repo = app_state.repositories.guild_settings;
         let timezone_service = TimezoneService::new(timezone_repo);
-        let timezone = timezone_service.get_guild_timezone(conn, guild_id as i64).await?;
+        let timezone = timezone_service
+            .get_guild_timezone_with_txn(&txn, guild_id as i64)
+            .await?;
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
         let guild_env_repo = app_state.repositories.guild_environment;
         let guild_env_service = GuildEnvironmentService::new(guild_env_repo);
-        let element_emojis = guild_env_service.get_element_emojis(conn, gateway, guild_id as i64).await?;
+        let element_emojis = guild_env_service
+            .get_element_emojis(&txn, gateway, guild_id as i64)
+            .await?;
 
         // 1. 募集データ作成（Repository DI）
         let quest_repository = app_state.repositories.quest;
@@ -92,7 +96,7 @@ where
 
         let message_service = app_state.message_service();
         let mut recruitment_data = new::create_recruitment_data(
-            conn,
+            &txn,
             &quest_repository,
             &battle_style_repository,
             &element_emojis,
@@ -299,10 +303,12 @@ where
 #[instrument(level = "debug", skip(app_state))]
 pub async fn update_message_id(
     app_state: &AppState,
+    guild_id: u64,
     recruitment_id: i32,
     message_id: u64,
 ) -> types::Result<()> {
     info!(
+        guild_id = guild_id,
         recruitment_id = recruitment_id,
         message_id = message_id,
         "募集のmessage_idを更新します"
@@ -310,12 +316,27 @@ pub async fn update_message_id(
 
     let battle_recruitment_repo = app_state.repositories.battle_recruitments;
     let db = app_state.guild_db();
+    let txn = db.begin().await?;
 
-    battle_recruitment_repo
-        .update_message_id_with_db(db, recruitment_id, DiscordMessageId::new(message_id))
-        .await?;
+    // RLSポリシーのためにセッション変数を設定
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let result = battle_recruitment_repo
+        .update_message_id_with_txn(&txn, recruitment_id, DiscordMessageId::new(message_id))
+        .await;
+
+    match result {
+        Ok(()) => {
+            txn.commit().await?;
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            return Err(e);
+        }
+    }
 
     info!(
+        guild_id = guild_id,
         recruitment_id = recruitment_id,
         message_id = message_id,
         "message_idの更新が完了しました"

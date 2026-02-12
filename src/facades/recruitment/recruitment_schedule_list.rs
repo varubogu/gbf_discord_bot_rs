@@ -62,7 +62,10 @@ pub async fn get_schedules_for_autocomplete(
     // タイムゾーンを取得（トランザクション内）
     let guild_settings_repo = app_state.repositories.guild_settings;
     let timezone_service = TimezoneService::new(guild_settings_repo);
-    let timezone = match timezone_service.get_guild_timezone(conn, guild_id).await {
+    let timezone = match timezone_service
+        .get_guild_timezone_with_txn(&txn, guild_id)
+        .await
+    {
         Ok(tz) => tz,
         Err(e) => {
             warn!(error = %e, "タイムゾーンの取得に失敗しました");

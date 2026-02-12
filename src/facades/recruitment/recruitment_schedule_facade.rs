@@ -77,7 +77,7 @@ impl RecruitmentScheduleFacade {
             let timezone_repo = self.app_state.repositories.guild_settings;
             let timezone_service = TimezoneService::new(timezone_repo);
             let timezone = timezone_service
-                .get_guild_timezone(conn, guild_id as i64)
+                .get_guild_timezone_with_txn(&txn, guild_id as i64)
                 .await?;
 
             info!(
@@ -159,7 +159,9 @@ impl RecruitmentScheduleFacade {
         let result = async {
             // タイムゾーン取得
             let timezone_service = TimezoneService::new(self.app_state.repositories.guild_settings);
-            let tz = timezone_service.get_guild_timezone(conn, guild_id).await?;
+            let tz = timezone_service
+                .get_guild_timezone_with_txn(&txn, guild_id)
+                .await?;
 
             // 一覧取得
             let service = ScheduleQueryService::new(

@@ -196,7 +196,7 @@ where
 
         let timezone = self
             .timezone_service
-            .get_guild_timezone(db_conn, calculated_time.guild_id)
+            .get_guild_timezone_with_txn(txn, calculated_time.guild_id)
             .await?;
 
         // 2. ロールメンションを取得
@@ -469,7 +469,7 @@ where
 
         let timezone = self
             .timezone_service
-            .get_guild_timezone(db_conn, params.guild_id)
+            .get_guild_timezone_with_txn(txn, params.guild_id)
             .await?;
 
         // 2. ロールメンションを取得

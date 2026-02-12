@@ -53,19 +53,40 @@ impl GuildSettingsFacade {
     pub async fn get_timezone(&self, guild_id: i64) -> Result<Tz> {
         info!(guild_id = guild_id, "タイムゾーン取得を開始します");
 
+        // トランザクション開始（Facade層の責務）
         let conn = self.app_state.guild_db();
-        let timezone_repo = self.app_state.repositories.guild_settings;
-        let timezone_service = TimezoneService::new(timezone_repo);
+        let txn = conn.begin().await?;
 
-        let timezone = timezone_service.get_guild_timezone(conn, guild_id).await?;
+        // RLSポリシーのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
 
-        info!(
-            guild_id = guild_id,
-            timezone = %timezone,
-            "タイムゾーン取得に成功しました"
-        );
+        let result = async {
+            let timezone_repo = self.app_state.repositories.guild_settings;
+            let timezone_service = TimezoneService::new(timezone_repo);
+            let timezone = timezone_service
+                .get_guild_timezone_with_txn(&txn, guild_id)
+                .await?;
 
-        Ok(timezone)
+            info!(
+                guild_id = guild_id,
+                timezone = %timezone,
+                "タイムゾーン取得に成功しました"
+            );
+
+            Ok::<_, AppError>(timezone)
+        }
+        .await;
+
+        match result {
+            Ok(timezone) => {
+                txn.commit().await?;
+                Ok(timezone)
+            }
+            Err(e) => {
+                txn.rollback().await?;
+                Err(e)
+            }
+        }
     }
 
     /// ギルド設定を取得
@@ -78,21 +99,42 @@ impl GuildSettingsFacade {
     pub async fn get_guild_settings(&self, guild_id: i64) -> Result<Option<GuildSettingsResult>> {
         info!(guild_id = guild_id, "ギルド設定取得を開始します");
 
+        // トランザクション開始（Facade層の責務）
         let conn = self.app_state.guild_db();
-        let settings_repo = self.app_state.repositories.guild_settings;
+        let txn = conn.begin().await?;
 
-        let settings = settings_repo.find_by_guild_id(conn, guild_id).await?;
+        // RLSポリシーのためにセッション変数を設定
+        set_current_guild_id(&txn, guild_id).await?;
 
-        info!(
-            guild_id = guild_id,
-            has_settings = settings.is_some(),
-            "ギルド設定取得に成功しました"
-        );
+        let result = async {
+            let settings_repo = self.app_state.repositories.guild_settings;
+            let settings = settings_repo
+                .find_by_guild_id_with_txn(&txn, guild_id)
+                .await?;
 
-        Ok(settings.map(|s| GuildSettingsResult {
-            timezone: s.timezone,
-            locale: s.locale,
-        }))
+            info!(
+                guild_id = guild_id,
+                has_settings = settings.is_some(),
+                "ギルド設定取得に成功しました"
+            );
+
+            Ok::<_, AppError>(settings.map(|s| GuildSettingsResult {
+                timezone: s.timezone,
+                locale: s.locale,
+            }))
+        }
+        .await;
+
+        match result {
+            Ok(settings) => {
+                txn.commit().await?;
+                Ok(settings)
+            }
+            Err(e) => {
+                txn.rollback().await?;
+                Err(e)
+            }
+        }
     }
 
     /// タイムゾーンとロケールを設定

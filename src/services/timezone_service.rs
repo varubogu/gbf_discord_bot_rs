@@ -4,7 +4,7 @@ use crate::types::{AppError, Result};
 use chrono::{Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 use lazy_static::lazy_static;
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use tracing::{debug, error, info};
 
 /// タイムゾーンのオートコンプリート用データ
@@ -107,42 +107,33 @@ impl<R: GuildSettingsRepository> TimezoneService<R> {
         Self { repository }
     }
 
+    /// ギルドのタイムゾーンを取得（トランザクション内）
+    /// 未設定の場合はデフォルト（Asia/Tokyo）を返す
+    pub async fn get_guild_timezone_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Tz> {
+        debug!(
+            guild_id = guild_id,
+            "ギルドのタイムゾーンを取得します（トランザクション内）"
+        );
+
+        let settings = self
+            .repository
+            .find_by_guild_id_with_txn(txn, guild_id)
+            .await?;
+
+        self.resolve_timezone(guild_id, settings.map(|s| s.timezone))
+    }
+
     /// ギルドのタイムゾーンを取得
     /// 未設定の場合はデフォルト（Asia/Tokyo）を返す
     pub async fn get_guild_timezone(&self, db: &DatabaseConnection, guild_id: i64) -> Result<Tz> {
         debug!(guild_id = guild_id, "ギルドのタイムゾーンを取得します");
 
-        match self.repository.find_by_guild_id(db, guild_id).await? {
-            Some(settings) => {
-                // タイムゾーン文字列をTz型に変換
-                let tz = settings.timezone.parse::<Tz>().map_err(|e| {
-                    error!(
-                        error = %e,
-                        timezone = settings.timezone,
-                        "無効なタイムゾーン名がDBに保存されています"
-                    );
-                    AppError::Validation {
-                        field: format!("timezone: {}", settings.timezone),
-                    }
-                })?;
-
-                info!(
-                    guild_id = guild_id,
-                    timezone = %tz,
-                    "ギルドのタイムゾーンを取得しました"
-                );
-
-                Ok(tz)
-            }
-            None => {
-                // 未設定の場合はデフォルト（Asia/Tokyo）を返す
-                debug!(
-                    guild_id = guild_id,
-                    "タイムゾーン未設定のため、デフォルト（Asia/Tokyo）を使用します"
-                );
-                Ok(chrono_tz::Asia::Tokyo)
-            }
-        }
+        let settings = self.repository.find_by_guild_id(db, guild_id).await?;
+        self.resolve_timezone(guild_id, settings.map(|s| s.timezone))
     }
 
     /// ギルドのタイムゾーンとロケールを設定（upsert）
@@ -165,6 +156,38 @@ impl<R: GuildSettingsRepository> TimezoneService<R> {
         );
 
         Ok(())
+    }
+
+    fn resolve_timezone(&self, guild_id: i64, timezone_opt: Option<String>) -> Result<Tz> {
+        match timezone_opt {
+            Some(timezone) => {
+                let tz = timezone.parse::<Tz>().map_err(|e| {
+                    error!(
+                        error = %e,
+                        timezone = timezone,
+                        "無効なタイムゾーン名がDBに保存されています"
+                    );
+                    AppError::Validation {
+                        field: format!("timezone: {timezone}"),
+                    }
+                })?;
+
+                info!(
+                    guild_id = guild_id,
+                    timezone = %tz,
+                    "ギルドのタイムゾーンを取得しました"
+                );
+
+                Ok(tz)
+            }
+            None => {
+                debug!(
+                    guild_id = guild_id,
+                    "タイムゾーン未設定のため、デフォルト（Asia/Tokyo）を使用します"
+                );
+                Ok(chrono_tz::Asia::Tokyo)
+            }
+        }
     }
 }
 
@@ -203,4 +226,72 @@ pub fn initialize_timezone_cache() {
     // TIMEZONE_CHOICE_DATAにアクセスして初期化を強制
     let _count = TIMEZONE_CHOICE_DATA.len();
     info!("タイムゾーンキャッシュを初期化しました（{}件）", _count);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Clone, Copy)]
+    struct DummyGuildSettingsRepository;
+
+    #[async_trait::async_trait]
+    impl GuildSettingsRepository for DummyGuildSettingsRepository {
+        async fn upsert_with_txn(
+            &self,
+            _txn: &DatabaseTransaction,
+            _guild_id: i64,
+            _timezone: &str,
+            _locale: &str,
+        ) -> Result<crate::models::entities::guild_master::guild_settings::Model> {
+            unimplemented!("このテストでは使用しません")
+        }
+
+        async fn find_by_guild_id(
+            &self,
+            _db: &DatabaseConnection,
+            _guild_id: i64,
+        ) -> Result<Option<crate::models::entities::guild_master::guild_settings::Model>> {
+            unimplemented!("このテストでは使用しません")
+        }
+
+        async fn find_by_guild_id_with_txn(
+            &self,
+            _txn: &DatabaseTransaction,
+            _guild_id: i64,
+        ) -> Result<Option<crate::models::entities::guild_master::guild_settings::Model>> {
+            unimplemented!("このテストでは使用しません")
+        }
+    }
+
+    #[test]
+    fn test_resolve_timezone_default_when_not_set() {
+        let service = TimezoneService::new(DummyGuildSettingsRepository);
+        let tz = service.resolve_timezone(1, None).unwrap();
+        assert_eq!(tz, chrono_tz::Asia::Tokyo);
+    }
+
+    #[test]
+    fn test_resolve_timezone_parses_valid_timezone() {
+        let service = TimezoneService::new(DummyGuildSettingsRepository);
+        let tz = service
+            .resolve_timezone(1, Some("America/New_York".to_string()))
+            .unwrap();
+        assert_eq!(tz, chrono_tz::America::New_York);
+    }
+
+    #[test]
+    fn test_resolve_timezone_returns_validation_error_for_invalid_timezone() {
+        let service = TimezoneService::new(DummyGuildSettingsRepository);
+        let err = service
+            .resolve_timezone(1, Some("Invalid/Timezone".to_string()))
+            .unwrap_err();
+
+        match err {
+            AppError::Validation { field } => {
+                assert!(field.contains("Invalid/Timezone"));
+            }
+            other => panic!("期待しないエラーです: {other:?}"),
+        }
+    }
 }

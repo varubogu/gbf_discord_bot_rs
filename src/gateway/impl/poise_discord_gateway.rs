@@ -25,6 +25,21 @@ use crate::types::discord::{
     ReactionData, ReactionEmoji, SelectMenuContent, SelectMenuData, SelectMenuKindContent,
 };
 
+fn serenity_message_id_opt(message_id: DiscordMessageId) -> Option<MessageId> {
+    let id = message_id.get();
+    if id == 0 {
+        return None;
+    }
+    Some(MessageId::new(id))
+}
+
+fn serenity_message_id(message_id: DiscordMessageId) -> Result<MessageId, GatewayError> {
+    serenity_message_id_opt(message_id).ok_or_else(|| {
+        // 0 はDiscordのSnowflakeとして不正であり、上位層の状態不整合を示す
+        GatewayError::internal("DiscordメッセージIDが不正です（0）")
+    })
+}
+
 /// Poise/Serenityを使用したDiscord Gateway実装
 #[derive(Clone)]
 pub struct PoiseDiscordGateway {
@@ -454,7 +469,7 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         content: MessageContent,
     ) -> Result<(), GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
         let edit_message = content.into_serenity_edit_message();
 
         serenity_channel_id
@@ -471,7 +486,7 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         message_id: DiscordMessageId,
     ) -> Result<(), GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
 
         serenity_channel_id
             .delete_message(&self.http, serenity_message_id)
@@ -487,7 +502,7 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         message_id: DiscordMessageId,
     ) -> Result<MessageData, GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
 
         let message = serenity_channel_id
             .message(&self.http, serenity_message_id)
@@ -522,7 +537,23 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         use poise::serenity_prelude::MessageReference;
 
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(reply_to_message_id.get());
+        let Some(serenity_message_id) = serenity_message_id_opt(reply_to_message_id) else {
+            tracing::warn!(
+                channel_id = %channel_id,
+                reply_to = %reply_to_message_id,
+                "返信先メッセージIDが未設定（0）のため、通常メッセージとして送信します"
+            );
+
+            // 文脈情報を付加して通常メッセージとして送信
+            let fallback_content = if let Some(context) = fallback_context {
+                let original_text = content.text.clone().unwrap_or_default();
+                MessageContent::text(format!("【{context}】\n{original_text}"))
+            } else {
+                content
+            };
+
+            return self.send_message(channel_id, fallback_content).await;
+        };
 
         // まず返信形式で送信を試みる
         let reference = MessageReference::from((serenity_channel_id, serenity_message_id));
@@ -739,7 +770,7 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
         limit: Option<u8>,
     ) -> Result<Vec<DiscordUserId>, GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
         let reaction_type: ReactionType = emoji.into();
 
         let users = serenity_channel_id
@@ -760,7 +791,7 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
         emoji: ReactionEmoji,
     ) -> Result<(), GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
         let reaction_type: ReactionType = emoji.into();
 
         self.http
@@ -778,7 +809,7 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
         emoji: ReactionEmoji,
     ) -> Result<(), GatewayError> {
         let serenity_channel_id = ChannelId::new(channel_id.get());
-        let serenity_message_id = MessageId::new(message_id.get());
+        let serenity_message_id = serenity_message_id(message_id)?;
         let reaction_type: ReactionType = emoji.into();
 
         self.http
@@ -787,6 +818,22 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
             .map_err(|e| GatewayError::Internal(e.to_string()))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serenity_message_id_opt_zero_is_none() {
+        assert!(serenity_message_id_opt(DiscordMessageId::new(0)).is_none());
+    }
+
+    #[test]
+    fn test_serenity_message_id_zero_is_error() {
+        let result = serenity_message_id(DiscordMessageId::new(0));
+        assert!(matches!(result, Err(GatewayError::Internal(_))));
     }
 }
 

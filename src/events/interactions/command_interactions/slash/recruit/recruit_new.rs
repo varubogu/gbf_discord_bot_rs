@@ -94,8 +94,13 @@ pub async fn recruit_new(
     let message_id = message.message().await?.id.get();
 
     // message_idをDBに更新
-    recruitment::new_recruit::update_message_id(app_state, result.recruitment_id, message_id)
-        .await?;
+    recruitment::new_recruit::update_message_id(
+        app_state,
+        guild_id.get(),
+        result.recruitment_id,
+        message_id,
+    )
+    .await?;
 
     // リアクション追加（UI層ヘルパー経由）
     let reactions: Vec<ReactionType> = result
