@@ -5,9 +5,9 @@
 
 ## まず、あなたの立場を選んでください
 
-- 開発者向け: `docs2/開発者向け/README.md`
-- 運用者向け: `docs2/運用者向け/README.md`
-- 利用者向け: `docs2/利用者向け/README.md`
+- 開発者向け: `docs2/ja/開発者向け/README.md`
+- 運用者向け: `docs2/ja/運用者向け/README.md`
+- 利用者向け: `docs2/ja/利用者向け/README.md`
 
 ## 本リポジトリにおける「運用者」の定義
 
