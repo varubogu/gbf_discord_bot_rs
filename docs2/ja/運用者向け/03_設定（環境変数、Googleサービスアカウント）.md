@@ -26,6 +26,7 @@
 - `.env.app`: Bot本体の設定（Discord/スプレッドシート等）
 - `.env.db`: DBコンテナの設定（パスワード等）
 - `.env.maintenance`: メンテナンス実行用の設定（クリーンアップ等）
+- `.local/****.json`: Googleサービスアカウント鍵（JSON）
 
 ## まずやること（最短）
 
