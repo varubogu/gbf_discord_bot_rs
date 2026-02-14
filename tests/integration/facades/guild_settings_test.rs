@@ -264,3 +264,36 @@ async fn test_get_guild_settings_with_data() {
     // クリーンアップ
     cleanup_guild_settings(app_state.guild_db(), guild_id).await;
 }
+
+/// 4-4: 正常系 - ロケール変更
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_set_timezone_change_locale() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let facade = GuildSettingsFacade::new(app_state.clone());
+    let guild_id = SETTINGS_TEST_GUILD_ID + 10;
+
+    // クリーンアップ（事前）
+    cleanup_guild_settings(app_state.guild_db(), guild_id).await;
+
+    // 初期設定: jaロケール
+    facade
+        .set_timezone(guild_id, "Asia/Tokyo", "ja")
+        .await
+        .unwrap();
+
+    // ロケールをenに変更
+    let result = facade.set_timezone(guild_id, "Asia/Tokyo", "en").await;
+    assert!(result.is_ok(), "ロケール変更に失敗: {:?}", result);
+
+    // 変更後の設定を取得して確認
+    let settings = facade.get_guild_settings(guild_id).await.unwrap().unwrap();
+    assert_eq!(settings.locale, "en", "ロケールがenに更新されていません");
+    assert_eq!(
+        settings.timezone, "Asia/Tokyo",
+        "タイムゾーンは変更されていないはず"
+    );
+
+    // クリーンアップ
+    cleanup_guild_settings(app_state.guild_db(), guild_id).await;
+}

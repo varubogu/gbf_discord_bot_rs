@@ -3,14 +3,16 @@
 // 対象: src/facades/recruitment/cancel.rs
 
 use chrono::{Duration, Utc};
+use gbf_discord_bot_rs::errors::GatewayError;
 use gbf_discord_bot_rs::facades::recruitment::cancel;
 use gbf_discord_bot_rs::models::entities::worker::battle_recruitments;
-use gbf_discord_bot_rs::types::discord::DiscordMessageId;
+use gbf_discord_bot_rs::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use std::sync::Arc;
 
 use super::test_helper::{
     MockTestGateway, TEST_CHANNEL_ID, TEST_GUILD_ID, TEST_MESSAGE_ID, create_test_app_state,
+    create_test_message_data,
 };
 
 /// テスト用ギルドID（キャンセルテスト専用）
@@ -234,6 +236,67 @@ async fn test_cancel_on_delete_success() {
 // execute_cancel
 // =================================================
 
+/// 4-1: 正常系 - 募集キャンセル
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_execute_cancel_success() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 30;
+    let channel_id = CANCEL_CHANNEL_ID + 30;
+    let message_id = CANCEL_MESSAGE_ID + 30;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false,
+        24,
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456,
+            "募集本文",
+        ))
+    });
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+    mock_gateway
+        .expect_send_reply()
+        .returning(|_, _, _, _| Ok(DiscordMessageId::new(123450)));
+
+    let result = cancel::execute_cancel(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        channel_id as u64,
+        message_id as u64,
+        Some("ja"),
+    )
+    .await;
+
+    assert!(result.is_ok(), "募集キャンセルに失敗: {:?}", result.err());
+
+    let updated = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(updated.is_canceled, "is_canceledが更新されていません");
+    assert!(
+        updated.recruit_end_message_id.is_some(),
+        "キャンセル通知メッセージIDが保存されていません"
+    );
+
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
 /// 4-2: 異常系 - 開催日時を過ぎた募集のキャンセル
 #[tokio::test]
 #[ignore] // 実際のDBが必要
@@ -297,4 +360,221 @@ async fn test_execute_cancel_not_found() {
     .await;
 
     assert!(result.is_err(), "存在しない募集でエラーが返りませんでした");
+}
+
+/// 4-4: 異常系 - Gateway編集失敗時のロールバック
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_execute_cancel_edit_message_failed_rollback() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 31;
+    let channel_id = CANCEL_CHANNEL_ID + 31;
+    let message_id = CANCEL_MESSAGE_ID + 31;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false,
+        24,
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456,
+            "募集本文",
+        ))
+    });
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Err(GatewayError::EditMessageFailed("edit failed".to_string())));
+    mock_gateway.expect_send_reply().never();
+
+    let result = cancel::execute_cancel(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        channel_id as u64,
+        message_id as u64,
+        Some("ja"),
+    )
+    .await;
+
+    assert!(result.is_err(), "Gateway編集失敗でエラーが返りませんでした");
+
+    let unchanged = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        !unchanged.is_canceled,
+        "ロールバックされずis_canceledが更新されています"
+    );
+    assert!(
+        unchanged.recruit_end_message_id.is_none(),
+        "ロールバックされずrecruit_end_message_idが更新されています"
+    );
+
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+// =================================================
+// can_cancel
+// =================================================
+
+/// 3-1: 正常系 - キャンセル可能な募集
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_can_cancel_available() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 10;
+    let channel_id = CANCEL_CHANNEL_ID + 10;
+    let message_id = CANCEL_MESSAGE_ID + 10;
+
+    // 募集中・未キャンセル・開催日時前のレコードを作成
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false, // is_canceled = false
+        24,    // 24時間後
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456, // author_id
+            "test content",
+        ))
+    });
+
+    let result = cancel::can_cancel(
+        &app_state,
+        &mock_gateway,
+        DiscordGuildId::new(guild_id as u64),
+        DiscordChannelId::new(channel_id as u64),
+        DiscordMessageId::new(message_id as u64),
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "キャンセル可否確認に失敗: {:?}",
+        result.err()
+    );
+
+    match result.unwrap() {
+        gbf_discord_bot_rs::types::CanCancelResult::Success => {
+            // キャンセル可能が返る
+        }
+        other => panic!("Successが期待されましたが {:?} が返りました", other),
+    }
+
+    // クリーンアップ
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 3-2: 正常系 - キャンセル済みの募集
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_can_cancel_already_cancelled() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 11;
+    let channel_id = CANCEL_CHANNEL_ID + 11;
+    let message_id = CANCEL_MESSAGE_ID + 11;
+
+    // キャンセル済みのレコードを作成
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        true, // is_canceled = true
+        24,
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456, // author_id
+            "test content",
+        ))
+    });
+
+    let result = cancel::can_cancel(
+        &app_state,
+        &mock_gateway,
+        DiscordGuildId::new(guild_id as u64),
+        DiscordChannelId::new(channel_id as u64),
+        DiscordMessageId::new(message_id as u64),
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "キャンセル可否確認に失敗: {:?}",
+        result.err()
+    );
+
+    match result.unwrap() {
+        gbf_discord_bot_rs::types::CanCancelResult::AlreadyCancelled => {
+            // キャンセル済みが返る
+        }
+        other => panic!(
+            "AlreadyCancelledが期待されましたが {:?} が返りました",
+            other
+        ),
+    }
+
+    // クリーンアップ
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 3-3: 正常系 - 存在しないメッセージの募集
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_can_cancel_not_found() {
+    let app_state = Arc::new(create_test_app_state().await);
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(|_, _| {
+        Err(GatewayError::GetMessageFailed(
+            "Message not found".to_string(),
+        ))
+    }); // メッセージが見つからない
+
+    let result = cancel::can_cancel(
+        &app_state,
+        &mock_gateway,
+        DiscordGuildId::new(CANCEL_GUILD_ID as u64 + 99),
+        DiscordChannelId::new(CANCEL_CHANNEL_ID as u64 + 99),
+        DiscordMessageId::new(99999999_u64),
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "キャンセル可否確認に失敗: {:?}",
+        result.err()
+    );
+
+    match result.unwrap() {
+        gbf_discord_bot_rs::types::CanCancelResult::NotFound => {
+            // 募集が見つからないが返る
+        }
+        other => panic!("NotFoundが期待されましたが {:?} が返りました", other),
+    }
 }
