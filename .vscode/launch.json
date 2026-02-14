@@ -7,7 +7,49 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'gbf_discord_bot_rs'",
+            "name": "Debug exec (log:info)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=gbf_discord_bot_rs",
+                    "--package=gbf_discord_bot_rs"
+                ],
+                "filter": {
+                    "name": "gbf_discord_bot_rs",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "RUST_LOG": "info"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug exec (log:debug)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=gbf_discord_bot_rs",
+                    "--package=gbf_discord_bot_rs"
+                ],
+                "filter": {
+                    "name": "gbf_discord_bot_rs",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "RUST_LOG": "debug"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug tests(lib)",
             "cargo": {
                 "args": [
                     "test",
@@ -26,25 +68,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'gbf_discord_bot_rs'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=gbf_discord_bot_rs",
-                    "--package=gbf_discord_bot_rs"
-                ],
-                "filter": {
-                    "name": "gbf_discord_bot_rs",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'gbf_discord_bot_rs'",
+            "name": "Debug tests(bin)",
             "cargo": {
                 "args": [
                     "test",
@@ -63,7 +87,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug integration test 'mod'",
+            "name": "Debug tests(mod)",
             "cargo": {
                 "args": [
                     "test",
