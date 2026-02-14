@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Purpose
-This document defines how AI agents should behave when working in the GBF Discord Bot (Rust) repository.  
+This document defines how AI agents should behave when working in the GBF Discord Bot (Rust) repository.
 It consolidates rules from `CLAUDE.md`, `.cursor/rules/rules.mdc`, and `docs/develop/**` into a compact guide.
 
 ## Key References
@@ -128,3 +128,16 @@ cd migration && sea-orm-cli migrate generate migration_name
 - If rules conflict, follow the most specific design doc and update docs if necessary
 - For undefined behavior or external dependencies, propose a design doc update or GitHub issue
 
+## job-specific notes
+
+When using cargo commands that trigger builds, always specify `-j 2` as a command argument to reduce machine load:
+
+```bash
+cargo check -j 2
+cargo build -j 2
+cargo run -j 2
+cargo clippy -j 2
+cargo fmt
+```
+
+This limits parallel compilation jobs to 2, preventing excessive CPU and memory usage.
