@@ -130,13 +130,13 @@ cd migration && sea-orm-cli migrate generate migration_name
 
 ## job-specific notes
 
-When using cargo commands that trigger builds, always specify `-j 2` as a command argument to reduce machine load:
+When using cargo commands that trigger builds, always specify `-j 1` as a command argument to reduce machine load:
 
 ```bash
-cargo check -j 2
-cargo build -j 2
-cargo run -j 2
-cargo clippy -j 2
+cargo check -j 1
+cargo build -j 1
+cargo run -j 1
+cargo clippy -j 1
 cargo fmt
 ```
 
