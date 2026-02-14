@@ -4,7 +4,7 @@
 /// 既存の複数のパーサー（datetime_parser, TimeParserService, DismissalTimeParserService）を統合。
 use crate::services::number_normalizer::normalize_numbers;
 use crate::types::Result;
-use chrono::{DateTime, NaiveTime, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 
 /// 日時解析パターンフラグ
@@ -292,19 +292,130 @@ fn parse_single(input: &str, options: &DateTimeParseOptions) -> Result<ParsedDat
         return parse_strict_hhmm(input, options);
     }
 
-    // 相対時刻を試行
+    // 絶対日時を先に試行（"20時"などの曖昧入力を時刻として優先解釈）
+    if let Ok(absolute) = parse_absolute_datetime(input, options) {
+        return Ok(absolute);
+    }
+
+    // 相対時刻を試行（絶対日時で解釈できない場合）
     if options.flags.contains(DateTimeParseFlags::RELATIVE_TIME)
-        && let Ok(relative) = parse_relative_time(input, options)
+        && let Ok(relative) = parse_relative_time(input)
     {
         return Ok(relative);
     }
 
-    // 既存のdatetime_parserを使用して絶対日時をパース
-    // TODO: フラグに基づいて各パターンを個別に試行する実装
-    // 現時点では既存のparse_event_dateを流用
-    let dt = crate::services::datetime_parser::parse_event_date(input, options.timezone)?;
+    Err(format!("日時のパースに失敗しました: {input}").into())
+}
 
+/// 絶対日時のパース
+fn parse_absolute_datetime(input: &str, options: &DateTimeParseOptions) -> Result<ParsedDateTime> {
+    // 今日/明日/today/tomorrow/next week を先に処理
+    if let Some(dt) = parse_relative_day_keyword_datetime(input, options)? {
+        return Ok(ParsedDateTime::Absolute(dt));
+    }
+
+    // 既存のdatetime_parserを使用して絶対日時をパース
+    let dt = crate::services::datetime_parser::parse_event_date(input, options.timezone)?;
     Ok(ParsedDateTime::Absolute(dt))
+}
+
+/// 相対日付キーワード（今日/明日/today/tomorrow/next week）を絶対日時に変換
+fn parse_relative_day_keyword_datetime(
+    input: &str,
+    options: &DateTimeParseOptions,
+) -> Result<Option<DateTime<Utc>>> {
+    use lazy_static::lazy_static;
+    use regex::Regex;
+
+    let normalized = normalize_numbers(input);
+    let trimmed = normalized.trim();
+
+    lazy_static! {
+        static ref RE_TODAY: Regex = Regex::new(r"(?i)^(今日|きょう|today)(?:\s+(.+))?$")
+            .expect("todayキーワードRegexパターンが無効です");
+        static ref RE_TOMORROW: Regex = Regex::new(r"(?i)^(明日|あした|tomorrow)(?:\s+(.+))?$")
+            .expect("tomorrowキーワードRegexパターンが無効です");
+        static ref RE_NEXT_WEEK: Regex = Regex::new(r"(?i)^(来週|next\s+week)(?:\s+(.+))?$")
+            .expect("next weekキーワードRegexパターンが無効です");
+    }
+
+    let (day_offset, time_part) = if let Some(caps) = RE_TODAY.captures(trimmed) {
+        (0_i64, caps.get(2).map(|m| m.as_str().trim().to_string()))
+    } else if let Some(caps) = RE_TOMORROW.captures(trimmed) {
+        (1_i64, caps.get(2).map(|m| m.as_str().trim().to_string()))
+    } else if let Some(caps) = RE_NEXT_WEEK.captures(trimmed) {
+        (7_i64, caps.get(2).map(|m| m.as_str().trim().to_string()))
+    } else {
+        return Ok(None);
+    };
+
+    let now_tz = Utc::now().with_timezone(&options.timezone);
+    let base_date = now_tz.date_naive() + Duration::days(day_offset);
+
+    let parsed_time = if let Some(tp) = time_part {
+        parse_time_component(&tp, options.timezone)?
+    } else {
+        options
+            .default_time
+            .unwrap_or_else(|| NaiveTime::from_hms_opt(21, 0, 0).expect("固定時刻は有効です"))
+    };
+
+    let naive_dt = NaiveDateTime::new(base_date, parsed_time);
+    let local_dt = options
+        .timezone
+        .from_local_datetime(&naive_dt)
+        .single()
+        .ok_or_else(|| "曖昧な時刻またはサマータイム切り替え時刻です".to_string())?;
+
+    Ok(Some(local_dt.with_timezone(&Utc)))
+}
+
+/// 時刻要素のみを抽出してNaiveTimeに変換
+fn parse_time_component(input: &str, timezone: Tz) -> Result<NaiveTime> {
+    use lazy_static::lazy_static;
+    use regex::Regex;
+
+    let normalized = normalize_numbers(input);
+    let trimmed = normalized.trim();
+
+    // 既存パーサーで解釈できる形式はそちらを優先
+    if let Ok(dt) = crate::services::datetime_parser::parse_event_date(trimmed, timezone) {
+        return Ok(dt.with_timezone(&timezone).time());
+    }
+
+    // 英語AM/PM形式（例: "9 PM", "9:30 PM"）
+    lazy_static! {
+        static ref RE_AMPM: Regex = Regex::new(r"(?i)^([1-9]|1[0-2])(?::([0-5]\d))?\s*(am|pm)$")
+            .expect("AM/PM時刻Regexパターンが無効です");
+    }
+
+    if let Some(caps) = RE_AMPM.captures(trimmed) {
+        let mut hour = caps[1]
+            .parse::<u32>()
+            .map_err(|_| format!("無効な時刻です: {trimmed}"))?;
+        let minute = caps
+            .get(2)
+            .map(|m| m.as_str().parse::<u32>())
+            .transpose()
+            .map_err(|_| format!("無効な時刻です: {trimmed}"))?
+            .unwrap_or(0);
+        let meridiem = caps
+            .get(3)
+            .map(|m| m.as_str().to_ascii_lowercase())
+            .unwrap_or_default();
+
+        if meridiem == "pm" && hour != 12 {
+            hour += 12;
+        } else if meridiem == "am" && hour == 12 {
+            hour = 0;
+        }
+
+        let parsed = NaiveTime::from_hms_opt(hour, minute, 0)
+            .ok_or_else(|| format!("無効な時刻です: {trimmed}"))?;
+        return Ok(parsed);
+    }
+
+    Err(format!("時刻のパースに失敗しました: {trimmed}").into())
 }
 
 /// HH:MM厳格モードのパース
@@ -330,12 +441,13 @@ fn parse_strict_hhmm(input: &str, _options: &DateTimeParseOptions) -> Result<Par
 }
 
 /// 相対時刻のパース
-fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<ParsedDateTime> {
+fn parse_relative_time(input: &str) -> Result<ParsedDateTime> {
     use lazy_static::lazy_static;
     use regex::Regex;
 
     // 数字を正規化
     let normalized = normalize_numbers(input);
+    let (body, direction) = extract_relative_direction(&normalized);
 
     lazy_static! {
         // 複数単位混在パターン: "1日2時間10分前", "1日1時間半前", "2h30m", "1 day 2 hours 10 minutes before"
@@ -343,9 +455,8 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
             r"(?x)
             ^
             (?:(\d+)\s*(日|days?))?\s*                        # グループ1,2: 日（オプション）
-            (?:(\d+)\s*(時間?|hours?|h)\s*(半)?)?\s*         # グループ3,4,5: 時間と「半」（オプション）
+            (?:(\d+)\s*(時間|hours?|h)\s*(半)?)?\s*          # グループ3,4,5: 時間と「半」（オプション）
             (?:(\d+)\s*(分|minutes?|mins?|m))?\s*             # グループ6,7: 分（オプション）
-            (?:前|before)?                                     # 「前」または「before」（オプション）
             $
             "
         )
@@ -356,8 +467,7 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
             r"(?x)
             ^
             (\d+)\s*                    # 数値（スペース許可）
-            (日|日前|days?|時間?|時間前|hours?|h|分|分前|minutes?|mins?|m) # 単位
-            (?:前)?                      # オプショナルな「前」
+            (日|days?|時間|hours?|h|分|minutes?|mins?|m)      # 単位
             $
             "
         )
@@ -368,9 +478,8 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
             r"(?x)
             ^
             (\d+)\s*                    # 数値
-            (時間?|hours?|h)\s*         # 時間単位
+            (時間|hours?|h)\s*          # 時間単位
             半\s*                        # 「半」
-            (?:前|before)?               # オプショナルな「前」「before」
             $
             "
         )
@@ -378,20 +487,20 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
     }
 
     // パターン1: 「X時間半」パターン（単独）
-    if let Some(caps) = RE_HOUR_HALF.captures(&normalized) {
+    if let Some(caps) = RE_HOUR_HALF.captures(body) {
         let hours = caps[1]
             .parse::<i32>()
             .map_err(|_| format!("数値のパースに失敗しました: {}", &caps[1]))?;
 
         return Ok(ParsedDateTime::Relative {
             days: 0,
-            hours,
-            minutes: 30, // 「半」は30分
+            hours: hours * direction,
+            minutes: 30 * direction, // 「半」は30分
         });
     }
 
     // パターン2: 複数単位混在パターン
-    if let Some(caps) = RE_MULTI_UNIT.captures(&normalized) {
+    if let Some(caps) = RE_MULTI_UNIT.captures(body) {
         // グループ1: 日の数値
         let days = caps
             .get(1)
@@ -418,37 +527,73 @@ fn parse_relative_time(input: &str, _options: &DateTimeParseOptions) -> Result<P
         // 少なくとも1つの単位が指定されているか確認
         if days > 0 || hours > 0 || minutes > 0 {
             return Ok(ParsedDateTime::Relative {
-                days,
-                hours,
-                minutes,
+                days: days * direction,
+                hours: hours * direction,
+                minutes: minutes * direction,
             });
         }
     }
 
     // パターン3: 単一単位パターン（後方互換性）
-    if let Some(caps) = RE_SINGLE_UNIT.captures(&normalized) {
+    if let Some(caps) = RE_SINGLE_UNIT.captures(body) {
         let value = caps[1]
             .parse::<i32>()
             .map_err(|_| format!("数値のパースに失敗しました: {}", &caps[1]))?;
         let unit = &caps[2];
 
         let (days, hours, minutes) = match unit {
-            "日" | "日前" | "day" | "days" => (value, 0, 0),
-            "時" | "時間" | "時間前" | "hour" | "hours" | "h" => (0, value, 0),
-            "分" | "分前" | "minute" | "minutes" | "min" | "mins" | "m" => (0, 0, value),
+            "日" | "day" | "days" => (value, 0, 0),
+            "時間" | "hour" | "hours" | "h" => (0, value, 0),
+            "分" | "minute" | "minutes" | "min" | "mins" | "m" => (0, 0, value),
             _ => {
                 return Err(format!("不明な時間単位です: {unit}").into());
             }
         };
 
         return Ok(ParsedDateTime::Relative {
-            days,
-            hours,
-            minutes,
+            days: days * direction,
+            hours: hours * direction,
+            minutes: minutes * direction,
         });
     }
 
     Err("相対時刻のパースに失敗".to_string().into())
+}
+
+/// 相対時刻の方向を抽出
+///
+/// 戻り値:
+/// - `&str`: 方向語を除いた本体
+/// - `i32`: 方向（前/ago/before=1, 後/later/after=-1）
+fn extract_relative_direction(input: &str) -> (&str, i32) {
+    let trimmed = input.trim();
+
+    if let Some(rest) = trimmed.strip_suffix('前') {
+        return (rest.trim_end(), 1);
+    }
+    if let Some(rest) = trimmed.strip_suffix('後') {
+        return (rest.trim_end(), -1);
+    }
+
+    let lowered = trimmed.to_ascii_lowercase();
+    for (suffix, direction) in [
+        (" before", 1),
+        (" ago", 1),
+        (" later", -1),
+        (" after", -1),
+        ("before", 1),
+        ("ago", 1),
+        ("later", -1),
+        ("after", -1),
+    ] {
+        if lowered.ends_with(suffix) {
+            let body_len = trimmed.len().saturating_sub(suffix.len());
+            return (trimmed[..body_len].trim_end(), direction);
+        }
+    }
+
+    // 方向指定なしは後方互換性のため「前」扱い
+    (trimmed, 1)
 }
 
 #[cfg(test)]
@@ -624,10 +769,7 @@ mod tests {
             _ => panic!("Expected Relative for relative time"),
         }
 
-        // 日本語時刻「20時」
-        // 注: 現在の実装では「20時」が相対時刻パターン「20時間前」として解釈される
-        // これは仕様上の動作であり、recruitment_schedule_create.rsでは
-        // Relativeパターンをquest_timeから計算して正しい時刻に変換している
+        // 日本語時刻「20時」は時刻として優先解釈される
         let result = parse_datetime("20時", &options).unwrap();
         assert_eq!(result.len(), 1);
         match &result[0] {
@@ -640,16 +782,7 @@ mod tests {
                 assert_eq!(local.hour(), 20);
                 assert_eq!(local.minute(), 0);
             }
-            ParsedDateTime::Relative {
-                days,
-                hours,
-                minutes,
-            } => {
-                // 「20時」が「20時間」として解釈される場合
-                assert_eq!(*days, 0);
-                assert_eq!(*hours, 20);
-                assert_eq!(*minutes, 0);
-            }
+            ParsedDateTime::Relative { .. } => panic!("20時はRelativeとして解釈されるべきではない"),
         }
     }
 
@@ -717,6 +850,14 @@ mod tests {
         match &result[0] {
             ParsedDateTime::Relative { minutes, .. } => {
                 assert_eq!(*minutes, 90);
+            }
+            _ => panic!("Expected Relative"),
+        }
+
+        let result = parse_datetime("30 minutes later", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { minutes, .. } => {
+                assert_eq!(*minutes, -30);
             }
             _ => panic!("Expected Relative"),
         }
@@ -966,6 +1107,82 @@ mod tests {
                 assert_eq!(*days, 1);
             }
             _ => panic!("Expected Relative"),
+        }
+
+        // "2時間後" は負値で表現される（基準より後）
+        let result = parse_datetime("2時間後", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Relative { hours, .. } => {
+                assert_eq!(*hours, -2);
+            }
+            _ => panic!("Expected Relative"),
+        }
+    }
+
+    #[test]
+    fn test_parse_relative_day_keywords_japanese() {
+        let options = DateTimeParseOptions::for_quest_departure(chrono_tz::Asia::Tokyo);
+        let timezone = chrono_tz::Asia::Tokyo;
+        let now_jst = Utc::now().with_timezone(&timezone);
+
+        let result = parse_datetime("今日 21:00", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(local.date_naive(), now_jst.date_naive());
+                assert_eq!(local.hour(), 21);
+                assert_eq!(local.minute(), 0);
+            }
+            _ => panic!("Expected Absolute"),
+        }
+
+        let result = parse_datetime("明日 21時半", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(1)
+                );
+                assert_eq!(local.hour(), 21);
+                assert_eq!(local.minute(), 30);
+            }
+            _ => panic!("Expected Absolute"),
+        }
+    }
+
+    #[test]
+    fn test_parse_relative_day_keywords_english() {
+        let options = DateTimeParseOptions::for_quest_departure(chrono_tz::Asia::Tokyo);
+        let timezone = chrono_tz::Asia::Tokyo;
+        let now_jst = Utc::now().with_timezone(&timezone);
+
+        let result = parse_datetime("tomorrow 2200", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(1)
+                );
+                assert_eq!(local.hour(), 22);
+                assert_eq!(local.minute(), 0);
+            }
+            _ => panic!("Expected Absolute"),
+        }
+
+        let result = parse_datetime("next week 9 PM", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(7)
+                );
+                assert_eq!(local.hour(), 21);
+                assert_eq!(local.minute(), 0);
+            }
+            _ => panic!("Expected Absolute"),
         }
     }
 

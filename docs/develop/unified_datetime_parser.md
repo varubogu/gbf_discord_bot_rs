@@ -32,7 +32,7 @@ pub struct DateTimeParseFlags {
     TIME_ONLY          // 時刻のみ: "21:00", "21時"
     JAPANESE_DATETIME  // 日本語: "1月2日3時4分"
     NUMERIC_PATTERNS   // 数字: "1230", "10111230"
-    RELATIVE_TIME      // 相対: "2時間前", "1day"
+    RELATIVE_TIME      // 相対: "2時間前", "30分後", "1day", "2 hours later"
 }
 ```
 
@@ -89,7 +89,7 @@ let options = DateTimeParseOptions::for_dismissal_time(
 
 **許可パターン**:
 - ✅ 全ての絶対日時パターン
-- ✅ 相対時刻: `"1時間前"`, `"2日前"`, `"90分前"`
+- ✅ 相対時刻: `"1時間前"`, `"2日前"`, `"90分前"`, `"30分後"`
 - ✅ カンマ区切りで最大3つ: `"1時間前, 21:00, 2日前"`
 
 #### 3. 定期募集開始時刻
@@ -104,7 +104,7 @@ let options = DateTimeParseOptions::for_schedule_start_time(
 **許可パターン**:
 - ✅ 時刻: `"21:00"`, `"21時"`, `"午後9時半"`
 - ✅ 数字: `"1230"`
-- ✅ 相対時刻: `"2時間前"`, `"1h"` (クエスト開始時刻を基準)
+- ✅ 相対時刻: `"2時間前"`, `"30分後"`, `"1h"` (クエスト開始時刻を基準)
 - ❌ 日付指定
 
 #### 4. HH:MM厳格モード
@@ -143,8 +143,8 @@ allow_multiple? → カンマで分割
 各パートをparse_single
     ↓
 1. strict mode? → HH:MM厳格チェック
-2. RELATIVE_TIME有効? → 相対時刻試行
-3. その他 → 絶対日時試行 (既存datetime_parserを使用)
+2. 絶対日時試行 (既存datetime_parser + 今日/明日系キーワード)
+3. RELATIVE_TIME有効? → 相対時刻試行
     ↓
 ParsedDateTime返却
 ```
@@ -199,6 +199,8 @@ pub enum RelativeBase {
 | 4桁時刻 | `1230` | NUMERIC_PATTERNS |
 | 8桁日時 | `10111230` | NUMERIC_PATTERNS |
 | 日+4桁時刻 | `30 1230` | NUMERIC_PATTERNS |
+| 相対日付（日本語） | `今日 21:00`, `明日 21時半` | FULL_DATETIME |
+| 相対日付（英語） | `today 21:00`, `tomorrow 2200`, `next week 9 PM` | FULL_DATETIME |
 
 ### 相対時刻パターン
 
@@ -210,6 +212,12 @@ pub enum RelativeBase {
 | English | day | `1day`, `2days` |
 | English | hour | `1hour`, `2hours`, `1h` |
 | English | minute | `90minutes`, `90mins`, `90m` |
+
+### 相対時刻の方向
+
+- `前`, `before`, `ago` は「基準より前」
+- `後`, `later`, `after` は「基準より後」
+- 方向指定がない入力（例: `2時間`, `1day`）は後方互換性のため「基準より前」として扱う
 
 ## テスト
 
