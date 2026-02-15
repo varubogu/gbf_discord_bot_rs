@@ -1,5 +1,10 @@
 # docs（新ドキュメント）
 
+## Language / 言語
+
+- 日本語: [docs/ja](./ja/README.md)
+- English (WIP): [docs/en](./en/README.md)
+
 この `docs/` は、本リポジトリのドキュメントを「読む人の立場ごと」に再設計したものです。
 
 ## まず、あなたの立場を選んでください
