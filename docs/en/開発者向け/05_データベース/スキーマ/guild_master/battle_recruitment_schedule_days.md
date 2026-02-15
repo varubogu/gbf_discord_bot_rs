@@ -1,26 +1,26 @@
-# guild_master.battle_recruitment_schedule_days テーブル設計
+# guild_master.battle_recruitment_schedule_days Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `guild_master`
-- テーブル: `battle_recruitment_schedule_days`
-- 実装ソース: `src/models/entities/guild_master/battle_recruitment_schedule_days.rs`
+- Schema: `guild_master`
+- Table: `battle_recruitment_schedule_days`
+- Source: `src/models/entities/guild_master/battle_recruitment_schedule_days.rs`
 
-## 主キー
+## Primary key
 
 - id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `i32` | NO | 主キー |
+| `id` | `i32` | NO | Primary key |
 | `schedule_id` | `i32` | NO |  |
 | `day_of_week` | `i32` | NO |  |
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

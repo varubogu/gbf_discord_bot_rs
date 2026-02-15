@@ -1,25 +1,25 @@
-# master.elements テーブル設計
+# master.elements Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `master`
-- テーブル: `elements`
-- 実装ソース: `src/models/entities/master/elements.rs`
+- Schema: `master`
+- Table: `elements`
+- Source: `src/models/entities/master/elements.rs`
 
-## 主キー
+## Primary key
 
 - id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `i32` | NO | 主キー |
+| `id` | `i32` | NO | Primary key |
 | `reaction_stamp` | `Option<String>` | YES |  |
 | `name_jp` | `String` | NO |  |
 | `name_en` | `Option<String>` | YES |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

@@ -4,14 +4,14 @@ This section summarizes each major feature’s purpose, requirements, data model
 
 ## Index
 
-- [スプレッドシート連携](スプレッドシート連携.md)
-- [マルチ募集](マルチ募集.md)
-- [定期募集](定期募集.md)
-- [募集通知](募集通知.md)
-- [自動募集](自動募集.md)
-- [スケジュール機能](スケジュール機能.md)
-- [タイムゾーン設定](タイムゾーン設定.md)
-- [起動時検証](起動時検証.md)
+- [Spreadsheet integration](スプレッドシート連携.md)
+- [Co-op recruitment](マルチ募集.md)
+- [Scheduled recruitment](定期募集.md)
+- [Recruitment notifications](募集通知.md)
+- [Auto recruitment](自動募集.md)
+- [Scheduling platform](スケジュール機能.md)
+- [Time zone settings](タイムゾーン設定.md)
+- [Startup validation](起動時検証.md)
 
 ## Feature permissions by role
 

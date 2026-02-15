@@ -1,21 +1,21 @@
-# データベース（開発者向け）
+# Database (Developer)
 
-この章は、DB設計・マイグレーション・トランザクション・スキーマ運用をまとめます。
+This section covers DB design, migrations, transactions, and schema operations.
 
-## まず使うコマンド
+## Common commands
 
 ```bash
-# 通常起動（マイグレーションも行う）
-cargo run
+# Normal start (runs migrations too)
+cargo run -j 1
 
-# マイグレーションのみ実行
-cargo run -- migrate
+# Run migrations only
+cargo run -j 1 -- migrate
 
-# スキーマ整合性チェック
-cargo run --bin schema_lint
+# Schema consistency check
+cargo run -j 1 --bin schema_lint
 ```
 
-## 最初に読む
+## Start here
 
 1. [概要](概要.md)
 2. [接続とトランザクション](接続とトランザクション.md)

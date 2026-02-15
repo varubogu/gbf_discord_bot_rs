@@ -1,35 +1,35 @@
-# Discord制約（開発者向け）
+# Discord Constraints (Developer)
 
-Discordは便利ですが、Bot側の実装に影響する「制約」があります。
-この章は、実害が出やすい点だけを先に押さえるためのメモです。
+Discord is convenient, but it has constraints that affect bot implementation.
+This page is a memo that focuses on the issues most likely to cause real-world problems.
 
-## 重要: インタラクションは「すぐ返す」
+## Important: respond to interactions quickly
 
-スラッシュコマンド等のインタラクションは、すぐに応答しないと失敗します。
+Interactions (slash commands, etc.) will fail if you don’t respond quickly.
 
-- 重い処理をする場合は、まず「受け付けた」ことを返す（defer）
-- その後で処理結果を返す（編集/追送）
+- If the work is heavy, first acknowledge it (defer)
+- Then return the result (edit / follow-up)
 
-## レート制限（Rate Limit）
+## Rate limits
 
-Discord APIには呼び出し回数の制限があります。
-ただしこの制限はpoiseが自動的に回避・リトライしてくれるはずです。
+The Discord API has rate limits.
+In many cases, poise should handle waiting/retrying automatically.
 
-- ループで大量送信/大量編集をしない
-- 同じ内容を何度も更新しない
-- 失敗時に即リトライ連打しない（間隔を空ける）
+- Don’t mass-send or mass-edit in tight loops
+- Don’t repeatedly update the same content
+- Don’t spam immediate retries on failure (add backoff)
 
-## メッセージ更新の設計
+## Designing message updates
 
-- 可能なら「新規投稿」より「既存メッセージの編集」を使う（チャンネルの流れを荒らしにくい）
-- ただし、更新頻度が高いとレート制限にかかりやすい
+- Prefer editing existing messages over posting new ones (keeps channels cleaner)
+- But frequent edits are more likely to hit rate limits
 
-## コンポーネント（ボタン等）
+## Components (buttons, etc.)
 
-- ボタン/セレクトは便利だが、状態管理を考えずに増やすと破綻しやすい
-- 「押された時に何が起きるか」をDBに保存する設計（idempotent）を優先する
+- Buttons/select menus are useful, but they can become unmanageable without proper state design
+- Prefer an idempotent design that stores “what should happen on press” in the DB
 
-## セキュリティ観点
+## Security
 
-- 送信先チャンネル、実行者の権限、操作対象のギルドIDなどを必ず確認する
-- 外部入力（ユーザー入力）は信頼しない（検証してから使う）
+- Always validate target channel, executor permissions, target guild ID, etc.
+- Do not trust external input (user input); validate before use

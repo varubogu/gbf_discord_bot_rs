@@ -1,9 +1,9 @@
-# guild_master スキーマ
+# guild_master Schema
 
-- テーブル数: 20
-- 定義ソース: `src/models/entities/guild_master`
+- Tables: 20
+- Source: `src/models/entities/guild_master`
 
-## テーブル一覧
+## Tables
 
 - [`all_recruitment_notification_roles`](all_recruitment_notification_roles.md)
 - [`auto_recruitment_channels`](auto_recruitment_channels.md)

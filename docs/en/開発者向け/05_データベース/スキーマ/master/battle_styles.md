@@ -1,27 +1,27 @@
-# master.battle_styles テーブル設計
+# master.battle_styles Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `master`
-- テーブル: `battle_styles`
-- 実装ソース: `src/models/entities/master/battle_styles.rs`
+- Schema: `master`
+- Table: `battle_styles`
+- Source: `src/models/entities/master/battle_styles.rs`
 
-## 主キー
+## Primary key
 
 - id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `i32` | NO | 主キー |
+| `id` | `i32` | NO | Primary key |
 | `display_name` | `String` | NO |  |
 | `reactions` | `Option<String>` | YES |  |
 | `sort_order` | `i32` | NO |  |
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

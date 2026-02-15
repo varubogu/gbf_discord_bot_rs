@@ -1,9 +1,9 @@
-# master スキーマ
+# master Schema
 
-- テーブル数: 9
-- 定義ソース: `src/models/entities/master`
+- Tables: 9
+- Source: `src/models/entities/master`
 
-## テーブル一覧
+## Tables
 
 - [`battle_styles`](battle_styles.md)
 - [`channel_types`](channel_types.md)

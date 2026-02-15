@@ -1,25 +1,25 @@
-# guild_master.guild_spreadsheet_exports テーブル設計
+# guild_master.guild_spreadsheet_exports Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `guild_master`
-- テーブル: `guild_spreadsheet_exports`
-- 実装ソース: `src/models/entities/guild_master/guild_spreadsheet_exports.rs`
+- Schema: `guild_master`
+- Table: `guild_spreadsheet_exports`
+- Source: `src/models/entities/guild_master/guild_spreadsheet_exports.rs`
 
-## 主キー
+## Primary key
 
 - guild_id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `guild_id` | `i64` | NO | 主キー |
+| `guild_id` | `i64` | NO | Primary key |
 | `spreadsheet_id` | `String` | NO |  |
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

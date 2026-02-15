@@ -1,21 +1,21 @@
-# アーキテクチャ（開発者向け）
+# Architecture (Developer)
 
-この章は「このBotがどう分割され、どこに何を書くべきか」を説明します。
+This section explains “how this bot is split up and where each kind of code should go”.
 
-## 基本方針
+## Principles
 
-- フォルダ・ファイル構造について、保守性、パフォーマンス、テストしやすさを重視します。
-- レイヤーごとの責務を明確にし、依存関係を固定します。
+- Optimize folder/file structure for maintainability, performance, and testability.
+- Make each layer’s responsibility explicit and keep dependencies fixed.
 
-## 最初に読む
+## Start here
 
-1. [レイヤード構成](レイヤード構成.md)
-2. [プロジェクト構成](プロジェクト構成.md)
+1. [Layered architecture](レイヤード構成.md)
+2. [Project structure](プロジェクト構成.md)
 
-## 目次
+## Index
 
-- [レイヤード構成](レイヤード構成.md)
-- [プロジェクト構成](プロジェクト構成.md)
-- [依存性注入](依存性注入.md)
-- [Discord制約](Discord制約.md)
-- [権限とロール](権限とロール.md)
+- [Layered architecture](レイヤード構成.md)
+- [Project structure](プロジェクト構成.md)
+- [Dependency injection](依存性注入.md)
+- [Discord constraints](Discord制約.md)
+- [Permissions and roles](権限とロール.md)

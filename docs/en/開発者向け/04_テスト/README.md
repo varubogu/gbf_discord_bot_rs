@@ -1,21 +1,21 @@
-# テスト（開発者向け）
+# Testing (Developer)
 
-この章は「何を、どの粒度でテストするか」を整理します。
+This section organizes “what to test” and “at what granularity”.
 
-## まず使うコマンド
+## Common commands
 
 ```bash
-# まずは対象だけ（名前で絞る）
-cargo test test_name
+# Run a focused test (filter by name)
+cargo test -j 1 test_name
 
-# 全体
-cargo test
+# Full suite
+cargo test -j 1
 
-# ignore付き（実DBが必要なもの等）も実行する
-cargo test -- --ignored
+# Also run ignored tests (e.g., those requiring a real DB)
+cargo test -j 1 -- --ignored
 ```
 
-## 最初に読む
+## Start here
 
 1. [テスト全体設計](テスト全体設計.md)
 2. [単体テスト](単体テスト.md)

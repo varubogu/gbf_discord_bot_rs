@@ -1,15 +1,15 @@
-# 開発ルール（必読）
+# Development Rules (Must Read)
 
-この章は「迷ったらルールに戻る」ための場所です。
+This section is where you “return to the rules when you’re unsure”.
 
-## 最優先（守ること）
+## Top priorities (must follow)
 
-- コメント/ドキュメント/エラーメッセージは日本語（コードの識別子は英語）
-- `events → facades → services → repository` の依存方向を破らない
-- トランザクション境界は Facade のみ
-- `unwrap()` を本番コードで使わない
+- Comments/docs/error messages are written in Japanese (code identifiers are in English)
+- Do not break the dependency direction: `events → facades → services → repository`
+- Only facades define transaction boundaries
+- Do not use `unwrap()` in production code
 
-## 目次
+## Index
 
 - [ワークフロー](ワークフロー.md)
 - [コーディング規約](コーディング規約.md)

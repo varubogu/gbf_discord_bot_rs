@@ -1,10 +1,10 @@
-# 設計メモ（開発者向け）
+# Design Notes (Developer)
 
-ここは詳細設計（特定領域の設計判断）を置く場所です。
+This section stores detailed design decisions for specific areas.
 
-## 目次
+## Index
 
-- [スケジュール処理](スケジュール処理.md)
-- [データクリーンアップ](データクリーンアップ.md)
-- [日時のユーザー入力について](日時のユーザー入力について.md)
-- [エラーの分類](エラーの分類.md)
+- [Scheduler processing](スケジュール処理.md)
+- [Data cleanup](データクリーンアップ.md)
+- [User date/time input](日時のユーザー入力について.md)
+- [Error classification](エラーの分類.md)

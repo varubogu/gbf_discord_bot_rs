@@ -1,9 +1,9 @@
-# worker スキーマ
+# worker Schema
 
-- テーブル数: 15
-- 定義ソース: `src/models/entities/worker`
+- Tables: 15
+- Source: `src/models/entities/worker`
 
-## テーブル一覧
+## Tables
 
 - [`battle_recruitment_dismissals`](battle_recruitment_dismissals.md)
 - [`battle_recruitments`](battle_recruitments.md)

@@ -1,24 +1,24 @@
-# master.channel_types テーブル設計
+# master.channel_types Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `master`
-- テーブル: `channel_types`
-- 実装ソース: `src/models/entities/master/channel_types.rs`
+- Schema: `master`
+- Table: `channel_types`
+- Source: `src/models/entities/master/channel_types.rs`
 
-## 主キー
+## Primary key
 
 - id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `i32` | NO | 主キー |
+| `id` | `i32` | NO | Primary key |
 | `name` | `String` | NO |  |
 | `memo` | `Option<String>` | YES |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

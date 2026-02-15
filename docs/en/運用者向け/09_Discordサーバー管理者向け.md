@@ -1,15 +1,19 @@
-# Discordサーバー管理者（ギルドマスター）向け
+# For Discord Server Administrators (Guild Masters)
 
-ここでは「自分のDiscordサーバー内でBotを使えるようにする」ための設定を扱います。
+This page covers the configuration required to “make the bot usable in your Discord server”.
 
-## まずやること（最短）
+## Quick start (shortest path)
 
-1. `gbf_bot_control` ロールを作る（Bot設定を触れる人にだけ付ける）
-2. スプレッドシートを登録する
-3. チャンネルを登録する
-4. スプレッドシートを読み込む
+1. Create the `gbf_bot_control` role (grant it only to people who should change bot settings)
+2. Register the spreadsheet
+3. Register channels
+4. Load the spreadsheet
 
-## 注意（事故を防ぐ）
+## Notes (avoid accidents)
 
-- `gbf_bot_control` は強い権限です。付与する人を最小にしてください
-- 設定変更後は「スプレッドシート読み込み」を忘れないでください（反映されません）
+- `gbf_bot_control` is a powerful permission; keep the assignee set minimal
+- After changing settings, don’t forget to “load the spreadsheet” (changes won’t apply otherwise)
+
+## See also
+
+- [Server administrator documentation](../サーバー管理者（ギルドマスター）向け/README.md)

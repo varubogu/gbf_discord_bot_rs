@@ -1,20 +1,20 @@
-# master.event_schedules テーブル設計
+# master.event_schedules Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `master`
-- テーブル: `event_schedules`
-- 実装ソース: `src/models/entities/master/event_schedules.rs`
+- Schema: `master`
+- Table: `event_schedules`
+- Source: `src/models/entities/master/event_schedules.rs`
 
-## 主キー
+## Primary key
 
 - id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `Uuid` | NO | 主キー |
+| `id` | `Uuid` | NO | Primary key |
 | `event_type` | `String` | NO |  |
 | `event_count` | `i64` | NO |  |
 | `profile` | `String` | NO |  |
@@ -24,7 +24,7 @@
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

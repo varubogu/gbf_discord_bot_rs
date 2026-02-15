@@ -1,39 +1,39 @@
-# 結合テスト設計（機能別）
+# Integration Test Design (Per Feature)
 
-このフォルダには、機能ごとの結合テスト設計（前提データ、ケース一覧、期待結果、クリーンアップ方式など）を置きます。
+This folder contains per-feature integration test designs (prerequisite data, case list, expected results, cleanup strategy, etc.).
 
-## 置く理由
+## Why keep these docs
 
 - テストコードだけだと「前提」「期待結果」「片付け方」が読み取りづらくなる
 - 実DBテストは失敗時の復旧が面倒になりやすいので、設計書で手順を固定する
 
-## テンプレート（例）
+## Template (example)
 
 ```markdown
-# {機能名} 結合テスト設計
+# {Feature name} Integration Test Design
 
-## 対象ユースケース
+## Target use cases
 
-- 何を検証するか（Facade名、操作名）
+- What to verify (facade name, operation)
 
-## 前提データ
+## Prerequisites / seed data
 
-- 必要なギルド設定/クエスト/チャンネル等
+- Required guild settings/quests/channels, etc.
 
-## 正常系
+## Success cases
 
-- 1-1: 入力 → 期待結果
+- 1-1: Input → expected result
 
-## 異常系
+## Failure cases
 
-- 2-1: 前提不足
-- 2-2: 権限不足
+- 2-1: Missing prerequisites
+- 2-2: Missing permissions
 
-## クリーンアップ
+## Cleanup
 
-- 削除するテーブル/条件（guild_id等）
+- Tables/conditions to delete (guild_id, etc.)
 
-## 実行コマンド
+## Commands
 
-- cargo test {絞り込み}
+- cargo test {filter}
 ```

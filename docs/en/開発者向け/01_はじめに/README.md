@@ -1,14 +1,14 @@
-# はじめに（開発者向け）
+# Introduction (Developer)
 
-この章は「このリポジトリで開発を始める」ための入口です。
+This section is the entry point for “starting development in this repository”.
 
-## この章でわかること
+## What you’ll learn
 
-- 必要なもの（ざっくり）
-- ローカルで動かすまでの流れ
-- つまずきやすいポイント
+- What you need (roughly)
+- The flow until it runs locally
+- Common pitfalls
 
-## 次に読む
+## Read next
 
-- [環境構築](環境構築.md)
-- [よくある問題](よくある問題.md)
+- [Environment setup](環境構築.md)
+- [Common issues](よくある問題.md)

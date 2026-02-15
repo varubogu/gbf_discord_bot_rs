@@ -1,25 +1,25 @@
-# worker.scheduled_task_cleanups テーブル設計
+# worker.scheduled_task_cleanups Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `worker`
-- テーブル: `scheduled_task_cleanups`
-- 実装ソース: `src/models/entities/worker/scheduled_task_cleanups.rs`
+- Schema: `worker`
+- Table: `scheduled_task_cleanups`
+- Source: `src/models/entities/worker/scheduled_task_cleanups.rs`
 
-## 主キー
+## Primary key
 
 - task_id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `task_id` | `i32` | NO | 主キー |
+| `task_id` | `i32` | NO | Primary key |
 | `target_schema` | `String` | NO |  |
 | `target_table` | `String` | NO |  |
 | `cleanup_before` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

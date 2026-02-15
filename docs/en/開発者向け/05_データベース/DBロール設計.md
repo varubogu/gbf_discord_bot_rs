@@ -1,45 +1,45 @@
-# DBロール設計
+# DB Role Design
 
-## 目的
+## Purpose
 
-権限を分けて、万が一の事故（誤削除・想定外の参照）を小さくします。
+Split permissions to limit blast radius in case of accidents (accidental deletes, unexpected reads, etc.).
 
-## 基本方針
+## Principles
 
-- 用途別のロールを用意する（例: 通常動作、管理者、クリーンアップ）
-- 最小権限の原則（必要な操作だけ許可）
+- Prepare roles by purpose (e.g., normal operation, admin, cleanup)
+- Least privilege (allow only required operations)
 
-## 作成するDBロールと権限
+## Roles to create and their permissions
 
 ### `gbf_bot_admin`
 
-主にマイグレーション用。
-全テーブルへの読み書き権限で実質的にroot権限に近い。（ただしスーパーユーザーではない）
-利用は最小限に留めること。
+Primarily for migrations.
+Has read/write permissions on all tables, effectively close to root (but not a superuser).
+Keep usage to a minimum.
 
 ### `gbf_bot_global`
 
-全Discordサーバーで共通のマスタデータ用。
-主に `global` スキーマへの読み書き権限でadminの次に強い権限となる。
-`guild`スキーマへのアクセスは付与しない。
+For master data shared across all Discord servers.
+Has read/write permissions mainly on the `global` schema and is the next-strongest role after admin.
+Do not grant access to `guild` schemas.
 
 ### `gbf_bot_system`
 
-システム設定用。スケジュール処理など、システム関連テーブルへの読み書き権限。
+For system settings. Read/write permissions on system-related tables (e.g., scheduler processing).
 
-- Bot本体: 通常の読み書き（必要な範囲）
-- 管理系: マイグレーション等の管理操作
-- メンテナンス（クリーンアップ）: 削除対象テーブルへの限定された権限
+- Bot runtime: normal read/write (as needed)
+- Admin tasks: management operations such as migrations
+- Maintenance (cleanup): limited permissions for deletion targets
 
 ### `gbf_bot_guild`
 
-ギルド固有データ用。
-ギルド関連テーブルへの読み書き権限。
-このロールを使用する場合、接続時に `guild_id` を指定してRLSによるアクセス制御を行う。
+For guild-specific data.
+Read/write permissions on guild-related tables.
+When using this role, specify `guild_id` on connection and enforce access control via RLS.
 
 ### `gbf_bot_cleanup`
 
-クリーンアップ用。
-必要なテーブルへの限定された権限。
+For cleanup.
+Limited permissions only for required tables.
 
-## 運用上の注意点
+## Operational notes

@@ -19,5 +19,5 @@ Discord server-side configuration (roles, channels, spreadsheets) is documented 
 
 ## Index (by task)
 
-- [監視とログ](07_監視とログ.md)
-- [メンテナンス（DB更新/クリーンアップ）](06_メンテナンス（マイグレーションとクリーンアップ）.md)
+- [Monitoring and logs](07_監視とログ.md)
+- [Maintenance (DB updates / cleanup)](06_メンテナンス（マイグレーションとクリーンアップ）.md)

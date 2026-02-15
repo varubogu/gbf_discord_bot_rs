@@ -1,25 +1,25 @@
-# worker.notification_rel_event_schedules テーブル設計
+# worker.notification_rel_event_schedules Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `worker`
-- テーブル: `notification_rel_event_schedules`
-- 実装ソース: `src/models/entities/worker/notification_rel_event_schedules.rs`
+- Schema: `worker`
+- Table: `notification_rel_event_schedules`
+- Source: `src/models/entities/worker/notification_rel_event_schedules.rs`
 
-## 主キー
+## Primary key
 
 - event_schedule_id, notification_id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `event_schedule_id` | `Uuid` | NO | 主キー |
+| `event_schedule_id` | `Uuid` | NO | Primary key |
 | `event_schedule_detail_id` | `Option<Uuid>` | YES |  |
-| `notification_id` | `i32` | NO | 主キー |
+| `notification_id` | `i32` | NO | Primary key |
 | `created_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

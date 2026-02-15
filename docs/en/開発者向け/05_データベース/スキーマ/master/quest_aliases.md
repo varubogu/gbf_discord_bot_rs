@@ -1,27 +1,27 @@
-# master.quest_aliases テーブル設計
+# master.quest_aliases Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `master`
-- テーブル: `quest_aliases`
-- 実装ソース: `src/models/entities/master/quest_aliases.rs`
+- Schema: `master`
+- Table: `quest_aliases`
+- Source: `src/models/entities/master/quest_aliases.rs`
 
-## 主キー
+## Primary key
 
 - quest_id, sequence_no
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `quest_id` | `i32` | NO | 主キー |
-| `sequence_no` | `i32` | NO | 主キー |
+| `quest_id` | `i32` | NO | Primary key |
+| `sequence_no` | `i32` | NO | Primary key |
 | `alias` | `String` | NO |  |
 | `alias_kana_small` | `String` | NO |  |
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

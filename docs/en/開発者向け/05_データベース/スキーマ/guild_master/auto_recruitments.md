@@ -1,20 +1,20 @@
-# guild_master.auto_recruitments テーブル設計
+# guild_master.auto_recruitments Table Design
 
-## 概要
+## Overview
 
-- スキーマ: `guild_master`
-- テーブル: `auto_recruitments`
-- 実装ソース: `src/models/entities/guild_master/auto_recruitments.rs`
+- Schema: `guild_master`
+- Table: `auto_recruitments`
+- Source: `src/models/entities/guild_master/auto_recruitments.rs`
 
-## 主キー
+## Primary key
 
 - guild_id
 
-## カラム定義（コード準拠）
+## Columns (code-aligned)
 
-| カラム | 型（Rust） | NULL許容 | 備考 |
+| Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `guild_id` | `i64` | NO | 主キー |
+| `guild_id` | `i64` | NO | Primary key |
 | `category_id` | `i64` | NO |  |
 | `matching_channel_id` | `Option<i64>` | YES |  |
 | `quest_channel_id` | `Option<i64>` | YES |  |
@@ -25,7 +25,7 @@
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |
 
-## 補足
+## Notes
 
-- 本書は `src/models/entities` の定義を正として作成しています。
-- 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- This document is created using the definitions in `src/models/entities` as the source of truth.
+- For final constraints and indexes, also check the migration definitions.

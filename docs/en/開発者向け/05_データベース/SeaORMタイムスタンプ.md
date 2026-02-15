@@ -1,14 +1,14 @@
-# SeaORM タイムスタンプ運用
+# SeaORM Timestamp Conventions
 
-## 目的
+## Purpose
 
-`created_at` / `updated_at` を一貫した形で扱い、監査や不具合調査をしやすくします。
+Handle `created_at` / `updated_at` consistently to make auditing and incident investigation easier.
 
-## 基本方針
+## Principles
 
-- DBに保存する日時はUTCを基本とする
-- `updated_at` は更新時に必ず変わるようにする（更新漏れを作らない）
+- Store timestamps in UTC in the DB
+- Ensure `updated_at` always changes on updates (avoid missing updates)
 
-## 注意
+## Notes
 
-- アプリ側で日時を上書きする必要があるときは理由を明確にし、影響範囲（検索/クリーンアップ）を確認する
+- If the app must override timestamps, clarify the reason and confirm the impact scope (search/cleanup)

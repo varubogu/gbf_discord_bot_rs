@@ -5,7 +5,7 @@ Reduce jargon so even Discord beginners can follow.
 
 ## Start here
 
-1. [はじめて](01_はじめに.md)
+1. [Getting started](01_はじめに.md)
 2. [Co-op recruitment](02_マルチ募集.md)
 3. [Scheduled recruitment](03_定期募集.md)
 4. [Troubleshooting](06_困ったとき.md)
