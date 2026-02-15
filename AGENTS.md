@@ -2,15 +2,16 @@
 
 ## Purpose
 This document defines how AI agents should behave when working in the GBF Discord Bot (Rust) repository.
-It consolidates rules from `CLAUDE.md`, `.cursor/rules/rules.mdc`, and `docs/develop/**` into a compact guide.
+It consolidates rules from `CLAUDE.md`, `.cursor/rules/rules.mdc`, and `docs/en/developer/**` into a compact guide.
 
 ## Key References
 - `CLAUDE.md`: Core development workflow and common commands
 - `.cursor/rules/rules.mdc`: Global coding and architecture rules
-- `docs/develop/architecture/`: Project structure and architecture principles
-- `docs/develop/rules/`: Coding, testing, security, performance rules
-- `docs/develop/design/database/`: DB connection and transaction design
-- `docs/develop/features/`: Feature-level requirements and design
+- `docs/en/developer/02_architecture/`: Project structure and architecture principles
+- `docs/en/developer/03_development_rules/`: Coding, testing, security, performance rules
+- `docs/en/developer/05_database/`: DB connection, schema, and transaction design
+- `docs/en/developer/06_feature_specifications/`: Feature-level requirements and design
+  - If a referenced path does not exist (doc reorg), search under `docs/en/` first, then `docs/ja/`.
 
 ## Project Summary
 - Tech stack: Rust + poise + SeaORM + PostgreSQL
@@ -94,7 +95,7 @@ cd migration && sea-orm-cli migrate generate migration_name
 ## Agent Guidelines
 
 ### Implementation Agents (e.g. Coding, Fixer)
-1. Check relevant `docs/develop/features/` and rule docs for requirements and impact.
+1. Check relevant `docs/en/developer/06_feature_specifications/` and rule docs for requirements and impact.
 2. Reconfirm layer responsibilities and transaction boundaries before coding.
 3. Add Japanese comments, `thiserror` errors, and `tracing` logs for new code.
 4. Add/update unit and integration tests, including mocks when needed.
@@ -108,10 +109,10 @@ cd migration && sea-orm-cli migrate generate migration_name
 5. Provide concrete improvement suggestions with references to relevant docs.
 
 ### Documentation Agents
-1. Identify affected design docs and update `docs/develop/architecture/` and/or `docs/develop/features/`.
+1. Identify affected design docs and update `docs/en/developer/02_architecture/` and/or `docs/en/developer/06_feature_specifications/`.
 2. Keep abstraction high-level (responsibilities/flows/constraints, not code).
 3. Ensure consistency with rule files.
-4. Consider impacts on user docs (`docs/user/`) and `locales/`.
+4. Consider impacts on user docs (`docs/en/user/` / `docs/ja/利用者向け/`) and `locales/`.
 5. Add diagrams (e.g. Mermaid) where flows benefit from visualization.
 
 ## Checklist for Any Change
@@ -123,8 +124,8 @@ cd migration && sea-orm-cli migrate generate migration_name
 - [ ] Evaluate security and performance impact
 
 ## When in Doubt
-- Prefer `docs/develop/architecture/` and `docs/develop/design/database/` for design intent
-- Use `docs/develop/features/` for feature specs and align implementation to them
+- Prefer `docs/en/developer/02_architecture/` and `docs/en/developer/05_database/` for design intent
+- Use `docs/en/developer/06_feature_specifications/` for feature specs and align implementation to them
 - If rules conflict, follow the most specific design doc and update docs if necessary
 - For undefined behavior or external dependencies, propose a design doc update or GitHub issue
 

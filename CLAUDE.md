@@ -52,13 +52,13 @@ See `.claude/skills/` for detailed guidelines:
 - `coding-standards` - Error handling, logging, naming conventions
 - `database` - SeaORM usage and migration guidelines
 - `testing` - Test structure and mocking patterns
-- `documentation` - Documentation principles for `docs/develop/`
+- `documentation` - Documentation principles for `docs/en/developer/` (fallback: `docs/ja/開発者向け/`)
 - `architecture-lint` - Detect architecture violations
 
 ## Schema Management
 
 Schema name mappings are automatically generated from entity definitions.
-See `docs/schema_management.md` for details.
+See `docs/en/developer/05_database/schema_management.md` for details.
 
 - Entity schema info → auto-generated at build time
 - Use `get_schema_name(table_name)` and `get_entity_table_ref(table_name)` from `schema_utils`
@@ -68,7 +68,8 @@ See `docs/schema_management.md` for details.
 
 - **All comments, docs, and error messages in code must be in Japanese**
 - **All chat responses to users must be in Japanese**
-- Detailed design documents in `docs/develop/` (see documentation skill)
+- Detailed design documents in `docs/en/developer/` (fallback: `docs/ja/開発者向け/`; see documentation skill)
+- If a referenced doc path does not exist (doc reorg), search under `docs/en/` first, then `docs/ja/`.
 - Skills auto-trigger based on context - no need to explicitly call them
 
 ## Quality Assurance

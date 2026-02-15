@@ -6,16 +6,18 @@ alwaysApply: true
 
 # GBF Discord Bot Rust プロジェクトルール
 
-このプロジェクトは、`docs/develop/rules` に定義されたルールに準拠して開発を行います。
+このプロジェクトは、`docs/en/developer/03_development_rules/` に定義されたルールに準拠して開発を行います。
 
 ## 設計書構成
 
 設計書は以下の構成で管理されています：
 
-- `docs/develop/architecture/`: アーキテクチャ・設計指針（抽象的な概念レベル）
-- `docs/develop/features/`: 機能別設計書（機能要件・仕様）
-- `docs/develop/database/`: データベース実装設計書
-- `docs/develop/rules/`: コーディングルール、開発ルール
+- `docs/en/developer/02_architecture/`: アーキテクチャ・設計指針（抽象的な概念レベル）
+- `docs/en/developer/06_feature_specifications/`: 機能別設計書（機能要件・仕様）
+- `docs/en/developer/05_database/`: データベース実装設計書
+- `docs/en/developer/03_development_rules/`: コーディングルール、開発ルール
+
+※ ドキュメント再編によりパスが変わる可能性があります。見つからない場合は `docs/en` 配下を検索してください（例: `rg -n \"keyword\" docs/en`、`find docs/en -name \"*keyword*\"`）。
 
 ## 基本方針
 

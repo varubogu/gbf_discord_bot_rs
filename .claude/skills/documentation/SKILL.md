@@ -1,26 +1,28 @@
 ---
 name: documentation
-description: Documentation creation and modification rules (docs/develop/ design documents, abstraction principles, structure). Use when creating documentation, updating design documents, writing architecture docs, asking about documentation structure, design principles, or working with files in docs/develop/.
+description: Documentation creation and modification rules (docs/en/developer/ design documents, abstraction principles, structure). Use when creating documentation, updating design documents, writing architecture docs, asking about documentation structure, design principles, or working with files in docs/en/developer/ (fallback: docs/ja/).
 ---
 
 # Documentation Guide
 
 ## Structure
 
-Design documents in `docs/develop/`:
+Design documents in `docs/en/developer/` (recommended as the first lookup target):
 
 ```
-docs/develop/
-├── architecture/     # Architecture and design principles (conceptual)
-├── features/         # Feature specifications
-├── database/         # Database design
-├── rules/            # Coding rules and development guidelines
-└── design/           # Detailed design documents
+docs/en/developer/
+├── 01_introduction/          # Overview and onboarding
+├── 02_architecture/          # Architecture and design principles (conceptual)
+├── 03_development_rules/     # Coding rules and development guidelines
+├── 04_testing/               # Testing rules and patterns
+├── 05_database/              # Database design and policies
+├── 06_feature_specifications/ # Feature specifications
+└── 07_design_notes/          # Additional design notes
 ```
 
 ### Directory Roles
 
-#### architecture/
+#### 02_architecture/
 System-wide architecture and design principles
 
 - Clean architecture layer responsibilities
@@ -29,9 +31,9 @@ System-wide architecture and design principles
 - Project structure
 - Discord API constraints and guidelines
 
-**Examples**: `rust_optimized_architecture.md`, `dependency_injection.md`
+**Examples**: `layered_architecture.md`, `dependency_injection.md`
 
-#### features/
+#### 06_feature_specifications/
 Feature requirements and specifications
 
 - Feature overview
@@ -40,9 +42,9 @@ Feature requirements and specifications
 - Constraints
 - External integrations
 
-**Examples**: `quest_recruitment.md`, `schedule_notification.md`
+**Examples**: `scheduled_recruitment.md`, `scheduling_feature.md`
 
-#### database/
+#### 05_database/
 Database design
 
 - Table definitions
@@ -51,9 +53,9 @@ Database design
 - Database user design
 - Implementation policies (SeaORM, migrations)
 
-**Examples**: `tables/guild/guild_channels.md`, `db_role_usage.md`
+**Examples**: `overview.md`, `schema_management.md`
 
-#### rules/
+#### 03_development_rules/
 Development rules and best practices
 
 - Architecture rules
@@ -64,9 +66,9 @@ Development rules and best practices
 - Performance
 - Testing
 
-**Examples**: `architecture.md`, `error_handling.md`, `logging.md`
+**Examples**: `coding_standards.md`, `error_handling.md`, `logging.md`
 
-#### design/
+#### 07_design_notes/
 Detailed design documents
 
 - Implementation-specific design decisions
@@ -74,7 +76,7 @@ Detailed design documents
 - Data conversion logic
 - Technical implementation details
 
-**Examples**: `spreadsheet/service_layer.md`, `database/sea_orm_timestamp_automation.md`
+**Examples**: `error_classification.md`, `scheduling_processing.md`
 
 ## Documentation Principles
 
@@ -163,9 +165,9 @@ Week 2: In progress - authentication logic
 
 ### Language
 
-- All documentation in **Japanese** (except this skill file)
-- Technical terms can remain in English (e.g., Service layer, Repository layer)
-- Minimize code samples
+- Repository documentation is primarily in **Japanese** under `docs/ja/` (source of truth in many cases).
+- English documentation under `docs/en/` is available (often WIP). **When you need to read docs for implementation decisions, look under `docs/en/` first**, then fall back to `docs/ja/` if the content is missing.
+- Technical terms can remain in English (e.g., Service layer, Repository layer). Minimize code samples.
 
 ### Structure and Readability
 
