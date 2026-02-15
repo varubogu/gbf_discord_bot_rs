@@ -98,7 +98,12 @@ pub async fn build_panel_content_and_components(
     let date_label = format_event_date_label(data, guild_id, draft.event_date).await;
 
     let content = format!(
-        "変更内容を選択・入力してください。\n\nクエスト: {quest_label}\n攻略方法: {style_label}\n出発日時: {date_label}\n\n`適用`を押すまで反映されません。"
+        "変更内容を選択・入力してください。\n\n\
+         現在の入力値\n\
+         - クエスト: {quest_label}\n\
+         - 攻略方法: {style_label}\n\
+         - 出発日時: {date_label}\n\n\
+         `適用`を押すまで反映されません。"
     );
 
     let quest_pairs = quest_list::list_quests_for_select(
@@ -108,7 +113,7 @@ pub async fn build_panel_content_and_components(
     .await;
 
     let mut quest_options = vec![
-        CreateSelectMenuOption::new("変更しない", QUEST_NONE_VALUE)
+        CreateSelectMenuOption::new("クエスト：変更しない", QUEST_NONE_VALUE)
             .default_selection(draft.quest_name.is_none()),
     ];
     quest_options.extend(quest_pairs.into_iter().take(24).map(|(name, id)| {
@@ -122,7 +127,7 @@ pub async fn build_panel_content_and_components(
 
     let style_pairs = battle_style_list::list_battle_styles_for_select(&data.app_state).await;
     let mut style_options = vec![
-        CreateSelectMenuOption::new("変更しない", STYLE_NONE_VALUE)
+        CreateSelectMenuOption::new("攻略方法：変更しない", STYLE_NONE_VALUE)
             .default_selection(draft.battle_style_id.is_none()),
     ];
     style_options.extend(style_pairs.into_iter().take(24).map(|(name, id)| {
