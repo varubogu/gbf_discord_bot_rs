@@ -15,10 +15,11 @@ use std::time::Duration;
 use tracing::{error, info};
 
 #[poise::command(
-    context_menu_command = "recruit_cancel",
+    context_menu_command = "募集キャンセル",
     slash_command,
     name_localized("ja", "募集キャンセル"),
-    description_localized("ja", "マルチバトル募集をキャンセル")
+    description_localized("ja", "マルチバトル募集をキャンセル"),
+    ephemeral = true
 )]
 pub async fn recruit_cancel(
     ctx: PoiseContext<'_>,
@@ -33,7 +34,14 @@ pub async fn recruit_cancel(
     // events層でpoise型からドメイン型への変換を行う
     let app_state = &ctx.data().app_state;
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
-    let guild_id = DiscordGuildId::new(message.guild_id.map(|id| id.get()).unwrap_or(0));
+    let guild_id = DiscordGuildId::new(
+        ctx.guild_id()
+            .map(|id| id.get())
+            .or_else(|| message.guild_id.map(|id| id.get()))
+            .ok_or_else(|| types::AppError::Business {
+                message: "ギルド情報を取得できませんでした".to_string(),
+            })?,
+    );
     let channel_id = DiscordChannelId::new(message.channel_id.get());
     let message_id = DiscordMessageId::new(message.id.get());
 
