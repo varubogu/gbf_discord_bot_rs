@@ -15,7 +15,6 @@ use std::sync::Arc;
 use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete};
 
 #[poise::command(
-    // context_menu_command = "recruit_change",
     slash_command,
     name_localized("ja", "マルチバトル募集内容変更"),
     description_localized("ja", "マルチバトル募集内容を変更します。")

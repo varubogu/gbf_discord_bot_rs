@@ -65,10 +65,13 @@ Or:
 
 ## Change a recruitment (edit details)
 
-~~1. 募集メッセージを右クリック（スマホは長押し）~~
-~~2. 「アプリ」→「募集内容変更」~~
-
-Note: Editing via “Apps” does not currently work. Use the method below for now.
+1. Right-click the recruitment message (long-press on mobile)
+2. Select “Apps” → “募集内容変更”
+3. In the form, fill only the fields you want to change and submit
+  - Quest name (optional)
+  - Departure date/time (optional)
+  - Strategy (optional: ID or display name)
+4. Fields left empty are not changed
 
 Or:
 

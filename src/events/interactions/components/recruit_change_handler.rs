@@ -2,13 +2,14 @@ use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::gateway::PoiseDiscordGateway;
 use crate::types::discord::MessageData;
 use crate::types::{AppError, PoiseData, Result};
+use chrono::{DateTime, Utc};
 use poise::serenity_prelude::{
-    ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow, CreateInputText,
-    CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal, CreateSelectMenu,
-    CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
+    ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow,
+    CreateInputText, CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal,
+    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
 };
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// 募集変更関連のコンポーネントインタラクションを処理
 pub async fn handle_recruit_change_interaction(
@@ -150,7 +151,11 @@ async fn show_date_input_modal(
     interaction: &ComponentInteraction,
     message_id: u64,
 ) -> Result<()> {
-    let custom_id = format!("recruit_change_date_modal:{message_id}");
+    let custom_id = format!(
+        "recruit_change_date_modal:{}:{}",
+        interaction.channel_id.get(),
+        message_id
+    );
 
     let modal =
         CreateModal::new(custom_id, "出発日時変更").components(vec![CreateActionRow::InputText(
@@ -209,19 +214,44 @@ async fn handle_quest_selection(
     interaction.defer(&ctx.http).await?;
 
     // 対象メッセージを取得
-    let channel_id = interaction.channel_id;
-    let guild_id = interaction
+    let interaction_channel_id = interaction.channel_id.get();
+    let interaction_guild_id = interaction
         .guild_id
         .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
         .get();
 
-    let target_message = channel_id
+    let target_message = interaction
+        .channel_id
         .message(&ctx.http, message_id)
         .await
         .map_err(|e| {
             error!(error = %e, "メッセージの取得に失敗しました");
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
+
+    let target_channel_id = target_message.channel_id.get();
+    let target_guild_id = target_message
+        .guild_id
+        .map(|id| id.get())
+        .unwrap_or(interaction_guild_id);
+
+    if target_guild_id != interaction_guild_id {
+        warn!(
+            interaction_guild_id = interaction_guild_id,
+            target_guild_id = target_guild_id,
+            message_id = message_id,
+            "募集変更のギルドIDが一致しません"
+        );
+    }
+
+    info!(
+        interaction_guild_id = interaction_guild_id,
+        interaction_channel_id = interaction_channel_id,
+        target_guild_id = target_guild_id,
+        target_channel_id = target_channel_id,
+        target_message_id = message_id,
+        "募集変更（クエスト）で対象メッセージ情報を確認しました"
+    );
 
     // Gateway を作成し、メッセージをドメイン型に変換
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
@@ -231,7 +261,7 @@ async fn handle_quest_selection(
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
         &gateway,
-        guild_id,
+        target_guild_id,
         &message_data,
         Some(&quest_name),
         None,
@@ -307,19 +337,44 @@ async fn handle_battle_style_selection(
     interaction.defer(&ctx.http).await?;
 
     // 対象メッセージを取得
-    let channel_id = interaction.channel_id;
-    let guild_id = interaction
+    let interaction_channel_id = interaction.channel_id.get();
+    let interaction_guild_id = interaction
         .guild_id
         .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
         .get();
 
-    let target_message = channel_id
+    let target_message = interaction
+        .channel_id
         .message(&ctx.http, message_id)
         .await
         .map_err(|e| {
             error!(error = %e, "メッセージの取得に失敗しました");
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
+
+    let target_channel_id = target_message.channel_id.get();
+    let target_guild_id = target_message
+        .guild_id
+        .map(|id| id.get())
+        .unwrap_or(interaction_guild_id);
+
+    if target_guild_id != interaction_guild_id {
+        warn!(
+            interaction_guild_id = interaction_guild_id,
+            target_guild_id = target_guild_id,
+            message_id = message_id,
+            "募集変更のギルドIDが一致しません"
+        );
+    }
+
+    info!(
+        interaction_guild_id = interaction_guild_id,
+        interaction_channel_id = interaction_channel_id,
+        target_guild_id = target_guild_id,
+        target_channel_id = target_channel_id,
+        target_message_id = message_id,
+        "募集変更（攻略方法）で対象メッセージ情報を確認しました"
+    );
 
     // Gateway を作成し、メッセージをドメイン型に変換
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
@@ -329,7 +384,7 @@ async fn handle_battle_style_selection(
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
         &gateway,
-        guild_id,
+        target_guild_id,
         &message_data,
         None,
         None,
@@ -375,16 +430,46 @@ fn extract_message_id(custom_id: &str) -> Result<u64> {
 
 /// 出発日時のみを更新（公開関数：モーダルハンドラーから呼び出し可能）
 pub async fn update_recruitment_date(
-    _ctx: &Context,
-    _data: &PoiseData,
-    _guild_id: u64,
-    _message_id: u64,
-    _event_date: chrono::DateTime<chrono::Utc>,
+    ctx: &Context,
+    data: &PoiseData,
+    interaction_guild_id: u64,
+    channel_id: u64,
+    message_id: u64,
+    event_date: DateTime<Utc>,
 ) -> Result<()> {
-    // TODO: 実装を完成させる
-    // 現在はスラッシュコマンド経由での変更を推奨
-    Err(AppError::Generic(
-        "日時変更機能は現在実装中です。スラッシュコマンド `/マルチバトル募集内容変更` をご利用ください。"
-            .to_string(),
-    ))
+    let target_message = ChannelId::new(channel_id)
+        .message(&ctx.http, message_id)
+        .await
+        .map_err(|e| {
+            error!(error = %e, channel_id = channel_id, message_id = message_id, "日時変更対象メッセージの取得に失敗しました");
+            AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
+        })?;
+
+    let target_guild_id = target_message
+        .guild_id
+        .map(|id| id.get())
+        .unwrap_or(interaction_guild_id);
+
+    if target_guild_id != interaction_guild_id {
+        warn!(
+            interaction_guild_id = interaction_guild_id,
+            target_guild_id = target_guild_id,
+            channel_id = channel_id,
+            message_id = message_id,
+            "日時変更のギルドIDが一致しません"
+        );
+    }
+
+    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
+    let message_data = MessageData::from(target_message);
+    crate::facades::recruitment::change::change_recruitment_information_internal(
+        &data.app_state,
+        &gateway,
+        target_guild_id,
+        &message_data,
+        None,
+        Some(event_date),
+        None,
+    )
+    .await
 }

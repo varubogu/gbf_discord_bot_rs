@@ -7,7 +7,6 @@ use poise::serenity_prelude::{
 /// メッセージコンテキストメニューから募集内容変更を開始
 #[poise::command(context_menu_command = "募集内容変更")]
 pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message) -> Result<()> {
-    // カスタムIDにメッセージIDを含める
     let custom_id = format!("recruit_change_select_field:{}", message.id);
 
     // 変更する項目を選択するセレクトメニューを作成
@@ -24,9 +23,9 @@ pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message
             ],
         },
     )
-    .placeholder("変更する項目を選択してください（複数選択可）")
+    .placeholder("変更する項目を選択してください")
     .min_values(1)
-    .max_values(3);
+    .max_values(1);
 
     let components = vec![CreateActionRow::SelectMenu(select_menu)];
 

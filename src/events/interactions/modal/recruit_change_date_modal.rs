@@ -17,14 +17,16 @@ pub async fn handle_recruit_change_date_modal(
     interaction: &ModalInteraction,
     data: &PoiseData,
 ) -> Result<()> {
-    // カスタムIDからメッセージIDを抽出
+    // カスタムIDからチャンネルIDとメッセージIDを抽出
     let custom_id_parts: Vec<&str> = interaction.data.custom_id.split(':').collect();
-    if custom_id_parts.len() != 2 || custom_id_parts[0] != "recruit_change_date_modal" {
+    if custom_id_parts.len() != 3 || custom_id_parts[0] != "recruit_change_date_modal" {
         return Err(AppError::Generic("不正なカスタムIDです".to_string()));
     }
 
-    let message_id_str = custom_id_parts[1];
-    let message_id: u64 = message_id_str
+    let channel_id: u64 = custom_id_parts[1]
+        .parse()
+        .map_err(|_| AppError::Generic("チャンネルIDの解析に失敗しました".to_string()))?;
+    let message_id: u64 = custom_id_parts[2]
         .parse()
         .map_err(|_| AppError::Generic("メッセージIDの解析に失敗しました".to_string()))?;
 
@@ -109,7 +111,7 @@ pub async fn handle_recruit_change_date_modal(
 
     // 募集情報を更新
     let result = recruit_change_handler::update_recruitment_date(
-        ctx, data, guild_id, message_id, event_date,
+        ctx, data, guild_id, channel_id, message_id, event_date,
     )
     .await;
 
