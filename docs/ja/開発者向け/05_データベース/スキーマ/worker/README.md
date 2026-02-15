@@ -5,18 +5,18 @@
 
 ## テーブル一覧
 
-- `battle_recruitment_dismissals`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/battle_recruitment_dismissals.md`
-- `battle_recruitments`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/battle_recruitments.md`
-- `guild_last_process_times`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/guild_last_process_times.md`
-- `last_process_times`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/last_process_times.md`
-- `notification_rel_battle_recruitments`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/notification_rel_battle_recruitments.md`
-- `notification_rel_event_schedules`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/notification_rel_event_schedules.md`
-- `notifications`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/notifications.md`
-- `quest_matching_users`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/quest_matching_users.md`
-- `quest_matchings`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/quest_matchings.md`
-- `recruitment_participants`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/recruitment_participants.md`
-- `scheduled_task_cleanups`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/scheduled_task_cleanups.md`
-- `scheduled_task_dismissals`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/scheduled_task_dismissals.md`
-- `scheduled_task_dissolutions`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/scheduled_task_dissolutions.md`
-- `scheduled_task_recurring_recruitments`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/scheduled_task_recurring_recruitments.md`
-- `scheduled_tasks`: `docs/ja/開発者向け/05_データベース/スキーマ/worker/scheduled_tasks.md`
+- [`battle_recruitment_dismissals`](battle_recruitment_dismissals.md)
+- [`battle_recruitments`](battle_recruitments.md)
+- [`guild_last_process_times`](guild_last_process_times.md)
+- [`last_process_times`](last_process_times.md)
+- [`notification_rel_battle_recruitments`](notification_rel_battle_recruitments.md)
+- [`notification_rel_event_schedules`](notification_rel_event_schedules.md)
+- [`notifications`](notifications.md)
+- [`quest_matching_users`](quest_matching_users.md)
+- [`quest_matchings`](quest_matchings.md)
+- [`recruitment_participants`](recruitment_participants.md)
+- [`scheduled_task_cleanups`](scheduled_task_cleanups.md)
+- [`scheduled_task_dismissals`](scheduled_task_dismissals.md)
+- [`scheduled_task_dissolutions`](scheduled_task_dissolutions.md)
+- [`scheduled_task_recurring_recruitments`](scheduled_task_recurring_recruitments.md)
+- [`scheduled_tasks`](scheduled_tasks.md)
