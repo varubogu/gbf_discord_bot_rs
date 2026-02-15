@@ -1,0 +1,39 @@
+# Permissions and Roles (Developer)
+
+## Purpose
+
+Clarify “who can do what” to prevent mistakes and abuse.
+
+## Principles
+
+- Check both Discord permissions (admin/channel) and bot-side permissions (roles/admin server)
+- The more dangerous the operation, the tighter the allowed set of executors
+- On failure, return a user-friendly reason (missing permission, incomplete setup, etc.)
+
+## Typical permission model
+
+### General users
+
+No special permissions are required. Users can use bot features but cannot change settings.
+
+### Discord server administrators (Guild Masters)
+
+They can change server-level settings. In practice, we check the following role:
+
+- `gbf_bot_control`: Bot設定（チャンネル登録、スプレッドシート登録/読み込み等）の権限
+
+### Bot operators (admins)
+
+They administer the entire bot.
+
+- Allow admin-only commands only in the “admin server” (the server whose ID is specified by `BOT_ADMIN_SERVER_ID`)
+- This prevents accidents where admin operations run in normal servers
+
+## Implementation notes
+
+- Perform permission checks early and avoid side effects (DB updates, message sends) on failure
+- Leave audit-friendly logs (who / where / what they attempted)
+
+## Related (operator docs)
+
+- [Discordサーバー管理者向け](../../operator/09_for_discord_server_admins.md)

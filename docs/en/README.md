@@ -6,10 +6,10 @@ This `docs/` directory reorganizes the repository documentation by the reader’
 
 ## Choose your role
 
-- [Developer](開発者向け/README.md)
-- [Bot operator](運用者向け/README.md)
-- [User](利用者向け/README.md)
-- [Server administrator (Guild Master)](サーバー管理者（ギルドマスター）向け/README.md)
+- [Developer](developer/README.md)
+- [Bot operator](operator/README.md)
+- [User](user/README.md)
+- [Server administrator (Guild Master)](server_administrator_guild_master/README.md)
 
 ## What “operator” means in this repo
 
