@@ -1,15 +1,49 @@
+use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::gateway::PoiseDiscordGateway;
 use crate::types::discord::MessageData;
 use crate::types::{AppError, PoiseData, Result};
 use chrono::{DateTime, Utc};
+use lazy_static::lazy_static;
 use poise::serenity_prelude::{
-    ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context, CreateActionRow,
-    CreateInputText, CreateInteractionResponse, CreateInteractionResponseMessage, CreateModal,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, InputTextStyle,
+    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionDataKind, Context,
+    CreateActionRow, CreateButton, CreateInputText, CreateInteractionResponse,
+    CreateInteractionResponseMessage, CreateModal, CreateSelectMenu, CreateSelectMenuKind,
+    CreateSelectMenuOption, InputTextStyle,
 };
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing::{error, info, warn};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct DraftKey {
+    user_id: u64,
+    channel_id: u64,
+    message_id: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+struct RecruitChangeDraft {
+    quest_name: Option<String>,
+    battle_style_id: Option<i32>,
+    battle_style_name: Option<String>,
+    event_date: Option<DateTime<Utc>>,
+}
+
+lazy_static! {
+    static ref RECRUIT_CHANGE_DRAFTS: RwLock<HashMap<DraftKey, RecruitChangeDraft>> =
+        RwLock::new(HashMap::new());
+}
+
+const QUEST_NONE_VALUE: &str = "__none_quest__";
+const STYLE_NONE_VALUE: &str = "__none_style__";
+
+const ID_PREFIX_QUEST: &str = "recruit_change_quest";
+const ID_PREFIX_STYLE: &str = "recruit_change_style";
+const ID_PREFIX_OPEN_DATE_MODAL: &str = "recruit_change_open_date_modal";
+const ID_PREFIX_CLEAR_DATE: &str = "recruit_change_clear_date";
+const ID_PREFIX_APPLY: &str = "recruit_change_apply";
 
 /// 募集変更関連のコンポーネントインタラクションを処理
 pub async fn handle_recruit_change_interaction(
@@ -19,32 +53,196 @@ pub async fn handle_recruit_change_interaction(
 ) -> Result<()> {
     let custom_id = &interaction.data.custom_id;
 
-    if custom_id.starts_with("recruit_change_select_field:") {
-        // 変更項目選択の処理
-        handle_field_selection(ctx, interaction, data).await
-    } else if custom_id.starts_with("recruit_change_quest:") {
-        // クエスト選択の処理
+    if custom_id.starts_with(&format!("{ID_PREFIX_QUEST}:")) {
         handle_quest_selection(ctx, interaction, data).await
-    } else if custom_id.starts_with("recruit_change_style:") {
-        // 攻略方法選択の処理
+    } else if custom_id.starts_with(&format!("{ID_PREFIX_STYLE}:")) {
         handle_battle_style_selection(ctx, interaction, data).await
+    } else if custom_id.starts_with(&format!("{ID_PREFIX_OPEN_DATE_MODAL}:")) {
+        handle_open_date_modal(ctx, interaction).await
+    } else if custom_id.starts_with(&format!("{ID_PREFIX_CLEAR_DATE}:")) {
+        handle_clear_date(ctx, interaction, data).await
+    } else if custom_id.starts_with(&format!("{ID_PREFIX_APPLY}:")) {
+        handle_apply_changes(ctx, interaction, data).await
     } else {
         Ok(())
     }
 }
 
-/// 変更する項目の選択を処理
-async fn handle_field_selection(
+/// パネル表示用の本文とコンポーネントを作成
+pub async fn build_panel_content_and_components(
+    data: &PoiseData,
+    user_id: u64,
+    channel_id: u64,
+    message_id: u64,
+    guild_id: Option<u64>,
+) -> Result<(String, Vec<CreateActionRow>)> {
+    let key = DraftKey {
+        user_id,
+        channel_id,
+        message_id,
+    };
+
+    let draft = {
+        let drafts = RECRUIT_CHANGE_DRAFTS.read().await;
+        drafts.get(&key).cloned().unwrap_or_default()
+    };
+
+    let quest_label = draft
+        .quest_name
+        .clone()
+        .unwrap_or_else(|| "変更しない".to_string());
+    let style_label = draft
+        .battle_style_name
+        .clone()
+        .unwrap_or_else(|| "変更しない".to_string());
+    let date_label = format_event_date_label(data, guild_id, draft.event_date).await;
+
+    let content = format!(
+        "変更内容を選択・入力してください。\n\nクエスト: {quest_label}\n攻略方法: {style_label}\n出発日時: {date_label}\n\n`適用`を押すまで反映されません。"
+    );
+
+    let quest_pairs = quest_list::list_quests_for_select(
+        data.app_state.guild_db(),
+        data.app_state.repositories.quest,
+    )
+    .await;
+
+    let mut quest_options = vec![
+        CreateSelectMenuOption::new("変更しない", QUEST_NONE_VALUE)
+            .default_selection(draft.quest_name.is_none()),
+    ];
+    quest_options.extend(quest_pairs.into_iter().take(24).map(|(name, id)| {
+        let is_selected = draft
+            .quest_name
+            .as_ref()
+            .map(|n| n == &name)
+            .unwrap_or(false);
+        CreateSelectMenuOption::new(name, id.to_string()).default_selection(is_selected)
+    }));
+
+    let style_pairs = battle_style_list::list_battle_styles_for_select(&data.app_state).await;
+    let mut style_options = vec![
+        CreateSelectMenuOption::new("変更しない", STYLE_NONE_VALUE)
+            .default_selection(draft.battle_style_id.is_none()),
+    ];
+    style_options.extend(style_pairs.into_iter().take(24).map(|(name, id)| {
+        let is_selected = draft.battle_style_id.map(|s| s == id).unwrap_or(false);
+        CreateSelectMenuOption::new(name, id.to_string()).default_selection(is_selected)
+    }));
+
+    let quest_select = CreateSelectMenu::new(
+        format!("{ID_PREFIX_QUEST}:{channel_id}:{message_id}"),
+        CreateSelectMenuKind::String {
+            options: quest_options,
+        },
+    )
+    .placeholder("クエストを選択");
+
+    let style_select = CreateSelectMenu::new(
+        format!("{ID_PREFIX_STYLE}:{channel_id}:{message_id}"),
+        CreateSelectMenuKind::String {
+            options: style_options,
+        },
+    )
+    .placeholder("攻略方法を選択");
+
+    let open_date_button = CreateButton::new(format!(
+        "{ID_PREFIX_OPEN_DATE_MODAL}:{channel_id}:{message_id}"
+    ))
+    .style(ButtonStyle::Primary)
+    .label("出発日時を入力");
+
+    let clear_date_button =
+        CreateButton::new(format!("{ID_PREFIX_CLEAR_DATE}:{channel_id}:{message_id}"))
+            .style(ButtonStyle::Secondary)
+            .label("日時をクリア");
+
+    let apply_button = CreateButton::new(format!("{ID_PREFIX_APPLY}:{channel_id}:{message_id}"))
+        .style(ButtonStyle::Success)
+        .label("適用");
+
+    Ok((
+        content,
+        vec![
+            CreateActionRow::SelectMenu(quest_select),
+            CreateActionRow::SelectMenu(style_select),
+            CreateActionRow::Buttons(vec![open_date_button, clear_date_button, apply_button]),
+        ],
+    ))
+}
+
+async fn format_event_date_label(
+    data: &PoiseData,
+    guild_id: Option<u64>,
+    event_date: Option<DateTime<Utc>>,
+) -> String {
+    let Some(event_date) = event_date else {
+        return "変更しない".to_string();
+    };
+
+    if let Some(guild_id) = guild_id {
+        let timezone_facade = GuildSettingsFacade::new(Arc::new(data.app_state.clone()));
+        match timezone_facade.get_timezone(guild_id as i64).await {
+            Ok(timezone) => {
+                return event_date
+                    .with_timezone(&timezone)
+                    .format("%Y-%m-%d %H:%M %Z")
+                    .to_string();
+            }
+            Err(e) => {
+                warn!(error = %e, guild_id = guild_id, "タイムゾーン取得に失敗したためUTC表示します");
+            }
+        }
+    }
+
+    event_date.format("%Y-%m-%d %H:%M UTC").to_string()
+}
+
+/// 日時ドラフトを更新
+pub async fn set_event_date_draft(
+    user_id: u64,
+    channel_id: u64,
+    message_id: u64,
+    event_date: Option<DateTime<Utc>>,
+) {
+    let key = DraftKey {
+        user_id,
+        channel_id,
+        message_id,
+    };
+    let mut drafts = RECRUIT_CHANGE_DRAFTS.write().await;
+    let draft = drafts.entry(key).or_default();
+    draft.event_date = event_date;
+}
+
+fn parse_target_ids(custom_id: &str, prefix: &str) -> Result<(u64, u64)> {
+    let parts: Vec<&str> = custom_id.split(':').collect();
+    if parts.len() != 3 || parts[0] != prefix {
+        return Err(AppError::Generic("不正なカスタムIDです".to_string()));
+    }
+
+    let channel_id = parts[1]
+        .parse::<u64>()
+        .map_err(|_| AppError::Generic("チャンネルIDの解析に失敗しました".to_string()))?;
+    let message_id = parts[2]
+        .parse::<u64>()
+        .map_err(|_| AppError::Generic("メッセージIDの解析に失敗しました".to_string()))?;
+
+    Ok((channel_id, message_id))
+}
+
+async fn handle_quest_selection(
     ctx: &Context,
     interaction: &ComponentInteraction,
     data: &PoiseData,
 ) -> Result<()> {
-    // メッセージIDを抽出
-    let message_id = extract_message_id(&interaction.data.custom_id)?;
+    let (target_channel_id, target_message_id) =
+        parse_target_ids(&interaction.data.custom_id, ID_PREFIX_QUEST)?;
 
-    // 選択された値を取得
-    let selected_fields = match &interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values } => values.clone(),
+    let selected_value = match &interaction.data.kind {
+        ComponentInteractionDataKind::StringSelect { values } => values
+            .first()
+            .ok_or_else(|| AppError::Generic("クエストが選択されていません".to_string()))?,
         _ => {
             return Err(AppError::Generic(
                 "予期しないコンポーネントタイプです".to_string(),
@@ -52,57 +250,51 @@ async fn handle_field_selection(
         }
     };
 
-    info!(
-        message_id = %message_id,
-        fields = ?selected_fields,
-        "変更項目が選択されました"
-    );
+    let user_id = interaction.user.id.get();
+    let key = DraftKey {
+        user_id,
+        channel_id: target_channel_id,
+        message_id: target_message_id,
+    };
 
-    // 選択された項目に基づいて次のステップを決定
-    if selected_fields.contains(&"quest".to_string()) {
-        // クエスト選択メニューを表示
-        show_quest_selection_menu(ctx, interaction, data, message_id).await
-    } else if selected_fields.contains(&"battle_style".to_string()) {
-        // 攻略方法選択メニューを表示
-        show_battle_style_selection_menu(ctx, interaction, data, message_id).await
-    } else if selected_fields.contains(&"date".to_string()) {
-        // 日時入力モーダルを表示
-        show_date_input_modal(ctx, interaction, message_id).await
-    } else {
-        Err(AppError::Generic("選択された項目がありません".to_string()))
+    {
+        let mut drafts = RECRUIT_CHANGE_DRAFTS.write().await;
+        let draft = drafts.entry(key).or_default();
+
+        if selected_value == QUEST_NONE_VALUE {
+            draft.quest_name = None;
+        } else {
+            let quest_id: i32 = selected_value
+                .parse()
+                .map_err(|_| AppError::Generic("クエストIDの解析に失敗しました".to_string()))?;
+
+            let quest_name = quest_list::get_quest_name_by_id(
+                data.app_state.guild_db(),
+                data.app_state.repositories.quest,
+                quest_id,
+            )
+            .await
+            .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
+
+            draft.quest_name = Some(quest_name);
+        }
     }
-}
 
-/// クエスト選択メニューを表示
-async fn show_quest_selection_menu(
-    ctx: &Context,
-    interaction: &ComponentInteraction,
-    data: &PoiseData,
-    message_id: u64,
-) -> Result<()> {
-    // クエストリストを取得（Facade経由）
-    let pairs = quest_list::list_quests_for_select(
-        data.app_state.guild_db(),
-        data.app_state.repositories.quest,
+    let (content, components) = build_panel_content_and_components(
+        data,
+        user_id,
+        target_channel_id,
+        target_message_id,
+        interaction.guild_id.map(|id| id.get()),
     )
-    .await;
-    let options: Vec<CreateSelectMenuOption> = pairs
-        .into_iter()
-        .map(|(name, id)| CreateSelectMenuOption::new(name, id.to_string()))
-        .collect();
-
-    let custom_id = format!("recruit_change_quest:{message_id}");
-    let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
-        .placeholder("変更するクエストを選択してください");
-
-    let components = vec![CreateActionRow::SelectMenu(select_menu)];
+    .await?;
 
     interaction
         .create_response(
             &ctx.http,
             CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .content("変更するクエストを選択してください")
+                    .content(content)
                     .components(components),
             ),
         )
@@ -111,32 +303,68 @@ async fn show_quest_selection_menu(
     Ok(())
 }
 
-/// 攻略方法選択メニューを表示
-async fn show_battle_style_selection_menu(
+async fn handle_battle_style_selection(
     ctx: &Context,
     interaction: &ComponentInteraction,
     data: &PoiseData,
-    message_id: u64,
 ) -> Result<()> {
-    // 攻略方法リストを取得（Facade経由）
-    let pairs = battle_style_list::list_battle_styles_for_select(&data.app_state).await;
-    let options: Vec<CreateSelectMenuOption> = pairs
-        .into_iter()
-        .map(|(display_name, id)| CreateSelectMenuOption::new(display_name, id.to_string()))
-        .collect();
+    let (target_channel_id, target_message_id) =
+        parse_target_ids(&interaction.data.custom_id, ID_PREFIX_STYLE)?;
 
-    let custom_id = format!("recruit_change_style:{message_id}");
-    let select_menu = CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
-        .placeholder("攻略方法を選択してください");
+    let selected_value = match &interaction.data.kind {
+        ComponentInteractionDataKind::StringSelect { values } => values
+            .first()
+            .ok_or_else(|| AppError::Generic("攻略方法が選択されていません".to_string()))?,
+        _ => {
+            return Err(AppError::Generic(
+                "予期しないコンポーネントタイプです".to_string(),
+            ));
+        }
+    };
 
-    let components = vec![CreateActionRow::SelectMenu(select_menu)];
+    let user_id = interaction.user.id.get();
+    let key = DraftKey {
+        user_id,
+        channel_id: target_channel_id,
+        message_id: target_message_id,
+    };
+
+    {
+        let mut drafts = RECRUIT_CHANGE_DRAFTS.write().await;
+        let draft = drafts.entry(key).or_default();
+
+        if selected_value == STYLE_NONE_VALUE {
+            draft.battle_style_id = None;
+            draft.battle_style_name = None;
+        } else {
+            let battle_style_id: i32 = selected_value
+                .parse()
+                .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
+            let battle_style_name =
+                battle_style_list::get_battle_style_name_by_id(&data.app_state, battle_style_id)
+                    .await
+                    .unwrap_or_else(|| format!("ID:{battle_style_id}"));
+
+            draft.battle_style_id = Some(battle_style_id);
+            draft.battle_style_name = Some(battle_style_name);
+        }
+    }
+
+    let (content, components) = build_panel_content_and_components(
+        data,
+        user_id,
+        target_channel_id,
+        target_message_id,
+        interaction.guild_id.map(|id| id.get()),
+    )
+    .await?;
 
     interaction
         .create_response(
             &ctx.http,
             CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .content("攻略方法を選択してください")
+                    .content(content)
                     .components(components),
             ),
         )
@@ -145,17 +373,11 @@ async fn show_battle_style_selection_menu(
     Ok(())
 }
 
-/// 日時入力モーダルを表示
-async fn show_date_input_modal(
-    ctx: &Context,
-    interaction: &ComponentInteraction,
-    message_id: u64,
-) -> Result<()> {
-    let custom_id = format!(
-        "recruit_change_date_modal:{}:{}",
-        interaction.channel_id.get(),
-        message_id
-    );
+async fn handle_open_date_modal(ctx: &Context, interaction: &ComponentInteraction) -> Result<()> {
+    let (target_channel_id, target_message_id) =
+        parse_target_ids(&interaction.data.custom_id, ID_PREFIX_OPEN_DATE_MODAL)?;
+
+    let custom_id = format!("recruit_change_date_modal:{target_channel_id}:{target_message_id}");
 
     let modal =
         CreateModal::new(custom_id, "出発日時変更").components(vec![CreateActionRow::InputText(
@@ -171,65 +393,100 @@ async fn show_date_input_modal(
     Ok(())
 }
 
-/// クエスト選択を処理
-async fn handle_quest_selection(
+async fn handle_clear_date(
     ctx: &Context,
     interaction: &ComponentInteraction,
     data: &PoiseData,
 ) -> Result<()> {
-    let message_id = extract_message_id(&interaction.data.custom_id)?;
+    let (target_channel_id, target_message_id) =
+        parse_target_ids(&interaction.data.custom_id, ID_PREFIX_CLEAR_DATE)?;
 
-    // 選択された値を取得
-    let quest_name = match &interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values } => values
-            .first()
-            .ok_or_else(|| AppError::Generic("クエストが選択されていません".to_string()))?,
-        _ => {
-            return Err(AppError::Generic(
-                "予期しないコンポーネントタイプです".to_string(),
-            ));
-        }
-    };
+    let user_id = interaction.user.id.get();
+    set_event_date_draft(user_id, target_channel_id, target_message_id, None).await;
 
-    // quest_nameは実はquest_idの文字列なので、IDからクエスト名を取得
-    let quest_id: i32 = quest_name
-        .parse()
-        .map_err(|_| AppError::Generic("クエストIDの解析に失敗しました".to_string()))?;
-
-    let quest_name = quest_list::get_quest_name_by_id(
-        data.app_state.guild_db(),
-        data.app_state.repositories.quest,
-        quest_id,
+    let (content, components) = build_panel_content_and_components(
+        data,
+        user_id,
+        target_channel_id,
+        target_message_id,
+        interaction.guild_id.map(|id| id.get()),
     )
-    .await
-    .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
+    .await?;
 
-    info!(
-        message_id = %message_id,
-        quest_name = %quest_name,
-        "クエストが選択されました"
-    );
+    interaction
+        .create_response(
+            &ctx.http,
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new()
+                    .content(content)
+                    .components(components),
+            ),
+        )
+        .await?;
 
-    // Deferして処理時間を確保
-    interaction.defer(&ctx.http).await?;
+    Ok(())
+}
 
-    // 対象メッセージを取得
-    let interaction_channel_id = interaction.channel_id.get();
+async fn handle_apply_changes(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    data: &PoiseData,
+) -> Result<()> {
+    let (target_channel_id, target_message_id) =
+        parse_target_ids(&interaction.data.custom_id, ID_PREFIX_APPLY)?;
+
+    let user_id = interaction.user.id.get();
     let interaction_guild_id = interaction
         .guild_id
         .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
         .get();
 
-    let target_message = interaction
-        .channel_id
-        .message(&ctx.http, message_id)
+    let key = DraftKey {
+        user_id,
+        channel_id: target_channel_id,
+        message_id: target_message_id,
+    };
+
+    let draft = {
+        let drafts = RECRUIT_CHANGE_DRAFTS.read().await;
+        drafts.get(&key).cloned().unwrap_or_default()
+    };
+
+    if draft.quest_name.is_none() && draft.battle_style_id.is_none() && draft.event_date.is_none() {
+        let (content, components) = build_panel_content_and_components(
+            data,
+            user_id,
+            target_channel_id,
+            target_message_id,
+            Some(interaction_guild_id),
+        )
+        .await?;
+
+        interaction
+            .create_response(
+                &ctx.http,
+                CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new()
+                        .content(format!(
+                            "{content}\n\n変更項目を少なくとも1つ指定してください。"
+                        ))
+                        .components(components),
+                ),
+            )
+            .await?;
+        return Ok(());
+    }
+
+    interaction.defer(&ctx.http).await?;
+
+    let target_message = ChannelId::new(target_channel_id)
+        .message(&ctx.http, target_message_id)
         .await
         .map_err(|e| {
-            error!(error = %e, "メッセージの取得に失敗しました");
+            error!(error = %e, channel_id = target_channel_id, message_id = target_message_id, "メッセージの取得に失敗しました");
             AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
         })?;
 
-    let target_channel_id = target_message.channel_id.get();
     let target_guild_id = target_message
         .guild_id
         .map(|id| id.get())
@@ -239,55 +496,66 @@ async fn handle_quest_selection(
         warn!(
             interaction_guild_id = interaction_guild_id,
             target_guild_id = target_guild_id,
-            message_id = message_id,
+            channel_id = target_channel_id,
+            message_id = target_message_id,
             "募集変更のギルドIDが一致しません"
         );
     }
 
-    info!(
-        interaction_guild_id = interaction_guild_id,
-        interaction_channel_id = interaction_channel_id,
-        target_guild_id = target_guild_id,
-        target_channel_id = target_channel_id,
-        target_message_id = message_id,
-        "募集変更（クエスト）で対象メッセージ情報を確認しました"
-    );
-
-    // Gateway を作成し、メッセージをドメイン型に変換
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let message_data = MessageData::from(target_message);
 
-    // リファクタリングされたfacadeを呼び出す
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
         &gateway,
         target_guild_id,
         &message_data,
-        Some(&quest_name),
-        None,
-        None,
+        draft.quest_name.as_deref(),
+        draft.event_date,
+        draft.battle_style_id,
     )
     .await;
 
     match result {
         Ok(_) => {
+            let mut drafts = RECRUIT_CHANGE_DRAFTS.write().await;
+            drafts.remove(&key);
+
             interaction
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("クエストを「{quest_name}」に変更しました。"))
+                        .content("募集内容を更新しました。")
                         .components(vec![]),
                 )
                 .await?;
+
+            info!(
+                user_id = user_id,
+                guild_id = target_guild_id,
+                channel_id = target_channel_id,
+                message_id = target_message_id,
+                "募集内容変更が完了しました"
+            );
         }
         Err(e) => {
-            error!(error = %e, "クエスト変更に失敗しました");
+            error!(error = %e, "募集内容変更に失敗しました");
+
+            let (content, components) = build_panel_content_and_components(
+                data,
+                user_id,
+                target_channel_id,
+                target_message_id,
+                Some(interaction_guild_id),
+            )
+            .await?;
+
             interaction
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("エラー: {}", e.user_message()))
-                        .components(vec![]),
+                        .content(format!("エラー: {}\n\n{content}", e.user_message()))
+                        .components(components),
                 )
                 .await?;
         }
@@ -296,180 +564,23 @@ async fn handle_quest_selection(
     Ok(())
 }
 
-/// 攻略方法選択を処理
-async fn handle_battle_style_selection(
-    ctx: &Context,
-    interaction: &ComponentInteraction,
-    data: &PoiseData,
-) -> Result<()> {
-    let message_id = extract_message_id(&interaction.data.custom_id)?;
+#[cfg(test)]
+mod tests {
+    use super::parse_target_ids;
 
-    // 選択された値を取得
-    let battle_style_id_str = match &interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values } => values
-            .first()
-            .ok_or_else(|| AppError::Generic("攻略方法が選択されていません".to_string()))?,
-        _ => {
-            return Err(AppError::Generic(
-                "予期しないコンポーネントタイプです".to_string(),
-            ));
-        }
-    };
-
-    let battle_style_id: i32 = battle_style_id_str
-        .parse()
-        .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
-
-    // 攻略方法名をFacade経由で取得
-    let battle_style_name =
-        battle_style_list::get_battle_style_name_by_id(&data.app_state, battle_style_id)
-            .await
-            .unwrap_or_else(|| format!("ID:{battle_style_id}"));
-
-    info!(
-        message_id = %message_id,
-        battle_style_id = %battle_style_id,
-        battle_style_name = %battle_style_name,
-        "攻略方法が選択されました"
-    );
-
-    // Deferして処理時間を確保
-    interaction.defer(&ctx.http).await?;
-
-    // 対象メッセージを取得
-    let interaction_channel_id = interaction.channel_id.get();
-    let interaction_guild_id = interaction
-        .guild_id
-        .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
-        .get();
-
-    let target_message = interaction
-        .channel_id
-        .message(&ctx.http, message_id)
-        .await
-        .map_err(|e| {
-            error!(error = %e, "メッセージの取得に失敗しました");
-            AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
-        })?;
-
-    let target_channel_id = target_message.channel_id.get();
-    let target_guild_id = target_message
-        .guild_id
-        .map(|id| id.get())
-        .unwrap_or(interaction_guild_id);
-
-    if target_guild_id != interaction_guild_id {
-        warn!(
-            interaction_guild_id = interaction_guild_id,
-            target_guild_id = target_guild_id,
-            message_id = message_id,
-            "募集変更のギルドIDが一致しません"
-        );
+    #[test]
+    fn parse_target_ids_works() {
+        let (channel_id, message_id) =
+            parse_target_ids("recruit_change_apply:10:20", "recruit_change_apply")
+                .expect("custom_id は解析できるべき");
+        assert_eq!(channel_id, 10);
+        assert_eq!(message_id, 20);
     }
 
-    info!(
-        interaction_guild_id = interaction_guild_id,
-        interaction_channel_id = interaction_channel_id,
-        target_guild_id = target_guild_id,
-        target_channel_id = target_channel_id,
-        target_message_id = message_id,
-        "募集変更（攻略方法）で対象メッセージ情報を確認しました"
-    );
-
-    // Gateway を作成し、メッセージをドメイン型に変換
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
-    let message_data = MessageData::from(target_message);
-
-    // リファクタリングされたfacadeを呼び出す
-    let result = crate::facades::recruitment::change::change_recruitment_information_internal(
-        &data.app_state,
-        &gateway,
-        target_guild_id,
-        &message_data,
-        None,
-        None,
-        Some(battle_style_id),
-    )
-    .await;
-
-    match result {
-        Ok(_) => {
-            interaction
-                .edit_response(
-                    &ctx.http,
-                    poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("攻略方法を「{battle_style_name}」に変更しました。"))
-                        .components(vec![]),
-                )
-                .await?;
-        }
-        Err(e) => {
-            error!(error = %e, "攻略方法変更に失敗しました");
-            interaction
-                .edit_response(
-                    &ctx.http,
-                    poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("エラー: {}", e.user_message()))
-                        .components(vec![]),
-                )
-                .await?;
-        }
+    #[test]
+    fn parse_target_ids_rejects_invalid_prefix() {
+        let err = parse_target_ids("recruit_change_style:10:20", "recruit_change_apply")
+            .expect_err("prefix不一致は失敗するべき");
+        assert!(err.user_message().contains("不正なカスタムID"));
     }
-
-    Ok(())
-}
-
-/// カスタムIDからメッセージIDを抽出
-fn extract_message_id(custom_id: &str) -> Result<u64> {
-    custom_id
-        .split(':')
-        .nth(1)
-        .and_then(|s| s.parse::<u64>().ok())
-        .ok_or_else(|| AppError::Generic("メッセージIDの抽出に失敗しました".to_string()))
-}
-
-/// 出発日時のみを更新（公開関数：モーダルハンドラーから呼び出し可能）
-pub async fn update_recruitment_date(
-    ctx: &Context,
-    data: &PoiseData,
-    interaction_guild_id: u64,
-    channel_id: u64,
-    message_id: u64,
-    event_date: DateTime<Utc>,
-) -> Result<()> {
-    let target_message = ChannelId::new(channel_id)
-        .message(&ctx.http, message_id)
-        .await
-        .map_err(|e| {
-            error!(error = %e, channel_id = channel_id, message_id = message_id, "日時変更対象メッセージの取得に失敗しました");
-            AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
-        })?;
-
-    let target_guild_id = target_message
-        .guild_id
-        .map(|id| id.get())
-        .unwrap_or(interaction_guild_id);
-
-    if target_guild_id != interaction_guild_id {
-        warn!(
-            interaction_guild_id = interaction_guild_id,
-            target_guild_id = target_guild_id,
-            channel_id = channel_id,
-            message_id = message_id,
-            "日時変更のギルドIDが一致しません"
-        );
-    }
-
-    let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
-    let message_data = MessageData::from(target_message);
-    crate::facades::recruitment::change::change_recruitment_information_internal(
-        &data.app_state,
-        &gateway,
-        target_guild_id,
-        &message_data,
-        None,
-        Some(event_date),
-        None,
-    )
-    .await
 }

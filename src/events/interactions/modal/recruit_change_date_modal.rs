@@ -109,38 +109,34 @@ pub async fn handle_recruit_change_date_modal(
         "出発日時が入力されました"
     );
 
-    // 募集情報を更新
-    let result = recruit_change_handler::update_recruitment_date(
-        ctx, data, guild_id, channel_id, message_id, event_date,
+    // 一時状態に保存し、パネルを再描画
+    recruit_change_handler::set_event_date_draft(
+        interaction.user.id.get(),
+        channel_id,
+        message_id,
+        Some(event_date),
     )
     .await;
 
-    // 結果をユーザーに通知
-    match result {
-        Ok(_) => {
-            interaction
-                .edit_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content("出発日時を変更しました")
-                        .components(vec![]),
-                )
-                .await?;
-            info!(message_id = %message_id, "出発日時変更が完了しました");
-        }
-        Err(e) => {
-            error!(error = %e, message_id = %message_id, "出発日時変更に失敗しました");
-            let user_message = e.user_message();
-            interaction
-                .edit_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content(user_message)
-                        .components(vec![]),
-                )
-                .await?;
-        }
-    }
+    let (content, components) = recruit_change_handler::build_panel_content_and_components(
+        data,
+        interaction.user.id.get(),
+        channel_id,
+        message_id,
+        Some(guild_id),
+    )
+    .await?;
+
+    interaction
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new()
+                .content(content)
+                .components(components),
+        )
+        .await?;
+
+    info!(message_id = %message_id, "出発日時を一時状態に保存しました");
 
     Ok(())
 }

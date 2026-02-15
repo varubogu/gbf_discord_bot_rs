@@ -1,33 +1,23 @@
+use crate::events::interactions::components::recruit_change_handler;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{
-    CreateActionRow, CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu,
-    CreateSelectMenuKind, CreateSelectMenuOption, Message,
+    CreateInteractionResponse, CreateInteractionResponseMessage, Message,
 };
 
 /// メッセージコンテキストメニューから募集内容変更を開始
 #[poise::command(context_menu_command = "募集内容変更")]
 pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message) -> Result<()> {
-    let custom_id = format!("recruit_change_select_field:{}", message.id);
-
-    // 変更する項目を選択するセレクトメニューを作成
-    let select_menu = CreateSelectMenu::new(
-        custom_id,
-        CreateSelectMenuKind::String {
-            options: vec![
-                CreateSelectMenuOption::new("クエスト名", "quest")
-                    .description("募集するクエストを変更します"),
-                CreateSelectMenuOption::new("出発日時", "date")
-                    .description("クエストの出発日時を変更します"),
-                CreateSelectMenuOption::new("攻略方法", "battle_style")
-                    .description("マルチバトルの攻略方法を変更します"),
-            ],
-        },
+    let (content, components) = recruit_change_handler::build_panel_content_and_components(
+        ctx.data(),
+        ctx.author().id.get(),
+        message.channel_id.get(),
+        message.id.get(),
+        message
+            .guild_id
+            .map(|id| id.get())
+            .or_else(|| ctx.guild_id().map(|id| id.get())),
     )
-    .placeholder("変更する項目を選択してください")
-    .min_values(1)
-    .max_values(1);
-
-    let components = vec![CreateActionRow::SelectMenu(select_menu)];
+    .await?;
 
     // ApplicationContextの場合のみ応答可能
     match ctx {
@@ -38,7 +28,7 @@ pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message
                     &ctx.serenity_context().http,
                     CreateInteractionResponse::Message(
                         CreateInteractionResponseMessage::new()
-                            .content("変更する項目を選択してください")
+                            .content(content)
                             .components(components)
                             .ephemeral(true),
                     ),

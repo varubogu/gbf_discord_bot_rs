@@ -67,11 +67,11 @@ Or:
 
 1. Right-click the recruitment message (long-press on mobile)
 2. Select “Apps” → “募集内容変更”
-3. In the form, fill only the fields you want to change and submit
-  - Quest name (optional)
-  - Departure date/time (optional)
-  - Strategy (optional: ID or display name)
-4. Fields left empty are not changed
+3. In the menu, choose/input only what you want to change
+  - Quest: choose from the select menu
+  - Strategy: choose from the select menu
+  - Departure date/time: use the “出発日時を入力” button
+4. Press `適用` to apply the changes
 
 Or:
 
