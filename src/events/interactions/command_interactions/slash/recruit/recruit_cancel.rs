@@ -29,7 +29,7 @@ pub async fn recruit_cancel(
     #[description_localized("ja", "募集中のメッセージIDまたはメッセージURL")]
     message: Message,
 ) -> types::Result<()> {
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     // events層でpoise型からドメイン型への変換を行う
     let app_state = &ctx.data().app_state;
@@ -214,10 +214,14 @@ async fn execute_cancel_with_confirmation(
                     .await
                     {
                         Ok(_) => {
-                            // 成功時：確認メッセージを削除
-                            interaction
-                                .message
-                                .delete(&ctx.serenity_context().http)
+                            // 成功時：確認メッセージを更新して完了表示
+                            reply
+                                .edit(
+                                    ctx,
+                                    poise::CreateReply::default()
+                                        .content("募集をキャンセルしました。")
+                                        .components(vec![]),
+                                )
                                 .await?;
                             info!("キャンセル処理完了");
                             Ok(())
