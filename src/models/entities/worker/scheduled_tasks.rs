@@ -1,6 +1,35 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, DeriveActiveEnum, Serialize, Deserialize,
+)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    // search_path に依存せず、常に worker スキーマの ENUM を参照する。
+    // SeaQuery(Postgres)のCASTは型名全体を "..." で囲むため、
+    // `worker.task_execution_status` を渡すと `"worker.task_execution_status"` となってしまう。
+    // そのため `"worker"."task_execution_status"` になるように識別子内にクォートを埋め込む。
+    enum_name = "worker\".\"task_execution_status"
+)]
+pub enum TaskExecutionStatus {
+    #[sea_orm(string_value = "pending")]
+    Pending,
+    #[sea_orm(string_value = "succeeded")]
+    Succeeded,
+    #[sea_orm(string_value = "succeeded_with_warning")]
+    SucceededWithWarning,
+    #[sea_orm(string_value = "failed")]
+    Failed,
+}
+
+impl TaskExecutionStatus {
+    pub fn is_pending(&self) -> bool {
+        matches!(self, Self::Pending)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(schema_name = "worker", table_name = "scheduled_tasks")]
 pub struct Model {
@@ -10,7 +39,7 @@ pub struct Model {
     pub task_type: i32,
     pub guild_id: Option<i64>,
     pub channel_id: Option<i64>,
-    pub is_executed: bool,
+    pub execution_status: TaskExecutionStatus,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -27,7 +56,7 @@ impl ActiveModelBehavior for ActiveModel {
             task_type: sea_orm::NotSet,
             guild_id: sea_orm::NotSet,
             channel_id: sea_orm::NotSet,
-            is_executed: sea_orm::Set(false),
+            execution_status: sea_orm::Set(TaskExecutionStatus::Pending),
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),
         }
@@ -76,5 +105,18 @@ impl ScheduledTaskType {
             Self::AutoRecruitmentRotation => "自動募集日付ローテーション",
             Self::AutoMatching => "自動マッチング",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TaskExecutionStatus;
+
+    #[test]
+    fn test_is_pending() {
+        assert!(TaskExecutionStatus::Pending.is_pending());
+        assert!(!TaskExecutionStatus::Succeeded.is_pending());
+        assert!(!TaskExecutionStatus::SucceededWithWarning.is_pending());
+        assert!(!TaskExecutionStatus::Failed.is_pending());
     }
 }

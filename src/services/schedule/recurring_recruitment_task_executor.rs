@@ -205,11 +205,11 @@ where
 
         // タスクが削除されていないか、既に実行済みでないかを確認
         let _task = match self.task_repo.find_by_id(txn, task_id).await? {
-            Some(task) if !task.is_executed => task,
+            Some(task) if task.execution_status.is_pending() => task,
             Some(_) => {
                 warn!(task_id, "タスクは既に実行済みです");
                 return Err(AppError::Business {
-                    message: format!("Task {task_id} is already executed"),
+                    message: format!("Task {task_id} is not pending"),
                 });
             }
             None => {
@@ -246,8 +246,10 @@ where
                     task_id,
                     schedule_id, "スケジュールが見つかりません（削除済み）"
                 );
-                // タスクを実行済みにマーク
-                self.task_repo.mark_as_executed(txn, task_id).await?;
+                // 警告付きでタスクを完了マーク
+                self.task_repo
+                    .mark_as_succeeded_with_warning(txn, task_id)
+                    .await?;
                 return Ok(RecurringRecruitmentExecutionResult::ScheduleNotFound { schedule_id });
             }
         };
@@ -255,8 +257,10 @@ where
         // スケジュールが有効かチェック
         if !schedule.is_enabled {
             info!(task_id, schedule_id, "スケジュールは無効化されています");
-            // タスクを実行済みにマーク
-            self.task_repo.mark_as_executed(txn, task_id).await?;
+            // 警告付きでタスクを完了マーク
+            self.task_repo
+                .mark_as_succeeded_with_warning(txn, task_id)
+                .await?;
             return Ok(RecurringRecruitmentExecutionResult::ScheduleDisabled { schedule_id });
         }
 
@@ -292,8 +296,8 @@ where
             .create_next_scheduled_task(txn, &schedule, &days)
             .await?;
 
-        // 現在のタスクを実行済みにマーク
-        self.task_repo.mark_as_executed(txn, task_id).await?;
+        // 現在のタスクを正常終了にマーク
+        self.task_repo.mark_as_succeeded(txn, task_id).await?;
 
         info!(task_id, schedule_id, next_task_id, "定期募集タスク実行完了");
 

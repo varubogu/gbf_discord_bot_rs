@@ -251,11 +251,11 @@ where
 
         // タスクが削除されていないか、既に実行済みでないかを確認
         let _task = match self.task_repo.find_by_id(txn, task_id).await? {
-            Some(task) if !task.is_executed => task,
+            Some(task) if task.execution_status.is_pending() => task,
             Some(_) => {
                 warn!(task_id, "タスクは既に実行済みです");
                 return Err(AppError::Business {
-                    message: format!("Task {task_id} is already executed"),
+                    message: format!("Task {task_id} is not pending"),
                 });
             }
             None => {
@@ -279,8 +279,8 @@ where
             .await?;
         }
 
-        // タスクを実行済みにマーク
-        self.task_repo.mark_as_executed(txn, task_id).await?;
+        // タスクを正常終了にマーク
+        self.task_repo.mark_as_succeeded(txn, task_id).await?;
 
         // 次回タスクを作成（10秒後）
         let next_task_id = self.create_next_scheduled_task(txn).await?;

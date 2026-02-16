@@ -166,8 +166,8 @@ where
         // トランザクション開始
         let txn = db.begin().await?;
 
-        // 未実行タスクを取得（scheduled_tasks）
-        // is_executed=falseで絞り込んでいるため、過去の未実行タスクも取得される
+        // 保留中タスクを取得（scheduled_tasks）
+        // execution_status = pending で絞り込んでいるため、過去の保留中タスクも取得される
         let tasks: Vec<crate::models::entities::worker::scheduled_tasks::Model> = repos
             .scheduled_task
             .find_pending_to(&txn, preload_until)
@@ -213,10 +213,10 @@ where
                                     .await
                                 {
                                     Ok(_) => {
-                                        // タスクを完了としてマーク
+                                        // タスクを正常終了としてマーク
                                         if let Err(e) = repos
                                             .scheduled_task
-                                            .mark_as_executed(&txn, task.id)
+                                            .mark_as_succeeded(&txn, task.id)
                                             .await
                                         {
                                             error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
@@ -225,24 +225,36 @@ where
                                     }
                                     Err(e) => {
                                         error!(task_id = task.id, error = %e, "通知の送信中にエラーが発生しました");
+                                        if let Err(mark_err) =
+                                            repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                        {
+                                            error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                        }
                                     }
                                 }
                             }
                             Ok(None) => {
                                 // データ不整合：notificationsテーブルに通知がない
-                                // このタスクは実行不可能なため、実行済みとしてマークして次回以降スキップ
+                                // このタスクは実行不可能なため、警告付き完了としてマークして次回以降スキップ
                                 warn!(
                                     task_id = task.id,
-                                    "通知が見つかりません（データ不整合）。タスクを実行済みとしてマークします"
+                                    "通知が見つかりません（データ不整合）。タスクを警告付き完了としてマークします"
                                 );
-                                if let Err(e) =
-                                    repos.scheduled_task.mark_as_executed(&txn, task.id).await
+                                if let Err(e) = repos
+                                    .scheduled_task
+                                    .mark_as_succeeded_with_warning(&txn, task.id)
+                                    .await
                                 {
                                     error!(task_id = task.id, error = %e, "タスクの完了マークに失敗しました");
                                 }
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "通知の取得に失敗しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                             }
                         }
                     }
@@ -265,6 +277,11 @@ where
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "解散タスクの実行中にエラーが発生しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                                 // エラーがあっても他のタスクは継続
                             }
                         }
@@ -272,6 +289,11 @@ where
                     3 => {
                         // DataCleanup
                         warn!(task_id = task.id, "DataCleanupタスクは未実装です");
+                        if let Err(mark_err) =
+                            repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                        {
+                            error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                        }
                         // TODO: CleanupTaskExecutorを実装
                     }
                     4 => {
@@ -331,6 +353,11 @@ where
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "定期募集タスクの実行中にエラーが発生しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                                 // エラーがあっても他のタスクは継続
                             }
                         }
@@ -358,6 +385,11 @@ where
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "解散（人数不足）タスクの実行中にエラーが発生しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                                 // エラーがあっても他のタスクは継続
                             }
                         }
@@ -382,6 +414,11 @@ where
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "自動募集日付ローテーションタスクの実行中にエラーが発生しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                                 // エラーがあっても他のタスクは継続
                             }
                         }
@@ -452,6 +489,11 @@ where
                             }
                             Err(e) => {
                                 error!(task_id = task.id, error = %e, "自動マッチングタスクの実行中にエラーが発生しました");
+                                if let Err(mark_err) =
+                                    repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                                {
+                                    error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                                }
                                 // エラーがあっても他のタスクは継続
                             }
                         }
@@ -462,6 +504,11 @@ where
                             task_type = task.task_type,
                             "不明なタスクタイプです"
                         );
+                        if let Err(mark_err) =
+                            repos.scheduled_task.mark_as_failed(&txn, task.id).await
+                        {
+                            error!(task_id = task.id, error = %mark_err, "タスクの失敗マークに失敗しました");
+                        }
                     }
                 }
             } else {

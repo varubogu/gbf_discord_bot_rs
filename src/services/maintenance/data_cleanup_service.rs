@@ -179,7 +179,7 @@ where
     ///
     /// 削除条件:
     /// - 実行予定日時が削除基準日時より前
-    /// - 実行済み（is_executed = true）
+    /// - 実行済み（execution_status != pending）
     /// - DataCleanupタスク以外（task_type != 3）
     ///
     /// CASCADE削除される関連データ:

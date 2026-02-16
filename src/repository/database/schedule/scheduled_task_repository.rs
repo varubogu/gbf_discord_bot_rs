@@ -1,4 +1,7 @@
-use crate::models::entities::worker::{scheduled_task_dissolutions, scheduled_tasks};
+use crate::models::entities::worker::{
+    scheduled_task_dissolutions,
+    scheduled_tasks::{self, TaskExecutionStatus},
+};
 use crate::repository::schedule::ScheduledTaskRepository as ScheduledTaskRepositoryTrait;
 use crate::types::Result;
 use async_trait::async_trait;
@@ -28,7 +31,7 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
         let tasks = scheduled_tasks::Entity::find()
             .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::IsExecuted.eq(false))
+            .filter(scheduled_tasks::Column::ExecutionStatus.eq(TaskExecutionStatus::Pending))
             .all(txn)
             .await
             .map_err(|e| {
@@ -53,7 +56,7 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
         let tasks = scheduled_tasks::Entity::find()
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::IsExecuted.eq(false))
+            .filter(scheduled_tasks::Column::ExecutionStatus.eq(TaskExecutionStatus::Pending))
             .all(txn)
             .await
             .map_err(|e| {
@@ -106,7 +109,7 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
             task_type: Set(task_type),
             guild_id: Set(guild_id),
             channel_id: Set(channel_id),
-            is_executed: Set(false),
+            execution_status: Set(TaskExecutionStatus::Pending),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -120,13 +123,44 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
         Ok(task)
     }
 
-    /// タスクを実行済みにマーク
-    async fn mark_as_executed(
+    /// タスクを正常終了にマーク
+    async fn mark_as_succeeded(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
     ) -> Result<scheduled_tasks::Model> {
-        debug!(task_id, "タスクを実行済みにマークします");
+        self.update_execution_status(txn, task_id, TaskExecutionStatus::Succeeded)
+            .await
+    }
+
+    /// タスクを警告付き正常終了にマーク
+    async fn mark_as_succeeded_with_warning(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model> {
+        self.update_execution_status(txn, task_id, TaskExecutionStatus::SucceededWithWarning)
+            .await
+    }
+
+    /// タスクを異常終了にマーク
+    async fn mark_as_failed(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model> {
+        self.update_execution_status(txn, task_id, TaskExecutionStatus::Failed)
+            .await
+    }
+
+    /// タスクの実行状態を更新
+    async fn update_execution_status(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+        status: TaskExecutionStatus,
+    ) -> Result<scheduled_tasks::Model> {
+        debug!(task_id, status = ?status, "タスクの実行状態を更新します");
 
         let task = scheduled_tasks::Entity::find_by_id(task_id)
             .one(txn)
@@ -143,7 +177,7 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
             })?;
 
         let mut active_model: scheduled_tasks::ActiveModel = task.into();
-        active_model.is_executed = Set(true);
+        active_model.execution_status = Set(status);
         active_model.updated_at = Set(Utc::now());
 
         let updated_task = active_model.update(txn).await.map_err(|e| {
@@ -151,7 +185,7 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
             e
         })?;
 
-        debug!(task_id, "タスクを実行済みにマークしました");
+        debug!(task_id, status = ?updated_task.execution_status, "タスクの実行状態を更新しました");
         Ok(updated_task)
     }
 
@@ -273,6 +307,11 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
         let delete_result = scheduled_tasks::Entity::delete_many()
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(before))
+            .filter(scheduled_tasks::Column::ExecutionStatus.ne(TaskExecutionStatus::Pending))
+            .filter(
+                scheduled_tasks::Column::TaskType
+                    .ne(scheduled_tasks::ScheduledTaskType::DataCleanup.as_i32()),
+            )
             .exec(txn)
             .await
             .map_err(|e| {

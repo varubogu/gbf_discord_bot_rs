@@ -129,11 +129,11 @@ where
 
         // 実行時DB再確認: タスクが削除されていないか、既に実行済みでないかを確認
         let _task = match self.task_repo.find_by_id(txn, task_id).await? {
-            Some(task) if !task.is_executed => task,
+            Some(task) if task.execution_status.is_pending() => task,
             Some(_) => {
                 warn!(task_id, "タスクは既に実行済みです");
                 return Err(AppError::Business {
-                    message: format!("Task {task_id} is already executed"),
+                    message: format!("Task {task_id} is not pending"),
                 });
             }
             None => {
@@ -166,8 +166,10 @@ where
             Some(r) => r,
             None => {
                 warn!(task_id, recruit_id, "募集が見つかりません（既に削除済み）");
-                // タスクを実行済みにマーク
-                self.task_repo.mark_as_executed(txn, task_id).await?;
+                // 警告付きでタスクを完了マーク
+                self.task_repo
+                    .mark_as_succeeded_with_warning(txn, task_id)
+                    .await?;
                 return Ok(DissolutionExecutionResult::RecruitmentNotFound { recruit_id });
             }
         };
@@ -180,8 +182,10 @@ where
                 recruitment_id = recruitment.id,
                 "募集は既にキャンセル済みです"
             );
-            // タスクを実行済みにマーク
-            self.task_repo.mark_as_executed(txn, task_id).await?;
+            // 警告付きでタスクを完了マーク
+            self.task_repo
+                .mark_as_succeeded_with_warning(txn, task_id)
+                .await?;
             return Ok(DissolutionExecutionResult::AlreadyCancelled {
                 recruitment_id: recruitment.id,
             });
@@ -209,8 +213,10 @@ where
                     error = %e,
                     "Discordメッセージが見つかりません"
                 );
-                // タスクを実行済みにマーク
-                self.task_repo.mark_as_executed(txn, task_id).await?;
+                // 警告付きでタスクを完了マーク
+                self.task_repo
+                    .mark_as_succeeded_with_warning(txn, task_id)
+                    .await?;
                 return Ok(DissolutionExecutionResult::DiscordMessageNotFound {
                     recruitment_id: recruitment.id,
                 });
@@ -309,8 +315,8 @@ where
                 AppError::from(e)
             })?;
 
-        // タスクを実行済みにマーク
-        self.task_repo.mark_as_executed(txn, task_id).await?;
+        // タスクを正常終了にマーク
+        self.task_repo.mark_as_succeeded(txn, task_id).await?;
 
         info!(
             task_id,

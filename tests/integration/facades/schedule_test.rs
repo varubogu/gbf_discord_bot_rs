@@ -5,7 +5,9 @@ use gbf_discord_bot_rs::facades::schedule::{NotificationScheduleFacade, Schedule
 use gbf_discord_bot_rs::models::entities::worker::{
     notifications as notification, scheduled_tasks as scheduled_task,
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use gbf_discord_bot_rs::repository::database::schedule::SeaOrmScheduledTaskRepository;
+use gbf_discord_bot_rs::repository::schedule::ScheduledTaskRepository;
+use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
 
 use super::test_helper::{TEST_CHANNEL_ID, TEST_GUILD_ID, create_test_app_state};
 
@@ -31,7 +33,7 @@ async fn test_get_future_notifications_formatted_with_data() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(false),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Pending),
         ..Default::default()
     };
     let task_model = task.insert(db).await.expect("scheduled_task挿入失敗");
@@ -107,7 +109,7 @@ async fn test_get_future_notifications_formatted_with_limit() {
             task_type: Set(1), // Notification
             guild_id: Set(Some(TEST_GUILD_ID)),
             channel_id: Set(Some(TEST_CHANNEL_ID)),
-            is_executed: Set(false),
+            execution_status: Set(scheduled_task::TaskExecutionStatus::Pending),
             ..Default::default()
         };
         let task_model = task.insert(db).await.expect("scheduled_task挿入失敗");
@@ -165,7 +167,7 @@ async fn test_get_future_notifications_formatted_limit_zero() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(false),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Pending),
         ..Default::default()
     };
     let task_model = task.insert(db).await.expect("scheduled_task挿入失敗");
@@ -217,7 +219,7 @@ async fn test_get_notification_history_formatted_with_data() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(true),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let task_model = task.insert(db).await.expect("scheduled_task挿入失敗");
@@ -242,7 +244,7 @@ async fn test_get_notification_history_formatted_with_data() {
     assert!(result.is_ok(), "結果がエラーです: {:?}", result);
     let (text, stats) = result.unwrap();
     assert!(!text.is_empty(), "履歴が空です");
-    assert!(stats.total_count >= 0, "統計が取得されていません");
+    assert!(stats.total_count >= 1, "統計が取得されていません");
 
     // クリーンアップ
     let _ = notification::Entity::delete_many().exec(db).await;
@@ -295,7 +297,7 @@ async fn test_get_stats_with_data() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(true),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let task_model = task.insert(db).await.expect("scheduled_task挿入失敗");
@@ -316,7 +318,7 @@ async fn test_get_stats_with_data() {
 
     assert!(result.is_ok(), "統計取得がエラー: {:?}", result);
     let stats = result.unwrap();
-    assert!(stats.total_count >= 0, "統計値が不正");
+    assert!(stats.total_count >= 1, "統計値が不正");
 
     // クリーンアップ
     let _ = notification::Entity::delete_many().exec(db).await;
@@ -365,7 +367,7 @@ async fn test_get_stats_with_period() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(true),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let task_model1 = task1.insert(db).await.expect("scheduled_task挿入失敗");
@@ -390,7 +392,7 @@ async fn test_get_stats_with_period() {
         task_type: Set(1), // Notification
         guild_id: Set(Some(TEST_GUILD_ID)),
         channel_id: Set(Some(TEST_CHANNEL_ID)),
-        is_executed: Set(true),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let task_model2 = task2.insert(db).await.expect("scheduled_task挿入失敗");
@@ -411,11 +413,65 @@ async fn test_get_stats_with_period() {
 
     assert!(result.is_ok());
     let stats = result.unwrap();
-    // 7日以内の通知のみがカウントされる（期間外の通知は除外される）
-    // ただし実際の集計ロジック次第で結果は変わるため、エラーが出ないことを確認
-    assert!(stats.total_count >= 0);
+    // 7日以内の通知が1件以上カウントされることを確認
+    assert!(stats.total_count >= 1);
 
     // クリーンアップ
     let _ = notification::Entity::delete_many().exec(db).await;
     let _ = scheduled_task::Entity::delete_many().exec(db).await;
+}
+
+/// 4-1: 正常系：pending以外のタスクは実行対象外
+///
+/// execution_statusがfailedのタスクはpending取得結果に含まれない
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_find_pending_to_excludes_failed_tasks() {
+    let app_state = create_test_app_state().await;
+    let db = app_state.system_db();
+
+    let _ = scheduled_task::Entity::delete_many().exec(db).await;
+
+    let repo = SeaOrmScheduledTaskRepository::new();
+    let txn = db.begin().await.expect("トランザクション開始失敗");
+
+    let pending_task = scheduled_task::ActiveModel {
+        schedule_datetime: Set(Utc::now() + Duration::minutes(10)),
+        task_type: Set(1),
+        guild_id: Set(Some(TEST_GUILD_ID)),
+        channel_id: Set(Some(TEST_CHANNEL_ID)),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Pending),
+        ..Default::default()
+    }
+    .insert(&txn)
+    .await
+    .expect("pendingタスク挿入失敗");
+
+    let failed_task = scheduled_task::ActiveModel {
+        schedule_datetime: Set(Utc::now() + Duration::minutes(10)),
+        task_type: Set(1),
+        guild_id: Set(Some(TEST_GUILD_ID)),
+        channel_id: Set(Some(TEST_CHANNEL_ID)),
+        execution_status: Set(scheduled_task::TaskExecutionStatus::Failed),
+        ..Default::default()
+    }
+    .insert(&txn)
+    .await
+    .expect("failedタスク挿入失敗");
+
+    let tasks = repo
+        .find_pending_to(&txn, Utc::now() + Duration::hours(1))
+        .await
+        .expect("pendingタスク取得失敗");
+
+    assert!(
+        tasks.iter().any(|t| t.id == pending_task.id),
+        "pendingタスクが取得されること"
+    );
+    assert!(
+        !tasks.iter().any(|t| t.id == failed_task.id),
+        "failedタスクは取得対象外であること"
+    );
+
+    txn.rollback().await.expect("ロールバック失敗");
 }

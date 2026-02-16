@@ -13,6 +13,7 @@ mod m20250117_000000_remove_notifications_schedule_datetime;
 mod m20260122_000000_create_auto_recruitment;
 mod m20260123_000000_add_auto_recruitment_flags;
 mod m20260123_100000_refactor_auto_matching;
+mod m20260216_000000_add_execution_status_to_scheduled_tasks;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260122_000000_create_auto_recruitment::Migration),
             Box::new(m20260123_000000_add_auto_recruitment_flags::Migration),
             Box::new(m20260123_100000_refactor_auto_matching::Migration),
+            Box::new(m20260216_000000_add_execution_status_to_scheduled_tasks::Migration),
         ]
     }
 }

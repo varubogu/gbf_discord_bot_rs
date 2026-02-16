@@ -1,4 +1,7 @@
-use crate::models::entities::worker::{scheduled_task_dismissals, scheduled_tasks};
+use crate::models::entities::worker::{
+    scheduled_task_dismissals,
+    scheduled_tasks::{self, TaskExecutionStatus},
+};
 use crate::repository::schedule::{DismissalWithTask, ScheduledTaskDismissalRepository};
 use crate::types::{AppError, Result};
 use async_trait::async_trait;
@@ -29,8 +32,8 @@ impl ScheduledTaskDismissalRepository for SeaOrmScheduledTaskDismissalRepository
         let tasks = scheduled_tasks::Entity::find()
             .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::IsExecuted.eq(false))
-            .filter(scheduled_tasks::Column::TaskType.eq(2)) // Dismissal
+            .filter(scheduled_tasks::Column::ExecutionStatus.eq(TaskExecutionStatus::Pending))
+            .filter(scheduled_tasks::Column::TaskType.eq(5)) // Dismissal
             .all(txn)
             .await
             .map_err(|e| {

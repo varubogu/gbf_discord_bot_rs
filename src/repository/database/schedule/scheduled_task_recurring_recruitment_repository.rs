@@ -1,4 +1,7 @@
-use crate::models::entities::worker::{scheduled_task_recurring_recruitments, scheduled_tasks};
+use crate::models::entities::worker::{
+    scheduled_task_recurring_recruitments,
+    scheduled_tasks::{self, TaskExecutionStatus},
+};
 use crate::repository::schedule::{
     RecurringRecruitmentWithTask,
     ScheduledTaskRecurringRecruitmentRepository as ScheduledTaskRecurringRecruitmentRepositoryTrait,
@@ -35,7 +38,7 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
         let tasks = scheduled_tasks::Entity::find()
             .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::IsExecuted.eq(false))
+            .filter(scheduled_tasks::Column::ExecutionStatus.eq(TaskExecutionStatus::Pending))
             .filter(scheduled_tasks::Column::TaskType.eq(4)) // RecurringRecruitment
             .all(txn)
             .await
@@ -182,10 +185,10 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
         Ok(result.rows_affected)
     }
 
-    /// recruitment_schedule_idに紐づく未実行のscheduled_tasksを削除
+    /// recruitment_schedule_idに紐づく保留中（pending）のscheduled_tasksを削除
     ///
     /// 定期募集スケジュールの削除・無効化時に、まだ実行されていないタスクを削除する
-    /// 既に実行済み（is_executed=true）のタスクは削除しない（募集は独立して存在するため）
+    /// 既に完了済み（pending以外）のタスクは削除しない（募集は独立して存在するため）
     async fn delete_pending_tasks_by_recruitment_schedule_id(
         &self,
         txn: &DatabaseTransaction,
@@ -195,7 +198,7 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
 
         debug!(
             recruitment_schedule_id,
-            "スケジュールに紐づく未実行scheduled_tasksを削除します"
+            "スケジュールに紐づくpendingのscheduled_tasksを削除します"
         );
 
         // 1. recruitment_schedule_idに紐づくscheduled_task_recurring_recruitmentsを取得
@@ -221,7 +224,7 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
             return Ok(0);
         }
 
-        // 2. 未実行のscheduled_tasksのみを削除
+        // 2. pendingのscheduled_tasksのみを削除
         let task_repo = SeaOrmScheduledTaskRepository::new();
         let mut deleted_count = 0;
 
@@ -235,15 +238,16 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
                     e
                 })?
             {
-                // 未実行のタスクのみ削除
-                if !task.is_executed {
+                // pendingのタスクのみ削除
+                if task.execution_status == TaskExecutionStatus::Pending {
                     task_repo.delete_by_id(txn, task_id).await?;
                     deleted_count += 1;
-                    debug!(task_id, "未実行タスクを削除しました");
+                    debug!(task_id, "pendingタスクを削除しました");
                 } else {
                     debug!(
                         task_id,
-                        "実行済みタスクはスキップしました（募集は独立して存在）"
+                        status = ?task.execution_status,
+                        "pending以外のタスクはスキップしました（募集は独立して存在）"
                     );
                 }
             }
@@ -251,7 +255,7 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
 
         debug!(
             recruitment_schedule_id,
-            deleted_count, "未実行scheduled_tasksの削除が完了しました"
+            deleted_count, "pending scheduled_tasksの削除が完了しました"
         );
 
         Ok(deleted_count)

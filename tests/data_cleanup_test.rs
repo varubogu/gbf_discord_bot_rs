@@ -1,6 +1,8 @@
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
-use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::{
+    ScheduledTaskType, TaskExecutionStatus,
+};
 use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
@@ -64,7 +66,7 @@ async fn test_data_cleanup_integration() {
         task_type: Set(ScheduledTaskType::Notification.as_i32()),
         guild_id: Set(Some(123456789)),
         channel_id: Set(Some(987654321)),
-        is_executed: Set(true),
+        execution_status: Set(TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let inserted_task = old_task.insert(&db).await.unwrap();
@@ -246,7 +248,7 @@ async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
         task_type: Set(ScheduledTaskType::DataCleanup.as_i32()),
         guild_id: Set(Some(123456789)),
         channel_id: Set(Some(987654321)),
-        is_executed: Set(true),
+        execution_status: Set(TaskExecutionStatus::Succeeded),
         ..Default::default()
     };
     let inserted = cleanup_task.insert(&db).await.unwrap();

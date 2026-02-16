@@ -1,4 +1,7 @@
-use crate::models::entities::worker::{scheduled_task_cleanups, scheduled_tasks};
+use crate::models::entities::worker::{
+    scheduled_task_cleanups,
+    scheduled_tasks::{self, TaskExecutionStatus},
+};
 use crate::repository::schedule::{CleanupWithTask, ScheduledTaskCleanupRepository};
 use crate::types::Result;
 use async_trait::async_trait;
@@ -29,7 +32,7 @@ impl ScheduledTaskCleanupRepository for SeaOrmScheduledTaskCleanupRepository {
         let tasks = scheduled_tasks::Entity::find()
             .filter(scheduled_tasks::Column::ScheduleDatetime.gte(from))
             .filter(scheduled_tasks::Column::ScheduleDatetime.lt(to))
-            .filter(scheduled_tasks::Column::IsExecuted.eq(false))
+            .filter(scheduled_tasks::Column::ExecutionStatus.eq(TaskExecutionStatus::Pending))
             .filter(scheduled_tasks::Column::TaskType.eq(3)) // DataCleanup
             .all(txn)
             .await

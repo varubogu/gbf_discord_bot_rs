@@ -1,4 +1,4 @@
-use crate::models::entities::worker::scheduled_tasks;
+use crate::models::entities::worker::scheduled_tasks::{self, TaskExecutionStatus};
 use crate::types::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -39,11 +39,33 @@ pub trait ScheduledTaskRepository: Send + Sync {
         channel_id: Option<i64>,
     ) -> Result<scheduled_tasks::Model>;
 
-    /// タスクを実行済みにマーク
-    async fn mark_as_executed(
+    /// タスクを正常終了にマーク
+    async fn mark_as_succeeded(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
+    ) -> Result<scheduled_tasks::Model>;
+
+    /// タスクを警告付き正常終了にマーク
+    async fn mark_as_succeeded_with_warning(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model>;
+
+    /// タスクを異常終了にマーク
+    async fn mark_as_failed(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model>;
+
+    /// タスクの実行状態を更新
+    async fn update_execution_status(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+        status: TaskExecutionStatus,
     ) -> Result<scheduled_tasks::Model>;
 
     /// IDでタスクを削除
@@ -130,12 +152,37 @@ where
             .await
     }
 
-    async fn mark_as_executed(
+    async fn mark_as_succeeded(
         &self,
         txn: &DatabaseTransaction,
         task_id: i32,
     ) -> Result<scheduled_tasks::Model> {
-        (**self).mark_as_executed(txn, task_id).await
+        (**self).mark_as_succeeded(txn, task_id).await
+    }
+
+    async fn mark_as_succeeded_with_warning(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model> {
+        (**self).mark_as_succeeded_with_warning(txn, task_id).await
+    }
+
+    async fn mark_as_failed(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+    ) -> Result<scheduled_tasks::Model> {
+        (**self).mark_as_failed(txn, task_id).await
+    }
+
+    async fn update_execution_status(
+        &self,
+        txn: &DatabaseTransaction,
+        task_id: i32,
+        status: TaskExecutionStatus,
+    ) -> Result<scheduled_tasks::Model> {
+        (**self).update_execution_status(txn, task_id, status).await
     }
 
     async fn delete_by_id(&self, txn: &DatabaseTransaction, task_id: i32) -> Result<u64> {
