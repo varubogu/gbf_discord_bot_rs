@@ -143,3 +143,5 @@ cargo fmt
 ```
 
 This limits parallel compilation jobs to 2, preventing excessive CPU and memory usage.
+
+Also, **do not run multiple `cargo` commands concurrently**. Always run `cargo` commands sequentially, and only start the next `cargo` command after the previous `cargo` process has finished (no background/parallel runs).

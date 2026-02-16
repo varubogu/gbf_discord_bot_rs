@@ -68,6 +68,7 @@ See `docs/en/developer/05_database/schema_management.md` for details.
 
 - **All comments, docs, and error messages in code must be in Japanese**
 - **All chat responses to users must be in Japanese**
+- **Do not run multiple cargo commands concurrently**: Always run `cargo` commands sequentially. Start the next `cargo` command only after the previous `cargo` process has finished (no background/parallel runs).
 - **All user-facing strings (message content, embeds, and component text such as labels/placeholders) must be defined in `locales/messages.yml` and retrieved via the message abstraction (`MessageTextId` / `MessageService`)**
 - **Do not hardcode user-facing text in Rust source files**
 - Detailed design documents in `docs/en/developer/` (fallback: `docs/ja/開発者向け/`; see documentation skill)
