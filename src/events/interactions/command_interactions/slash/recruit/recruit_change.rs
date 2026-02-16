@@ -17,7 +17,8 @@ use super::super::autocomplete::{battle_style_auto_complete, quest_auto_complete
 #[poise::command(
     slash_command,
     name_localized("ja", "マルチバトル募集内容変更"),
-    description_localized("ja", "マルチバトル募集内容を変更します。")
+    description_localized("ja", "マルチバトル募集内容を変更します。"),
+    ephemeral = true
 )]
 pub async fn recruit_change(
     ctx: PoiseContext<'_>,
@@ -44,7 +45,7 @@ pub async fn recruit_change(
     #[autocomplete = "battle_style_auto_complete"]
     battle_style: Option<i32>,
 ) -> Result<()> {
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
 
     // パラメータが何も指定されていない場合はエラー
     if quest.is_none() && event_date.is_none() && battle_style.is_none() {
