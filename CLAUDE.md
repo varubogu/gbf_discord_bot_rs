@@ -68,6 +68,8 @@ See `docs/en/developer/05_database/schema_management.md` for details.
 
 - **All comments, docs, and error messages in code must be in Japanese**
 - **All chat responses to users must be in Japanese**
+- **All user-facing strings (message content, embeds, and component text such as labels/placeholders) must be defined in `locales/messages.yml` and retrieved via the message abstraction (`MessageTextId` / `MessageService`)**
+- **Do not hardcode user-facing text in Rust source files**
 - Detailed design documents in `docs/en/developer/` (fallback: `docs/ja/開発者向け/`; see documentation skill)
 - If a referenced doc path does not exist (doc reorg), search under `docs/en/` first, then `docs/ja/`.
 - Skills auto-trigger based on context - no need to explicitly call them

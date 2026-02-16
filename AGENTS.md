@@ -58,6 +58,7 @@ cd migration && sea-orm-cli migrate generate migration_name
 - Code comments, design docs, and error messages: **Japanese**
 - Naming: Types `PascalCase`, functions/vars `snake_case`, consts `SCREAMING_SNAKE_CASE`
 - No `unwrap()` in production; `panic!()` only for unrecoverable failures
+- All user-facing strings (message content, embeds, button/select/modal labels, placeholders, and interaction responses) must be defined in `locales/messages.yml` and accessed via the message abstraction (`MessageTextId` / `MessageService`). Do not hardcode user-facing text in Rust code.
 
 ### Architecture & Responsibilities
 - No cross-layer shortcuts (e.g. Events → Services/Repository, Facade → Repository)
