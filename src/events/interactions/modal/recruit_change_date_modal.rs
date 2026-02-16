@@ -5,8 +5,8 @@ use crate::services::unified_datetime_parser::{
 };
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
-    ActionRowComponent, Context, CreateInteractionResponse, CreateInteractionResponseMessage,
-    EditInteractionResponse, ModalInteraction,
+    ActionRowComponent, Context, CreateInteractionResponse, EditInteractionResponse,
+    ModalInteraction,
 };
 use std::sync::Arc;
 use tracing::{error, info};
@@ -55,14 +55,9 @@ pub async fn handle_recruit_change_date_modal(
         .ok_or_else(|| AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?
         .get();
 
-    // Deferして処理時間を確保
+    // 既存メッセージを更新するため、Deferred Updateで応答する
     interaction
-        .create_response(
-            &ctx.http,
-            CreateInteractionResponse::Defer(
-                CreateInteractionResponseMessage::new().ephemeral(true),
-            ),
-        )
+        .create_response(&ctx.http, CreateInteractionResponse::Acknowledge)
         .await?;
 
     // タイムゾーンを取得
