@@ -689,7 +689,9 @@ error!(error = %e, "募集作成に失敗しました");
 ### Runtime processing
 
 - Triggered by `scheduled_tasks`
+- Scheduler execution targets only tasks where `scheduled_tasks.execution_status = 'pending'`
 - Re-check the recruitment state right before execution
+- Reflect the execution result in `scheduled_tasks.execution_status` (`succeeded` / `succeeded_with_warning` / `failed`)
 - If insufficient participants:
   - Update recruitment state to canceled
   - Update the recruitment message to show it is canceled

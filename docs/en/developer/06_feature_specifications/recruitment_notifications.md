@@ -23,19 +23,20 @@ Notification data is stored in `worker.notifications` and `worker.notification_r
 ### `worker.scheduled_tasks`
 
 - `task_type = Notification`
-- `schedule_datetime` が通知実行時刻
-- `is_executed` で実行状態を管理
+- `schedule_datetime` is the notification execution time
+- `execution_status` manages execution state (`pending` / `succeeded` / `succeeded_with_warning` / `failed`)
+- Scheduler execution targets only rows where `execution_status = 'pending'`
 
 ### `worker.notifications`
 
-- `task_id` で `scheduled_tasks.id` を参照
-- `guild_id` / `channel_id` / `message_text_id` を保持
-- `is_sent` で送信済み状態を管理
+- `task_id` references `scheduled_tasks.id`
+- Stores `guild_id` / `channel_id` / `message_text_id`
+- `is_sent` manages sent state
 
 ### `worker.notification_rel_battle_recruitments`
 
-- 募集レコードと通知レコードの関連を保持
-- 募集変更時の再生成対象特定に使用
+- Stores relations between recruitment rows and notification rows
+- Used to identify regeneration targets when recruitments are changed
 
 ## Flow
 
@@ -62,17 +63,19 @@ Notification data is stored in `worker.notifications` and `worker.notification_r
 
 - Notification creation failure: rollback in the same transaction as recruitment creation
 - Notification update failure: rollback the whole update
-- Send failure: log it and keep a retryable state according to retry policy
+- Send failure: log it, set `scheduled_tasks.execution_status = 'failed'`, and continue
+- Warning completion: if send succeeds but the result should be tracked operationally, set `scheduled_tasks.execution_status = 'succeeded_with_warning'`
 
 ## Testing notes
 
 - Notification time calculation (boundaries: day changes, near-identical times)
 - Deleting and recreating old notifications on changes
 - Bulk delete on cancel
-- Prevent double sends (`is_sent` / `is_executed`)
+- Prevent double sends (`is_sent` / `execution_status`)
 
 ## Operational notes
 
 - Monitor notification success rate and latency
-- Monitor the count of unexecuted notifications
+- Monitor pending notification count (`execution_status = 'pending'`)
+- Monitor failed count (`execution_status = 'failed'`) and warning-complete count (`execution_status = 'succeeded_with_warning'`)
 - Verify fallback behavior when message templates are missing

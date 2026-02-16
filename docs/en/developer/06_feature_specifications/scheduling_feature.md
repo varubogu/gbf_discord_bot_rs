@@ -23,6 +23,21 @@ Major variants of `ScheduledTaskType`:
 - `6: AutoRecruitmentRotation` rotate auto-recruitment dates
 - `7: AutoMatching` run auto-matching
 
+## Task execution status (`scheduled_tasks.execution_status`)
+
+Task execution status is managed by PostgreSQL ENUM (`worker.task_execution_status`).
+
+- `pending`: not executed yet
+- `succeeded`: completed successfully
+- `succeeded_with_warning`: completed successfully with warning(s)
+- `failed`: completed with error
+
+Policy:
+
+- Scheduler execution targets only `pending`
+- `succeeded_with_warning` is treated as completed and is not automatically retried
+- `failed` is treated as an error completion and is not automatically retried (recover separately when needed)
+
 ## Event Notification Schedule Generation Specification (global/guild merge)
 
 This section defines merge rules between `global` and `guild` data when regenerating event notifications (`task_type = Notification`).
@@ -167,17 +182,18 @@ Pattern descriptions are listed in order: Event -> Detail -> Message.
 
 ### Execution cycle (every 10 seconds)
 
-1. Fetch tasks with `is_executed = false` (past range + current to 20 seconds ahead)
+1. Fetch tasks with `execution_status = 'pending'` (past range + current to 20 seconds ahead)
 2. Extract tasks with `schedule_datetime <= now` as execution targets
 3. Switch executors by `task_type` and process
-4. On success, update `scheduled_tasks.is_executed = true`
+4. Update `scheduled_tasks.execution_status` by execution result (`succeeded` / `succeeded_with_warning` / `failed`)
 5. For recurring features (for example, scheduled recruitment), generate next task
 
 ### Consistency policy
 
 - Re-check the DB right before execution and safely skip disabled/deleted targets
-- On individual task failure, log an error and continue processing other tasks
-- Prevent duplicate execution of the same task by managing state with executed flags
+- On individual task failure, log an error, update that task to `failed`, and continue processing other tasks
+- Record warning-completed tasks as `succeeded_with_warning` so operations can trace them
+- Prevent duplicate execution of the same task by managing state with `execution_status`
 
 ## Key tables
 

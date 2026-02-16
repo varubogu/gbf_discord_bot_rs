@@ -4,26 +4,41 @@
 
 - Schema: `worker`
 - Table: `scheduled_tasks`
-- Source: `src/models/entities/worker/scheduled_tasks.rs`
+- Source: `src/models/entities/worker/scheduled_tasks.rs` (sync after implementation update)
 
 ## Primary key
 
 - id
 
-## Columns (code-aligned)
+## Columns (design)
 
-| Column | Type (Rust) | Nullable | Notes |
+| Column | Type (DB) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `id` | `i32` | NO | Primary key |
-| `schedule_datetime` | `DateTimeUtc` | NO |  |
-| `task_type` | `i32` | NO |  |
-| `guild_id` | `Option<i64>` | YES |  |
-| `channel_id` | `Option<i64>` | YES |  |
-| `is_executed` | `bool` | NO |  |
-| `created_at` | `DateTimeUtc` | NO |  |
-| `updated_at` | `DateTimeUtc` | NO |  |
+| `id` | `serial` | NO | Primary key |
+| `schedule_datetime` | `timestamptz` | NO |  |
+| `task_type` | `int` | NO |  |
+| `guild_id` | `bigint` | YES |  |
+| `channel_id` | `bigint` | YES |  |
+| `execution_status` | `worker.task_execution_status` | NO | Execution status (default: `pending`) |
+| `created_at` | `timestamptz` | NO |  |
+| `updated_at` | `timestamptz` | NO |  |
+
+## ENUM definition
+
+### `worker.task_execution_status`
+
+| Value | Meaning | Included in next scheduler run |
+| --- | --- | --- |
+| `pending` | Not executed yet | Yes |
+| `succeeded` | Completed successfully | No |
+| `succeeded_with_warning` | Completed successfully with warning(s) | No |
+| `failed` | Completed with error | No |
+
+## Index policy (excerpt)
+
+- The partial index for fetching unexecuted tasks should use `execution_status = 'pending'`
 
 ## Notes
 
-- This document is created using the definitions in `src/models/entities` as the source of truth.
+- This document describes the new design that introduces ENUM-based execution status.
 - For final constraints and indexes, also check the migration definitions.
