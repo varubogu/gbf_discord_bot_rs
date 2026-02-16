@@ -17,8 +17,8 @@ pub struct CalculatedSchedule {
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_text_id: String,
-    pub event_schedule_id: uuid::Uuid,
-    pub event_schedule_detail_id: uuid::Uuid,
+    pub event_schedule_id: Option<uuid::Uuid>,
+    pub event_schedule_detail_id: Option<uuid::Uuid>,
 }
 
 impl ScheduleCalculator {
@@ -83,8 +83,8 @@ impl ScheduleCalculator {
                                     guild_id: *guild_id,
                                     channel_id: *channel_id,
                                     message_text_id: detail.message_text_id.clone(),
-                                    event_schedule_id: event_schedule.id,
-                                    event_schedule_detail_id: detail.id,
+                                    event_schedule_id: Some(event_schedule.id),
+                                    event_schedule_detail_id: Some(detail.id),
                                 });
                             }
                         }
@@ -109,7 +109,7 @@ impl ScheduleCalculator {
     }
 
     /// イベントスケジュールと詳細から具体的な日時を計算（複数日対応）
-    fn calculate_datetimes(
+    pub(crate) fn calculate_datetimes(
         &self,
         event_schedule: &event_schedules::Model,
         detail: &event_schedule_details::Model,

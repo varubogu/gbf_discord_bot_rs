@@ -1,6 +1,6 @@
 # Feature Specifications (Developer)
 
-This section summarizes each major feature’s purpose, requirements, data model, and processing flow.
+This section summarizes each major feature's purpose, requirements, data model, and processing flow.
 
 ## Index
 
@@ -9,7 +9,8 @@ This section summarizes each major feature’s purpose, requirements, data model
 - [Scheduled recruitment](scheduled_recruitment.md)
 - [Recruitment notifications](recruitment_notifications.md)
 - [Auto recruitment](auto_recruitment.md)
-- [Scheduling platform](scheduling_feature.md)
+- [Scheduling feature (common)](scheduling_feature.md)
+- [Scheduling feature (by task type)](scheduling_feature/README.md)
 - [Message resolution](message_resolution.md)
 - [Time zone settings](time_zone_settings.md)
 - [Startup validation](startup_validation.md)
@@ -18,25 +19,25 @@ This section summarizes each major feature’s purpose, requirements, data model
 
 | Feature | General user | Discord server admin | Bot operator (admin) |
 | --- | --- | --- | --- |
-| Read/write per-server spreadsheet | ✕ | ◯ | ◯ |
-| Read/write global spreadsheet | ✕ | ✕ | ◯ |
-| Create/join co-op recruitment | ◯ | ◯ | ◯ |
-| Edit/delete other users’ co-op recruitments | ✕ | ◯ | ◯ |
-| Join scheduled recruitment | ◯ | ◯ | ◯ |
-| Create/edit/delete scheduled recruitment | ◯ | ◯ | ◯ |
-| Quest list | ◯ | ◯ | ◯ |
-| Quest enable/disable | ✕ | ◯ | ◯ |
-| View recruitment roles | ◯ | ◯ | ◯ |
-| Configure recruitment roles | ✕ | ◯ | ◯ |
-| View server channel settings | ◯ | ◯ | ◯ |
-| Edit server channel settings | ✕ | ◯ | ◯ |
-| View server settings | ◯ | ◯ | ◯ |
-| Edit server settings | ✕ | ◯ | ◯ |
-| Recruitment notifications | ◯ | ◯ | ◯ |
-| Auto recruitment | ◯ | ◯ | ◯ |
-| Schedule notification feature | ◯ | ◯ | ◯ |
-| Schedule editing feature | ✕ | ◯ | ◯ |
-| Time zone settings | ✕ | ◯ | ◯ |
+| Read/write per-server spreadsheet | x | o | o |
+| Read/write global spreadsheet | x | x | o |
+| Create/join co-op recruitment | o | o | o |
+| Edit/delete other users' co-op recruitments | x | o | o |
+| Join scheduled recruitment | o | o | o |
+| Create/edit/delete scheduled recruitment | o | o | o |
+| Quest list | o | o | o |
+| Quest enable/disable | x | o | o |
+| View recruitment roles | o | o | o |
+| Configure recruitment roles | x | o | o |
+| View server channel settings | o | o | o |
+| Edit server channel settings | x | o | o |
+| View server settings | o | o | o |
+| Edit server settings | x | o | o |
+| Recruitment notifications | o | o | o |
+| Auto recruitment | o | o | o |
+| Schedule notification feature | o | o | o |
+| Schedule editing feature | x | o | o |
+| Time zone settings | x | o | o |
 
 ## Notes
 

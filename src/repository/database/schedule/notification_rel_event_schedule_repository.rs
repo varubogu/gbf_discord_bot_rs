@@ -43,12 +43,12 @@ impl NotificationRelEventScheduleRepository for SeaOrmNotificationRelEventSchedu
         &self,
         txn: &DatabaseTransaction,
         event_schedule_id: Uuid,
-        event_schedule_detail_id: Uuid,
+        event_schedule_detail_id: Option<Uuid>,
         notification_id: i32,
     ) -> Result<notification_rel_event_schedules::Model> {
         let active_model = notification_rel_event_schedules::ActiveModel {
             event_schedule_id: Set(event_schedule_id),
-            event_schedule_detail_id: Set(Some(event_schedule_detail_id)),
+            event_schedule_detail_id: Set(event_schedule_detail_id),
             notification_id: Set(notification_id),
             created_at: Set(Utc::now()),
         };

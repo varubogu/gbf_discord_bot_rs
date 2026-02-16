@@ -12,7 +12,7 @@ pub trait NotificationRelEventScheduleRepository: Send + Sync {
         &self,
         txn: &DatabaseTransaction,
         event_schedule_id: Uuid,
-        event_schedule_detail_id: Uuid,
+        event_schedule_detail_id: Option<Uuid>,
         notification_id: i32,
     ) -> Result<notification_rel_event_schedules::Model>;
 

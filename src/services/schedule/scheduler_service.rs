@@ -1,9 +1,12 @@
-use crate::models::entities::guild_master::guild_channels;
+use crate::models::entities::guild_master::{
+    guild_channels, guild_event_schedule_details, guild_event_schedules,
+};
+use crate::models::entities::master::{event_schedule_details, event_schedules};
 use crate::services::schedule::ScheduleCalculator;
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::types::{AppState, Result};
 use sea_orm::DatabaseTransaction;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use tracing::{debug, info, warn};
 
 use crate::models::entities::guild_master::battle_recruitment_schedules;
@@ -15,6 +18,14 @@ use crate::repository::schedule::{
     NotificationRepository, ScheduleRepository, ScheduledTaskRepository,
 };
 use sea_orm::DatabaseConnection;
+
+#[derive(Debug, Default, Clone, Copy)]
+struct NotificationSchedulePlanStats {
+    target_guilds: usize,
+    planned: usize,
+    skipped_channel_unresolved: usize,
+    skipped_datetime_calc_failed: usize,
+}
 
 /// スケジューラーサービス
 pub struct SchedulerService<SR, NR, NRER, STR, BRSR, LPTR>
@@ -89,52 +100,73 @@ where
             "通知タイプのscheduled_tasksとnotificationsを削除しました"
         );
 
-        // イベントスケジュールと詳細を取得
-        let event_schedules = self
+        // イベントスケジュール（global/guild）と詳細（global/guild）を取得
+        let global_event_schedules = self
             .schedule_repo
             .find_all_event_schedules(app_state.system_db())
             .await?;
-        let event_schedule_details = self
+        let global_event_schedule_details = self
             .schedule_repo
             .find_all_event_schedule_details(app_state.system_db())
             .await?;
-
-        debug!(
-            event_schedules = event_schedules.len(),
-            event_details = event_schedule_details.len(),
-            "イベントスケジュールを取得しました"
-        );
-
-        if event_schedules.is_empty() {
-            warn!("イベントスケジュールが登録されていません");
-            return Ok(());
-        }
-
-        // 通知対象のギルドとチャンネルを取得（channel_type別）
-        let guild_channels_by_type = self
-            .get_notification_guild_channels_by_type(app_state)
+        let guild_event_schedules = self
+            .schedule_repo
+            .find_all_guild_event_schedules(app_state.system_db())
+            .await?;
+        let guild_event_schedule_details = self
+            .schedule_repo
+            .find_all_guild_event_schedule_details(app_state.system_db())
             .await?;
 
         debug!(
-            channel_types = guild_channels_by_type.len(),
-            "通知対象のギルド・チャンネルを取得しました"
+            global_event_schedules = global_event_schedules.len(),
+            global_event_details = global_event_schedule_details.len(),
+            guild_event_schedules = guild_event_schedules.len(),
+            guild_event_details = guild_event_schedule_details.len(),
+            "イベントスケジュール（global/guild）を取得しました"
         );
 
-        if guild_channels_by_type.is_empty() {
+        if global_event_schedules.is_empty() && guild_event_schedules.is_empty() {
+            warn!("イベントスケジュール（global/guild）が登録されていません");
+            return Ok(());
+        }
+
+        // 通知対象のギルド・チャンネルを取得（guild_id -> channel_type -> channel_id）
+        let guild_channels_by_guild = self
+            .get_notification_guild_channels_by_guild(app_state)
+            .await?;
+
+        debug!(
+            guilds = guild_channels_by_guild.len(),
+            "通知対象のギルド・チャンネルを取得しました（guild単位）"
+        );
+
+        if guild_channels_by_guild.is_empty() {
             warn!("通知対象のギルド・チャンネルが登録されていません");
             return Ok(());
         }
 
-        // スケジュールを計算
-        let calculated_schedules = calculator.calculate_schedules(
-            event_schedules,
-            event_schedule_details,
-            guild_channels_by_type,
+        // スケジュールを計算（global/guild統合）
+        let (calculated_schedules, plan_stats) = Self::plan_notification_schedules(
+            &calculator,
+            global_event_schedules,
+            global_event_schedule_details,
+            guild_event_schedules,
+            guild_event_schedule_details,
+            guild_channels_by_guild,
         )?;
 
         debug!(
             calculated_schedules = calculated_schedules.len(),
             "スケジュールを計算しました"
+        );
+
+        debug!(
+            target_guilds = plan_stats.target_guilds,
+            planned = plan_stats.planned,
+            skipped_channel_unresolved = plan_stats.skipped_channel_unresolved,
+            skipped_datetime_calc_failed = plan_stats.skipped_datetime_calc_failed,
+            "通知スケジュールの統合計画が完了しました"
         );
 
         // 計算されたスケジュールをDBに保存
@@ -147,23 +179,291 @@ where
         Ok(())
     }
 
-    async fn get_notification_guild_channels_by_type(
+    async fn get_notification_guild_channels_by_guild(
         &self,
         app_state: &AppState,
-    ) -> Result<HashMap<i32, Vec<(i64, i64)>>> {
+    ) -> Result<HashMap<i64, HashMap<i32, i64>>> {
         let guild_channels = <guild_channels::Entity as sea_orm::EntityTrait>::find()
             .all(app_state.system_db())
             .await?;
 
-        let mut channels_by_type: HashMap<i32, Vec<(i64, i64)>> = HashMap::new();
+        let mut channels_by_guild: HashMap<i64, HashMap<i32, i64>> = HashMap::new();
 
         for gc in guild_channels {
-            channels_by_type
-                .entry(gc.channel_type)
+            channels_by_guild
+                .entry(gc.guild_id)
                 .or_default()
-                .push((gc.guild_id, gc.channel_id));
+                .insert(gc.channel_type, gc.channel_id);
         }
-        Ok(channels_by_type)
+        Ok(channels_by_guild)
+    }
+
+    fn plan_notification_schedules(
+        calculator: &ScheduleCalculator,
+        global_event_schedules: Vec<event_schedules::Model>,
+        global_event_schedule_details: Vec<event_schedule_details::Model>,
+        guild_event_schedules: Vec<guild_event_schedules::Model>,
+        guild_event_schedule_details: Vec<guild_event_schedule_details::Model>,
+        guild_channels_by_guild: HashMap<i64, HashMap<i32, i64>>,
+    ) -> Result<(Vec<CalculatedSchedule>, NotificationSchedulePlanStats)> {
+        let mut stats = NotificationSchedulePlanStats::default();
+
+        let global_schedule_ids: HashSet<uuid::Uuid> =
+            global_event_schedules.iter().map(|s| s.id).collect();
+        let global_detail_ids: HashSet<uuid::Uuid> =
+            global_event_schedule_details.iter().map(|d| d.id).collect();
+
+        let mut global_schedules_by_id: HashMap<uuid::Uuid, event_schedules::Model> =
+            HashMap::new();
+        for schedule in global_event_schedules {
+            global_schedules_by_id.insert(schedule.id, schedule);
+        }
+
+        let mut global_details_by_profile: HashMap<
+            String,
+            HashMap<uuid::Uuid, event_schedule_details::Model>,
+        > = HashMap::new();
+        for detail in global_event_schedule_details {
+            global_details_by_profile
+                .entry(detail.profile.clone())
+                .or_default()
+                .insert(detail.id, detail);
+        }
+
+        let mut guild_schedules_by_guild: HashMap<
+            i64,
+            HashMap<uuid::Uuid, guild_event_schedules::Model>,
+        > = HashMap::new();
+        for schedule in guild_event_schedules {
+            guild_schedules_by_guild
+                .entry(schedule.guild_id)
+                .or_default()
+                .insert(schedule.id, schedule);
+        }
+
+        let mut guild_details_by_guild_profile: HashMap<
+            i64,
+            HashMap<String, HashMap<uuid::Uuid, guild_event_schedule_details::Model>>,
+        > = HashMap::new();
+        for detail in guild_event_schedule_details {
+            guild_details_by_guild_profile
+                .entry(detail.guild_id)
+                .or_default()
+                .entry(detail.profile.clone())
+                .or_default()
+                .insert(detail.id, detail);
+        }
+
+        let mut target_guild_ids = BTreeSet::new();
+        target_guild_ids.extend(guild_channels_by_guild.keys().copied());
+        target_guild_ids.extend(guild_schedules_by_guild.keys().copied());
+        target_guild_ids.extend(guild_details_by_guild_profile.keys().copied());
+
+        stats.target_guilds = target_guild_ids.len();
+
+        let mut results = Vec::new();
+
+        for guild_id in target_guild_ids {
+            let guild_channels = guild_channels_by_guild.get(&guild_id);
+            let guild_schedules = guild_schedules_by_guild.get(&guild_id);
+            let guild_details = guild_details_by_guild_profile.get(&guild_id);
+
+            // globalスケジュール + guild上書き + guild独自（global未存在）を統合
+            let mut effective_schedules: Vec<(event_schedules::Model, Option<uuid::Uuid>)> =
+                Vec::new();
+
+            for (schedule_id, global_schedule) in &global_schedules_by_id {
+                if let Some(guild_schedule) = guild_schedules.and_then(|m| m.get(schedule_id)) {
+                    effective_schedules.push((
+                        Self::to_master_event_schedule(guild_schedule),
+                        Some(*schedule_id),
+                    ));
+                } else {
+                    effective_schedules.push((global_schedule.clone(), Some(*schedule_id)));
+                }
+            }
+
+            if let Some(guild_schedules) = guild_schedules {
+                for (schedule_id, guild_schedule) in guild_schedules {
+                    if global_schedule_ids.contains(schedule_id) {
+                        continue;
+                    }
+                    // master.event_schedulesに存在しないIDは、リレーション保存をスキップする
+                    effective_schedules
+                        .push((Self::to_master_event_schedule(guild_schedule), None));
+                }
+            }
+
+            for (event_schedule, relation_event_schedule_id) in effective_schedules {
+                let global_details_for_profile =
+                    global_details_by_profile.get(&event_schedule.profile);
+                let guild_details_for_profile =
+                    guild_details.and_then(|m| m.get(&event_schedule.profile));
+
+                let mut detail_ids = BTreeSet::new();
+                if let Some(global_details) = global_details_for_profile {
+                    detail_ids.extend(global_details.keys().copied());
+                }
+                if let Some(guild_details) = guild_details_for_profile {
+                    detail_ids.extend(guild_details.keys().copied());
+                }
+
+                if detail_ids.is_empty() {
+                    debug!(
+                        guild_id = guild_id,
+                        profile = %event_schedule.profile,
+                        "該当プロファイルの詳細スケジュールが存在しないためスキップします"
+                    );
+                    continue;
+                }
+
+                for detail_id in detail_ids {
+                    let global_detail = global_details_for_profile.and_then(|m| m.get(&detail_id));
+                    let guild_detail = guild_details_for_profile.and_then(|m| m.get(&detail_id));
+
+                    let message_text_id = if let Some(guild_detail) = guild_detail {
+                        guild_detail.message_text_id.clone()
+                    } else if let Some(global_detail) = global_detail {
+                        global_detail.message_text_id.clone()
+                    } else {
+                        // detail_idsに含めた時点で必ず存在するはず
+                        stats.skipped_datetime_calc_failed += 1;
+                        warn!(
+                            guild_id = guild_id,
+                            profile = %event_schedule.profile,
+                            detail_id = %detail_id,
+                            "詳細スケジュールが解決できませんでした"
+                        );
+                        continue;
+                    };
+
+                    let channel_id = Self::resolve_channel_id(
+                        guild_id,
+                        guild_channels,
+                        guild_detail,
+                        global_detail,
+                    );
+
+                    let Some(channel_id) = channel_id else {
+                        stats.skipped_channel_unresolved += 1;
+                        warn!(
+                            guild_id = guild_id,
+                            profile = %event_schedule.profile,
+                            detail_id = %detail_id,
+                            "通知先チャンネルを解決できないためスキップします"
+                        );
+                        continue;
+                    };
+
+                    let detail_for_calc = if let Some(guild_detail) = guild_detail {
+                        Self::to_master_event_schedule_detail(guild_detail)
+                    } else if let Some(global_detail) = global_detail {
+                        global_detail.clone()
+                    } else {
+                        stats.skipped_datetime_calc_failed += 1;
+                        warn!(
+                            guild_id = guild_id,
+                            profile = %event_schedule.profile,
+                            detail_id = %detail_id,
+                            "詳細スケジュールが解決できませんでした"
+                        );
+                        continue;
+                    };
+
+                    match calculator.calculate_datetimes(&event_schedule, &detail_for_calc) {
+                        Ok(schedule_datetimes) => {
+                            for schedule_datetime in schedule_datetimes {
+                                results.push(CalculatedSchedule {
+                                    schedule_datetime,
+                                    guild_id,
+                                    channel_id,
+                                    message_text_id: message_text_id.clone(),
+                                    event_schedule_id: relation_event_schedule_id,
+                                    event_schedule_detail_id: global_detail_ids
+                                        .contains(&detail_id)
+                                        .then_some(detail_id),
+                                });
+                                stats.planned += 1;
+                            }
+                        }
+                        Err(e) => {
+                            stats.skipped_datetime_calc_failed += 1;
+                            warn!(
+                                error = %e,
+                                guild_id = guild_id,
+                                profile = %event_schedule.profile,
+                                detail_id = %detail_id,
+                                "スケジュール日時の計算に失敗しました"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((results, stats))
+    }
+
+    fn resolve_channel_id(
+        guild_id: i64,
+        guild_channels: Option<&HashMap<i32, i64>>,
+        guild_detail: Option<&guild_event_schedule_details::Model>,
+        global_detail: Option<&event_schedule_details::Model>,
+    ) -> Option<i64> {
+        let guild_channels = guild_channels?;
+
+        if let Some(detail) = guild_detail
+            && let Some(channel_id) = guild_channels.get(&detail.notification_channel_type)
+        {
+            return Some(*channel_id);
+        }
+
+        if let Some(detail) = global_detail
+            && let Some(channel_id) = guild_channels.get(&detail.notification_channel_type)
+        {
+            return Some(*channel_id);
+        }
+
+        debug!(
+            guild_id = guild_id,
+            guild_channel_types = guild_channels.len(),
+            guild_detail_channel_type = guild_detail.map(|d| d.notification_channel_type),
+            global_detail_channel_type = global_detail.map(|d| d.notification_channel_type),
+            "通知先チャンネルが未登録のため解決できませんでした"
+        );
+
+        None
+    }
+
+    fn to_master_event_schedule(schedule: &guild_event_schedules::Model) -> event_schedules::Model {
+        event_schedules::Model {
+            id: schedule.id,
+            event_type: schedule.event_type.clone(),
+            event_count: schedule.event_count,
+            profile: schedule.profile.clone(),
+            weak_attribute: schedule.weak_attribute,
+            start_at: schedule.start_at,
+            end_at: schedule.end_at,
+            created_at: schedule.created_at,
+            updated_at: schedule.updated_at,
+        }
+    }
+
+    fn to_master_event_schedule_detail(
+        detail: &guild_event_schedule_details::Model,
+    ) -> event_schedule_details::Model {
+        event_schedule_details::Model {
+            id: detail.id,
+            profile: detail.profile.clone(),
+            start_day_relative: detail.start_day_relative.clone(),
+            time: detail.time.clone(),
+            schedule_name: detail.schedule_name.clone(),
+            message_text_id: detail.message_text_id.clone(),
+            notification_channel_type: detail.notification_channel_type,
+            reactions: detail.reactions.clone(),
+            created_at: detail.created_at,
+            updated_at: detail.updated_at,
+        }
     }
 
     async fn save_calculated_schedules(
@@ -210,14 +510,16 @@ where
                 .await?;
 
             // 3. notification_relを作成
-            self.rel_repo
-                .create_with_txn(
-                    txn,
-                    schedule.event_schedule_id,
-                    schedule.event_schedule_detail_id,
-                    notification.id,
-                )
-                .await?;
+            if let Some(event_schedule_id) = schedule.event_schedule_id {
+                self.rel_repo
+                    .create_with_txn(
+                        txn,
+                        event_schedule_id,
+                        schedule.event_schedule_detail_id,
+                        notification.id,
+                    )
+                    .await?;
+            }
 
             created_count += 1;
         }
@@ -286,5 +588,143 @@ where
         self.battle_recruitment_schedule_repo
             .find_all_enabled_schedules_with_days(db)
             .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::repository::database::{
+        SeaOrmBattleRecruitmentScheduleRepository, SeaOrmLastProcessTimeRepository,
+        SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
+        SeaOrmScheduleRepository, SeaOrmScheduledTaskRepository,
+    };
+    use chrono::{NaiveDate, Utc};
+    use uuid::Uuid;
+
+    type TestSchedulerService = SchedulerService<
+        SeaOrmScheduleRepository,
+        SeaOrmNotificationRepository,
+        SeaOrmNotificationRelEventScheduleRepository,
+        SeaOrmScheduledTaskRepository,
+        SeaOrmBattleRecruitmentScheduleRepository,
+        SeaOrmLastProcessTimeRepository,
+    >;
+
+    fn build_global_event_schedule(id: Uuid, profile: &str) -> event_schedules::Model {
+        event_schedules::Model {
+            id,
+            event_type: "gw".to_string(),
+            event_count: 1,
+            profile: profile.to_string(),
+            weak_attribute: 1,
+            start_at: NaiveDate::from_ymd_opt(2025, 1, 15)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            end_at: NaiveDate::from_ymd_opt(2025, 1, 20)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn build_guild_detail(
+        guild_id: i64,
+        id: Uuid,
+        profile: &str,
+        message_text_id: &str,
+    ) -> guild_event_schedule_details::Model {
+        guild_event_schedule_details::Model {
+            guild_id,
+            id,
+            profile: profile.to_string(),
+            start_day_relative: "0".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "guild_detail".to_string(),
+            message_text_id: message_text_id.to_string(),
+            notification_channel_type: 10,
+            reactions: String::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn guild_detail_only_with_global_schedule_uses_global_message_id_pattern_153() {
+        let calculator = ScheduleCalculator::new(365);
+        let guild_id = 1001_i64;
+        let other_guild_id = 2002_i64;
+        let schedule_id = Uuid::new_v4();
+        let detail_id = Uuid::new_v4();
+
+        let mut guild_channels_by_guild = HashMap::new();
+        guild_channels_by_guild.insert(guild_id, HashMap::from([(10, 5001)]));
+        guild_channels_by_guild.insert(other_guild_id, HashMap::from([(10, 6001)]));
+
+        let (results, stats) = TestSchedulerService::plan_notification_schedules(
+            &calculator,
+            vec![build_global_event_schedule(schedule_id, "gw_profile")],
+            vec![],
+            vec![],
+            vec![build_guild_detail(
+                guild_id,
+                detail_id,
+                "gw_profile",
+                "message_global_only",
+            )],
+            guild_channels_by_guild,
+        )
+        .unwrap();
+
+        assert_eq!(stats.target_guilds, 2);
+        assert_eq!(stats.planned, 1);
+        assert_eq!(results.len(), 1);
+
+        let actual = &results[0];
+        assert_eq!(actual.guild_id, guild_id);
+        assert_eq!(actual.channel_id, 5001);
+        assert_eq!(actual.message_text_id, "message_global_only");
+        assert_eq!(actual.event_schedule_id, Some(schedule_id));
+        assert_eq!(actual.event_schedule_detail_id, None);
+    }
+
+    #[test]
+    fn guild_detail_only_with_global_schedule_uses_guild_message_id_pattern_156() {
+        let calculator = ScheduleCalculator::new(365);
+        let guild_id = 3003_i64;
+        let schedule_id = Uuid::new_v4();
+        let detail_id = Uuid::new_v4();
+
+        let mut guild_channels_by_guild = HashMap::new();
+        guild_channels_by_guild.insert(guild_id, HashMap::from([(10, 7001)]));
+
+        let (results, stats) = TestSchedulerService::plan_notification_schedules(
+            &calculator,
+            vec![build_global_event_schedule(schedule_id, "gw_profile")],
+            vec![],
+            vec![],
+            vec![build_guild_detail(
+                guild_id,
+                detail_id,
+                "gw_profile",
+                "message_guild_only",
+            )],
+            guild_channels_by_guild,
+        )
+        .unwrap();
+
+        assert_eq!(stats.target_guilds, 1);
+        assert_eq!(stats.planned, 1);
+        assert_eq!(results.len(), 1);
+
+        let actual = &results[0];
+        assert_eq!(actual.guild_id, guild_id);
+        assert_eq!(actual.channel_id, 7001);
+        assert_eq!(actual.message_text_id, "message_guild_only");
+        assert_eq!(actual.event_schedule_id, Some(schedule_id));
+        assert_eq!(actual.event_schedule_detail_id, None);
     }
 }

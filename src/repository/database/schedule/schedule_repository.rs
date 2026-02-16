@@ -1,3 +1,4 @@
+use crate::models::entities::guild_master::{guild_event_schedule_details, guild_event_schedules};
 use crate::models::entities::master::{event_schedule_details, event_schedules};
 use crate::repository::schedule::ScheduleRepository as ScheduleRepositoryTrait;
 use crate::types::Result;
@@ -114,6 +115,59 @@ impl ScheduleRepositoryTrait for SeaOrmScheduleRepository {
             "イベントスケジュールを取得しました"
         );
         Ok(schedules)
+    }
+
+    /// すべてのguild版イベントスケジュールを取得
+    async fn find_all_guild_event_schedules<C>(
+        &self,
+        db: &C,
+    ) -> Result<Vec<guild_event_schedules::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        debug!("すべてのguild版イベントスケジュールを取得します");
+
+        let schedules = guild_event_schedules::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "guild版イベントスケジュールの取得に失敗しました");
+                e
+            })?;
+
+        debug!(
+            count = schedules.len(),
+            "guild版イベントスケジュールを取得しました"
+        );
+        Ok(schedules)
+    }
+
+    /// すべてのguild版イベントスケジュール詳細を取得
+    async fn find_all_guild_event_schedule_details<C>(
+        &self,
+        db: &C,
+    ) -> Result<Vec<guild_event_schedule_details::Model>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
+        debug!("すべてのguild版イベントスケジュール詳細を取得します");
+
+        let details = guild_event_schedule_details::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    "guild版イベントスケジュール詳細の取得に失敗しました"
+                );
+                e
+            })?;
+
+        debug!(
+            count = details.len(),
+            "guild版イベントスケジュール詳細を取得しました"
+        );
+        Ok(details)
     }
 }
 
