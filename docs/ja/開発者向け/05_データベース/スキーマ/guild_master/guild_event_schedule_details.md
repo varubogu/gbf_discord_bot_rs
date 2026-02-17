@@ -22,6 +22,7 @@
 | `schedule_name` | `String` | NO |  |
 | `message_text_id` | `String` | NO |  |
 | `notification_channel_type` | `i32` | NO |  |
+| `notification_channel_id` | `Option<i64>` | YES |  |
 | `reactions` | `String` | NO |  |
 | `created_at` | `DateTimeUtc` | NO |  |
 | `updated_at` | `DateTimeUtc` | NO |  |

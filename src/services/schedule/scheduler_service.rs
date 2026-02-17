@@ -507,10 +507,14 @@ where
     ) -> Option<i64> {
         let guild_channels = guild_channels?;
 
-        if let Some(detail) = guild_detail
-            && let Some(channel_id) = guild_channels.get(&detail.notification_channel_type)
-        {
-            return Some(*channel_id);
+        if let Some(detail) = guild_detail {
+            if let Some(channel_id) = detail.notification_channel_id {
+                return Some(channel_id);
+            }
+
+            if let Some(channel_id) = guild_channels.get(&detail.notification_channel_type) {
+                return Some(*channel_id);
+            }
         }
 
         if let Some(detail) = global_detail
@@ -522,6 +526,7 @@ where
         debug!(
             guild_id = guild_id,
             guild_channel_types = guild_channels.len(),
+            guild_detail_channel_id = guild_detail.and_then(|d| d.notification_channel_id),
             guild_detail_channel_type = guild_detail.map(|d| d.notification_channel_type),
             global_detail_channel_type = global_detail.map(|d| d.notification_channel_type),
             "通知先チャンネルが未登録のため解決できませんでした"
@@ -731,6 +736,8 @@ mod tests {
         id: Uuid,
         profile: &str,
         message_text_id: &str,
+        notification_channel_type: i32,
+        notification_channel_id: Option<i64>,
     ) -> guild_event_schedule_details::Model {
         guild_event_schedule_details::Model {
             guild_id,
@@ -740,7 +747,28 @@ mod tests {
             time: "05:00:00".to_string(),
             schedule_name: "guild_detail".to_string(),
             message_text_id: message_text_id.to_string(),
-            notification_channel_type: 10,
+            notification_channel_type,
+            notification_channel_id,
+            reactions: String::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn build_global_detail(
+        id: Uuid,
+        profile: &str,
+        message_text_id: &str,
+        notification_channel_type: i32,
+    ) -> event_schedule_details::Model {
+        event_schedule_details::Model {
+            id,
+            profile: profile.to_string(),
+            start_day_relative: "0".to_string(),
+            time: "05:00:00".to_string(),
+            schedule_name: "global_detail".to_string(),
+            message_text_id: message_text_id.to_string(),
+            notification_channel_type,
             reactions: String::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -769,6 +797,8 @@ mod tests {
                 detail_id,
                 "gw_profile",
                 "message_global_only",
+                10,
+                None,
             )],
             guild_channels_by_guild,
         )
@@ -806,6 +836,8 @@ mod tests {
                 detail_id,
                 "gw_profile",
                 "message_guild_only",
+                10,
+                None,
             )],
             guild_channels_by_guild,
         )
@@ -821,6 +853,113 @@ mod tests {
         assert_eq!(actual.message_text_id, "message_guild_only");
         assert_eq!(actual.event_schedule_id, Some(schedule_id));
         assert_eq!(actual.event_schedule_detail_id, None);
+    }
+
+    #[test]
+    fn resolve_channel_id_prefers_guild_notification_channel_id_over_channel_type() {
+        let calculator = ScheduleCalculator::new(365);
+        let guild_id = 4004_i64;
+        let schedule_id = Uuid::new_v4();
+        let detail_id = Uuid::new_v4();
+
+        let mut guild_channels_by_guild = HashMap::new();
+        guild_channels_by_guild.insert(guild_id, HashMap::from([(10, 7101)]));
+
+        let (results, stats) = TestSchedulerService::plan_notification_schedules(
+            &calculator,
+            vec![build_global_event_schedule(schedule_id, "gw_profile")],
+            vec![build_global_detail(
+                detail_id,
+                "gw_profile",
+                "message_global",
+                99,
+            )],
+            vec![],
+            vec![build_guild_detail(
+                guild_id,
+                detail_id,
+                "gw_profile",
+                "message_guild",
+                10,
+                Some(8101),
+            )],
+            guild_channels_by_guild,
+        )
+        .unwrap();
+
+        assert_eq!(stats.target_guilds, 1);
+        assert_eq!(stats.planned, 1);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].channel_id, 8101);
+    }
+
+    #[test]
+    fn resolve_channel_id_falls_back_to_global_notification_channel_type() {
+        let calculator = ScheduleCalculator::new(365);
+        let guild_id = 5005_i64;
+        let schedule_id = Uuid::new_v4();
+        let detail_id = Uuid::new_v4();
+
+        let mut guild_channels_by_guild = HashMap::new();
+        guild_channels_by_guild.insert(guild_id, HashMap::from([(10, 7201)]));
+
+        let (results, stats) = TestSchedulerService::plan_notification_schedules(
+            &calculator,
+            vec![build_global_event_schedule(schedule_id, "gw_profile")],
+            vec![build_global_detail(
+                detail_id,
+                "gw_profile",
+                "message_global",
+                10,
+            )],
+            vec![],
+            vec![build_guild_detail(
+                guild_id,
+                detail_id,
+                "gw_profile",
+                "message_guild",
+                88,
+                None,
+            )],
+            guild_channels_by_guild,
+        )
+        .unwrap();
+
+        assert_eq!(stats.target_guilds, 1);
+        assert_eq!(stats.planned, 1);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].channel_id, 7201);
+    }
+
+    #[test]
+    fn resolve_channel_id_fails_when_global_channel_type_is_unresolvable() {
+        let calculator = ScheduleCalculator::new(365);
+        let guild_id = 6006_i64;
+        let schedule_id = Uuid::new_v4();
+        let detail_id = Uuid::new_v4();
+
+        let mut guild_channels_by_guild = HashMap::new();
+        guild_channels_by_guild.insert(guild_id, HashMap::from([(10, 7301)]));
+
+        let (results, stats) = TestSchedulerService::plan_notification_schedules(
+            &calculator,
+            vec![build_global_event_schedule(schedule_id, "gw_profile")],
+            vec![build_global_detail(
+                detail_id,
+                "gw_profile",
+                "message_global",
+                99,
+            )],
+            vec![],
+            vec![],
+            guild_channels_by_guild,
+        )
+        .unwrap();
+
+        assert_eq!(stats.target_guilds, 1);
+        assert_eq!(stats.planned, 0);
+        assert_eq!(stats.skipped_channel_unresolved, 1);
+        assert!(results.is_empty());
     }
 
     #[test]

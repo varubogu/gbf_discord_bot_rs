@@ -46,8 +46,7 @@ Resolve destination channels in this order.
 
 Assumptions:
 
-- This specification assumes `guild_event_schedule_details` has nullable `notification_channel_id`
-- Before schema rollout, only `notification_channel_type`-based resolution is available
+- `guild_event_schedule_details.notification_channel_id` is nullable
 
 Notes:
 
