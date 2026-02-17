@@ -73,6 +73,38 @@ After deciding `message_text_id`, message body resolution (`MessageService`: `gu
 5. Create `scheduled_tasks` / `notifications` / `notification_rel_event_schedules` only for resolved rows
 6. Record error rows and continue; output aggregated results after completion
 
+## Regeneration commands and parameters
+
+### Event/Facade command split
+
+- Guild command: regenerate only schedules related to the target guild
+- Admin-server command: regenerate schedules for all guilds
+- Both commands accept optional `task_type` (if omitted, all task types are targeted)
+
+### Service entry points (called from Facade)
+
+- Guild entry point: `guild_id` (required) + `task_type` (optional)
+  - DB role: `guild`
+- Admin-server entry point: `task_type` (optional)
+  - DB role: `global`
+
+### Internal target resolution in Service
+
+- If `guild_id` is provided, only that guild is targeted
+- If `guild_id` is omitted, all guilds are targeted
+- If `task_type` is provided, only that task type is targeted
+- If `task_type` is omitted, all task types are targeted
+
+### Automatic regeneration after spreadsheet load
+
+- After `/gspread_global_load`, automatic regeneration follows the admin-server regeneration path
+  - Target guilds: all guilds
+  - Target task type: `Notification` only (`task_type=1`)
+- After `/gspread_load`, automatic regeneration follows the guild regeneration path
+  - Target guild: only the command-executing guild
+  - Target task type: `Notification` only (`task_type=1`)
+- In other words, post-`/gspread_load` behavior is equivalent to running the guild schedule regeneration command with `task_type=1`
+
 Note (linkage to `notification_rel_event_schedules`):
 
 - Link `event_schedule_id` only when it exists in `master.event_schedules.id`

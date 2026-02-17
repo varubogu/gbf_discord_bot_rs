@@ -85,6 +85,14 @@ pub trait ScheduledTaskRepository: Send + Sync {
         task_type: i32,
     ) -> Result<u64>;
 
+    /// 指定したguildの指定task_typeタスクを全て削除
+    async fn delete_all_by_task_type_and_guild(
+        &self,
+        txn: &DatabaseTransaction,
+        task_type: i32,
+        guild_id: i64,
+    ) -> Result<u64>;
+
     /// 複数IDでタスクを取得（N+1問題解消用、トランザクション対応）
     async fn find_many_by_ids_with_txn(
         &self,
@@ -205,6 +213,17 @@ where
         task_type: i32,
     ) -> Result<u64> {
         (**self).delete_all_by_task_type(txn, task_type).await
+    }
+
+    async fn delete_all_by_task_type_and_guild(
+        &self,
+        txn: &DatabaseTransaction,
+        task_type: i32,
+        guild_id: i64,
+    ) -> Result<u64> {
+        (**self)
+            .delete_all_by_task_type_and_guild(txn, task_type, guild_id)
+            .await
     }
 
     async fn find_many_by_ids_with_txn(

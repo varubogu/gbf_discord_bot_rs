@@ -56,5 +56,6 @@ pub fn admin_commands() -> Vec<poise::Command<PoiseData, AppError>> {
     vec![
         slash::gspread::gspread_global_load::gspread_global_load(),
         slash::gspread::gspread_global_push::gspread_global_push(),
+        slash::schedule::schedule_global_generate::schedule_global_generate(),
     ]
 }

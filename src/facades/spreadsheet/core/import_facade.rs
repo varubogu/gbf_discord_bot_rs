@@ -9,6 +9,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
 use crate::facades::scheduler::SchedulerFacade;
+use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::db_helper::set_current_guild_id;
 use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
 use crate::services::spreadsheet::{
@@ -81,8 +82,8 @@ struct ImportConfig {
     import_type_name: &'static str,
     /// ギルドID（Noneの場合はグローバル）
     guild_id: Option<i64>,
-    /// スケジュール再生成を実行するか
-    regenerate_schedule: bool,
+    /// 自動再生成対象のタスク種別（Noneの場合は再生成しない）
+    schedule_regeneration_task_type: Option<ScheduledTaskType>,
 }
 
 impl ImportConfig {
@@ -91,7 +92,7 @@ impl ImportConfig {
         Self {
             import_type_name: "グローバルスプレッドシート",
             guild_id: None,
-            regenerate_schedule: true,
+            schedule_regeneration_task_type: Some(ScheduledTaskType::Notification),
         }
     }
 
@@ -100,7 +101,7 @@ impl ImportConfig {
         Self {
             import_type_name: "ギルド用スプレッドシート",
             guild_id: Some(guild_id),
-            regenerate_schedule: false,
+            schedule_regeneration_task_type: Some(ScheduledTaskType::Notification),
         }
     }
 
@@ -112,6 +113,10 @@ impl ImportConfig {
             // グローバル版: 全テーブル
             None => true,
         }
+    }
+
+    fn schedule_regeneration_task_type(&self) -> Option<ScheduledTaskType> {
+        self.schedule_regeneration_task_type
     }
 }
 
@@ -496,11 +501,28 @@ impl SpreadsheetImportFacade {
                     config.import_type_name
                 );
 
-                // スケジュール再生成（グローバルのみ）
-                if config.regenerate_schedule {
-                    info!("スケジュール自動再生成を開始します");
+                // スケジュール再生成（global/guild共通、通知のみ）
+                if let Some(task_type) = config.schedule_regeneration_task_type() {
+                    info!(
+                        guild_id = ?config.guild_id,
+                        task_type = task_type.as_i32(),
+                        "スケジュール自動再生成を開始します"
+                    );
                     let scheduler_facade = SchedulerFacade::new(self.app_state.clone());
-                    if let Err(e) = scheduler_facade.generate_schedules().await {
+                    let result = match config.guild_id {
+                        Some(guild_id) => {
+                            scheduler_facade
+                                .generate_schedules_for_guild(guild_id, Some(task_type))
+                                .await
+                        }
+                        None => {
+                            scheduler_facade
+                                .generate_schedules_global(Some(task_type))
+                                .await
+                        }
+                    };
+
+                    if let Err(e) = result {
                         warn!(
                             error = %e,
                             "スケジュール自動再生成に失敗しました（インポート自体は成功）"
@@ -681,4 +703,31 @@ fn take_table_definition(
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ImportConfig, ScheduledTaskType};
+
+    #[test]
+    fn global_import_config_regenerates_notification_for_all_guilds() {
+        let config = ImportConfig::global();
+
+        assert_eq!(config.guild_id, None);
+        assert_eq!(
+            config.schedule_regeneration_task_type(),
+            Some(ScheduledTaskType::Notification)
+        );
+    }
+
+    #[test]
+    fn guild_import_config_regenerates_notification_for_target_guild() {
+        let config = ImportConfig::guild(12345);
+
+        assert_eq!(config.guild_id, Some(12345));
+        assert_eq!(
+            config.schedule_regeneration_task_type(),
+            Some(ScheduledTaskType::Notification)
+        );
+    }
 }

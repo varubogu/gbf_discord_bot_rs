@@ -280,6 +280,38 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
         Ok(delete_result.rows_affected)
     }
 
+    /// 指定したguildの指定task_typeタスクを全て削除
+    async fn delete_all_by_task_type_and_guild(
+        &self,
+        txn: &DatabaseTransaction,
+        task_type: i32,
+        guild_id: i64,
+    ) -> Result<u64> {
+        debug!(
+            task_type,
+            guild_id, "指定したguildのtask_typeタスクを全て削除します"
+        );
+
+        let delete_result = scheduled_tasks::Entity::delete_many()
+            .filter(scheduled_tasks::Column::TaskType.eq(task_type))
+            .filter(scheduled_tasks::Column::GuildId.eq(Some(guild_id)))
+            .exec(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, task_type, guild_id, "タスクの削除に失敗しました");
+                e
+            })?;
+
+        debug!(
+            task_type,
+            guild_id,
+            deleted_count = delete_result.rows_affected,
+            "タスクを削除しました"
+        );
+
+        Ok(delete_result.rows_affected)
+    }
+
     async fn find_many_by_ids_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,

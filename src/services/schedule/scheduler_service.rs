@@ -2,6 +2,7 @@ use crate::models::entities::guild_master::{
     guild_channels, guild_event_schedule_details, guild_event_schedules,
 };
 use crate::models::entities::master::{event_schedule_details, event_schedules};
+use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::services::schedule::ScheduleCalculator;
 use crate::services::schedule::schedule_calculator::CalculatedSchedule;
 use crate::types::{AppState, Result};
@@ -72,53 +73,120 @@ where
         }
     }
 
-    /// イベントスケジュールから通知スケジュールを計算し保存する
+    /// ギルド向けにイベントスケジュールから通知スケジュールを計算し保存する
     /// - トランザクション境界はFacadeが管理
+    pub async fn generate_and_persist_schedules_for_guild(
+        &self,
+        txn: &DatabaseTransaction,
+        app_state: &AppState,
+        guild_id: i64,
+        task_type: Option<ScheduledTaskType>,
+    ) -> Result<()> {
+        self.generate_and_persist_schedules_internal(txn, app_state, Some(guild_id), task_type)
+            .await
+    }
+
+    /// 管理サーバー向けにイベントスケジュールから通知スケジュールを計算し保存する
+    /// - トランザクション境界はFacadeが管理
+    pub async fn generate_and_persist_schedules_for_global(
+        &self,
+        txn: &DatabaseTransaction,
+        app_state: &AppState,
+        task_type: Option<ScheduledTaskType>,
+    ) -> Result<()> {
+        self.generate_and_persist_schedules_internal(txn, app_state, None, task_type)
+            .await
+    }
+
+    /// イベントスケジュールから通知スケジュールを計算し保存する
+    /// 既存呼び出しとの互換性のため、管理サーバー向け全体再生成に委譲
     pub async fn generate_and_persist_schedules(
         &self,
         txn: &DatabaseTransaction,
         app_state: &AppState,
     ) -> Result<()> {
-        use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+        self.generate_and_persist_schedules_for_global(txn, app_state, None)
+            .await
+    }
+
+    async fn generate_and_persist_schedules_internal(
+        &self,
+        txn: &DatabaseTransaction,
+        app_state: &AppState,
+        target_guild_id: Option<i64>,
+        task_type: Option<ScheduledTaskType>,
+    ) -> Result<()> {
+        let target_task_types = Self::resolve_target_task_types(task_type);
+
+        if task_type.is_some() {
+            for unsupported_task_type in target_task_types
+                .iter()
+                .copied()
+                .filter(|t| *t != ScheduledTaskType::Notification)
+            {
+                warn!(
+                    task_type = unsupported_task_type.as_i32(),
+                    description = unsupported_task_type.description(),
+                    "指定されたタスク種別の再生成は未実装のためスキップします"
+                );
+            }
+        }
+
+        if !target_task_types.contains(&ScheduledTaskType::Notification) {
+            let task_type_label = task_type.map(|value| value.description()).unwrap_or("不明");
+            return Err(crate::types::AppError::Business {
+                message: format!("指定されたタスク種別（{task_type_label}）の再生成は未実装です"),
+            });
+        }
 
         let calculator = ScheduleCalculator::new(app_state.config.max_schedule_days_outside_event);
 
-        // 既存のスケジュールとリレーションをクリア
-        debug!("既存のスケジュールを削除します");
-
-        // 1. notification_rel_event_schedulesを削除
-        self.rel_repo.delete_all_with_txn(txn).await?;
-
-        // 2. 通知タイプのscheduled_tasksを削除（CASCADE でnotificationsも削除される）
-        let deleted_tasks = self
-            .scheduled_task_repo
-            .delete_all_by_task_type(txn, ScheduledTaskType::Notification.as_i32())
-            .await?;
+        // 既存の通知スケジュールをクリア（CASCADEで関連通知・リレーションも削除）
+        let deleted_tasks = match target_guild_id {
+            Some(guild_id) => {
+                self.scheduled_task_repo
+                    .delete_all_by_task_type_and_guild(
+                        txn,
+                        ScheduledTaskType::Notification.as_i32(),
+                        guild_id,
+                    )
+                    .await?
+            }
+            None => {
+                self.scheduled_task_repo
+                    .delete_all_by_task_type(txn, ScheduledTaskType::Notification.as_i32())
+                    .await?
+            }
+        };
 
         debug!(
+            target_guild_id,
             deleted_tasks = deleted_tasks,
             "通知タイプのscheduled_tasksとnotificationsを削除しました"
         );
 
         // イベントスケジュール（global/guild）と詳細（global/guild）を取得
-        let global_event_schedules = self
-            .schedule_repo
-            .find_all_event_schedules(app_state.system_db())
-            .await?;
+        let global_event_schedules = self.schedule_repo.find_all_event_schedules(txn).await?;
         let global_event_schedule_details = self
             .schedule_repo
-            .find_all_event_schedule_details(app_state.system_db())
+            .find_all_event_schedule_details(txn)
             .await?;
-        let guild_event_schedules = self
+        let mut guild_event_schedules = self
             .schedule_repo
-            .find_all_guild_event_schedules(app_state.system_db())
+            .find_all_guild_event_schedules(txn)
             .await?;
-        let guild_event_schedule_details = self
+        let mut guild_event_schedule_details = self
             .schedule_repo
-            .find_all_guild_event_schedule_details(app_state.system_db())
+            .find_all_guild_event_schedule_details(txn)
             .await?;
 
+        if let Some(guild_id) = target_guild_id {
+            guild_event_schedules.retain(|model| model.guild_id == guild_id);
+            guild_event_schedule_details.retain(|model| model.guild_id == guild_id);
+        }
+
         debug!(
+            target_guild_id,
             global_event_schedules = global_event_schedules.len(),
             global_event_details = global_event_schedule_details.len(),
             guild_event_schedules = guild_event_schedules.len(),
@@ -132,11 +200,16 @@ where
         }
 
         // 通知対象のギルド・チャンネルを取得（guild_id -> channel_type -> channel_id）
-        let guild_channels_by_guild = self
-            .get_notification_guild_channels_by_guild(app_state)
-            .await?;
+        let mut guild_channels_by_guild =
+            self.get_notification_guild_channels_by_guild(txn).await?;
+
+        if let Some(guild_id) = target_guild_id {
+            guild_channels_by_guild.retain(|key, _| *key == guild_id);
+            guild_channels_by_guild.entry(guild_id).or_default();
+        }
 
         debug!(
+            target_guild_id,
             guilds = guild_channels_by_guild.len(),
             "通知対象のギルド・チャンネルを取得しました（guild単位）"
         );
@@ -175,16 +248,38 @@ where
                 .await?;
         }
 
-        info!("スケジュール生成が完了しました");
+        info!(target_guild_id, "スケジュール生成が完了しました");
         Ok(())
     }
 
-    async fn get_notification_guild_channels_by_guild(
+    fn resolve_target_task_types(task_type: Option<ScheduledTaskType>) -> Vec<ScheduledTaskType> {
+        match task_type {
+            Some(task_type) => vec![task_type],
+            None => Self::all_task_types().into(),
+        }
+    }
+
+    fn all_task_types() -> [ScheduledTaskType; 7] {
+        [
+            ScheduledTaskType::Notification,
+            ScheduledTaskType::Dissolution,
+            ScheduledTaskType::DataCleanup,
+            ScheduledTaskType::RecurringRecruitment,
+            ScheduledTaskType::Dismissal,
+            ScheduledTaskType::AutoRecruitmentRotation,
+            ScheduledTaskType::AutoMatching,
+        ]
+    }
+
+    async fn get_notification_guild_channels_by_guild<C>(
         &self,
-        app_state: &AppState,
-    ) -> Result<HashMap<i64, HashMap<i32, i64>>> {
+        conn: &C,
+    ) -> Result<HashMap<i64, HashMap<i32, i64>>>
+    where
+        C: sea_orm::ConnectionTrait,
+    {
         let guild_channels = <guild_channels::Entity as sea_orm::EntityTrait>::find()
-            .all(app_state.system_db())
+            .all(conn)
             .await?;
 
         let mut channels_by_guild: HashMap<i64, HashMap<i32, i64>> = HashMap::new();
@@ -726,5 +821,22 @@ mod tests {
         assert_eq!(actual.message_text_id, "message_guild_only");
         assert_eq!(actual.event_schedule_id, Some(schedule_id));
         assert_eq!(actual.event_schedule_detail_id, None);
+    }
+
+    #[test]
+    fn resolve_target_task_types_with_none_returns_all_task_types() {
+        let result = TestSchedulerService::resolve_target_task_types(None);
+
+        assert_eq!(result.len(), 7);
+        assert!(result.contains(&ScheduledTaskType::Notification));
+        assert!(result.contains(&ScheduledTaskType::AutoMatching));
+    }
+
+    #[test]
+    fn resolve_target_task_types_with_specific_returns_only_requested_task_type() {
+        let result =
+            TestSchedulerService::resolve_target_task_types(Some(ScheduledTaskType::Dismissal));
+
+        assert_eq!(result, vec![ScheduledTaskType::Dismissal]);
     }
 }
