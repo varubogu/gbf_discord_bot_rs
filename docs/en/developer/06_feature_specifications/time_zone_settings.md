@@ -44,7 +44,9 @@ This feature configures timezone and locale (language setting) per Discord serve
 
 #### Presentation layer (`events/`)
 ```
-src/events/interactions/command_interactions/slash/guild_settings.rs
+src/events/interactions/command_interactions/slash/guild_settings/mod.rs
+src/events/interactions/command_interactions/slash/guild_settings/guild_settings_set.rs
+src/events/interactions/command_interactions/slash/guild_settings/guild_settings_show.rs
 ```
 - Implement Discord API operations
 - Define `/サーバー設定`
@@ -54,7 +56,7 @@ src/events/interactions/command_interactions/slash/guild_settings.rs
 
 #### Facade layer (`facades/`)
 ```
-src/facades/guild_settings/update_guild_settings.rs
+src/facades/guild_settings/guild_settings_facade.rs
 ```
 - Coordinate services
 - Manage transaction boundaries
@@ -62,7 +64,7 @@ src/facades/guild_settings/update_guild_settings.rs
 
 #### Service layer (`services/`)
 ```
-src/services/guild_settings/guild_settings_service.rs
+src/services/timezone_service.rs
 ```
 - Business logic for get/set timezone and locale
 - Validate timezone name (parsable via `chrono-tz`)
@@ -84,6 +86,11 @@ src/infrastructure/database/repositories/guild/guild_settings_repository.rs
 - Persist guild settings
 - Find by guild ID
 - UPSERT
+
+### AppState dependency policy
+
+- Build the default message service via DI (`src/di/message.rs`)
+- `src/types/app_state.rs` stores `AppMessageService` and does not import repository concrete types directly
 
 ## Data model
 

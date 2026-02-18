@@ -6,11 +6,8 @@
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
-use crate::di::Repositories;
+use crate::di::{AppMessageService, Repositories, create_message_service};
 use crate::gateway::DiscordGateway;
-use crate::infrastructure::database::repositories::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::infrastructure::database::repositories::message_text_repository::SeaOrmMessageTextRepository;
-use crate::services::message::MessageService;
 
 /// アプリケーション全体のDIコンテナ（静的ディスパッチ版）
 ///
@@ -26,8 +23,7 @@ where
     /// リポジトリ群
     pub repositories: Repositories,
     /// メッセージサービス（Gateway非依存）
-    pub message_service:
-        Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>>,
+    pub message_service: Arc<AppMessageService>,
 }
 
 impl<G> AppContainer<G>
@@ -42,10 +38,7 @@ where
         global_db: Arc<DatabaseConnection>,
     ) -> Self {
         let repositories = Repositories::new(guild_db, system_db, global_db);
-        let message_service = Arc::new(MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        ));
+        let message_service = Arc::new(create_message_service());
 
         Self {
             gateway,
@@ -65,9 +58,7 @@ where
     }
 
     /// MessageServiceを取得する
-    pub fn message_service(
-        &self,
-    ) -> &Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>> {
+    pub fn message_service(&self) -> &Arc<AppMessageService> {
         &self.message_service
     }
 }

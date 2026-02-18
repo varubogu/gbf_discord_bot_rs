@@ -1,7 +1,4 @@
-use crate::di::Repositories;
-use crate::infrastructure::database::repositories::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::infrastructure::database::repositories::message_text_repository::SeaOrmMessageTextRepository;
-use crate::services::message::MessageService;
+use crate::di::{AppMessageService, Repositories, create_message_service};
 use crate::types::AppConfig;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -17,8 +14,7 @@ pub struct AppState {
     pub global_db: Arc<DatabaseConnection>,
     pub config: AppConfig,
     /// メッセージサービス
-    pub message_service:
-        Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>>,
+    pub message_service: Arc<AppMessageService>,
     /// リポジトリコンテナ
     pub repositories: Repositories,
 }
@@ -43,10 +39,7 @@ impl AppState {
             system_db,
             global_db,
             config,
-            message_service: Arc::new(MessageService::new(
-                SeaOrmGuildMessageTextRepository::new(),
-                SeaOrmMessageTextRepository::new(),
-            )),
+            message_service: Arc::new(create_message_service()),
             repositories,
         }
     }
@@ -67,9 +60,7 @@ impl AppState {
     }
 
     /// メッセージサービスを取得
-    pub fn message_service(
-        &self,
-    ) -> &MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository> {
+    pub fn message_service(&self) -> &AppMessageService {
         &self.message_service
     }
 }

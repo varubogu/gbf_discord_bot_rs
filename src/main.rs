@@ -3,14 +3,13 @@ use gbf_discord_bot_rs::events::{
     handler::event_handler,
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
+use gbf_discord_bot_rs::di::create_message_service;
 use gbf_discord_bot_rs::infrastructure::database::repositories::{
-    guild_message_text_repository::SeaOrmGuildMessageTextRepository,
-    message_text_repository::SeaOrmMessageTextRepository,
     recruitment::{
         SeaOrmBattleRecruitmentsRepository, SeaOrmRecruitmentParticipantsRepository,
     },
 };
-use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
+use gbf_discord_bot_rs::services::schedule::SchedulerManager;
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
@@ -284,10 +283,7 @@ async fn create_discord_client(app_state: &AppState) -> Result<serenity::Client>
 async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Result<()> {
     let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
     let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
-    let message_service = Arc::new(MessageService::new(
-        SeaOrmGuildMessageTextRepository::new(),
-        SeaOrmMessageTextRepository::new(),
-    ));
+    let message_service = Arc::new(create_message_service());
     let repos = app_state.repositories;
 
     // poise依存をサービス層から分離するため、ここでGatewayを作成

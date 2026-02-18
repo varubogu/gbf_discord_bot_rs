@@ -20,9 +20,11 @@
 //! ```
 
 mod container;
+mod message;
 mod repositories;
 
 pub use container::AppContainer;
+pub use message::{AppMessageService, create_message_service};
 pub use repositories::Repositories;
 
 // 本番用型エイリアス
