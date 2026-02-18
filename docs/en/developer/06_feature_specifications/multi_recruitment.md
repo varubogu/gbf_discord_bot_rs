@@ -99,12 +99,22 @@ src/services/recruitment/role_notification.rs
 - Fetch notification roles and build mention strings
 - Check duplicates and insert/delete role settings
 
-#### Repository layer (`repository/`)
+#### Repository port layer (`repository/`)
 ```
-src/repository/database/
-src/repository/database/all_recruitment_notification_roles.rs
-src/repository/database/quest_recruitment_notification_roles.rs
+src/repository/
+src/repository/all_recruitment_notification_roles_repository.rs
+src/repository/quest_recruitment_notification_roles_repository.rs
 ```
+- Define contracts for recruitment persistence and notification-role persistence
+- Keep service-facing interfaces independent from ORM
+
+#### Infrastructure adapter layer (`infrastructure/database/repositories/`)
+```
+src/infrastructure/database/repositories/recruitment/
+src/infrastructure/database/repositories/recruitment/all_recruitment_notification_roles_repository.rs
+src/infrastructure/database/repositories/recruitment/quest_recruitment_notification_roles_repository.rs
+```
+- Implement persistence using SeaORM
 - Persist recruitment data
 - Fetch quest information
 - Manage battle types

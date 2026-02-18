@@ -14,29 +14,30 @@ while preserving the layered architecture (`events → facades → services → 
 
 ## Design principles
 
-### ORM independence
-
-- Transaction abstraction (`DatabaseTransactionTrait`)
-- Connection abstraction (`DatabaseConnectionTrait`)
-- Do not leak ORM-specific types into upper layers
-
 ### Separation of responsibilities by layer
 
 - Facade: use-case execution and transaction boundaries
 - Service: business rule implementation
-- Repository: persistence
+- Repository (port): persistence contract definition
+- Infrastructure adapter: concrete DB access implementation
 
 ### AppState pattern
 
 - Shared connections are managed by `AppState`
 - Do not create ad-hoc connections in each layer
 
+### Port / Adapter split
+
+- Repository traits live under `src/repository/**`
+- SeaORM implementations live under `src/infrastructure/database/repositories/**`
+- Services depend on traits only
+
 ## What must be enforced
 
 - Connections are managed by `AppState`; layers must not create new connections freely
 - Transaction boundaries are managed in the Facade layer
 - Services only pass the received transaction down to repositories
-- Repositories focus on persistence and contain no business decisions
+- Repository adapters focus on persistence and contain no business decisions
 
 ## Key components and responsibilities
 
@@ -45,35 +46,43 @@ while preserving the layered architecture (`events → facades → services → 
 - Holds DB connections shared across the app
 - Entry point for obtaining connections per use case
 
-### TransactionManager (facade-side coordinator)
+### Facade transaction coordinator
 
 - Start transactions
 - Commit / rollback based on outcome
 - Guarantee rollback on failure
-- Provide an execution context for repositories
-
-### TransactionContext
-
-- Execution context bundling a transaction and repository access
-- Shared container when facades coordinate multiple services
+- Provide an execution context for services
 
 ### Service
 
 - Implement business rules
 - Do not start/end transactions
 
-### Repository
+### Repository port
 
-- Execute queries within a transaction
-- Maintain consistency of CRUD operations
+- Define persistence operations as trait methods
+- Be free from ORM-specific APIs
+
+### Infrastructure repository adapter
+
+- Execute SeaORM queries within a transaction/connection
+- Implement repository traits
+
+### DB session context helper (`src/infrastructure/database/session`)
+
+- Own DB session-level context setup (e.g. RLS context variable)
+- Run immediately after transaction start when required by policy
+- Keep session-specific SQL out of service/business logic
 
 ## Typical flow
 
-1. The facade starts a transaction
-2. The facade coordinates and runs multiple services
-3. Services pass the transaction to repositories
-4. If everything succeeds, commit
-5. If anything fails, rollback
+1. The facade starts a transaction from `AppState`
+2. The facade initializes required DB session context (if needed)
+3. The facade coordinates and runs multiple services
+4. Services pass the transaction to repository traits
+5. Adapters execute DB operations
+6. If everything succeeds, commit
+7. If anything fails, rollback
 
 ## How to choose transaction boundaries
 
@@ -98,7 +107,8 @@ while preserving the layered architecture (`events → facades → services → 
 
 - Starting transactions directly in the events layer
 - Committing/rolling back in the Service layer
-- Putting business branching in repositories
+- Putting business branching in repository adapters
+- Building RLS/session SQL in service methods
 - Continuing without rollback on failure
 
 ## Best practices
@@ -111,12 +121,14 @@ while preserving the layered architecture (`events → facades → services → 
 
 - Does the facade explicitly own the transaction boundary?
 - Are services free from transaction control?
-- Do repositories focus on DB operations only?
+- Do repository ports remain ORM-agnostic?
+- Are session context setup responsibilities in `infrastructure/database/session`?
 - Is failure behavior for external I/O (retries/compensation) defined?
 - Are logs designed for rollback failures?
 
 ## Related documents
 
 - [layered_architecture.md](../02_architecture/layered_architecture.md)
+- [dependency_injection.md](../02_architecture/dependency_injection.md)
 - [error_handling.md](../03_development_rules/error_handling.md)
 - [logging.md](../03_development_rules/logging.md)

@@ -69,10 +69,18 @@ src/services/guild_settings/guild_settings_service.rs
 - Validate locale
 - Return defaults when unset
 
-#### Repository layer (`repository/`)
+#### Repository port layer (`repository/`)
 ```
-src/repository/database/guild_settings_repository.rs
+src/repository/guild_settings_repository.rs
 ```
+- Define persistence contracts for guild settings (timezone / locale)
+- Keep service-facing interfaces ORM-agnostic
+
+#### Infrastructure adapter layer (`infrastructure/database/repositories/`)
+```
+src/infrastructure/database/repositories/guild/guild_settings_repository.rs
+```
+- Implement repository contracts with SeaORM
 - Persist guild settings
 - Find by guild ID
 - UPSERT
