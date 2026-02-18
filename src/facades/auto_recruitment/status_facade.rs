@@ -2,10 +2,10 @@
 //!
 //! ユーザーの自動募集参加状況を取得する
 
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentParticipantRepository, AutoRecruitmentRepository, UserDesiredQuestRepository,
 };
-use crate::infrastructure::database::session::set_current_guild_id;
 use crate::types::{AppError, AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};

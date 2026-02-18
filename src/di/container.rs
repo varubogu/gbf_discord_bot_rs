@@ -63,9 +63,7 @@ use poise::serenity_prelude::Http;
 
 impl AppContainer<PoiseDiscordGateway> {
     /// 本番環境用コンテナを構築
-    pub fn new_production(
-        http: Arc<Http>,
-    ) -> Self {
+    pub fn new_production(http: Arc<Http>) -> Self {
         let gateway = Arc::new(PoiseDiscordGateway::new(http));
         Self::new(gateway)
     }

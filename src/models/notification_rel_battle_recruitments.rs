@@ -1,7 +1,7 @@
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use crate::models::entities::worker::notification_rel_battle_recruitments::{
     self, Entity as NotificationRelBattleRecruitmentEntity,
 };
-use crate::infrastructure::database::session::DatabaseSession as Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 

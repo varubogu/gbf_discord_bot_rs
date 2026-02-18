@@ -1,5 +1,5 @@
-use crate::models::entities::master::battle_styles::{self, Entity as BattleStyleEntity};
 use crate::infrastructure::database::session::DatabaseSession as Database;
+use crate::models::entities::master::battle_styles::{self, Entity as BattleStyleEntity};
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 

@@ -12,12 +12,12 @@ use crate::infrastructure::database::repositories::{
     },
     guild::{
         SeaOrmGuildChannelRepository, SeaOrmGuildEnvironmentRepository,
-        SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository,
-        SeaOrmGuildRepository, SeaOrmGuildSettingsRepository,
+        SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository, SeaOrmGuildRepository,
+        SeaOrmGuildSettingsRepository,
     },
     master_data::{
-        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository,
-        SeaOrmLastProcessTimeRepository, SeaOrmMessageTextRepository, SeaOrmQuestRepository,
+        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmLastProcessTimeRepository,
+        SeaOrmMessageTextRepository, SeaOrmQuestRepository,
     },
     recruitment::{
         SeaOrmAllRecruitmentNotificationRolesRepository, SeaOrmBattleRecruitmentsRepository,

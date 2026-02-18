@@ -3,6 +3,7 @@
 //! カテゴリ登録/解除/日数変更の処理を行う
 
 use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway};
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
 use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
@@ -12,7 +13,6 @@ use crate::repository::auto_recruitment::{
     AutoRecruitmentRepository, CreateAutoRecruitmentParams, QuestMatchingRepository,
     QuestMatchingUserRepository,
 };
-use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{

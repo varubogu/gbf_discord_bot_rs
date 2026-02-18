@@ -1,10 +1,10 @@
 // Note: converters are no longer needed as we use domain types directly with Gateway
 use crate::gateway::DiscordGateway;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
-use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::message::MessageService;

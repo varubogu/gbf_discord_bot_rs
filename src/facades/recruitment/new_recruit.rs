@@ -1,7 +1,7 @@
 use crate::gateway::DiscordGuildGateway;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
 use crate::repository::BattleRecruitmentsRepository;
-use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::role_notification::RoleNotificationService;

@@ -293,8 +293,8 @@ mod tests {
         }
     }
 
-    fn create_test_service(
-    ) -> MessageService<DummyGuildMessageTextRepository, DummyMessageTextRepository> {
+    fn create_test_service()
+    -> MessageService<DummyGuildMessageTextRepository, DummyMessageTextRepository> {
         MessageService::new(DummyGuildMessageTextRepository, DummyMessageTextRepository)
     }
 

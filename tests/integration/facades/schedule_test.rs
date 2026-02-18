@@ -2,10 +2,10 @@
 
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::facades::schedule::{NotificationScheduleFacade, ScheduleQueryFacade};
+use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::SeaOrmScheduledTaskRepository;
 use gbf_discord_bot_rs::models::entities::worker::{
     notifications as notification, scheduled_tasks as scheduled_task,
 };
-use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::SeaOrmScheduledTaskRepository;
 use gbf_discord_bot_rs::repository::schedule::ScheduledTaskRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
 
