@@ -3,7 +3,7 @@
 //! ユーザーのクエスト選択を処理する
 
 use crate::repository::auto_recruitment::{AutoRecruitmentRepository, UserDesiredQuestRepository};
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::types::{AppError, AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};

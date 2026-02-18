@@ -1,4 +1,4 @@
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::schedule::{ScheduleQueryService, ScheduleStats};
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};

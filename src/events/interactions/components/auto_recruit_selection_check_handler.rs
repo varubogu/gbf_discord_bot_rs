@@ -2,7 +2,7 @@
 //!
 //! ユーザーの選択済みクエストを表示する
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
 use crate::repository::quest_repository::QuestRepository;
 use crate::types::{AppError, PoiseData, Result};

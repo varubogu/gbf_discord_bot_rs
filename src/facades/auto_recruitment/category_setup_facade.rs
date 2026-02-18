@@ -12,7 +12,7 @@ use crate::repository::auto_recruitment::{
     AutoRecruitmentRepository, CreateAutoRecruitmentParams, QuestMatchingRepository,
     QuestMatchingUserRepository,
 };
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{

@@ -1,8 +1,6 @@
 pub mod auto_recruitment;
-pub mod db_compat;
 pub mod guild;
 pub mod master_data;
-pub mod models_database;
 pub mod recruitment;
 pub mod schedule;
 
@@ -14,8 +12,8 @@ pub use auto_recruitment::{
 };
 pub use guild::{
     SeaOrmGuildChannelRepository, SeaOrmGuildEnvironmentRepository,
-    SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository,
-    SeaOrmGuildRepository, SeaOrmGuildSettingsRepository,
+    SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository, SeaOrmGuildRepository,
+    SeaOrmGuildSettingsRepository, SeaOrmGuildSpreadsheetConfigRepository,
 };
 pub use master_data::{
     SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmLastProcessTimeRepository,
@@ -40,6 +38,7 @@ pub use guild::guild_message_text_repository;
 pub use guild::guild_quest_disable_repository;
 pub use guild::guild_repository;
 pub use guild::guild_settings_repository;
+pub use guild::guild_spreadsheet_config_repository;
 pub use master_data::battle_style_repository;
 pub use master_data::channel_type_repository;
 pub use master_data::last_process_time_repository;

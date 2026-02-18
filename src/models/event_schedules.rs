@@ -1,5 +1,5 @@
 use crate::models::entities::master::event_schedules::{self, Entity as EventScheduleEntity};
-use crate::infrastructure::database::repositories::db_compat::Database;
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

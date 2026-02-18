@@ -1,5 +1,5 @@
 use crate::models::entities::{MessageText as MessageTextEntity, master::message_texts};
-use crate::infrastructure::database::repositories::db_compat::Database;
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use sea_orm::{DbErr, EntityTrait};
 use serde::{Deserialize, Serialize};
 

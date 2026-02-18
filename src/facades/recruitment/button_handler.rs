@@ -1,5 +1,5 @@
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
 use crate::services::recruitment::recruitment_participants_service::{

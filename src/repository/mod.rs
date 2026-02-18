@@ -3,7 +3,6 @@ pub mod auto_recruitment;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
-pub mod db_helper;
 pub mod guild_channel_repository;
 pub mod guild_environment_repository;
 pub mod guild_message_text_repository;
@@ -37,9 +36,7 @@ pub use guild_message_text_repository::GuildMessageTextRepository;
 pub use guild_quest_disable_repository::GuildQuestDisableRepository;
 pub use guild_repository::GuildRepository;
 pub use guild_settings_repository::GuildSettingsRepository;
-pub use guild_spreadsheet_config_repository::{
-    GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait,
-};
+pub use guild_spreadsheet_config_repository::GuildSpreadsheetConfigRepositoryTrait;
 pub use last_process_time_repository::LastProcessTimeRepository;
 pub use message_text_repository::MessageTextRepository;
 pub use quest_recruitment_notification_roles_repository::QuestRecruitmentNotificationRolesRepository;
@@ -95,7 +92,7 @@ pub use schedule::{
 //     /// データベースプロバイダーを作成（内部実装を隠蔽）
 //     async fn create_database_provider() -> Result<database::DatabaseProvider, PoiseError> {
 //         // データベース接続の詳細を内部で処理
-//         let conn = crate::infrastructure::database::repositories::db_compat::Database::new().await
+//         let conn = crate::infrastructure::database::session::DatabaseSession::new().await
 //             .map_err(|e| PoiseError::from(format!("Failed to connect to database: {}", e)))?;
 //         Ok(database::DatabaseProvider::new(conn.conn))
 //     }

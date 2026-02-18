@@ -4,7 +4,7 @@
 //! サービス層のビジネスロジックを呼び出す。
 
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::{
     BattleRecruitmentsRepository, GuildSettingsRepository, QuestRepository,
     RecruitmentParticipantsRepository,

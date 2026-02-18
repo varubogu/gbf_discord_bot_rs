@@ -1,4 +1,4 @@
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::channel::ChannelManagementService;
 use crate::services::channel::channel_display_service::{
     ChannelDisplayService, ChannelSettingsDisplay,

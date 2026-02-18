@@ -186,6 +186,13 @@ EnvValidator (new)
   └─ check_file_validation()
 ```
 
+### Startup/environment DB access policy
+
+- Startup validation itself is limited to environment variables and file checks, and must not depend on legacy wrappers.
+- If environment values are loaded from DB, use `src/infrastructure/database/session/DatabaseSession` (temporary compatibility adapter) or an `AppState`-managed connection.
+- Do not directly use `models_database` / `db_compat`.
+- Session-context SQL (for example RLS context variables) must be handled via `src/infrastructure/database/session`.
+
 ### Types
 
 #### StartupValidator

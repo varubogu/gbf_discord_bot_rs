@@ -4,6 +4,7 @@ pub mod guild_message_text_repository;
 pub mod guild_quest_disable_repository;
 pub mod guild_repository;
 pub mod guild_settings_repository;
+pub mod guild_spreadsheet_config_repository;
 
 pub use guild_channel_repository::SeaOrmGuildChannelRepository;
 pub use guild_environment_repository::SeaOrmGuildEnvironmentRepository;
@@ -11,3 +12,4 @@ pub use guild_message_text_repository::SeaOrmGuildMessageTextRepository;
 pub use guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository;
 pub use guild_repository::SeaOrmGuildRepository;
 pub use guild_settings_repository::SeaOrmGuildSettingsRepository;
+pub use guild_spreadsheet_config_repository::SeaOrmGuildSpreadsheetConfigRepository;

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::env_manager::Environment;
-use crate::infrastructure::database::repositories::models_database::Database;
+use crate::infrastructure::database::session::DatabaseSession as Database;
 
 // Create a singleton instance
 lazy_static::lazy_static! {

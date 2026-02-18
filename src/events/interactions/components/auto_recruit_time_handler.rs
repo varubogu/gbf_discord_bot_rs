@@ -3,7 +3,7 @@
 //! 日時チャンネルでの時間セレクトメニュー操作を処理する
 
 use crate::facades::auto_recruitment;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{

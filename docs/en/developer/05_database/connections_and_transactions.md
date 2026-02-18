@@ -74,6 +74,12 @@ while preserving the layered architecture (`events → facades → services → 
 - Run immediately after transaction start when required by policy
 - Keep session-specific SQL out of service/business logic
 
+## Legacy wrapper phase-out policy
+
+- Legacy wrappers `models_database` and `db_compat` are deprecated and must not be used for new code.
+- Existing call sites are migrated to `src/infrastructure/database/session/DatabaseSession` during incremental refactors.
+- Session helper responsibilities previously exposed as `db_helper` are consolidated into `src/infrastructure/database/session`.
+
 ## Typical flow
 
 1. The facade starts a transaction from `AppState`
