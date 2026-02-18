@@ -14,6 +14,7 @@ This section summarizes each major feature's purpose, requirements, data model, 
 - [Message resolution](message_resolution.md)
 - [Time zone settings](time_zone_settings.md)
 - [Startup validation](startup_validation.md)
+- [Admin notification](admin_notification.md)
 
 ## Feature permissions by role
 

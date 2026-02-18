@@ -4,6 +4,7 @@
 mod test_helper;
 
 // 各ファサードの結合テスト
+mod admin_notification_test;
 mod auto_recruitment_test;
 mod channel_management_test;
 mod guild_management_test;

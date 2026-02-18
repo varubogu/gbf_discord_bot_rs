@@ -18,6 +18,19 @@
 | `name` | `String` | NO |  |
 | `memo` | `Option<String>` | YES |  |
 
+## マスターデータ値
+
+| id | name | memo |
+| --- | --- | --- |
+| 1 | イベントスケジュール通知 | イベントスケジュール通知の送信先チャンネル |
+| 2 | マルチ募集 | マルチ募集メッセージの送信先チャンネル |
+| 5 | 管理者通知 | bot実行中のエラーや設定不足を管理者（gbf_bot_controlロール保持者）に通知するチャンネル |
+
+## Rust enum
+
+このテーブルのIDは `src/models/entities/master/channel_types.rs` に定義された `GuildChannelType` enumで表現されます。
+固定マスターIDをenumで表現するルールについてはコーディング規約を参照してください。
+
 ## 補足
 
 - 本書は `src/models/entities` の定義を正として作成しています。
