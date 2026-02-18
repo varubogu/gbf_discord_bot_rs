@@ -17,7 +17,7 @@ At initial registration, pending tasks are checked and no duplicate is created i
 - `SchedulerManager` is the composition point. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
 - `AutoRecruitmentRotationTaskExecutor` depends on repository traits via `crate::repository` (`ScheduledTaskRepository`, `AutoRecruitmentChannelRepository`, `AutoRecruitmentRepository`), not on concrete SeaORM types.
 - Keep the one-way flow: `scheduler_manager (composition) -> executor -> repository ports`.
-- Do not reintroduce dependencies to `src/repository/database/**`.
+- Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 

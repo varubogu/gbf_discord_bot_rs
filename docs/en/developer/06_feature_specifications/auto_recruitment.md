@@ -23,7 +23,7 @@ This feature uses a Discord category: “date channels” manage time availabili
 - Auto-recruitment concrete repositories are consolidated under `src/infrastructure/database/repositories/auto_recruitment/**`.
 - `facades/auto_recruitment/**`, `services/auto_recruitment/**`, and `services/schedule/**` use trait-based dependencies via `crate::repository`.
 - Concrete `SeaOrm*Repository` types are composed at DI/scheduler composition points (`src/di/repositories.rs`, `src/services/schedule/scheduler_manager.rs`).
-- Do not introduce or depend on compatibility paths under `src/repository/database/**`.
+- Add new DB adapters only under `src/infrastructure/database/repositories/**`.
 
 ### Implementation reference paths
 

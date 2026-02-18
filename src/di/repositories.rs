@@ -1,10 +1,7 @@
 //! リポジトリコンテナ
 //!
 //! データベースリポジトリ群を保持するコンテナ。
-//! Gateway抽象化には依存せず、DatabaseConnectionのみに依存する。
-
-use sea_orm::DatabaseConnection;
-use std::sync::Arc;
+//! Gateway抽象化やDB接続プールには依存せず、ステートレスな実装のみを保持する。
 
 use crate::infrastructure::database::repositories::{
     auto_recruitment::{
@@ -90,11 +87,7 @@ pub struct Repositories {
 
 impl Repositories {
     /// 新しいRepositoriesを作成する
-    pub fn new(
-        _guild_db: Arc<DatabaseConnection>,
-        _system_db: Arc<DatabaseConnection>,
-        _global_db: Arc<DatabaseConnection>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             // 基本リポジトリ
             battle_recruitments: SeaOrmBattleRecruitmentsRepository::new(),

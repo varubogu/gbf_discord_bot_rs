@@ -20,12 +20,10 @@ Understand “what is located where” so you don’t get lost when making chang
 │   ├── facades/           # Application layer (use-case + transaction boundary)
 │   ├── services/          # Domain/business logic layer
 │   ├── repository/        # Persistence ports (trait + DTOs only)
-│   │   ├── recruitment/
-│   │   ├── schedule/
 │   │   ├── auto_recruitment/
-│   │   ├── guild/
-│   │   ├── master_data/
-│   │   └── ...
+│   │   ├── schedule/
+│   │   ├── *_repository.rs
+│   │   └── mod.rs
 │   ├── infrastructure/    # External systems / concrete adapters
 │   │   └── database/
 │   │       ├── connection/      # DB connection management
@@ -63,4 +61,4 @@ Understand “what is located where” so you don’t get lost when making chang
 
 - Use ports from `src/repository/**` in services/facades/events.
 - Use adapters from `src/infrastructure/database/repositories/**` only at DI wiring points.
-- Do not add compatibility re-exports under `src/repository/database/**`.
+- Do not place concrete DB adapters under `src/repository/**`.

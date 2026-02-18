@@ -44,3 +44,9 @@ Pass dependencies from the outside to preserve layer boundaries and make the sys
 - Treat `src/di/repositories.rs` as the only wiring point for `SeaOrm*Repository` concrete types.
 - In non-DI code, reference only repository traits from `src/repository/**`.
 - Use concrete implementations from `src/infrastructure/database/repositories/**` only when composing dependencies.
+
+## Final bootstrap wiring
+
+- `src/di/repositories.rs` constructs all repository adapters via `Repositories::new()`.
+- `src/types/app_state.rs` owns DB connections and shared dependencies (`repositories`, `message_service`).
+- `src/main.rs` and `src/bin/cleanup.rs` resolve concrete adapters from DI/AppState and pass them into services/facades.

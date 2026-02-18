@@ -19,7 +19,7 @@ At initial registration, pending tasks are checked and no duplicate is created i
 - Concrete repository implementations are SeaORM adapters under `src/infrastructure/database/repositories/**`.
 - `PeriodicMatchingService` and `AutoMatchingTaskExecutor` depend on repository traits via `crate::repository` (auto-recruitment, schedule, recruitment, and master data ports), not on `SeaOrm*Repository` concrete types.
 - Keep the one-way flow: `scheduler_manager (composition) -> service/executor -> repository ports`.
-- Do not reintroduce dependencies to `src/repository/database/**`.
+- Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 

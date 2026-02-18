@@ -31,8 +31,7 @@ impl AppState {
         let global_db = Arc::new(global_db);
 
         // リポジトリコンテナを初期化
-        let repositories =
-            Repositories::new(guild_db.clone(), system_db.clone(), global_db.clone());
+        let repositories = Repositories::new();
 
         Self {
             guild_db,
