@@ -28,6 +28,16 @@ use super::test_helper::{MockTestGateway, TEST_GUILD_ID, TEST_USER_ID, create_te
 const AUTO_GUILD_ID: u64 = (TEST_GUILD_ID + 800) as u64;
 const AUTO_USER_ID: u64 = TEST_USER_ID;
 
+/// DB環境変数が不足している場合はテストをスキップする
+fn should_skip_for_missing_db_env() -> bool {
+    let (available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !available {
+        println!("テストをスキップします（DB接続情報不足）: {:?}", missing);
+        return true;
+    }
+    false
+}
+
 /// 自動募集関連のテストデータを削除
 async fn cleanup_auto_recruitment_data(
     db: &sea_orm::DatabaseConnection,
@@ -469,6 +479,10 @@ async fn test_participation_status_not_registered() {
 /// 6-2: 異常系 - days範囲外（1以下）
 #[tokio::test]
 async fn test_register_category_days_too_small() {
+    if should_skip_for_missing_db_env() {
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
@@ -499,6 +513,10 @@ async fn test_register_category_days_too_small() {
 /// 6-3: 異常系 - days範囲外（8以上）
 #[tokio::test]
 async fn test_register_category_days_too_large() {
+    if should_skip_for_missing_db_env() {
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
@@ -840,6 +858,10 @@ async fn test_change_days_same_value() {
 /// 8-4: 異常系 - 範囲外の日数
 #[tokio::test]
 async fn test_change_days_out_of_range() {
+    if should_skip_for_missing_db_env() {
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
