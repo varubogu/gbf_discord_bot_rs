@@ -46,6 +46,7 @@
 
 - [x]レイヤーごとのパラメータ、結果受け渡しに専用構造体やトレイトを作り、facade以下でpoiseへの依存を無くす。
 - [x]DB依存はrepository経由でinfrastructureを利用するという構成が徹底されているか確認
+- [ ]repositoryのフォルダ階層に違和感。主にrepository/scheduleとrepository/database/scheduleで分かれていることや、repository直下に色々なものが置いてあるなど、粒度に統一感がない。
 
 ## ドキュメント系
 
