@@ -17,6 +17,28 @@ This feature uses a Discord category: “date channels” manage time availabili
 6. A periodic matching job (every 10 seconds) detects cases where 2+ users want the same date/time and quest.
 7. On success, the bot posts to the matching channel and immediately creates a recruitment post in the same format as co-op recruitment v2.
 
+## Layer dependency rules and implementation references
+
+- Repository ports (traits) are defined under `src/repository/auto_recruitment/**`.
+- Auto-recruitment concrete repositories are consolidated under `src/infrastructure/database/repositories/auto_recruitment/**`.
+- `facades/auto_recruitment/**`, `services/auto_recruitment/**`, and `services/schedule/**` use trait-based dependencies via `crate::repository`.
+- Concrete `SeaOrm*Repository` types are composed at DI/scheduler composition points (`src/di/repositories.rs`, `src/services/schedule/scheduler_manager.rs`).
+- Do not introduce or depend on compatibility paths under `src/repository/database/**`.
+
+### Implementation reference paths
+
+```text
+src/facades/auto_recruitment/
+src/services/auto_recruitment/
+src/services/schedule/auto_recruitment_rotation_task_executor.rs
+src/services/schedule/auto_matching_task_executor.rs
+src/services/schedule/scheduler_manager.rs
+src/events/interactions/components/auto_recruit_time_handler.rs
+src/repository/auto_recruitment/
+src/infrastructure/database/repositories/auto_recruitment/
+src/di/repositories.rs
+```
+
 ## Required bot permissions
 
 ### Required

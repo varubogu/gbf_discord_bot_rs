@@ -13,6 +13,31 @@ Targets are all guilds, and `scheduled_tasks.guild_id` / `channel_id` are manage
 
 At initial registration, pending tasks are checked and no duplicate is created if `task_type=7` already exists.
 
+## Scheduler integration dependency direction
+
+- `SchedulerManager` is the composition point. It composes `PeriodicMatchingService` and `AutoMatchingTaskExecutor` using repositories provided by `crate::di::Repositories`.
+- Concrete repository implementations are SeaORM adapters under `src/infrastructure/database/repositories/**`.
+- `PeriodicMatchingService` and `AutoMatchingTaskExecutor` depend on repository traits via `crate::repository` (auto-recruitment, schedule, recruitment, and master data ports), not on `SeaOrm*Repository` concrete types.
+- Keep the one-way flow: `scheduler_manager (composition) -> service/executor -> repository ports`.
+- Do not reintroduce dependencies to `src/repository/database/**`.
+
+## Implementation reference paths
+
+```text
+src/services/schedule/scheduler_manager.rs
+src/services/schedule/auto_matching_task_executor.rs
+src/services/auto_recruitment/matching_service.rs
+src/repository/auto_recruitment/
+src/repository/schedule/scheduled_task_repository.rs
+src/repository/battle_recruitments_repository.rs
+src/repository/quest_repository.rs
+src/infrastructure/database/repositories/auto_recruitment/
+src/infrastructure/database/repositories/schedule/scheduled_task_repository.rs
+src/infrastructure/database/repositories/recruitment/battle_recruitments_repository.rs
+src/infrastructure/database/repositories/master_data/quest_repository.rs
+src/di/repositories.rs
+```
+
 ## Execution flow
 
 `SchedulerManager` executes `AutoMatchingTaskExecutor` in the `task_type=7` branch.
