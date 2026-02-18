@@ -3,9 +3,8 @@
 //! 日時チャンネルでの時間セレクトメニュー操作を処理する
 
 use crate::facades::auto_recruitment;
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
-use crate::repository::database::auto_recruitment::auto_recruitment_channel_repository::SeaOrmAutoRecruitmentChannelRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
@@ -42,7 +41,7 @@ pub async fn handle_time_selection_interaction(
     let txn = conn.begin().await?;
     set_current_guild_id(&txn, guild_id as i64).await?;
 
-    let channel_repo = SeaOrmAutoRecruitmentChannelRepository;
+    let channel_repo = app_state.repositories.auto_recruitment_channel;
     let channel_info = channel_repo
         .find_by_channel_id(&txn, guild_id as i64, channel_id as i64)
         .await?

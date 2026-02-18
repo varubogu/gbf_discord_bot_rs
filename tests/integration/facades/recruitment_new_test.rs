@@ -3,8 +3,8 @@
 // 対象: src/facades/recruitment/new_recruit.rs
 
 use gbf_discord_bot_rs::facades::recruitment::new_recruit;
+use gbf_discord_bot_rs::infrastructure::database::session::set_current_guild_id;
 use gbf_discord_bot_rs::models::entities::worker::battle_recruitments;
-use gbf_discord_bot_rs::repository::db_helper::set_current_guild_id;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait};
 use std::sync::Arc;
 

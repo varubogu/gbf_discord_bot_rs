@@ -12,6 +12,27 @@ Targets are all guilds, and `scheduled_tasks.guild_id` / `channel_id` are manage
 
 At initial registration, pending tasks are checked and no duplicate is created if `task_type=6` already exists.
 
+## Scheduler integration dependency direction
+
+- `SchedulerManager` is the composition point. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
+- `AutoRecruitmentRotationTaskExecutor` depends on repository traits via `crate::repository` (`ScheduledTaskRepository`, `AutoRecruitmentChannelRepository`, `AutoRecruitmentRepository`), not on concrete SeaORM types.
+- Keep the one-way flow: `scheduler_manager (composition) -> executor -> repository ports`.
+- Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
+
+## Implementation reference paths
+
+```text
+src/services/schedule/scheduler_manager.rs
+src/services/schedule/auto_recruitment_rotation_task_executor.rs
+src/repository/auto_recruitment/auto_recruitment_channel_repository.rs
+src/repository/auto_recruitment/auto_recruitment_repository.rs
+src/repository/schedule/scheduled_task_repository.rs
+src/infrastructure/database/repositories/auto_recruitment/auto_recruitment_channel_repository.rs
+src/infrastructure/database/repositories/auto_recruitment/auto_recruitment_repository.rs
+src/infrastructure/database/repositories/schedule/scheduled_task_repository.rs
+src/di/repositories.rs
+```
+
 ## Execution flow
 
 `SchedulerManager` executes `AutoRecruitmentRotationTaskExecutor` in the `task_type=6` branch.

@@ -1,5 +1,5 @@
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::GuildSettingsRepository;
-use crate::repository::db_helper::set_current_guild_id;
 use crate::services::timezone_service::{self, TimezoneService};
 use crate::types::app_state::AppState;
 use crate::types::discord::AutocompleteOption;

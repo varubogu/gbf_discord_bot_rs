@@ -41,7 +41,7 @@ mod tests {
             ));
         }
 
-        let conn = match crate::repository::database::models_database::Database::new().await {
+        let conn = match crate::infrastructure::database::session::DatabaseSession::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to a database: {e}")),
         };

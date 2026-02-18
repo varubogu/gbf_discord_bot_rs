@@ -40,6 +40,16 @@ pub struct RecruitmentParams<'a> {
     pub timezone: chrono_tz::Tz,
 }
 
+/// 募集メッセージ生成パラメータ
+pub struct MessageContentParams<'a> {
+    pub quest_name: &'a str,
+    pub battle_style_name: &'a str,
+    pub expiry_date: &'a DateTime<Utc>,
+    pub timezone: chrono_tz::Tz,
+    pub guild_id: Option<i64>,
+    pub dismissal_times: Option<&'a [ParsedDismissalTime]>,
+}
+
 /// 募集データを作成する（QuestRepository, BattleStyleRepositoryを使用）
 pub async fn create_recruitment_data<C, Q, B, GM, MT>(
     db: &C,
@@ -113,12 +123,14 @@ where
     let message_content = create_message_content(
         db,
         message_service,
-        &quest.name,
-        &battle_style.display_name,
-        &expiry_date,
-        params.timezone,
-        Some(params.guild_id as i64),
-        None,
+        MessageContentParams {
+            quest_name: &quest.name,
+            battle_style_name: &battle_style.display_name,
+            expiry_date: &expiry_date,
+            timezone: params.timezone,
+            guild_id: Some(params.guild_id as i64),
+            dismissal_times: None,
+        },
     )
     .await?;
 
@@ -179,12 +191,7 @@ pub async fn save_recruitment<R: crate::repository::BattleRecruitmentsRepository
 pub async fn create_message_content<C, G, M>(
     db: &C,
     message_service: &MessageService<G, M>,
-    quest_name: &str,
-    battle_style_name: &str,
-    expiry_date: &DateTime<chrono::Utc>,
-    timezone: chrono_tz::Tz,
-    guild_id: Option<i64>,
-    dismissal_times: Option<&[ParsedDismissalTime]>,
+    params: MessageContentParams<'_>,
 ) -> types::Result<String>
 where
     C: sea_orm::ConnectionTrait,
@@ -192,23 +199,29 @@ where
     M: crate::repository::MessageTextRepository,
 {
     // メッセージIDを決定
-    let message_id = if battle_style_name == "6属性" {
+    let message_id = if params.battle_style_name == "6属性" {
         MessageTextId::RecruitmentDisplaySixElements
     } else {
         MessageTextId::RecruitmentDisplayNormal
     };
 
     // パラメータを準備
-    let mut params = HashMap::new();
-    params.insert("quest_name".to_string(), quest_name.to_string());
+    let mut message_params = HashMap::new();
+    message_params.insert("quest_name".to_string(), params.quest_name.to_string());
 
     // 基本メッセージを取得
     let mut message_text = message_service
-        .get_message(db, message_id.as_str(), params, guild_id, Some("ja"))
+        .get_message(
+            db,
+            message_id.as_str(),
+            message_params,
+            params.guild_id,
+            Some("ja"),
+        )
         .await?;
 
     // 開催日時を追加
-    let local_date = expiry_date.with_timezone(&timezone);
+    let local_date = params.expiry_date.with_timezone(&params.timezone);
 
     // 日時ラベルとフォーマットを取得
     let date_label = message_service
@@ -216,7 +229,7 @@ where
             db,
             MessageTextId::RecruitmentDisplayEventDateLabel.as_str(),
             HashMap::new(),
-            guild_id,
+            params.guild_id,
             Some("ja"),
         )
         .await?;
@@ -226,7 +239,7 @@ where
             db,
             MessageTextId::RecruitmentDisplayDateFormat.as_str(),
             HashMap::new(),
-            guild_id,
+            params.guild_id,
             Some("ja"),
         )
         .await?;
@@ -238,7 +251,7 @@ where
     ));
 
     // 解散時刻を追加
-    if let Some(dismissal_times_list) = dismissal_times
+    if let Some(dismissal_times_list) = params.dismissal_times
         && !dismissal_times_list.is_empty()
     {
         let dismissal_label = message_service
@@ -246,14 +259,14 @@ where
                 db,
                 MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
                 HashMap::new(),
-                guild_id,
+                params.guild_id,
                 Some("ja"),
             )
             .await?;
 
         let dismissal_texts: Vec<String> = dismissal_times_list
             .iter()
-            .map(|dt| format_dismissal_time(dt, expiry_date, &timezone, &date_format))
+            .map(|dt| format_dismissal_time(dt, params.expiry_date, &params.timezone, &date_format))
             .collect();
 
         message_text.push_str(&format!(

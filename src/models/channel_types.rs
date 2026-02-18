@@ -1,5 +1,5 @@
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use crate::models::entities::master::channel_types::{self, Entity as ChannelTypeEntity};
-use crate::repository::database::db_compat::Database;
 use sea_orm::{DbErr, EntityTrait};
 use serde::{Deserialize, Serialize};
 

@@ -57,6 +57,18 @@ Policy:
 - Services: SchedulerManager / business logic in each TaskExecutor
 - Repository: persistence for `scheduled_tasks` and related tables
 
+### Repository/implementation mapping
+
+- Trait (port) definitions for scheduling: `src/repository/schedule/**`
+- SeaORM repository implementations: `src/infrastructure/database/repositories/schedule/**`
+- DI wiring point for concrete adapters: `src/di/repositories.rs`
+
+Rules:
+
+- `services` and `facades` depend on `crate::repository::schedule::*` traits only.
+- `Facade` starts, commits, and rolls back transactions; services receive `DatabaseTransaction` from facades.
+- Non-DI layers must not instantiate `SeaOrm*Repository` directly.
+
 ## Execution cycle (every 10 seconds)
 
 1. Fetch tasks with `execution_status = 'pending'` (past range + current to 20 seconds ahead)

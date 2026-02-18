@@ -252,15 +252,55 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-    use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+    use crate::models::entities::guild_master::guild_message_texts;
+    use crate::models::message_texts::MessageTexts;
+    use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
+    use async_trait::async_trait;
+    use sea_orm::DbErr;
+
+    #[derive(Debug, Clone, Copy)]
+    struct DummyGuildMessageTextRepository;
+
+    #[async_trait]
+    impl GuildMessageTextRepository for DummyGuildMessageTextRepository {
+        async fn get_by_guild_and_id<'c, C>(
+            &self,
+            _db: &'c C,
+            _guild_id: i64,
+            _message_id: &str,
+        ) -> Result<Option<guild_message_texts::Model>, DbErr>
+        where
+            C: sea_orm::ConnectionTrait,
+        {
+            Ok(None)
+        }
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    struct DummyMessageTextRepository;
+
+    #[async_trait]
+    impl MessageTextRepository for DummyMessageTextRepository {
+        async fn get_by_id<'c, C>(
+            &self,
+            _db: &'c C,
+            _id: &str,
+        ) -> Result<Option<MessageTexts>, DbErr>
+        where
+            C: sea_orm::ConnectionTrait,
+        {
+            Ok(None)
+        }
+    }
+
+    fn create_test_service()
+    -> MessageService<DummyGuildMessageTextRepository, DummyMessageTextRepository> {
+        MessageService::new(DummyGuildMessageTextRepository, DummyMessageTextRepository)
+    }
 
     #[test]
     fn test_determine_locale() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
 
         assert_eq!(service.determine_locale(Some("ja")), "ja");
         assert_eq!(service.determine_locale(Some("ja-JP")), "ja");
@@ -272,10 +312,7 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_basic() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
         let mut params = HashMap::new();
         params.insert("name".to_string(), "テスト".to_string());
         params.insert("value".to_string(), "123".to_string());
@@ -287,10 +324,7 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_missing() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
         let params = HashMap::new();
 
         let template = "値: {{missing}}";
@@ -301,10 +335,7 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_escaped() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
         let mut params = HashMap::new();
         params.insert("var".to_string(), "置換".to_string());
 
@@ -316,10 +347,7 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_double_backslash() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
         let mut params = HashMap::new();
         params.insert("var".to_string(), "値".to_string());
 
@@ -331,10 +359,7 @@ mod tests {
 
     #[test]
     fn test_replace_parameters_complex() {
-        let service = MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        );
+        let service = create_test_service();
         let mut params = HashMap::new();
         params.insert("quest".to_string(), "ドラゴンクエスト".to_string());
         params.insert("count".to_string(), "5".to_string());

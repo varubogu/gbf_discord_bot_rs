@@ -1,7 +1,7 @@
 // スプレッドシートファサード 結合テスト
 
 use gbf_discord_bot_rs::facades::spreadsheet::GuildSpreadsheetRegistrationFacade;
-use gbf_discord_bot_rs::repository::GuildSpreadsheetConfigRepository;
+use gbf_discord_bot_rs::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
 use sea_orm::EntityTrait;
 
 use super::test_helper::{TEST_GUILD_ID, get_test_db};
@@ -73,7 +73,7 @@ async fn test_register_invalid_url() {
 
     // DBに設定レコードが作成されていない
     use gbf_discord_bot_rs::repository::GuildSpreadsheetConfigRepositoryTrait;
-    let repo = GuildSpreadsheetConfigRepository::new();
+    let repo = SeaOrmGuildSpreadsheetConfigRepository::new();
     let config = repo
         .find_import_spreadsheet_id(&db, TEST_GUILD_ID)
         .await
@@ -125,7 +125,7 @@ async fn test_register_one_invalid_url() {
 
     // DBに設定レコードが作成されていない
     use gbf_discord_bot_rs::repository::GuildSpreadsheetConfigRepositoryTrait;
-    let repo = GuildSpreadsheetConfigRepository::new();
+    let repo = SeaOrmGuildSpreadsheetConfigRepository::new();
     let config = repo
         .find_import_spreadsheet_id(&db, TEST_GUILD_ID)
         .await

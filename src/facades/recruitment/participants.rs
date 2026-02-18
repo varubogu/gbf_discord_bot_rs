@@ -3,7 +3,7 @@
 //! Gateway経由でDiscord APIを操作し、サービス層のビジネスロジックを呼び出す。
 
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::recruitment::participants::ParticipantsService;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;

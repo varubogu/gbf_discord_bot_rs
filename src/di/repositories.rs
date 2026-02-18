@@ -1,33 +1,28 @@
 //! リポジトリコンテナ
 //!
 //! データベースリポジトリ群を保持するコンテナ。
-//! Gateway抽象化には依存せず、DatabaseConnectionのみに依存する。
+//! Gateway抽象化やDB接続プールには依存せず、ステートレスな実装のみを保持する。
 
-use sea_orm::DatabaseConnection;
-use std::sync::Arc;
-
-use crate::repository::database::{
-    all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository,
+use crate::infrastructure::database::repositories::{
     auto_recruitment::{
         SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
         SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
         SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
         SeaOrmUserDesiredQuestRepository,
     },
-    battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
-    battle_style_repository::SeaOrmBattleStyleRepository,
-    channel_type_repository::SeaOrmChannelTypeRepository,
-    guild_channel_repository::SeaOrmGuildChannelRepository,
-    guild_environment_repository::SeaOrmGuildEnvironmentRepository,
-    guild_message_text_repository::SeaOrmGuildMessageTextRepository,
-    guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository,
-    guild_repository::SeaOrmGuildRepository,
-    guild_settings_repository::SeaOrmGuildSettingsRepository,
-    last_process_time_repository::SeaOrmLastProcessTimeRepository,
-    message_text_repository::SeaOrmMessageTextRepository,
-    quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository,
-    quest_repository::SeaOrmQuestRepository,
-    recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
+    guild::{
+        SeaOrmGuildChannelRepository, SeaOrmGuildEnvironmentRepository,
+        SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository, SeaOrmGuildRepository,
+        SeaOrmGuildSettingsRepository,
+    },
+    master_data::{
+        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmLastProcessTimeRepository,
+        SeaOrmMessageTextRepository, SeaOrmQuestRepository,
+    },
+    recruitment::{
+        SeaOrmAllRecruitmentNotificationRolesRepository, SeaOrmBattleRecruitmentsRepository,
+        SeaOrmQuestRecruitmentNotificationRolesRepository, SeaOrmRecruitmentParticipantsRepository,
+    },
     schedule::{
         SeaOrmBattleRecruitmentDismissalRepository,
         SeaOrmBattleRecruitmentScheduleDismissalRepository,
@@ -92,11 +87,7 @@ pub struct Repositories {
 
 impl Repositories {
     /// 新しいRepositoriesを作成する
-    pub fn new(
-        _guild_db: Arc<DatabaseConnection>,
-        _system_db: Arc<DatabaseConnection>,
-        _global_db: Arc<DatabaseConnection>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             // 基本リポジトリ
             battle_recruitments: SeaOrmBattleRecruitmentsRepository::new(),
@@ -144,5 +135,11 @@ impl Repositories {
             quest_matching_user: SeaOrmQuestMatchingUserRepository::new(),
             user_desired_quest: SeaOrmUserDesiredQuestRepository::new(),
         }
+    }
+}
+
+impl Default for Repositories {
+    fn default() -> Self {
+        Self::new()
     }
 }

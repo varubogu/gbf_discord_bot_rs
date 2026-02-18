@@ -1,5 +1,5 @@
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use crate::models::entities::{Environment as EnvironmentEntity, master::environments};
-use crate::repository::database::db_compat::Database;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, Set,
     TransactionTrait,

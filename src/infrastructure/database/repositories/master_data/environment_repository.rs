@@ -82,9 +82,10 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::database::connection::is_database_available;
+    use crate::infrastructure::database::connection::connection_manager::is_database_available;
 
-    async fn setup_test_repo() -> Result<(SeaOrmEnvironmentRepository, sea_orm::DatabaseConnection), String> {
+    async fn setup_test_repo()
+    -> Result<(SeaOrmEnvironmentRepository, sea_orm::DatabaseConnection), String> {
         let (available, missing) = is_database_available();
         if !available {
             return Err(format!(
@@ -93,7 +94,7 @@ mod tests {
             ));
         }
 
-        let conn = match crate::repository::database::models_database::Database::new().await {
+        let conn = match crate::infrastructure::database::session::DatabaseSession::new().await {
             Ok(db) => db.conn,
             Err(e) => return Err(format!("Failed to connect to database: {}", e)),
         };
