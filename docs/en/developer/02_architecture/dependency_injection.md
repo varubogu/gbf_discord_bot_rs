@@ -39,7 +39,8 @@ Pass dependencies from the outside to preserve layer boundaries and make the sys
 - In unit tests, substitute external I/O (Discord/DB) with test doubles
 - Prefer Trait + `mockall`-based substitution (keep it minimal)
 
-## Temporary compatibility note
+## Concrete adapter handling
 
-During repository migration, temporary compatibility re-exports may exist under `src/repository/database/**`.
-New dependency wiring must use adapter paths under `src/infrastructure/database/repositories/**`.
+- Treat `src/di/repositories.rs` as the only wiring point for `SeaOrm*Repository` concrete types.
+- In non-DI code, reference only repository traits from `src/repository/**`.
+- Use concrete implementations from `src/infrastructure/database/repositories/**` only when composing dependencies.

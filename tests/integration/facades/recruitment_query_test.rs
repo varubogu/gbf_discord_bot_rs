@@ -6,7 +6,7 @@
 
 use gbf_discord_bot_rs::facades::recruitment::battle_style_list;
 use gbf_discord_bot_rs::facades::recruitment::quest_list;
-use gbf_discord_bot_rs::repository::database::quest_repository::SeaOrmQuestRepository;
+use gbf_discord_bot_rs::infrastructure::database::repositories::quest_repository::SeaOrmQuestRepository;
 use std::sync::Arc;
 
 use super::test_helper::create_test_app_state;

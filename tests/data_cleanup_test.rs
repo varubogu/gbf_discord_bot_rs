@@ -6,8 +6,8 @@ use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::{
 use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
-use gbf_discord_bot_rs::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use gbf_discord_bot_rs::repository::database::schedule::{
+use gbf_discord_bot_rs::infrastructure::database::repositories::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::{
     SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
 };
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;

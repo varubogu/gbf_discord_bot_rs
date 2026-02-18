@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info};
 
-use crate::repository::database::models_database::Database;
+use crate::infrastructure::database::repositories::models_database::Database;
 
 lazy_static! {
     /// 環境変数置換パターン（${VARIABLE_NAME}）

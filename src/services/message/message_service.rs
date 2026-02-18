@@ -252,8 +252,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-    use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+    use crate::infrastructure::database::repositories::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+    use crate::infrastructure::database::repositories::message_text_repository::SeaOrmMessageTextRepository;
 
     #[test]
     fn test_determine_locale() {

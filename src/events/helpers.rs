@@ -3,8 +3,8 @@
 //! PoiseContextを使用する処理を集約。servicesレイヤーに依存しつつ、
 //! poise依存をeventsレイヤーに閉じ込める。
 
-use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+use crate::infrastructure::database::repositories::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+use crate::infrastructure::database::repositories::message_text_repository::SeaOrmMessageTextRepository;
 use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;

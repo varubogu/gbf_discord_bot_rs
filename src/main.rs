@@ -3,7 +3,7 @@ use gbf_discord_bot_rs::events::{
     handler::event_handler,
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
-use gbf_discord_bot_rs::repository::database::{
+use gbf_discord_bot_rs::infrastructure::database::repositories::{
     battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
     guild_message_text_repository::SeaOrmGuildMessageTextRepository,
     message_text_repository::SeaOrmMessageTextRepository,

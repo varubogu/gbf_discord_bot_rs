@@ -1,5 +1,5 @@
 use crate::models::entities::guild_master::guilds::{self, Entity as GuildEntity};
-use crate::repository::database::db_compat::Database;
+use crate::infrastructure::database::repositories::db_compat::Database;
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 

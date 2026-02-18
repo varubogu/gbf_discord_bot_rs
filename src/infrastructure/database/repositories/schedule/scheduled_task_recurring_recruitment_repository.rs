@@ -194,7 +194,7 @@ impl ScheduledTaskRecurringRecruitmentRepositoryTrait
         txn: &DatabaseTransaction,
         recruitment_schedule_id: i32,
     ) -> Result<u64> {
-        use crate::repository::database::schedule::SeaOrmScheduledTaskRepository;
+        use crate::infrastructure::database::repositories::schedule::SeaOrmScheduledTaskRepository;
 
         debug!(
             recruitment_schedule_id,

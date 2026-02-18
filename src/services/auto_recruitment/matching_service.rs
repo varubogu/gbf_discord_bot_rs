@@ -460,11 +460,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repository::database::auto_recruitment::{
+    use crate::infrastructure::database::repositories::auto_recruitment::{
         SeaOrmAutoRecruitmentParticipantRepository, SeaOrmQuestMatchingRepository,
         SeaOrmQuestMatchingUserRepository, SeaOrmUserDesiredQuestRepository,
     };
-    use crate::repository::database::quest_repository::SeaOrmQuestRepository;
+    use crate::infrastructure::database::repositories::quest_repository::SeaOrmQuestRepository;
 
     /// テスト用のサービスインスタンスを作成
     fn create_test_service() -> PeriodicMatchingService<

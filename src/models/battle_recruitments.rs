@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::models::entities::worker::battle_recruitments::{
     self, Entity as BattleRecruitmentEntity,
 };
-use crate::repository::database::db_compat::Database;
+use crate::infrastructure::database::repositories::db_compat::Database;
 
 /// Battle recruitment domain model
 #[derive(Debug, Clone, Serialize, Deserialize)]

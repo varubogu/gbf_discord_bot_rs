@@ -3,7 +3,6 @@ pub mod auto_recruitment;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
-pub mod database;
 pub mod db_helper;
 pub mod guild_channel_repository;
 pub mod guild_environment_repository;
@@ -96,7 +95,7 @@ pub use schedule::{
 //     /// データベースプロバイダーを作成（内部実装を隠蔽）
 //     async fn create_database_provider() -> Result<database::DatabaseProvider, PoiseError> {
 //         // データベース接続の詳細を内部で処理
-//         let conn = crate::repository::database::db_compat::Database::new().await
+//         let conn = crate::infrastructure::database::repositories::db_compat::Database::new().await
 //             .map_err(|e| PoiseError::from(format!("Failed to connect to database: {}", e)))?;
 //         Ok(database::DatabaseProvider::new(conn.conn))
 //     }

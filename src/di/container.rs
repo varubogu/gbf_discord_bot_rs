@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use crate::di::Repositories;
 use crate::gateway::DiscordGateway;
-use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+use crate::infrastructure::database::repositories::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
+use crate::infrastructure::database::repositories::message_text_repository::SeaOrmMessageTextRepository;
 use crate::services::message::MessageService;
 
 /// アプリケーション全体のDIコンテナ（静的ディスパッチ版）

@@ -5,7 +5,7 @@
 use crate::facades::auto_recruitment;
 use crate::infrastructure::database::db_helper::set_current_guild_id;
 use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
-use crate::repository::database::auto_recruitment::auto_recruitment_channel_repository::SeaOrmAutoRecruitmentChannelRepository;
+use crate::infrastructure::database::repositories::auto_recruitment::auto_recruitment_channel_repository::SeaOrmAutoRecruitmentChannelRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,

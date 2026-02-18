@@ -20,16 +20,22 @@ Understand “what is located where” so you don’t get lost when making chang
 │   ├── facades/           # Application layer (use-case + transaction boundary)
 │   ├── services/          # Domain/business logic layer
 │   ├── repository/        # Persistence ports (trait + DTOs only)
+│   │   ├── recruitment/
 │   │   ├── schedule/
 │   │   ├── auto_recruitment/
+│   │   ├── guild/
+│   │   ├── master_data/
 │   │   └── ...
 │   ├── infrastructure/    # External systems / concrete adapters
 │   │   └── database/
 │   │       ├── connection/      # DB connection management
 │   │       ├── session/         # DB session context (e.g. RLS context variables)
 │   │       ├── repositories/    # SeaORM repository adapters (concrete impl)
+│   │       │   ├── recruitment/
 │   │       │   ├── schedule/
 │   │       │   ├── auto_recruitment/
+│   │       │   ├── guild/
+│   │       │   ├── master_data/
 │   │       │   └── ...
 │   │       └── mod.rs
 │   ├── gateway/           # Discord gateway abstraction
@@ -53,12 +59,8 @@ Understand “what is located where” so you don’t get lost when making chang
   - Implements repository traits with SeaORM.
   - Owns SQL/ORM behavior and DB-specific optimization.
 
-## Temporary compatibility policy (during migration)
+## Import policy
 
-During the staged repository refactor:
-
-- Old paths under `src/repository/database/**` may remain temporarily as compatibility re-exports.
-- New development should reference:
-  - Port: `src/repository/**`
-  - Adapter: `src/infrastructure/database/repositories/**`
-- Compatibility re-exports are transitional and will be removed in the final cleanup phase.
+- Use ports from `src/repository/**` in services/facades/events.
+- Use adapters from `src/infrastructure/database/repositories/**` only at DI wiring points.
+- Do not add compatibility re-exports under `src/repository/database/**`.

@@ -1,0 +1,9 @@
+pub mod all_recruitment_notification_roles_repository;
+pub mod battle_recruitments_repository;
+pub mod quest_recruitment_notification_roles_repository;
+pub mod recruitment_participants_repository;
+
+pub use all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository;
+pub use battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+pub use quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository;
+pub use recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;

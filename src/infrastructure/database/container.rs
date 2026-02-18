@@ -1,5 +1,5 @@
-use crate::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use crate::repository::database::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
+use crate::infrastructure::database::repositories::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use crate::infrastructure::database::repositories::recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository;
 
 /// Repository層のコンテナ
 ///

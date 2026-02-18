@@ -6,7 +6,7 @@
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
-use crate::repository::database::{
+use crate::infrastructure::database::repositories::{
     all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository,
     auto_recruitment::{
         SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,

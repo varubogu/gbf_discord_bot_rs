@@ -694,7 +694,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repository::database::{
+    use crate::infrastructure::database::repositories::{
         SeaOrmBattleRecruitmentScheduleRepository, SeaOrmLastProcessTimeRepository,
         SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
         SeaOrmScheduleRepository, SeaOrmScheduledTaskRepository,

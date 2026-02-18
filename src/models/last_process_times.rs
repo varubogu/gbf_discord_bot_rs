@@ -1,7 +1,7 @@
 use crate::models::entities::worker::last_process_times::{
     self, Entity as LastProcessTimeEntity, LastProcessType,
 };
-use crate::repository::database::db_compat::Database;
+use crate::infrastructure::database::repositories::db_compat::Database;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, QueryFilter, Set,
 };
