@@ -87,6 +87,11 @@ After deciding `message_text_id`, message body resolution (`MessageService`: `gu
 - Admin-server entry point: `task_type` (optional)
   - DB role: `global`
 
+Transaction rule:
+
+- Facade starts/commits/rolls back the transaction.
+- Services only receive and use the transaction; they do not open/close transaction boundaries themselves.
+
 ### Internal target resolution in Service
 
 - If `guild_id` is provided, only that guild is targeted

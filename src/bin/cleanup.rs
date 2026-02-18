@@ -1,4 +1,4 @@
-use std::{env, path::Path, sync::Arc};
+use std::{env, path::Path};
 
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
 use gbf_discord_bot_rs::infrastructure::database::repositories::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
@@ -36,9 +36,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = manager.connection().clone();
 
     // リポジトリ初期化
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    let notification_repo = SeaOrmNotificationRepository::new();
+    let task_repo = SeaOrmScheduledTaskRepository::new();
 
     // クリーンアップサービス初期化
     let cleanup_service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);

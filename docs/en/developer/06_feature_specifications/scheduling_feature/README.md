@@ -27,3 +27,10 @@ For common specifications (execution cycle, execution statuses, and overall arch
 
 - `task_type=1` is used by both event notifications and recruitment notifications.
 - For `task_type=3`, the table and repository exist, but the scheduler execution path is not implemented yet (see task type 3 documentation).
+
+## Implementation boundaries
+
+- Scheduling repository traits are defined in `src/repository/schedule/**`.
+- SeaORM implementations are placed in `src/infrastructure/database/repositories/schedule/**`.
+- Concrete repository types are wired only in `src/di/repositories.rs`.
+- Facades own transaction boundaries (begin/commit/rollback) and pass transactions to services.
