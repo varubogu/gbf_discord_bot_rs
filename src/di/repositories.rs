@@ -7,27 +7,25 @@ use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
 use crate::infrastructure::database::repositories::{
-    all_recruitment_notification_roles_repository::SeaOrmAllRecruitmentNotificationRolesRepository,
     auto_recruitment::{
         SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
         SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
         SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
         SeaOrmUserDesiredQuestRepository,
     },
-    battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
-    battle_style_repository::SeaOrmBattleStyleRepository,
-    channel_type_repository::SeaOrmChannelTypeRepository,
-    guild_channel_repository::SeaOrmGuildChannelRepository,
-    guild_environment_repository::SeaOrmGuildEnvironmentRepository,
-    guild_message_text_repository::SeaOrmGuildMessageTextRepository,
-    guild_quest_disable_repository::SeaOrmGuildQuestDisableRepository,
-    guild_repository::SeaOrmGuildRepository,
-    guild_settings_repository::SeaOrmGuildSettingsRepository,
-    last_process_time_repository::SeaOrmLastProcessTimeRepository,
-    message_text_repository::SeaOrmMessageTextRepository,
-    quest_recruitment_notification_roles_repository::SeaOrmQuestRecruitmentNotificationRolesRepository,
-    quest_repository::SeaOrmQuestRepository,
-    recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
+    guild::{
+        SeaOrmGuildChannelRepository, SeaOrmGuildEnvironmentRepository,
+        SeaOrmGuildMessageTextRepository, SeaOrmGuildQuestDisableRepository,
+        SeaOrmGuildRepository, SeaOrmGuildSettingsRepository,
+    },
+    master_data::{
+        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository,
+        SeaOrmLastProcessTimeRepository, SeaOrmMessageTextRepository, SeaOrmQuestRepository,
+    },
+    recruitment::{
+        SeaOrmAllRecruitmentNotificationRolesRepository, SeaOrmBattleRecruitmentsRepository,
+        SeaOrmQuestRecruitmentNotificationRolesRepository, SeaOrmRecruitmentParticipantsRepository,
+    },
     schedule::{
         SeaOrmBattleRecruitmentDismissalRepository,
         SeaOrmBattleRecruitmentScheduleDismissalRepository,

@@ -4,10 +4,11 @@ use gbf_discord_bot_rs::events::{
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
 use gbf_discord_bot_rs::infrastructure::database::repositories::{
-    battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
     guild_message_text_repository::SeaOrmGuildMessageTextRepository,
     message_text_repository::SeaOrmMessageTextRepository,
-    recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
+    recruitment::{
+        SeaOrmBattleRecruitmentsRepository, SeaOrmRecruitmentParticipantsRepository,
+    },
 };
 use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};

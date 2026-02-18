@@ -1,6 +1,6 @@
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
-use gbf_discord_bot_rs::infrastructure::database::repositories::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
+use gbf_discord_bot_rs::infrastructure::database::repositories::recruitment::SeaOrmBattleRecruitmentsRepository;
 use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::{
     SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
 };

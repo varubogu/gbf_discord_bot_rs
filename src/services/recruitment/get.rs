@@ -1,7 +1,7 @@
 use tracing::error;
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 
 /// 募集情報取得サービス

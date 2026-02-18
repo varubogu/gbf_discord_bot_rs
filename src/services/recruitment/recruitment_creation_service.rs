@@ -5,7 +5,7 @@ use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
 use crate::repository::db_helper::set_current_guild_id;
-use crate::repository::quest_repository::QuestRepository;
+use crate::repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::message::MessageService;
 use crate::services::recruitment::new::create_message_content;

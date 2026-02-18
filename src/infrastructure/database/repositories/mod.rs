@@ -45,7 +45,3 @@ pub use master_data::channel_type_repository;
 pub use master_data::last_process_time_repository;
 pub use master_data::message_text_repository;
 pub use master_data::quest_repository;
-pub use recruitment::all_recruitment_notification_roles_repository;
-pub use recruitment::battle_recruitments_repository;
-pub use recruitment::quest_recruitment_notification_roles_repository;
-pub use recruitment::recruitment_participants_repository;
