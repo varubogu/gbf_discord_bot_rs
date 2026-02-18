@@ -12,6 +12,46 @@ use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
+type SharedRecruitmentCreationService<
+    GC,
+    Q,
+    BS,
+    A,
+    QR,
+    GE,
+    SD,
+    GM,
+    MT,
+    NMN,
+    NMR,
+    NMS,
+    DR,
+    TR,
+    TDR,
+    GS,
+    BR,
+> = Arc<
+    RecruitmentCreationService<
+        GC,
+        Q,
+        BS,
+        A,
+        QR,
+        GE,
+        SD,
+        GM,
+        MT,
+        NMN,
+        NMR,
+        NMS,
+        DR,
+        TR,
+        TDR,
+        GS,
+        BR,
+    >,
+>;
+
 /// 定期募集タスク実行結果
 #[derive(Debug, Clone, PartialEq)]
 pub enum RecurringRecruitmentExecutionResult {
@@ -76,26 +116,25 @@ pub struct RecurringRecruitmentTaskExecutor<
     recurring_repo: RR,
     schedule_repo: SR,
     schedule_service: Arc<RecruitmentScheduleService>,
-    recruitment_creation_service: Arc<
-        RecruitmentCreationService<
-            GC,
-            Q,
-            BS,
-            A,
-            QR,
-            GE,
-            SD,
-            GM,
-            MT,
-            NMN,
-            NMR,
-            NMS,
-            DR,
-            TR,
-            TDR,
-            GS,
-            BR,
-        >,
+    #[allow(clippy::type_complexity)]
+    recruitment_creation_service: SharedRecruitmentCreationService<
+        GC,
+        Q,
+        BS,
+        A,
+        QR,
+        GE,
+        SD,
+        GM,
+        MT,
+        NMN,
+        NMR,
+        NMS,
+        DR,
+        TR,
+        TDR,
+        GS,
+        BR,
     >,
 }
 
@@ -144,31 +183,30 @@ where
     GS: crate::repository::GuildSettingsRepository,
     BR: crate::repository::BattleRecruitmentsRepository,
 {
+    #[allow(clippy::type_complexity)]
     pub fn new(
         task_repo: ST,
         recurring_repo: RR,
         schedule_repo: SR,
         schedule_service: Arc<RecruitmentScheduleService>,
-        recruitment_creation_service: Arc<
-            RecruitmentCreationService<
-                GC,
-                Q,
-                BS,
-                A,
-                QR,
-                GE,
-                SD,
-                GM,
-                MT,
-                NMN,
-                NMR,
-                NMS,
-                DR,
-                TR,
-                TDR,
-                GS,
-                BR,
-            >,
+        recruitment_creation_service: SharedRecruitmentCreationService<
+            GC,
+            Q,
+            BS,
+            A,
+            QR,
+            GE,
+            SD,
+            GM,
+            MT,
+            NMN,
+            NMR,
+            NMS,
+            DR,
+            TR,
+            TDR,
+            GS,
+            BR,
         >,
     ) -> Self {
         Self {

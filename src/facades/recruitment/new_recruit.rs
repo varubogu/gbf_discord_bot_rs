@@ -173,12 +173,14 @@ where
             let message_content_with_dismissal = new::create_message_content(
                 &txn,
                 message_service,
-                &recruitment_data.quest.name,
-                &recruitment_data.battle_style_name,
-                &recruitment_data.expiry_date,
-                timezone,
-                Some(guild_id as i64),
-                Some(&parsed_dismissal_times),
+                new::MessageContentParams {
+                    quest_name: &recruitment_data.quest.name,
+                    battle_style_name: &recruitment_data.battle_style_name,
+                    expiry_date: &recruitment_data.expiry_date,
+                    timezone,
+                    guild_id: Some(guild_id as i64),
+                    dismissal_times: Some(&parsed_dismissal_times),
+                },
             )
             .await?;
 

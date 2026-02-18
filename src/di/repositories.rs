@@ -137,3 +137,9 @@ impl Repositories {
         }
     }
 }
+
+impl Default for Repositories {
+    fn default() -> Self {
+        Self::new()
+    }
+}

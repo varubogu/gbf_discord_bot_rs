@@ -25,8 +25,8 @@ impl SeaOrmRecruitmentParticipantsRepository {
     }
 
     /// 特定の参加レコードを取得（内部共通実装）
-    async fn get_by_user_and_element_internal<'c, C>(
-        db: &'c C,
+    async fn get_by_user_and_element_internal<C>(
+        db: &C,
         recruitment_id: i32,
         user_id: u64,
         element_id: Option<i32>,
@@ -49,7 +49,7 @@ impl SeaOrmRecruitmentParticipantsRepository {
     }
 
     /// 募集に参加しているユニークユーザー数を取得（内部共通実装）
-    async fn count_unique_users_internal<'c, C>(db: &'c C, recruitment_id: i32) -> Result<i64>
+    async fn count_unique_users_internal<C>(db: &C, recruitment_id: i32) -> Result<i64>
     where
         C: sea_orm::ConnectionTrait,
     {
@@ -70,8 +70,8 @@ impl SeaOrmRecruitmentParticipantsRepository {
     }
 
     /// ユーザーが参加している属性のリストを取得（内部共通実装）
-    async fn get_user_elements_internal<'c, C>(
-        db: &'c C,
+    async fn get_user_elements_internal<C>(
+        db: &C,
         recruitment_id: i32,
         user_id: u64,
     ) -> Result<Vec<Option<i32>>>
@@ -89,8 +89,8 @@ impl SeaOrmRecruitmentParticipantsRepository {
     }
 
     /// 募集に参加している全ユーザーのIDリストを取得（内部共通実装）
-    async fn get_all_participant_user_ids_internal<'c, C>(
-        db: &'c C,
+    async fn get_all_participant_user_ids_internal<C>(
+        db: &C,
         recruitment_id: i32,
     ) -> Result<Vec<u64>>
     where
@@ -112,8 +112,8 @@ impl SeaOrmRecruitmentParticipantsRepository {
     }
 
     /// 募集IDで参加者一覧を取得（内部共通実装）
-    async fn find_by_recruitment_id_internal<'c, C>(
-        db: &'c C,
+    async fn find_by_recruitment_id_internal<C>(
+        db: &C,
         recruitment_id: i32,
     ) -> Result<Vec<crate::models::entities::worker::recruitment_participants::Model>>
     where

@@ -8,7 +8,7 @@ use crate::repository::GuildChannelRepository;
 use crate::repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::message::MessageService;
-use crate::services::recruitment::new::create_message_content;
+use crate::services::recruitment::new::{MessageContentParams, create_message_content};
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
@@ -274,12 +274,14 @@ where
         let mut message_content = create_message_content(
             txn,
             &self.message_service,
-            &quest.name,
-            &battle_style.display_name,
-            &calculated_time.quest_start_at,
-            timezone,
-            Some(calculated_time.guild_id),
-            dismissal_times_option,
+            MessageContentParams {
+                quest_name: &quest.name,
+                battle_style_name: &battle_style.display_name,
+                expiry_date: &calculated_time.quest_start_at,
+                timezone,
+                guild_id: Some(calculated_time.guild_id),
+                dismissal_times: dismissal_times_option,
+            },
         )
         .await?;
 
@@ -482,12 +484,14 @@ where
         let mut message_content = create_message_content(
             txn,
             &self.message_service,
-            &quest.name,
-            &battle_style.display_name,
-            &params.quest_start_at,
-            timezone,
-            Some(params.guild_id),
-            None, // 解散時刻なし
+            MessageContentParams {
+                quest_name: &quest.name,
+                battle_style_name: &battle_style.display_name,
+                expiry_date: &params.quest_start_at,
+                timezone,
+                guild_id: Some(params.guild_id),
+                dismissal_times: None, // 解散時刻なし
+            },
         )
         .await?;
 
