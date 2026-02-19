@@ -111,7 +111,7 @@ pub async fn build_panel_content_and_components(
     let unchanged_quest = get_message_or_fallback(
         data,
         guild_id,
-        MessageTextId::RecruitmentCommandChangePanelQuestUnchanged,
+        MessageTextId::RecruitmentCommandChangePanelUnchanged,
         HashMap::new(),
         "変更しない",
     )
@@ -119,7 +119,7 @@ pub async fn build_panel_content_and_components(
     let unchanged_style = get_message_or_fallback(
         data,
         guild_id,
-        MessageTextId::RecruitmentCommandChangePanelStyleUnchanged,
+        MessageTextId::RecruitmentCommandChangePanelUnchanged,
         HashMap::new(),
         "変更しない",
     )
@@ -292,7 +292,7 @@ async fn format_event_date_label(
         return get_message_or_fallback(
             data,
             guild_id,
-            MessageTextId::RecruitmentCommandChangePanelDateUnchanged,
+            MessageTextId::RecruitmentCommandChangePanelUnchanged,
             HashMap::new(),
             "変更しない",
         )
@@ -718,7 +718,7 @@ async fn handle_apply_changes(
             let error_prefix = get_message_or_fallback(
                 data,
                 Some(interaction_guild_id),
-                MessageTextId::RecruitmentCommandChangeErrorPrefix,
+                MessageTextId::CommonErrorPrefix,
                 error_params,
                 &format!("エラー: {}", e.user_message()),
             )

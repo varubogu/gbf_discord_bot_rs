@@ -7,6 +7,7 @@ pub mod keys {
     // Common messages
     pub const COMMON_SUCCESS: &str = "common.success";
     pub const COMMON_ERROR: &str = "common.error";
+    pub const COMMON_ERROR_PREFIX: &str = "common.error_prefix";
     pub const COMMON_WARNING: &str = "common.warning";
     pub const COMMON_INFO: &str = "common.info";
     pub const COMMON_YES: &str = "common.yes";
@@ -187,35 +188,28 @@ pub mod keys {
         "schedule.command.generate.success_title";
     pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION: &str =
         "schedule.command.generate.success_description";
-    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME: &str =
-        "schedule.command.generate.success_field_name";
+    pub const SCHEDULE_COMMAND_SHARED_SUCCESS_FIELD_NAME: &str =
+        "schedule.command.shared.success_field_name";
     pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE: &str =
         "schedule.command.generate.success_field_value";
-    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER: &str =
-        "schedule.command.generate.success_footer";
+    pub const SCHEDULE_COMMAND_SHARED_SUCCESS_FOOTER: &str =
+        "schedule.command.shared.success_footer";
     pub const SCHEDULE_COMMAND_GENERATE_ERROR_TITLE: &str = "schedule.command.generate.error_title";
     pub const SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION: &str =
         "schedule.command.generate.error_description";
-    pub const SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER: &str =
-        "schedule.command.generate.error_footer";
+    pub const SCHEDULE_COMMAND_SHARED_ERROR_FOOTER: &str = "schedule.command.shared.error_footer";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING: &str =
         "schedule.command.global_generate.loading";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_TITLE: &str =
         "schedule.command.global_generate.success_title";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION: &str =
         "schedule.command.global_generate.success_description";
-    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME: &str =
-        "schedule.command.global_generate.success_field_name";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE: &str =
         "schedule.command.global_generate.success_field_value";
-    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER: &str =
-        "schedule.command.global_generate.success_footer";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE: &str =
         "schedule.command.global_generate.error_title";
     pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION: &str =
         "schedule.command.global_generate.error_description";
-    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER: &str =
-        "schedule.command.global_generate.error_footer";
     pub const SCHEDULE_COMMAND_LIST_TITLE: &str = "schedule.command.list.title";
     pub const SCHEDULE_COMMAND_LIST_EMPTY_DESCRIPTION: &str =
         "schedule.command.list.empty_description";
@@ -265,12 +259,8 @@ pub mod keys {
     pub const RECRUITMENT_ROLE_SHOW_UNKNOWN_QUEST: &str = "recruitment.role.show.unknown_quest";
 
     // Recruitment change panel messages
-    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED: &str =
-        "recruitment.command.change.panel_quest_unchanged";
-    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED: &str =
-        "recruitment.command.change.panel_style_unchanged";
-    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED: &str =
-        "recruitment.command.change.panel_date_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_UNCHANGED: &str =
+        "recruitment.command.change.panel_unchanged";
     pub const RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT: &str =
         "recruitment.command.change.panel_content";
     pub const RECRUITMENT_COMMAND_CHANGE_OPTION_QUEST_UNCHANGED: &str =
@@ -293,8 +283,6 @@ pub mod keys {
         "recruitment.command.change.modal_event_date_label";
     pub const RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER: &str =
         "recruitment.command.change.modal_event_date_placeholder";
-    pub const RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX: &str =
-        "recruitment.command.change.error_prefix";
     pub const RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED: &str =
         "recruitment.command.change.modal.absolute_datetime_required";
     pub const RECRUITMENT_COMMAND_CHANGE_MODAL_PARSE_FAILED: &str =
@@ -313,8 +301,6 @@ pub mod keys {
     pub const AUTO_RECRUITMENT_TIME_SELECT_REQUIRED: &str = "auto_recruitment.time_select_required";
     pub const AUTO_RECRUITMENT_TIME_SELECT_REGISTERED: &str =
         "auto_recruitment.time_select_registered";
-    pub const AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX: &str =
-        "auto_recruitment.operation_error_prefix";
 
     // Help embed messages
     pub const HELP_EMBED_TITLE: &str = "help.embed.title";
@@ -498,21 +484,18 @@ pub enum MessageTextId {
     ScheduleCommandGenerateLoading,
     ScheduleCommandGenerateSuccessTitle,
     ScheduleCommandGenerateSuccessDescription,
-    ScheduleCommandGenerateSuccessFieldName,
+    ScheduleCommandSharedSuccessFieldName,
     ScheduleCommandGenerateSuccessFieldValue,
-    ScheduleCommandGenerateSuccessFooter,
+    ScheduleCommandSharedSuccessFooter,
     ScheduleCommandGenerateErrorTitle,
     ScheduleCommandGenerateErrorDescription,
-    ScheduleCommandGenerateErrorFooter,
+    ScheduleCommandSharedErrorFooter,
     ScheduleCommandGlobalGenerateLoading,
     ScheduleCommandGlobalGenerateSuccessTitle,
     ScheduleCommandGlobalGenerateSuccessDescription,
-    ScheduleCommandGlobalGenerateSuccessFieldName,
     ScheduleCommandGlobalGenerateSuccessFieldValue,
-    ScheduleCommandGlobalGenerateSuccessFooter,
     ScheduleCommandGlobalGenerateErrorTitle,
     ScheduleCommandGlobalGenerateErrorDescription,
-    ScheduleCommandGlobalGenerateErrorFooter,
     ScheduleCommandListTitle,
     ScheduleCommandListEmptyDescription,
     ScheduleCommandListFooter,
@@ -549,9 +532,7 @@ pub enum MessageTextId {
     RecruitmentRoleShowUnknownQuest,
 
     // Recruitment change panel messages
-    RecruitmentCommandChangePanelQuestUnchanged,
-    RecruitmentCommandChangePanelStyleUnchanged,
-    RecruitmentCommandChangePanelDateUnchanged,
+    RecruitmentCommandChangePanelUnchanged,
     RecruitmentCommandChangePanelContent,
     RecruitmentCommandChangeOptionQuestUnchanged,
     RecruitmentCommandChangeOptionStyleUnchanged,
@@ -563,7 +544,7 @@ pub enum MessageTextId {
     RecruitmentCommandChangeModalTitle,
     RecruitmentCommandChangeModalEventDateLabel,
     RecruitmentCommandChangeModalEventDatePlaceholder,
-    RecruitmentCommandChangeErrorPrefix,
+    CommonErrorPrefix,
     RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
     RecruitmentCommandChangeModalParseFailed,
 
@@ -577,7 +558,6 @@ pub enum MessageTextId {
     AutoRecruitmentQuestSelectRegistered,
     AutoRecruitmentTimeSelectRequired,
     AutoRecruitmentTimeSelectRegistered,
-    AutoRecruitmentOperationErrorPrefix,
 
     // Help embed messages
     HelpEmbedTitle,
@@ -607,6 +587,7 @@ impl MessageTextId {
             // Common
             MessageTextId::CommonSuccess => keys::COMMON_SUCCESS,
             MessageTextId::CommonError => keys::COMMON_ERROR,
+            MessageTextId::CommonErrorPrefix => keys::COMMON_ERROR_PREFIX,
             MessageTextId::CommonWarning => keys::COMMON_WARNING,
             MessageTextId::CommonInfo => keys::COMMON_INFO,
             MessageTextId::CommonYes => keys::COMMON_YES,
@@ -845,14 +826,14 @@ impl MessageTextId {
             MessageTextId::ScheduleCommandGenerateSuccessDescription => {
                 keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION
             }
-            MessageTextId::ScheduleCommandGenerateSuccessFieldName => {
-                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME
+            MessageTextId::ScheduleCommandSharedSuccessFieldName => {
+                keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FIELD_NAME
             }
             MessageTextId::ScheduleCommandGenerateSuccessFieldValue => {
                 keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE
             }
-            MessageTextId::ScheduleCommandGenerateSuccessFooter => {
-                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER
+            MessageTextId::ScheduleCommandSharedSuccessFooter => {
+                keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FOOTER
             }
             MessageTextId::ScheduleCommandGenerateErrorTitle => {
                 keys::SCHEDULE_COMMAND_GENERATE_ERROR_TITLE
@@ -860,8 +841,8 @@ impl MessageTextId {
             MessageTextId::ScheduleCommandGenerateErrorDescription => {
                 keys::SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION
             }
-            MessageTextId::ScheduleCommandGenerateErrorFooter => {
-                keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER
+            MessageTextId::ScheduleCommandSharedErrorFooter => {
+                keys::SCHEDULE_COMMAND_SHARED_ERROR_FOOTER
             }
             MessageTextId::ScheduleCommandGlobalGenerateLoading => {
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING
@@ -872,23 +853,14 @@ impl MessageTextId {
             MessageTextId::ScheduleCommandGlobalGenerateSuccessDescription => {
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION
             }
-            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldName => {
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME
-            }
             MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldValue => {
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE
-            }
-            MessageTextId::ScheduleCommandGlobalGenerateSuccessFooter => {
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER
             }
             MessageTextId::ScheduleCommandGlobalGenerateErrorTitle => {
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE
             }
             MessageTextId::ScheduleCommandGlobalGenerateErrorDescription => {
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION
-            }
-            MessageTextId::ScheduleCommandGlobalGenerateErrorFooter => {
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER
             }
             MessageTextId::ScheduleCommandListTitle => keys::SCHEDULE_COMMAND_LIST_TITLE,
             MessageTextId::ScheduleCommandListEmptyDescription => {
@@ -970,14 +942,8 @@ impl MessageTextId {
             }
 
             // Recruitment change panel
-            MessageTextId::RecruitmentCommandChangePanelQuestUnchanged => {
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED
-            }
-            MessageTextId::RecruitmentCommandChangePanelStyleUnchanged => {
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED
-            }
-            MessageTextId::RecruitmentCommandChangePanelDateUnchanged => {
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED
+            MessageTextId::RecruitmentCommandChangePanelUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_UNCHANGED
             }
             MessageTextId::RecruitmentCommandChangePanelContent => {
                 keys::RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT
@@ -1012,9 +978,6 @@ impl MessageTextId {
             MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder => {
                 keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER
             }
-            MessageTextId::RecruitmentCommandChangeErrorPrefix => {
-                keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX
-            }
             MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired => {
                 keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED
             }
@@ -1040,10 +1003,6 @@ impl MessageTextId {
             MessageTextId::AutoRecruitmentTimeSelectRegistered => {
                 keys::AUTO_RECRUITMENT_TIME_SELECT_REGISTERED
             }
-            MessageTextId::AutoRecruitmentOperationErrorPrefix => {
-                keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX
-            }
-
             // Help embed
             MessageTextId::HelpEmbedTitle => keys::HELP_EMBED_TITLE,
             MessageTextId::HelpEmbedDescription => keys::HELP_EMBED_DESCRIPTION,
@@ -1074,7 +1033,7 @@ impl std::fmt::Display for MessageTextId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::fs;
 
     #[test]
@@ -1088,6 +1047,26 @@ mod tests {
             "timezone.set_success"
         );
         assert_eq!(MessageTextId::ErrorsGuildOnly.as_str(), "errors.guild_only");
+        assert_eq!(
+            MessageTextId::ScheduleCommandSharedSuccessFieldName.as_str(),
+            "schedule.command.shared.success_field_name"
+        );
+        assert_eq!(
+            MessageTextId::ScheduleCommandSharedSuccessFooter.as_str(),
+            "schedule.command.shared.success_footer"
+        );
+        assert_eq!(
+            MessageTextId::ScheduleCommandSharedErrorFooter.as_str(),
+            "schedule.command.shared.error_footer"
+        );
+        assert_eq!(
+            MessageTextId::RecruitmentCommandChangePanelUnchanged.as_str(),
+            "recruitment.command.change.panel_unchanged"
+        );
+        assert_eq!(
+            MessageTextId::CommonErrorPrefix.as_str(),
+            "common.error_prefix"
+        );
     }
 
     #[test]
@@ -1095,6 +1074,173 @@ mod tests {
         assert_eq!(
             MessageTextId::TimezoneShowCurrent.to_string(),
             "timezone.show_current"
+        );
+    }
+
+    #[test]
+    fn test_renamed_old_ids_are_not_resolved_in_yaml_loader() {
+        let old_ids = [
+            "schedule.command.generate.success_field_name",
+            "schedule.command.global_generate.success_field_name",
+            "schedule.command.generate.success_footer",
+            "schedule.command.global_generate.success_footer",
+            "schedule.command.generate.error_footer",
+            "schedule.command.global_generate.error_footer",
+            "recruitment.command.change.panel_quest_unchanged",
+            "recruitment.command.change.panel_style_unchanged",
+            "recruitment.command.change.panel_date_unchanged",
+            "recruitment.command.change.error_prefix",
+            "auto_recruitment.operation_error_prefix",
+        ];
+
+        for old_id in old_ids {
+            let resolved = super::super::yaml_loader::get_yaml_message(old_id, "ja");
+            assert!(
+                resolved.is_none(),
+                "旧IDが解決されました: old_id={old_id}, resolved={resolved:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_new_shared_ids_are_resolved_in_yaml_loader() {
+        let new_ids = [
+            "schedule.command.shared.success_field_name",
+            "schedule.command.shared.success_footer",
+            "schedule.command.shared.error_footer",
+            "recruitment.command.change.panel_unchanged",
+            "common.error_prefix",
+        ];
+
+        for new_id in new_ids {
+            let resolved = super::super::yaml_loader::get_yaml_message(new_id, "ja");
+            assert!(resolved.is_some(), "新IDが解決できません: new_id={new_id}");
+        }
+    }
+
+    fn parse_yaml_message_entries(yaml_content: &str) -> Vec<(String, String, String)> {
+        let mut entries = Vec::new();
+        let mut current_key: Option<String> = None;
+        let mut current_ja: Option<String> = None;
+        let mut current_en: Option<String> = None;
+
+        let flush_entry = |entries: &mut Vec<(String, String, String)>,
+                           current_key: &mut Option<String>,
+                           current_ja: &mut Option<String>,
+                           current_en: &mut Option<String>| {
+            if let (Some(key), Some(ja), Some(en)) =
+                (current_key.take(), current_ja.take(), current_en.take())
+            {
+                entries.push((key, ja, en));
+            } else {
+                current_key.take();
+                current_ja.take();
+                current_en.take();
+            }
+        };
+
+        let parse_yaml_value = |line: &str, field_prefix: &str| -> Option<String> {
+            let trimmed = line.trim_start();
+            let value = trimmed.strip_prefix(field_prefix)?.trim();
+            if value.is_empty() {
+                return Some(String::new());
+            }
+            if value.len() >= 2
+                && ((value.starts_with('"') && value.ends_with('"'))
+                    || (value.starts_with('\'') && value.ends_with('\'')))
+            {
+                return Some(value[1..value.len() - 1].to_string());
+            }
+            Some(value.to_string())
+        };
+
+        for line in yaml_content.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let is_top_level_key =
+                !line.starts_with(' ') && trimmed.ends_with(':') && trimmed != "_version:";
+
+            if is_top_level_key {
+                flush_entry(
+                    &mut entries,
+                    &mut current_key,
+                    &mut current_ja,
+                    &mut current_en,
+                );
+                current_key = Some(trimmed.trim_end_matches(':').to_string());
+                continue;
+            }
+
+            if let Some(ja) = parse_yaml_value(line, "ja:") {
+                current_ja = Some(ja);
+                continue;
+            }
+            if let Some(en) = parse_yaml_value(line, "en:") {
+                current_en = Some(en);
+            }
+        }
+
+        flush_entry(
+            &mut entries,
+            &mut current_key,
+            &mut current_ja,
+            &mut current_en,
+        );
+        entries
+    }
+
+    fn normalize_for_alphabet_level_match(text: &str) -> String {
+        text.chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .map(|c| c.to_ascii_lowercase())
+            .collect()
+    }
+
+    #[test]
+    fn test_no_identical_ja_en_entries_in_messages_yaml() {
+        let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/locales/messages.yml");
+        let yaml_content =
+            fs::read_to_string(yaml_path).expect("locales/messages.yml が見つかりません");
+
+        let entries = parse_yaml_message_entries(&yaml_content);
+        let same_entries: Vec<String> = entries
+            .iter()
+            .filter_map(|(key, ja, en)| if ja == en { Some(key.clone()) } else { None })
+            .collect();
+
+        assert!(
+            same_entries.is_empty(),
+            "ja/en が同一のキーがあります: {}",
+            same_entries.join(", ")
+        );
+    }
+
+    #[test]
+    fn test_no_duplicate_ja_en_pairs_in_messages_yaml() {
+        let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/locales/messages.yml");
+        let yaml_content =
+            fs::read_to_string(yaml_path).expect("locales/messages.yml が見つかりません");
+
+        let entries = parse_yaml_message_entries(&yaml_content);
+        let mut seen_pairs: HashMap<(String, String), String> = HashMap::new();
+        let mut duplicates = Vec::new();
+
+        for (key, ja, en) in entries {
+            let pair = (ja.clone(), en.clone());
+            if let Some(existing_key) = seen_pairs.get(&pair) {
+                duplicates.push(format!("{existing_key} <-> {key}"));
+            } else {
+                seen_pairs.insert(pair, key);
+            }
+        }
+
+        assert!(
+            duplicates.is_empty(),
+            "ja/en 完全一致ペアの重複キーがあります: {}",
+            duplicates.join(", ")
         );
     }
 
@@ -1128,6 +1274,7 @@ mod tests {
         let all_message_ids = vec![
             MessageTextId::CommonSuccess,
             MessageTextId::CommonError,
+            MessageTextId::CommonErrorPrefix,
             MessageTextId::CommonWarning,
             MessageTextId::CommonInfo,
             MessageTextId::CommonYes,
@@ -1254,21 +1401,18 @@ mod tests {
             MessageTextId::ScheduleCommandGenerateLoading,
             MessageTextId::ScheduleCommandGenerateSuccessTitle,
             MessageTextId::ScheduleCommandGenerateSuccessDescription,
-            MessageTextId::ScheduleCommandGenerateSuccessFieldName,
+            MessageTextId::ScheduleCommandSharedSuccessFieldName,
             MessageTextId::ScheduleCommandGenerateSuccessFieldValue,
-            MessageTextId::ScheduleCommandGenerateSuccessFooter,
+            MessageTextId::ScheduleCommandSharedSuccessFooter,
             MessageTextId::ScheduleCommandGenerateErrorTitle,
             MessageTextId::ScheduleCommandGenerateErrorDescription,
-            MessageTextId::ScheduleCommandGenerateErrorFooter,
+            MessageTextId::ScheduleCommandSharedErrorFooter,
             MessageTextId::ScheduleCommandGlobalGenerateLoading,
             MessageTextId::ScheduleCommandGlobalGenerateSuccessTitle,
             MessageTextId::ScheduleCommandGlobalGenerateSuccessDescription,
-            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldName,
             MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldValue,
-            MessageTextId::ScheduleCommandGlobalGenerateSuccessFooter,
             MessageTextId::ScheduleCommandGlobalGenerateErrorTitle,
             MessageTextId::ScheduleCommandGlobalGenerateErrorDescription,
-            MessageTextId::ScheduleCommandGlobalGenerateErrorFooter,
             MessageTextId::ScheduleCommandListTitle,
             MessageTextId::ScheduleCommandListEmptyDescription,
             MessageTextId::ScheduleCommandListFooter,
@@ -1299,9 +1443,7 @@ mod tests {
             MessageTextId::RecruitmentRoleShowSectionAll,
             MessageTextId::RecruitmentRoleShowSectionQuest,
             MessageTextId::RecruitmentRoleShowUnknownQuest,
-            MessageTextId::RecruitmentCommandChangePanelQuestUnchanged,
-            MessageTextId::RecruitmentCommandChangePanelStyleUnchanged,
-            MessageTextId::RecruitmentCommandChangePanelDateUnchanged,
+            MessageTextId::RecruitmentCommandChangePanelUnchanged,
             MessageTextId::RecruitmentCommandChangePanelContent,
             MessageTextId::RecruitmentCommandChangeOptionQuestUnchanged,
             MessageTextId::RecruitmentCommandChangeOptionStyleUnchanged,
@@ -1313,7 +1455,6 @@ mod tests {
             MessageTextId::RecruitmentCommandChangeModalTitle,
             MessageTextId::RecruitmentCommandChangeModalEventDateLabel,
             MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder,
-            MessageTextId::RecruitmentCommandChangeErrorPrefix,
             MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
             MessageTextId::RecruitmentCommandChangeModalParseFailed,
             MessageTextId::ChannelShowEmpty,
@@ -1323,7 +1464,6 @@ mod tests {
             MessageTextId::AutoRecruitmentQuestSelectRegistered,
             MessageTextId::AutoRecruitmentTimeSelectRequired,
             MessageTextId::AutoRecruitmentTimeSelectRegistered,
-            MessageTextId::AutoRecruitmentOperationErrorPrefix,
             MessageTextId::HelpEmbedTitle,
             MessageTextId::HelpEmbedDescription,
             MessageTextId::HelpEmbedCommandsFieldTitle,
@@ -1336,9 +1476,30 @@ mod tests {
             MessageTextId::HelpEmbedFooter,
         ];
 
+        let mut unique_message_ids = HashSet::new();
+        for message_id in &all_message_ids {
+            assert!(
+                unique_message_ids.insert(*message_id),
+                "all_message_ids に重複があります: {:?}",
+                message_id
+            );
+        }
+
+        for message_id in &all_message_ids {
+            let variant_name = format!("{message_id:?}");
+            let normalized_variant = normalize_for_alphabet_level_match(&variant_name);
+            let normalized_key = normalize_for_alphabet_level_match(message_id.as_str());
+            assert_eq!(
+                normalized_variant,
+                normalized_key,
+                "MessageTextId と YAML キーのアルファベット一致に失敗: variant={variant_name}, key={}",
+                message_id.as_str()
+            );
+        }
+
         // 各MessageTextIdに対してYAMLにキーが存在することを確認
         let mut missing_keys = Vec::new();
-        for message_id in all_message_ids {
+        for message_id in &all_message_ids {
             let key = message_id.as_str();
             if !yaml_keys.contains(key) {
                 missing_keys.push(key.to_string());

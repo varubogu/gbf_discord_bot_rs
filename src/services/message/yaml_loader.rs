@@ -30,6 +30,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         // Common messages
         keys::COMMON_SUCCESS => Some(t!(keys::COMMON_SUCCESS, locale = locale).to_string()),
         keys::COMMON_ERROR => Some(t!(keys::COMMON_ERROR, locale = locale).to_string()),
+        keys::COMMON_ERROR_PREFIX => {
+            Some(t!(keys::COMMON_ERROR_PREFIX, locale = locale).to_string())
+        }
         keys::COMMON_WARNING => Some(t!(keys::COMMON_WARNING, locale = locale).to_string()),
         keys::COMMON_INFO => Some(t!(keys::COMMON_INFO, locale = locale).to_string()),
         keys::COMMON_YES => Some(t!(keys::COMMON_YES, locale = locale).to_string()),
@@ -467,9 +470,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME => Some(
+        keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FIELD_NAME => Some(
             t!(
-                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME,
+                keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FIELD_NAME,
                 locale = locale
             )
             .to_string(),
@@ -481,9 +484,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER => Some(
+        keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FOOTER => Some(
             t!(
-                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER,
+                keys::SCHEDULE_COMMAND_SHARED_SUCCESS_FOOTER,
                 locale = locale
             )
             .to_string(),
@@ -498,13 +501,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER => Some(
-            t!(
-                keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER,
-                locale = locale
-            )
-            .to_string(),
-        ),
+        keys::SCHEDULE_COMMAND_SHARED_ERROR_FOOTER => {
+            Some(t!(keys::SCHEDULE_COMMAND_SHARED_ERROR_FOOTER, locale = locale).to_string())
+        }
         keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING => Some(
             t!(
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING,
@@ -526,23 +525,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME => Some(
-            t!(
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME,
-                locale = locale
-            )
-            .to_string(),
-        ),
         keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE => Some(
             t!(
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE,
-                locale = locale
-            )
-            .to_string(),
-        ),
-        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER => Some(
-            t!(
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER,
                 locale = locale
             )
             .to_string(),
@@ -557,13 +542,6 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION => Some(
             t!(
                 keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION,
-                locale = locale
-            )
-            .to_string(),
-        ),
-        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER => Some(
-            t!(
-                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER,
                 locale = locale
             )
             .to_string(),
@@ -716,23 +694,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         }
 
         // Recruitment change panel messages
-        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED => Some(
+        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_UNCHANGED => Some(
             t!(
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED,
-                locale = locale
-            )
-            .to_string(),
-        ),
-        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED => Some(
-            t!(
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED,
-                locale = locale
-            )
-            .to_string(),
-        ),
-        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED => Some(
-            t!(
-                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED,
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_UNCHANGED,
                 locale = locale
             )
             .to_string(),
@@ -814,13 +778,6 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX => Some(
-            t!(
-                keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX,
-                locale = locale
-            )
-            .to_string(),
-        ),
         keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED => Some(
             t!(
                 keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED,
@@ -868,14 +825,6 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
-        keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX => Some(
-            t!(
-                keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX,
-                locale = locale
-            )
-            .to_string(),
-        ),
-
         // Help embed messages
         keys::HELP_EMBED_TITLE => Some(t!(keys::HELP_EMBED_TITLE, locale = locale).to_string()),
         keys::HELP_EMBED_DESCRIPTION => {

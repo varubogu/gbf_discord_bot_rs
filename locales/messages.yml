@@ -19,6 +19,9 @@ common.confirm:
 common.error:
   ja: "エラー"
   en: "Error"
+common.error_prefix:
+  ja: "エラー: {{error_message}}"
+  en: "Error: {{error_message}}"
 common.info:
   ja: "情報"
   en: "Information"
@@ -86,8 +89,8 @@ errors.user_not_found:
   en: "User not found"
 
 guild_settings.not_set:
-  ja: "設定されていません"
-  en: "Not set"
+  ja: "値が設定されていません"
+  en: "Not configured"
 guild_settings.set_success:
   ja: "設定を更新しました"
   en: "Settings updated successfully"
@@ -401,24 +404,15 @@ schedule.command.generate.success_title:
 schedule.command.generate.success_description:
   ja: "イベントスケジュールから通知スケジュールを生成しました。"
   en: "Generated notification schedules from event schedules."
-schedule.command.generate.success_field_name:
-  ja: "処理内容"
-  en: "Processed Steps"
 schedule.command.generate.success_field_value:
   ja: "- 既存のスケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
   en: "- Deleted existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
-schedule.command.generate.success_footer:
-  ja: "10秒間隔で自動的に通知が送信されます"
-  en: "Notifications are sent automatically every 10 seconds."
 schedule.command.generate.error_title:
   ja: "❌ スケジュール生成エラー"
   en: "❌ Schedule generation error"
 schedule.command.generate.error_description:
   ja: "スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
   en: "An error occurred while generating schedules.\n```\n{{error_msg}}\n```"
-schedule.command.generate.error_footer:
-  ja: "詳細はログを確認してください"
-  en: "Check logs for details."
 
 schedule.command.global_generate.loading:
   ja: "全体スケジュールを生成しています..."
@@ -429,22 +423,23 @@ schedule.command.global_generate.success_title:
 schedule.command.global_generate.success_description:
   ja: "全guildのイベントスケジュールから通知スケジュールを生成しました。"
   en: "Generated notification schedules from all guild event schedules."
-schedule.command.global_generate.success_field_name:
-  ja: "処理内容"
-  en: "Processed Steps"
 schedule.command.global_generate.success_field_value:
   ja: "- 対象の既存スケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
   en: "- Deleted target existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
-schedule.command.global_generate.success_footer:
-  ja: "10秒間隔で自動的に通知が送信されます"
-  en: "Notifications are sent automatically every 10 seconds."
 schedule.command.global_generate.error_title:
   ja: "❌ 全体スケジュール生成エラー"
   en: "❌ Global schedule generation error"
 schedule.command.global_generate.error_description:
   ja: "全体スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
   en: "An error occurred while generating global schedules.\n```\n{{error_msg}}\n```"
-schedule.command.global_generate.error_footer:
+
+schedule.command.shared.success_field_name:
+  ja: "処理内容"
+  en: "Processed Steps"
+schedule.command.shared.success_footer:
+  ja: "10秒間隔で自動的に通知が送信されます"
+  en: "Notifications are sent automatically every 10 seconds."
+schedule.command.shared.error_footer:
   ja: "詳細はログを確認してください"
   en: "Check logs for details."
 
@@ -545,13 +540,7 @@ recruitment.role.show.unknown_quest:
   ja: "不明なクエスト"
   en: "Unknown quest"
 
-recruitment.command.change.panel_quest_unchanged:
-  ja: "変更しない"
-  en: "No change"
-recruitment.command.change.panel_style_unchanged:
-  ja: "変更しない"
-  en: "No change"
-recruitment.command.change.panel_date_unchanged:
+recruitment.command.change.panel_unchanged:
   ja: "変更しない"
   en: "No change"
 recruitment.command.change.panel_content:
@@ -587,9 +576,6 @@ recruitment.command.change.modal_event_date_label:
 recruitment.command.change.modal_event_date_placeholder:
   ja: "例: 12/25 22:30"
   en: "Example: 12/25 22:30"
-recruitment.command.change.error_prefix:
-  ja: "エラー: {{error_message}}"
-  en: "Error: {{error_message}}"
 recruitment.command.change.modal.absolute_datetime_required:
   ja: "日時の解析に失敗しました: 絶対日時で指定してください"
   en: "Failed to parse date/time: please specify an absolute date/time."
@@ -619,37 +605,33 @@ auto_recruitment.time_select_required:
 auto_recruitment.time_select_registered:
   ja: "✅ {{month}}月{{day}}日の参加可能時間を登録しました。\n登録した時間: {{hours_str}}"
   en: "✅ Registered available times for {{month}}/{{day}}.\nRegistered time(s): {{hours_str}}"
-auto_recruitment.operation_error_prefix:
-  ja: "エラー: {{error_message}}"
-  en: "Error: {{error_message}}"
-
 help.embed.title:
-  ja: "GBF Discord Bot Help"
+  ja: "GBF Discord Bot ヘルプ"
   en: "GBF Discord Bot Help"
 help.embed.description:
-  ja: "This bot helps manage Granblue Fantasy game activities in Discord servers."
+  ja: "このBotは、Discordサーバーでのグランブルーファンタジーの活動管理を支援します。"
   en: "This bot helps manage Granblue Fantasy game activities in Discord servers."
 help.embed.commands_field_title:
-  ja: "Commands"
+  ja: "コマンド"
   en: "Commands"
 help.embed.commands_field_value:
-  ja: "Here are the available commands:"
+  ja: "利用可能なコマンド一覧です:"
   en: "Here are the available commands:"
 help.embed.recruit_field_value:
-  ja: "Create a battle_recruitment recruitment with reactions for different elements.\nUsage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
-  en: "Create a battle_recruitment recruitment with reactions for different elements.\nUsage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
+  ja: "属性別リアクション付きのマルチ募集を作成します。\n使用方法: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
+  en: "Create a battle recruitment with reactions for different elements.\nUsage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
 help.embed.environ_load_field_value:
-  ja: "Reload environment variables from the database.\nUsage: `/environ_load`\nNote: Requires the 'gbf_bot_control' role."
+  ja: "データベースから環境変数を再読み込みします。\n使用方法: `/environ_load`\n注意: `gbf_bot_control` ロールが必要です。"
   en: "Reload environment variables from the database.\nUsage: `/environ_load`\nNote: Requires the 'gbf_bot_control' role."
 help.embed.gspread_load_field_value:
-  ja: "Load data from server-specific Google Spreadsheet.\nUsage: `/gspread_load`\nNote: Requires the 'gbf_bot_control' role."
+  ja: "サーバー固有のGoogleスプレッドシートからデータを読み込みます。\n使用方法: `/gspread_load`\n注意: `gbf_bot_control` ロールが必要です。"
   en: "Load data from server-specific Google Spreadsheet.\nUsage: `/gspread_load`\nNote: Requires the 'gbf_bot_control' role."
 help.embed.gspread_push_field_value:
-  ja: "Push data from database to server-specific Google Spreadsheet.\nUsage: `/gspread_push`\nNote: Requires the 'gbf_bot_control' role."
+  ja: "データベースのデータをサーバー固有のGoogleスプレッドシートへ書き込みます。\n使用方法: `/gspread_push`\n注意: `gbf_bot_control` ロールが必要です。"
   en: "Push data from database to server-specific Google Spreadsheet.\nUsage: `/gspread_push`\nNote: Requires the 'gbf_bot_control' role."
 help.embed.help_field_value:
-  ja: "Show this help message.\nUsage: `/help`"
+  ja: "このヘルプメッセージを表示します。\n使用方法: `/help`"
   en: "Show this help message.\nUsage: `/help`"
 help.embed.footer:
-  ja: "GBF Discord Bot - Rust Edition"
+  ja: "GBF Discord Bot - Rust版"
   en: "GBF Discord Bot - Rust Edition"

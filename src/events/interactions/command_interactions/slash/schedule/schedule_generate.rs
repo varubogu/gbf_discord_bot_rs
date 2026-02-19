@@ -86,7 +86,7 @@ pub async fn schedule_generate(
             let field_name = get_message_or_fallback_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::ScheduleCommandGenerateSuccessFieldName,
+                MessageTextId::ScheduleCommandSharedSuccessFieldName,
                 HashMap::new(),
                 "処理内容",
             )
@@ -102,7 +102,7 @@ pub async fn schedule_generate(
             let footer = get_message_or_fallback_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::ScheduleCommandGenerateSuccessFooter,
+                MessageTextId::ScheduleCommandSharedSuccessFooter,
                 HashMap::new(),
                 "10秒間隔で自動的に通知が送信されます",
             )
@@ -144,7 +144,7 @@ pub async fn schedule_generate(
             let footer = get_message_or_fallback_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                MessageTextId::ScheduleCommandGenerateErrorFooter,
+                MessageTextId::ScheduleCommandSharedErrorFooter,
                 HashMap::new(),
                 "詳細はログを確認してください",
             )

@@ -173,7 +173,7 @@ pub async fn handle_time_selection_interaction(
             let error_message = get_message_or_fallback(
                 data,
                 guild_id,
-                MessageTextId::AutoRecruitmentOperationErrorPrefix,
+                MessageTextId::CommonErrorPrefix,
                 params,
                 &format!("エラー: {e}"),
             )
