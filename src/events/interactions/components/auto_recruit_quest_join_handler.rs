@@ -2,7 +2,7 @@
 //!
 //! 属性指定なしクエストの参加ボタン操作を処理する
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};

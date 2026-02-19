@@ -2,10 +2,10 @@ use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
+use crate::infrastructure::database::session::DatabaseSession as Database;
 use crate::models::entities::worker::battle_recruitments::{
     self, Entity as BattleRecruitmentEntity,
 };
-use crate::repository::database::db_compat::Database;
 
 /// Battle recruitment domain model
 #[derive(Debug, Clone, Serialize, Deserialize)]

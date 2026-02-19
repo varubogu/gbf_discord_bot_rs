@@ -27,8 +27,8 @@ impl SeaOrmBattleRecruitmentsRepository {
     }
 
     /// メッセージIDで募集を取得する内部共通処理
-    async fn get_by_message_internal<'c, C>(
-        db: &'c C,
+    async fn get_by_message_internal<C>(
+        db: &C,
         guild_id: crate::types::discord::DiscordGuildId,
         channel_id: crate::types::discord::DiscordChannelId,
         message_id: crate::types::discord::DiscordMessageId,
@@ -49,8 +49,8 @@ impl SeaOrmBattleRecruitmentsRepository {
     }
 
     /// 募集終了メッセージを更新する内部共通処理
-    async fn set_end_message_internal<'c, C>(
-        db: &'c C,
+    async fn set_end_message_internal<C>(
+        db: &C,
         recruitment_id: i32,
         message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()>
@@ -73,8 +73,8 @@ impl SeaOrmBattleRecruitmentsRepository {
     }
 
     /// メッセージIDを更新する内部共通処理
-    async fn update_message_id_internal<'c, C>(
-        db: &'c C,
+    async fn update_message_id_internal<C>(
+        db: &C,
         recruitment_id: i32,
         message_id: crate::types::discord::DiscordMessageId,
     ) -> Result<()>

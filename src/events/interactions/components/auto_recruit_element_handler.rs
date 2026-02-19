@@ -2,7 +2,7 @@
 //!
 //! 6属性クエストの属性セレクトメニュー操作を処理する
 
-use crate::infrastructure::database::db_helper::set_current_guild_id;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::presenter::auto_recruitment_presenter::get_six_elements;
 use crate::repository::auto_recruitment::UserDesiredQuestRepository;
 use crate::types::{AppError, PoiseData, Result};

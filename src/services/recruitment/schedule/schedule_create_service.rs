@@ -1,7 +1,7 @@
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
-use crate::repository::quest_repository::QuestRepository;
+use crate::repository::QuestRepository;
 use crate::repository::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,

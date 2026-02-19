@@ -9,9 +9,10 @@ use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
 use crate::facades::scheduler::SchedulerFacade;
+use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::db_helper::set_current_guild_id;
-use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
+use crate::repository::GuildSpreadsheetConfigRepositoryTrait;
 use crate::services::spreadsheet::{
     DataConverterService, GeneratedUuidInfo, GoogleAuthService, GoogleAuthServiceTrait,
     RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
@@ -589,7 +590,7 @@ impl SpreadsheetImportFacade {
             })?;
 
         let result = async {
-            let repository = GuildSpreadsheetConfigRepository::new();
+            let repository = SeaOrmGuildSpreadsheetConfigRepository::new();
             let spreadsheet_id = GuildSpreadsheetConfigRepositoryTrait::find_import_spreadsheet_id(
                 &repository,
                 &txn,

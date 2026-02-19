@@ -8,8 +8,9 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
-use crate::repository::db_helper::set_current_guild_id;
-use crate::repository::{GuildSpreadsheetConfigRepository, GuildSpreadsheetConfigRepositoryTrait};
+use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
+use crate::infrastructure::database::session::set_current_guild_id;
+use crate::repository::GuildSpreadsheetConfigRepositoryTrait;
 use crate::services::spreadsheet::{
     DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
     RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
@@ -295,7 +296,7 @@ impl SpreadsheetExportFacade {
         let txn = self.db.begin().await?;
         set_current_guild_id(&txn, guild_id).await?;
 
-        let repository = GuildSpreadsheetConfigRepository::new();
+        let repository = SeaOrmGuildSpreadsheetConfigRepository::new();
         let spreadsheet_id =
             match GuildSpreadsheetConfigRepositoryTrait::find_export_spreadsheet_id(
                 &repository,

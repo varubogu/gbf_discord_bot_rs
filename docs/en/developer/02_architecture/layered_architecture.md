@@ -8,14 +8,28 @@ To reduce breakage when adding/changing features and to make testing easier, we 
 
 This project depends in the following one-way direction in principle:
 
-`events → facades → services → repository`
+`events → facades → services → repository (port)`
 
-### Responsibilities per layer
+Infrastructure implementations are wired at the composition root and are not direct dependencies of services.
 
-- **events (presentation layer)**: Receive Discord input, validate it, and call facades
-- **facades (application layer)**: Compose services per use case and manage transaction boundaries
-- **services (domain/business logic)**: Implement business rules and use repositories for I/O
-- **repository (persistence)**: Read/write the DB only (no business decisions)
+## Responsibilities per layer
+
+- **events (presentation layer)**
+  - Receive Discord input
+  - Validate presentation-level parameters
+  - Call facades
+- **facades (application layer)**
+  - Compose services per use case
+  - Own transaction boundaries (begin / commit / rollback)
+- **services (domain/business logic)**
+  - Implement business rules
+  - Depend only on repository traits
+- **repository (port layer)**
+  - Define persistence contracts (traits)
+  - Must not contain ORM-specific behavior
+- **infrastructure (adapter layer)**
+  - Implement repository traits (e.g. SeaORM adapters)
+  - Handle DB-specific behavior and optimizations
 
 ## Transactions (important)
 
@@ -26,7 +40,8 @@ This project depends in the following one-way direction in principle:
 
 - Calling services/repositories directly from events
 - Calling repositories directly from facades (go through services instead)
-- Putting business logic in repositories
+- Putting business logic in repository adapters
+- Making services depend on `SeaOrm*Repository` concrete types
 
 ## Related
 

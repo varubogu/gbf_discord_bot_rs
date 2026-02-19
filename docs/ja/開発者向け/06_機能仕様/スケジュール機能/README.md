@@ -27,3 +27,10 @@
 
 - `task_type=1` はイベント通知と募集通知の両方で利用されます。
 - `task_type=3` はテーブルとRepositoryは存在しますが、スケジューラー経路は未実装です（詳細は種別3資料を参照）。
+
+## 実装境界
+
+- スケジュール機能のRepository traitは `src/repository/schedule/**` に定義する
+- SeaORM実装は `src/infrastructure/database/repositories/schedule/**` に配置する
+- 具象Repository型の配線は `src/di/repositories.rs` でのみ行う
+- Facadeがトランザクション境界（begin/commit/rollback）を管理し、Serviceへトランザクションを引き渡す

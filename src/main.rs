@@ -3,13 +3,7 @@ use gbf_discord_bot_rs::events::{
     handler::event_handler,
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
-use gbf_discord_bot_rs::repository::database::{
-    battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository,
-    guild_message_text_repository::SeaOrmGuildMessageTextRepository,
-    message_text_repository::SeaOrmMessageTextRepository,
-    recruitment_participants_repository::SeaOrmRecruitmentParticipantsRepository,
-};
-use gbf_discord_bot_rs::services::{message::MessageService, schedule::SchedulerManager};
+use gbf_discord_bot_rs::services::schedule::SchedulerManager;
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
@@ -281,13 +275,10 @@ async fn create_discord_client(app_state: &AppState) -> Result<serenity::Client>
 
 /// SchedulerManagerを初期化してバックグラウンドで起動する
 async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Result<()> {
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let participants_repo = Arc::new(SeaOrmRecruitmentParticipantsRepository::new());
-    let message_service = Arc::new(MessageService::new(
-        SeaOrmGuildMessageTextRepository::new(),
-        SeaOrmMessageTextRepository::new(),
-    ));
     let repos = app_state.repositories;
+    let recruitment_repo = Arc::new(repos.battle_recruitments);
+    let participants_repo = Arc::new(repos.recruitment_participants);
+    let message_service = app_state.message_service.clone();
 
     // poise依存をサービス層から分離するため、ここでGatewayを作成
     let gateway = Arc::new(PoiseDiscordGateway::new(http));
@@ -306,7 +297,7 @@ async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Res
     })?;
 
     // SchedulerManagerをバックグラウンドで起動
-    let db = Arc::new(app_state.system_db().clone());
+    let db = app_state.system_db.clone();
     tokio::spawn(async move {
         if let Err(e) = scheduler_manager.start(db).await {
             error!(error = %e, "SchedulerManagerの起動に失敗しました");

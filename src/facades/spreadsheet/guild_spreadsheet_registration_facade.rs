@@ -6,8 +6,8 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 use tracing::{error, info, instrument};
 
 use crate::errors::FacadeError;
-use crate::repository::GuildSpreadsheetConfigRepository;
-use crate::repository::db_helper::set_current_guild_id;
+use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
+use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::spreadsheet::{
     GoogleAuthService, GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait,
     SpreadsheetUrlService, SpreadsheetUrlServiceTrait,
@@ -76,7 +76,7 @@ impl GuildSpreadsheetRegistrationFacade {
         );
 
         // Repositoryを作成
-        let repository = GuildSpreadsheetConfigRepository::new();
+        let repository = SeaOrmGuildSpreadsheetConfigRepository::new();
 
         // Serviceを作成
         let config_service = GuildSpreadsheetConfigService::new(

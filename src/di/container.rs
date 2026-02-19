@@ -3,14 +3,10 @@
 //! Gateway抽象化を通じた依存性注入を管理するコンテナ。
 //! 静的ディスパッチ（ジェネリクス）を採用し、本番用とテスト用で異なる具象型を使用可能。
 
-use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
-use crate::di::Repositories;
+use crate::di::{AppMessageService, Repositories, create_message_service};
 use crate::gateway::DiscordGateway;
-use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
-use crate::services::message::MessageService;
 
 /// アプリケーション全体のDIコンテナ（静的ディスパッチ版）
 ///
@@ -26,8 +22,7 @@ where
     /// リポジトリ群
     pub repositories: Repositories,
     /// メッセージサービス（Gateway非依存）
-    pub message_service:
-        Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>>,
+    pub message_service: Arc<AppMessageService>,
 }
 
 impl<G> AppContainer<G>
@@ -35,17 +30,9 @@ where
     G: DiscordGateway + Clone + 'static,
 {
     /// 汎用コンストラクタ
-    pub fn new(
-        gateway: Arc<G>,
-        guild_db: Arc<DatabaseConnection>,
-        system_db: Arc<DatabaseConnection>,
-        global_db: Arc<DatabaseConnection>,
-    ) -> Self {
-        let repositories = Repositories::new(guild_db, system_db, global_db);
-        let message_service = Arc::new(MessageService::new(
-            SeaOrmGuildMessageTextRepository::new(),
-            SeaOrmMessageTextRepository::new(),
-        ));
+    pub fn new(gateway: Arc<G>) -> Self {
+        let repositories = Repositories::new();
+        let message_service = Arc::new(create_message_service());
 
         Self {
             gateway,
@@ -65,9 +52,7 @@ where
     }
 
     /// MessageServiceを取得する
-    pub fn message_service(
-        &self,
-    ) -> &Arc<MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>> {
+    pub fn message_service(&self) -> &Arc<AppMessageService> {
         &self.message_service
     }
 }
@@ -78,14 +63,9 @@ use poise::serenity_prelude::Http;
 
 impl AppContainer<PoiseDiscordGateway> {
     /// 本番環境用コンテナを構築
-    pub fn new_production(
-        http: Arc<Http>,
-        guild_db: Arc<DatabaseConnection>,
-        system_db: Arc<DatabaseConnection>,
-        global_db: Arc<DatabaseConnection>,
-    ) -> Self {
+    pub fn new_production(http: Arc<Http>) -> Self {
         let gateway = Arc::new(PoiseDiscordGateway::new(http));
-        Self::new(gateway, guild_db, system_db, global_db)
+        Self::new(gateway)
     }
 
     /// HTTPクライアントを直接取得（移行期間中の後方互換性用）

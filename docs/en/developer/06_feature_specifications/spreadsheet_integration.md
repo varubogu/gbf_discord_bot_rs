@@ -219,6 +219,14 @@ This command registers the spreadsheet IDs (import/export) for a guild into dedi
 - Table: `guild_spreadsheet_exports` (export)
 - Both use `guild_id` as PK and store `spreadsheet_id` as the value (minimal schema)
 
+## Repository structure and transaction responsibility
+
+- Repository trait (port): `src/repository/guild_spreadsheet_config_repository.rs`
+- SeaORM adapter (implementation): `src/infrastructure/database/repositories/guild/guild_spreadsheet_config_repository.rs`
+- Facades instantiate the infrastructure adapter, while services depend on the trait contract.
+- `upsert_*` operations must receive a transaction that is started/committed/rolled back by the Facade layer.
+- Do not use legacy direct DB wrappers (`models_database`, `db_compat`) from spreadsheet features.
+
 ### Relation to other commands
 
 - `/gspread_load` requires `guild_spreadsheet_imports`; if missing, it prompts users to run `/gspread_regist`

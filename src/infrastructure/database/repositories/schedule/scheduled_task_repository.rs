@@ -363,8 +363,8 @@ impl ScheduledTaskRepositoryTrait for SeaOrmScheduledTaskRepository {
 
 impl SeaOrmScheduledTaskRepository {
     /// 複数IDでタスクを取得する内部実装
-    async fn find_many_by_ids_internal<'c, C>(
-        db: &'c C,
+    async fn find_many_by_ids_internal<C>(
+        db: &C,
         ids: Vec<i32>,
     ) -> Result<Vec<scheduled_tasks::Model>>
     where

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use tracing::info;
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::{AppError, Result};
 
 /// ParticipantsService - 募集参加者管理を行うサービス

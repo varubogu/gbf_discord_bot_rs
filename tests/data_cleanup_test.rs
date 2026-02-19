@@ -1,18 +1,17 @@
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
+use gbf_discord_bot_rs::infrastructure::database::repositories::recruitment::SeaOrmBattleRecruitmentsRepository;
+use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::{
+    SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
+};
 use gbf_discord_bot_rs::models::entities::worker::scheduled_tasks::{
     ScheduledTaskType, TaskExecutionStatus,
 };
 use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
-use gbf_discord_bot_rs::repository::database::battle_recruitments_repository::SeaOrmBattleRecruitmentsRepository;
-use gbf_discord_bot_rs::repository::database::schedule::{
-    SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
-};
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
-use std::sync::Arc;
 
 /// テストデータベース接続を取得
 async fn get_test_db() -> sea_orm::DatabaseConnection {
@@ -28,9 +27,9 @@ async fn test_data_cleanup_integration() {
     let db = get_test_db().await;
 
     // リポジトリ初期化
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    let notification_repo = SeaOrmNotificationRepository::new();
+    let task_repo = SeaOrmScheduledTaskRepository::new();
 
     let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
@@ -140,9 +139,9 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
     let db = get_test_db().await;
 
     // リポジトリ初期化
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    let notification_repo = SeaOrmNotificationRepository::new();
+    let task_repo = SeaOrmScheduledTaskRepository::new();
 
     let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
@@ -191,9 +190,9 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
     let db = get_test_db().await;
 
     // リポジトリ初期化
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    let notification_repo = SeaOrmNotificationRepository::new();
+    let task_repo = SeaOrmScheduledTaskRepository::new();
 
     let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
@@ -236,9 +235,9 @@ async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
     let db = get_test_db().await;
 
     // リポジトリ初期化
-    let recruitment_repo = Arc::new(SeaOrmBattleRecruitmentsRepository::new());
-    let notification_repo = Arc::new(SeaOrmNotificationRepository::new());
-    let task_repo = Arc::new(SeaOrmScheduledTaskRepository::new());
+    let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
+    let notification_repo = SeaOrmNotificationRepository::new();
+    let task_repo = SeaOrmScheduledTaskRepository::new();
 
     let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 

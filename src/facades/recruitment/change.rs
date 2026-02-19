@@ -1,6 +1,6 @@
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
-use crate::repository::db_helper::set_current_guild_id;
-use crate::repository::recruitment_participants_repository::RecruitmentParticipantsRepository;
+use crate::infrastructure::database::session::set_current_guild_id;
+use crate::repository::RecruitmentParticipantsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;

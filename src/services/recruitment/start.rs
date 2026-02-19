@@ -2,7 +2,7 @@ use sea_orm::DatabaseTransaction;
 use tracing::{info, warn};
 
 use crate::models::battle_recruitments::BattleRecruitments;
-use crate::repository::battle_recruitments_repository::BattleRecruitmentsRepository;
+use crate::repository::BattleRecruitmentsRepository;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::{AppError, Result};
 

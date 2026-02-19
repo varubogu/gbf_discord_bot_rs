@@ -18,6 +18,13 @@ Notification data is stored in `worker.notifications` and `worker.notification_r
 - Recipients: recruitment participants and related mention targets
 - Executor: SchedulerManager (every 10 seconds)
 
+## Layer dependency rules
+
+- Repository ports (traits) are defined under `src/repository/**`.
+- Recruitment-related concrete repositories are placed under `src/infrastructure/database/repositories/recruitment/**`.
+- Notification/schedule concrete repositories are placed under `src/infrastructure/database/repositories/schedule/**`.
+- `facades/recruitment/**` and `services/recruitment/**` must use trait-based dependencies (via `crate::repository`) and must not directly depend on SeaORM concrete repository structs.
+
 ## Data model
 
 ### `worker.scheduled_tasks`

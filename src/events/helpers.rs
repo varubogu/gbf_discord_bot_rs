@@ -3,8 +3,7 @@
 //! PoiseContextを使用する処理を集約。servicesレイヤーに依存しつつ、
 //! poise依存をeventsレイヤーに閉じ込める。
 
-use crate::repository::database::guild_message_text_repository::SeaOrmGuildMessageTextRepository;
-use crate::repository::database::message_text_repository::SeaOrmMessageTextRepository;
+use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
@@ -53,12 +52,17 @@ pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
 /// * `message_service` - メッセージサービス
 /// * `message_id` - メッセージID（MessageId enum または &str）
 /// * `params` - パラメータ
-pub async fn get_message_from_context<T: IntoMessageId>(
+pub async fn get_message_from_context<T, G, M>(
     ctx: &PoiseContext<'_>,
-    message_service: &MessageService<SeaOrmGuildMessageTextRepository, SeaOrmMessageTextRepository>,
+    message_service: &MessageService<G, M>,
     message_id: T,
     params: HashMap<String, String>,
-) -> Result<String, crate::errors::ServiceError> {
+) -> Result<String, crate::errors::ServiceError>
+where
+    T: IntoMessageId,
+    G: GuildMessageTextRepository,
+    M: MessageTextRepository,
+{
     let guild_id = get_guild_id_from_context(ctx);
     let locale = get_locale_from_context(ctx);
     let message_id_str = message_id.into_message_id();
