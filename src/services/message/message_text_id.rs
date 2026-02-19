@@ -57,6 +57,9 @@ pub mod keys {
     pub const SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS: &str =
         "spreadsheet.global_push_partial_success";
     pub const SPREADSHEET_GLOBAL_PUSH_FAILED: &str = "spreadsheet.global_push_failed";
+    pub const SPREADSHEET_GLOBAL_LOADING: &str = "spreadsheet.global_loading";
+    pub const SPREADSHEET_GLOBAL_LOAD_SUCCESS: &str = "spreadsheet.global_load_success";
+    pub const SPREADSHEET_GLOBAL_LOAD_FAILED: &str = "spreadsheet.global_load_failed";
 
     // Kosenjo messages
     pub const KOSENJO_BEFORE_3_DAYS: &str = "kosenjo.before_3_days";
@@ -150,6 +153,12 @@ pub mod keys {
         "recruitment.command.cancelling_progress";
     pub const RECRUITMENT_COMMAND_CHANGE_NO_CHANGES: &str = "recruitment.command.change_no_changes";
     pub const RECRUITMENT_COMMAND_CHANGE_SUCCESS: &str = "recruitment.command.change_success";
+    pub const RECRUITMENT_COMMAND_CANCEL_CONFIRM_PROMPT: &str =
+        "recruitment.command.cancel_confirm_prompt";
+    pub const RECRUITMENT_COMMAND_CANCEL_ABORTED: &str = "recruitment.command.cancel_aborted";
+    pub const RECRUITMENT_COMMAND_CANCEL_UNKNOWN_SELECTION: &str =
+        "recruitment.command.cancel_unknown_selection";
+    pub const RECRUITMENT_COMMAND_CANCEL_TIMEOUT: &str = "recruitment.command.cancel_timeout";
 
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
@@ -162,6 +171,162 @@ pub mod keys {
         "auto_recruitment.time_select_placeholder";
     pub const AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR: &str =
         "auto_recruitment.unregister_in_category_error";
+
+    // App error messages
+    pub const APP_ERROR_DATABASE: &str = "app_error.database";
+    pub const APP_ERROR_DISCORD: &str = "app_error.discord";
+    pub const APP_ERROR_CONFIG: &str = "app_error.config";
+    pub const APP_ERROR_VALIDATION: &str = "app_error.validation";
+    pub const APP_ERROR_DISCORD_OPERATION: &str = "app_error.discord_operation";
+    pub const APP_ERROR_CHANNEL_CREATION_FAILED: &str = "app_error.channel_creation_failed";
+    pub const APP_ERROR_IN_CATEGORY_CHANNEL: &str = "app_error.in_category_channel";
+
+    // Schedule command messages
+    pub const SCHEDULE_COMMAND_GENERATE_LOADING: &str = "schedule.command.generate.loading";
+    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_TITLE: &str =
+        "schedule.command.generate.success_title";
+    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION: &str =
+        "schedule.command.generate.success_description";
+    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME: &str =
+        "schedule.command.generate.success_field_name";
+    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE: &str =
+        "schedule.command.generate.success_field_value";
+    pub const SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER: &str =
+        "schedule.command.generate.success_footer";
+    pub const SCHEDULE_COMMAND_GENERATE_ERROR_TITLE: &str = "schedule.command.generate.error_title";
+    pub const SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION: &str =
+        "schedule.command.generate.error_description";
+    pub const SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER: &str =
+        "schedule.command.generate.error_footer";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING: &str =
+        "schedule.command.global_generate.loading";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_TITLE: &str =
+        "schedule.command.global_generate.success_title";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION: &str =
+        "schedule.command.global_generate.success_description";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME: &str =
+        "schedule.command.global_generate.success_field_name";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE: &str =
+        "schedule.command.global_generate.success_field_value";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER: &str =
+        "schedule.command.global_generate.success_footer";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE: &str =
+        "schedule.command.global_generate.error_title";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION: &str =
+        "schedule.command.global_generate.error_description";
+    pub const SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER: &str =
+        "schedule.command.global_generate.error_footer";
+    pub const SCHEDULE_COMMAND_LIST_TITLE: &str = "schedule.command.list.title";
+    pub const SCHEDULE_COMMAND_LIST_EMPTY_DESCRIPTION: &str =
+        "schedule.command.list.empty_description";
+    pub const SCHEDULE_COMMAND_LIST_FOOTER: &str = "schedule.command.list.footer";
+    pub const SCHEDULE_COMMAND_HISTORY_TITLE: &str = "schedule.command.history.title";
+    pub const SCHEDULE_COMMAND_HISTORY_EMPTY_DESCRIPTION: &str =
+        "schedule.command.history.empty_description";
+    pub const SCHEDULE_COMMAND_HISTORY_TITLE_WITH_DAYS: &str =
+        "schedule.command.history.title_with_days";
+    pub const SCHEDULE_COMMAND_HISTORY_FOOTER: &str = "schedule.command.history.footer";
+    pub const SCHEDULE_COMMAND_STATS_TITLE_WITH_DAYS: &str =
+        "schedule.command.stats.title_with_days";
+    pub const SCHEDULE_COMMAND_STATS_FOOTER: &str = "schedule.command.stats.footer";
+    pub const SCHEDULE_COMMAND_STATS_DESCRIPTION_HEADER: &str =
+        "schedule.command.stats.description_header";
+    pub const SCHEDULE_COMMAND_STATS_MESSAGE_TYPE_HEADER: &str =
+        "schedule.command.stats.message_type_header";
+    pub const SCHEDULE_COMMAND_STATS_OTHER_TYPES: &str = "schedule.command.stats.other_types";
+
+    // Recruitment schedule command messages
+    pub const RECRUITMENT_SCHEDULE_LIST_EMPTY_ALL: &str = "recruitment.schedule.list.empty_all";
+    pub const RECRUITMENT_SCHEDULE_LIST_EMPTY_SELF: &str = "recruitment.schedule.list.empty_self";
+    pub const RECRUITMENT_SCHEDULE_LIST_TITLE_ALL: &str = "recruitment.schedule.list.title_all";
+    pub const RECRUITMENT_SCHEDULE_LIST_TITLE_SELF: &str = "recruitment.schedule.list.title_self";
+    pub const RECRUITMENT_SCHEDULE_LIST_STATUS_ENABLED: &str =
+        "recruitment.schedule.list.status_enabled";
+    pub const RECRUITMENT_SCHEDULE_LIST_STATUS_DISABLED: &str =
+        "recruitment.schedule.list.status_disabled";
+    pub const RECRUITMENT_SCHEDULE_LIST_DISMISSAL_PREFIX: &str =
+        "recruitment.schedule.list.dismissal_prefix";
+    pub const RECRUITMENT_SCHEDULE_LIST_MORE_COUNT: &str = "recruitment.schedule.list.more_count";
+    pub const RECRUITMENT_SCHEDULE_LIST_FOOTER: &str = "recruitment.schedule.list.footer";
+    pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE: &str =
+        "recruitment.schedule.toggle.success_title";
+    pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION: &str =
+        "recruitment.schedule.toggle.success_description";
+    pub const RECRUITMENT_SCHEDULE_DELETE_SUCCESS_TITLE: &str =
+        "recruitment.schedule.delete.success_title";
+    pub const RECRUITMENT_SCHEDULE_DELETE_SUCCESS_DESCRIPTION: &str =
+        "recruitment.schedule.delete.success_description";
+
+    // Recruitment role show messages
+    pub const RECRUITMENT_ROLE_SHOW_NOT_REGISTERED: &str = "recruitment.role.show.not_registered";
+    pub const RECRUITMENT_ROLE_SHOW_HEADER: &str = "recruitment.role.show.header";
+    pub const RECRUITMENT_ROLE_SHOW_SECTION_ALL: &str = "recruitment.role.show.section_all";
+    pub const RECRUITMENT_ROLE_SHOW_SECTION_QUEST: &str = "recruitment.role.show.section_quest";
+    pub const RECRUITMENT_ROLE_SHOW_UNKNOWN_QUEST: &str = "recruitment.role.show.unknown_quest";
+
+    // Recruitment change panel messages
+    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED: &str =
+        "recruitment.command.change.panel_quest_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED: &str =
+        "recruitment.command.change.panel_style_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED: &str =
+        "recruitment.command.change.panel_date_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT: &str =
+        "recruitment.command.change.panel_content";
+    pub const RECRUITMENT_COMMAND_CHANGE_OPTION_QUEST_UNCHANGED: &str =
+        "recruitment.command.change.option_quest_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_OPTION_STYLE_UNCHANGED: &str =
+        "recruitment.command.change.option_style_unchanged";
+    pub const RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_QUEST: &str =
+        "recruitment.command.change.placeholder_quest";
+    pub const RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_STYLE: &str =
+        "recruitment.command.change.placeholder_style";
+    pub const RECRUITMENT_COMMAND_CHANGE_BUTTON_OPEN_DATE: &str =
+        "recruitment.command.change.button_open_date";
+    pub const RECRUITMENT_COMMAND_CHANGE_BUTTON_CLEAR_DATE: &str =
+        "recruitment.command.change.button_clear_date";
+    pub const RECRUITMENT_COMMAND_CHANGE_BUTTON_APPLY: &str =
+        "recruitment.command.change.button_apply";
+    pub const RECRUITMENT_COMMAND_CHANGE_MODAL_TITLE: &str =
+        "recruitment.command.change.modal_title";
+    pub const RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_LABEL: &str =
+        "recruitment.command.change.modal_event_date_label";
+    pub const RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER: &str =
+        "recruitment.command.change.modal_event_date_placeholder";
+    pub const RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX: &str =
+        "recruitment.command.change.error_prefix";
+    pub const RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED: &str =
+        "recruitment.command.change.modal.absolute_datetime_required";
+    pub const RECRUITMENT_COMMAND_CHANGE_MODAL_PARSE_FAILED: &str =
+        "recruitment.command.change.modal.parse_failed";
+
+    // Channel show messages
+    pub const CHANNEL_SHOW_EMPTY: &str = "channel.show.empty";
+    pub const CHANNEL_SHOW_HEADER: &str = "channel.show.header";
+    pub const CHANNEL_SHOW_UNSET: &str = "channel.show.unset";
+
+    // Auto recruitment interaction messages
+    pub const AUTO_RECRUITMENT_QUEST_SELECT_REQUIRED: &str =
+        "auto_recruitment.quest_select_required";
+    pub const AUTO_RECRUITMENT_QUEST_SELECT_REGISTERED: &str =
+        "auto_recruitment.quest_select_registered";
+    pub const AUTO_RECRUITMENT_TIME_SELECT_REQUIRED: &str = "auto_recruitment.time_select_required";
+    pub const AUTO_RECRUITMENT_TIME_SELECT_REGISTERED: &str =
+        "auto_recruitment.time_select_registered";
+    pub const AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX: &str =
+        "auto_recruitment.operation_error_prefix";
+
+    // Help embed messages
+    pub const HELP_EMBED_TITLE: &str = "help.embed.title";
+    pub const HELP_EMBED_DESCRIPTION: &str = "help.embed.description";
+    pub const HELP_EMBED_COMMANDS_FIELD_TITLE: &str = "help.embed.commands_field_title";
+    pub const HELP_EMBED_COMMANDS_FIELD_VALUE: &str = "help.embed.commands_field_value";
+    pub const HELP_EMBED_RECRUIT_FIELD_VALUE: &str = "help.embed.recruit_field_value";
+    pub const HELP_EMBED_ENVIRON_LOAD_FIELD_VALUE: &str = "help.embed.environ_load_field_value";
+    pub const HELP_EMBED_GSPREAD_LOAD_FIELD_VALUE: &str = "help.embed.gspread_load_field_value";
+    pub const HELP_EMBED_GSPREAD_PUSH_FIELD_VALUE: &str = "help.embed.gspread_push_field_value";
+    pub const HELP_EMBED_HELP_FIELD_VALUE: &str = "help.embed.help_field_value";
+    pub const HELP_EMBED_FOOTER: &str = "help.embed.footer";
 }
 
 /// メッセージID定義
@@ -221,6 +386,9 @@ pub enum MessageTextId {
     SpreadsheetGlobalPushSuccess,
     SpreadsheetGlobalPushPartialSuccess,
     SpreadsheetGlobalPushFailed,
+    SpreadsheetGlobalLoading,
+    SpreadsheetGlobalLoadSuccess,
+    SpreadsheetGlobalLoadFailed,
 
     // Kosenjo messages
     KosenjoBefore3Days,
@@ -303,6 +471,10 @@ pub enum MessageTextId {
     RecruitmentCommandCancellingProgress,
     RecruitmentCommandChangeNoChanges,
     RecruitmentCommandChangeSuccess,
+    RecruitmentCommandCancelConfirmPrompt,
+    RecruitmentCommandCancelAborted,
+    RecruitmentCommandCancelUnknownSelection,
+    RecruitmentCommandCancelTimeout,
 
     // General messages
     MessagesWelcome,
@@ -312,6 +484,112 @@ pub enum MessageTextId {
     AutoRecruitmentChannelCreateFailed,
     AutoRecruitmentTimeSelectPlaceholder,
     AutoRecruitmentUnregisterInCategoryError,
+
+    // App error messages
+    AppErrorDatabase,
+    AppErrorDiscord,
+    AppErrorConfig,
+    AppErrorValidation,
+    AppErrorDiscordOperation,
+    AppErrorChannelCreationFailed,
+    AppErrorInCategoryChannel,
+
+    // Schedule command messages
+    ScheduleCommandGenerateLoading,
+    ScheduleCommandGenerateSuccessTitle,
+    ScheduleCommandGenerateSuccessDescription,
+    ScheduleCommandGenerateSuccessFieldName,
+    ScheduleCommandGenerateSuccessFieldValue,
+    ScheduleCommandGenerateSuccessFooter,
+    ScheduleCommandGenerateErrorTitle,
+    ScheduleCommandGenerateErrorDescription,
+    ScheduleCommandGenerateErrorFooter,
+    ScheduleCommandGlobalGenerateLoading,
+    ScheduleCommandGlobalGenerateSuccessTitle,
+    ScheduleCommandGlobalGenerateSuccessDescription,
+    ScheduleCommandGlobalGenerateSuccessFieldName,
+    ScheduleCommandGlobalGenerateSuccessFieldValue,
+    ScheduleCommandGlobalGenerateSuccessFooter,
+    ScheduleCommandGlobalGenerateErrorTitle,
+    ScheduleCommandGlobalGenerateErrorDescription,
+    ScheduleCommandGlobalGenerateErrorFooter,
+    ScheduleCommandListTitle,
+    ScheduleCommandListEmptyDescription,
+    ScheduleCommandListFooter,
+    ScheduleCommandHistoryTitle,
+    ScheduleCommandHistoryEmptyDescription,
+    ScheduleCommandHistoryTitleWithDays,
+    ScheduleCommandHistoryFooter,
+    ScheduleCommandStatsTitleWithDays,
+    ScheduleCommandStatsFooter,
+    ScheduleCommandStatsDescriptionHeader,
+    ScheduleCommandStatsMessageTypeHeader,
+    ScheduleCommandStatsOtherTypes,
+
+    // Recruitment schedule command messages
+    RecruitmentScheduleListEmptyAll,
+    RecruitmentScheduleListEmptySelf,
+    RecruitmentScheduleListTitleAll,
+    RecruitmentScheduleListTitleSelf,
+    RecruitmentScheduleListStatusEnabled,
+    RecruitmentScheduleListStatusDisabled,
+    RecruitmentScheduleListDismissalPrefix,
+    RecruitmentScheduleListMoreCount,
+    RecruitmentScheduleListFooter,
+    RecruitmentScheduleToggleSuccessTitle,
+    RecruitmentScheduleToggleSuccessDescription,
+    RecruitmentScheduleDeleteSuccessTitle,
+    RecruitmentScheduleDeleteSuccessDescription,
+
+    // Recruitment role show messages
+    RecruitmentRoleShowNotRegistered,
+    RecruitmentRoleShowHeader,
+    RecruitmentRoleShowSectionAll,
+    RecruitmentRoleShowSectionQuest,
+    RecruitmentRoleShowUnknownQuest,
+
+    // Recruitment change panel messages
+    RecruitmentCommandChangePanelQuestUnchanged,
+    RecruitmentCommandChangePanelStyleUnchanged,
+    RecruitmentCommandChangePanelDateUnchanged,
+    RecruitmentCommandChangePanelContent,
+    RecruitmentCommandChangeOptionQuestUnchanged,
+    RecruitmentCommandChangeOptionStyleUnchanged,
+    RecruitmentCommandChangePlaceholderQuest,
+    RecruitmentCommandChangePlaceholderStyle,
+    RecruitmentCommandChangeButtonOpenDate,
+    RecruitmentCommandChangeButtonClearDate,
+    RecruitmentCommandChangeButtonApply,
+    RecruitmentCommandChangeModalTitle,
+    RecruitmentCommandChangeModalEventDateLabel,
+    RecruitmentCommandChangeModalEventDatePlaceholder,
+    RecruitmentCommandChangeErrorPrefix,
+    RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
+    RecruitmentCommandChangeModalParseFailed,
+
+    // Channel show messages
+    ChannelShowEmpty,
+    ChannelShowHeader,
+    ChannelShowUnset,
+
+    // Auto recruitment interaction messages
+    AutoRecruitmentQuestSelectRequired,
+    AutoRecruitmentQuestSelectRegistered,
+    AutoRecruitmentTimeSelectRequired,
+    AutoRecruitmentTimeSelectRegistered,
+    AutoRecruitmentOperationErrorPrefix,
+
+    // Help embed messages
+    HelpEmbedTitle,
+    HelpEmbedDescription,
+    HelpEmbedCommandsFieldTitle,
+    HelpEmbedCommandsFieldValue,
+    HelpEmbedRecruitFieldValue,
+    HelpEmbedEnvironLoadFieldValue,
+    HelpEmbedGspreadLoadFieldValue,
+    HelpEmbedGspreadPushFieldValue,
+    HelpEmbedHelpFieldValue,
+    HelpEmbedFooter,
 }
 
 impl MessageTextId {
@@ -387,6 +665,9 @@ impl MessageTextId {
                 keys::SPREADSHEET_GLOBAL_PUSH_PARTIAL_SUCCESS
             }
             MessageTextId::SpreadsheetGlobalPushFailed => keys::SPREADSHEET_GLOBAL_PUSH_FAILED,
+            MessageTextId::SpreadsheetGlobalLoading => keys::SPREADSHEET_GLOBAL_LOADING,
+            MessageTextId::SpreadsheetGlobalLoadSuccess => keys::SPREADSHEET_GLOBAL_LOAD_SUCCESS,
+            MessageTextId::SpreadsheetGlobalLoadFailed => keys::SPREADSHEET_GLOBAL_LOAD_FAILED,
 
             // Kosenjo
             MessageTextId::KosenjoBefore3Days => keys::KOSENJO_BEFORE_3_DAYS,
@@ -517,6 +798,18 @@ impl MessageTextId {
             MessageTextId::RecruitmentCommandChangeSuccess => {
                 keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS
             }
+            MessageTextId::RecruitmentCommandCancelConfirmPrompt => {
+                keys::RECRUITMENT_COMMAND_CANCEL_CONFIRM_PROMPT
+            }
+            MessageTextId::RecruitmentCommandCancelAborted => {
+                keys::RECRUITMENT_COMMAND_CANCEL_ABORTED
+            }
+            MessageTextId::RecruitmentCommandCancelUnknownSelection => {
+                keys::RECRUITMENT_COMMAND_CANCEL_UNKNOWN_SELECTION
+            }
+            MessageTextId::RecruitmentCommandCancelTimeout => {
+                keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT
+            }
 
             // Messages
             MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
@@ -532,6 +825,242 @@ impl MessageTextId {
             MessageTextId::AutoRecruitmentUnregisterInCategoryError => {
                 keys::AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR
             }
+
+            // App error
+            MessageTextId::AppErrorDatabase => keys::APP_ERROR_DATABASE,
+            MessageTextId::AppErrorDiscord => keys::APP_ERROR_DISCORD,
+            MessageTextId::AppErrorConfig => keys::APP_ERROR_CONFIG,
+            MessageTextId::AppErrorValidation => keys::APP_ERROR_VALIDATION,
+            MessageTextId::AppErrorDiscordOperation => keys::APP_ERROR_DISCORD_OPERATION,
+            MessageTextId::AppErrorChannelCreationFailed => keys::APP_ERROR_CHANNEL_CREATION_FAILED,
+            MessageTextId::AppErrorInCategoryChannel => keys::APP_ERROR_IN_CATEGORY_CHANNEL,
+
+            // Schedule command
+            MessageTextId::ScheduleCommandGenerateLoading => {
+                keys::SCHEDULE_COMMAND_GENERATE_LOADING
+            }
+            MessageTextId::ScheduleCommandGenerateSuccessTitle => {
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_TITLE
+            }
+            MessageTextId::ScheduleCommandGenerateSuccessDescription => {
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandGenerateSuccessFieldName => {
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME
+            }
+            MessageTextId::ScheduleCommandGenerateSuccessFieldValue => {
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE
+            }
+            MessageTextId::ScheduleCommandGenerateSuccessFooter => {
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER
+            }
+            MessageTextId::ScheduleCommandGenerateErrorTitle => {
+                keys::SCHEDULE_COMMAND_GENERATE_ERROR_TITLE
+            }
+            MessageTextId::ScheduleCommandGenerateErrorDescription => {
+                keys::SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandGenerateErrorFooter => {
+                keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateLoading => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessTitle => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_TITLE
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessDescription => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldName => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldValue => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFooter => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateErrorTitle => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateErrorDescription => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandGlobalGenerateErrorFooter => {
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER
+            }
+            MessageTextId::ScheduleCommandListTitle => keys::SCHEDULE_COMMAND_LIST_TITLE,
+            MessageTextId::ScheduleCommandListEmptyDescription => {
+                keys::SCHEDULE_COMMAND_LIST_EMPTY_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandListFooter => keys::SCHEDULE_COMMAND_LIST_FOOTER,
+            MessageTextId::ScheduleCommandHistoryTitle => keys::SCHEDULE_COMMAND_HISTORY_TITLE,
+            MessageTextId::ScheduleCommandHistoryEmptyDescription => {
+                keys::SCHEDULE_COMMAND_HISTORY_EMPTY_DESCRIPTION
+            }
+            MessageTextId::ScheduleCommandHistoryTitleWithDays => {
+                keys::SCHEDULE_COMMAND_HISTORY_TITLE_WITH_DAYS
+            }
+            MessageTextId::ScheduleCommandHistoryFooter => keys::SCHEDULE_COMMAND_HISTORY_FOOTER,
+            MessageTextId::ScheduleCommandStatsTitleWithDays => {
+                keys::SCHEDULE_COMMAND_STATS_TITLE_WITH_DAYS
+            }
+            MessageTextId::ScheduleCommandStatsFooter => keys::SCHEDULE_COMMAND_STATS_FOOTER,
+            MessageTextId::ScheduleCommandStatsDescriptionHeader => {
+                keys::SCHEDULE_COMMAND_STATS_DESCRIPTION_HEADER
+            }
+            MessageTextId::ScheduleCommandStatsMessageTypeHeader => {
+                keys::SCHEDULE_COMMAND_STATS_MESSAGE_TYPE_HEADER
+            }
+            MessageTextId::ScheduleCommandStatsOtherTypes => {
+                keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES
+            }
+
+            // Recruitment schedule command
+            MessageTextId::RecruitmentScheduleListEmptyAll => {
+                keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_ALL
+            }
+            MessageTextId::RecruitmentScheduleListEmptySelf => {
+                keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_SELF
+            }
+            MessageTextId::RecruitmentScheduleListTitleAll => {
+                keys::RECRUITMENT_SCHEDULE_LIST_TITLE_ALL
+            }
+            MessageTextId::RecruitmentScheduleListTitleSelf => {
+                keys::RECRUITMENT_SCHEDULE_LIST_TITLE_SELF
+            }
+            MessageTextId::RecruitmentScheduleListStatusEnabled => {
+                keys::RECRUITMENT_SCHEDULE_LIST_STATUS_ENABLED
+            }
+            MessageTextId::RecruitmentScheduleListStatusDisabled => {
+                keys::RECRUITMENT_SCHEDULE_LIST_STATUS_DISABLED
+            }
+            MessageTextId::RecruitmentScheduleListDismissalPrefix => {
+                keys::RECRUITMENT_SCHEDULE_LIST_DISMISSAL_PREFIX
+            }
+            MessageTextId::RecruitmentScheduleListMoreCount => {
+                keys::RECRUITMENT_SCHEDULE_LIST_MORE_COUNT
+            }
+            MessageTextId::RecruitmentScheduleListFooter => keys::RECRUITMENT_SCHEDULE_LIST_FOOTER,
+            MessageTextId::RecruitmentScheduleToggleSuccessTitle => {
+                keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE
+            }
+            MessageTextId::RecruitmentScheduleToggleSuccessDescription => {
+                keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION
+            }
+            MessageTextId::RecruitmentScheduleDeleteSuccessTitle => {
+                keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_TITLE
+            }
+            MessageTextId::RecruitmentScheduleDeleteSuccessDescription => {
+                keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_DESCRIPTION
+            }
+
+            // Recruitment role show
+            MessageTextId::RecruitmentRoleShowNotRegistered => {
+                keys::RECRUITMENT_ROLE_SHOW_NOT_REGISTERED
+            }
+            MessageTextId::RecruitmentRoleShowHeader => keys::RECRUITMENT_ROLE_SHOW_HEADER,
+            MessageTextId::RecruitmentRoleShowSectionAll => keys::RECRUITMENT_ROLE_SHOW_SECTION_ALL,
+            MessageTextId::RecruitmentRoleShowSectionQuest => {
+                keys::RECRUITMENT_ROLE_SHOW_SECTION_QUEST
+            }
+            MessageTextId::RecruitmentRoleShowUnknownQuest => {
+                keys::RECRUITMENT_ROLE_SHOW_UNKNOWN_QUEST
+            }
+
+            // Recruitment change panel
+            MessageTextId::RecruitmentCommandChangePanelQuestUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED
+            }
+            MessageTextId::RecruitmentCommandChangePanelStyleUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED
+            }
+            MessageTextId::RecruitmentCommandChangePanelDateUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED
+            }
+            MessageTextId::RecruitmentCommandChangePanelContent => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT
+            }
+            MessageTextId::RecruitmentCommandChangeOptionQuestUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_OPTION_QUEST_UNCHANGED
+            }
+            MessageTextId::RecruitmentCommandChangeOptionStyleUnchanged => {
+                keys::RECRUITMENT_COMMAND_CHANGE_OPTION_STYLE_UNCHANGED
+            }
+            MessageTextId::RecruitmentCommandChangePlaceholderQuest => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_QUEST
+            }
+            MessageTextId::RecruitmentCommandChangePlaceholderStyle => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_STYLE
+            }
+            MessageTextId::RecruitmentCommandChangeButtonOpenDate => {
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_OPEN_DATE
+            }
+            MessageTextId::RecruitmentCommandChangeButtonClearDate => {
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_CLEAR_DATE
+            }
+            MessageTextId::RecruitmentCommandChangeButtonApply => {
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_APPLY
+            }
+            MessageTextId::RecruitmentCommandChangeModalTitle => {
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_TITLE
+            }
+            MessageTextId::RecruitmentCommandChangeModalEventDateLabel => {
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_LABEL
+            }
+            MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder => {
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER
+            }
+            MessageTextId::RecruitmentCommandChangeErrorPrefix => {
+                keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX
+            }
+            MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired => {
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED
+            }
+            MessageTextId::RecruitmentCommandChangeModalParseFailed => {
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_PARSE_FAILED
+            }
+
+            // Channel show
+            MessageTextId::ChannelShowEmpty => keys::CHANNEL_SHOW_EMPTY,
+            MessageTextId::ChannelShowHeader => keys::CHANNEL_SHOW_HEADER,
+            MessageTextId::ChannelShowUnset => keys::CHANNEL_SHOW_UNSET,
+
+            // Auto recruitment interaction
+            MessageTextId::AutoRecruitmentQuestSelectRequired => {
+                keys::AUTO_RECRUITMENT_QUEST_SELECT_REQUIRED
+            }
+            MessageTextId::AutoRecruitmentQuestSelectRegistered => {
+                keys::AUTO_RECRUITMENT_QUEST_SELECT_REGISTERED
+            }
+            MessageTextId::AutoRecruitmentTimeSelectRequired => {
+                keys::AUTO_RECRUITMENT_TIME_SELECT_REQUIRED
+            }
+            MessageTextId::AutoRecruitmentTimeSelectRegistered => {
+                keys::AUTO_RECRUITMENT_TIME_SELECT_REGISTERED
+            }
+            MessageTextId::AutoRecruitmentOperationErrorPrefix => {
+                keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX
+            }
+
+            // Help embed
+            MessageTextId::HelpEmbedTitle => keys::HELP_EMBED_TITLE,
+            MessageTextId::HelpEmbedDescription => keys::HELP_EMBED_DESCRIPTION,
+            MessageTextId::HelpEmbedCommandsFieldTitle => keys::HELP_EMBED_COMMANDS_FIELD_TITLE,
+            MessageTextId::HelpEmbedCommandsFieldValue => keys::HELP_EMBED_COMMANDS_FIELD_VALUE,
+            MessageTextId::HelpEmbedRecruitFieldValue => keys::HELP_EMBED_RECRUIT_FIELD_VALUE,
+            MessageTextId::HelpEmbedEnvironLoadFieldValue => {
+                keys::HELP_EMBED_ENVIRON_LOAD_FIELD_VALUE
+            }
+            MessageTextId::HelpEmbedGspreadLoadFieldValue => {
+                keys::HELP_EMBED_GSPREAD_LOAD_FIELD_VALUE
+            }
+            MessageTextId::HelpEmbedGspreadPushFieldValue => {
+                keys::HELP_EMBED_GSPREAD_PUSH_FIELD_VALUE
+            }
+            MessageTextId::HelpEmbedHelpFieldValue => keys::HELP_EMBED_HELP_FIELD_VALUE,
+            MessageTextId::HelpEmbedFooter => keys::HELP_EMBED_FOOTER,
         }
     }
 }
@@ -641,6 +1170,9 @@ mod tests {
             MessageTextId::SpreadsheetGlobalPushSuccess,
             MessageTextId::SpreadsheetGlobalPushPartialSuccess,
             MessageTextId::SpreadsheetGlobalPushFailed,
+            MessageTextId::SpreadsheetGlobalLoading,
+            MessageTextId::SpreadsheetGlobalLoadSuccess,
+            MessageTextId::SpreadsheetGlobalLoadFailed,
             MessageTextId::KosenjoBefore3Days,
             MessageTextId::KosenjoBefore1Day,
             MessageTextId::KosenjoQualifyingStart,
@@ -703,11 +1235,105 @@ mod tests {
             MessageTextId::RecruitmentCommandCancellingProgress,
             MessageTextId::RecruitmentCommandChangeNoChanges,
             MessageTextId::RecruitmentCommandChangeSuccess,
+            MessageTextId::RecruitmentCommandCancelConfirmPrompt,
+            MessageTextId::RecruitmentCommandCancelAborted,
+            MessageTextId::RecruitmentCommandCancelUnknownSelection,
+            MessageTextId::RecruitmentCommandCancelTimeout,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
             MessageTextId::AutoRecruitmentChannelCreateFailed,
             MessageTextId::AutoRecruitmentTimeSelectPlaceholder,
             MessageTextId::AutoRecruitmentUnregisterInCategoryError,
+            MessageTextId::AppErrorDatabase,
+            MessageTextId::AppErrorDiscord,
+            MessageTextId::AppErrorConfig,
+            MessageTextId::AppErrorValidation,
+            MessageTextId::AppErrorDiscordOperation,
+            MessageTextId::AppErrorChannelCreationFailed,
+            MessageTextId::AppErrorInCategoryChannel,
+            MessageTextId::ScheduleCommandGenerateLoading,
+            MessageTextId::ScheduleCommandGenerateSuccessTitle,
+            MessageTextId::ScheduleCommandGenerateSuccessDescription,
+            MessageTextId::ScheduleCommandGenerateSuccessFieldName,
+            MessageTextId::ScheduleCommandGenerateSuccessFieldValue,
+            MessageTextId::ScheduleCommandGenerateSuccessFooter,
+            MessageTextId::ScheduleCommandGenerateErrorTitle,
+            MessageTextId::ScheduleCommandGenerateErrorDescription,
+            MessageTextId::ScheduleCommandGenerateErrorFooter,
+            MessageTextId::ScheduleCommandGlobalGenerateLoading,
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessTitle,
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessDescription,
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldName,
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldValue,
+            MessageTextId::ScheduleCommandGlobalGenerateSuccessFooter,
+            MessageTextId::ScheduleCommandGlobalGenerateErrorTitle,
+            MessageTextId::ScheduleCommandGlobalGenerateErrorDescription,
+            MessageTextId::ScheduleCommandGlobalGenerateErrorFooter,
+            MessageTextId::ScheduleCommandListTitle,
+            MessageTextId::ScheduleCommandListEmptyDescription,
+            MessageTextId::ScheduleCommandListFooter,
+            MessageTextId::ScheduleCommandHistoryTitle,
+            MessageTextId::ScheduleCommandHistoryEmptyDescription,
+            MessageTextId::ScheduleCommandHistoryTitleWithDays,
+            MessageTextId::ScheduleCommandHistoryFooter,
+            MessageTextId::ScheduleCommandStatsTitleWithDays,
+            MessageTextId::ScheduleCommandStatsFooter,
+            MessageTextId::ScheduleCommandStatsDescriptionHeader,
+            MessageTextId::ScheduleCommandStatsMessageTypeHeader,
+            MessageTextId::ScheduleCommandStatsOtherTypes,
+            MessageTextId::RecruitmentScheduleListEmptyAll,
+            MessageTextId::RecruitmentScheduleListEmptySelf,
+            MessageTextId::RecruitmentScheduleListTitleAll,
+            MessageTextId::RecruitmentScheduleListTitleSelf,
+            MessageTextId::RecruitmentScheduleListStatusEnabled,
+            MessageTextId::RecruitmentScheduleListStatusDisabled,
+            MessageTextId::RecruitmentScheduleListDismissalPrefix,
+            MessageTextId::RecruitmentScheduleListMoreCount,
+            MessageTextId::RecruitmentScheduleListFooter,
+            MessageTextId::RecruitmentScheduleToggleSuccessTitle,
+            MessageTextId::RecruitmentScheduleToggleSuccessDescription,
+            MessageTextId::RecruitmentScheduleDeleteSuccessTitle,
+            MessageTextId::RecruitmentScheduleDeleteSuccessDescription,
+            MessageTextId::RecruitmentRoleShowNotRegistered,
+            MessageTextId::RecruitmentRoleShowHeader,
+            MessageTextId::RecruitmentRoleShowSectionAll,
+            MessageTextId::RecruitmentRoleShowSectionQuest,
+            MessageTextId::RecruitmentRoleShowUnknownQuest,
+            MessageTextId::RecruitmentCommandChangePanelQuestUnchanged,
+            MessageTextId::RecruitmentCommandChangePanelStyleUnchanged,
+            MessageTextId::RecruitmentCommandChangePanelDateUnchanged,
+            MessageTextId::RecruitmentCommandChangePanelContent,
+            MessageTextId::RecruitmentCommandChangeOptionQuestUnchanged,
+            MessageTextId::RecruitmentCommandChangeOptionStyleUnchanged,
+            MessageTextId::RecruitmentCommandChangePlaceholderQuest,
+            MessageTextId::RecruitmentCommandChangePlaceholderStyle,
+            MessageTextId::RecruitmentCommandChangeButtonOpenDate,
+            MessageTextId::RecruitmentCommandChangeButtonClearDate,
+            MessageTextId::RecruitmentCommandChangeButtonApply,
+            MessageTextId::RecruitmentCommandChangeModalTitle,
+            MessageTextId::RecruitmentCommandChangeModalEventDateLabel,
+            MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder,
+            MessageTextId::RecruitmentCommandChangeErrorPrefix,
+            MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
+            MessageTextId::RecruitmentCommandChangeModalParseFailed,
+            MessageTextId::ChannelShowEmpty,
+            MessageTextId::ChannelShowHeader,
+            MessageTextId::ChannelShowUnset,
+            MessageTextId::AutoRecruitmentQuestSelectRequired,
+            MessageTextId::AutoRecruitmentQuestSelectRegistered,
+            MessageTextId::AutoRecruitmentTimeSelectRequired,
+            MessageTextId::AutoRecruitmentTimeSelectRegistered,
+            MessageTextId::AutoRecruitmentOperationErrorPrefix,
+            MessageTextId::HelpEmbedTitle,
+            MessageTextId::HelpEmbedDescription,
+            MessageTextId::HelpEmbedCommandsFieldTitle,
+            MessageTextId::HelpEmbedCommandsFieldValue,
+            MessageTextId::HelpEmbedRecruitFieldValue,
+            MessageTextId::HelpEmbedEnvironLoadFieldValue,
+            MessageTextId::HelpEmbedGspreadLoadFieldValue,
+            MessageTextId::HelpEmbedGspreadPushFieldValue,
+            MessageTextId::HelpEmbedHelpFieldValue,
+            MessageTextId::HelpEmbedFooter,
         ];
 
         // 各MessageTextIdに対してYAMLにキーが存在することを確認

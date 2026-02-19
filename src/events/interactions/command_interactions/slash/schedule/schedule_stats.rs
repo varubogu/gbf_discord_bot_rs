@@ -1,8 +1,11 @@
+use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::ScheduleQueryFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
 use chrono::Duration;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::info;
 
@@ -52,15 +55,41 @@ pub async fn schedule_stats(
     let stats = facade.get_stats(guild_id.get() as i64, days).await?;
 
     // 表示用にJST変換（UTC+9）
-    let mut description = format!(
-        "**期間**: {} 〜 {} (JST)\n\n**総通知数**: {} 件\n\n",
-        (stats.from + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
-        (stats.to + Duration::hours(9)).format("%Y/%m/%d %H:%M"),
-        stats.total_count
-    );
+    let from_jst = (stats.from + Duration::hours(9))
+        .format("%Y/%m/%d %H:%M")
+        .to_string();
+    let to_jst = (stats.to + Duration::hours(9))
+        .format("%Y/%m/%d %H:%M")
+        .to_string();
+
+    let mut header_params = HashMap::new();
+    header_params.insert("from".to_string(), from_jst.clone());
+    header_params.insert("to".to_string(), to_jst.clone());
+    header_params.insert("total_count".to_string(), stats.total_count.to_string());
+    let mut description = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandStatsDescriptionHeader,
+        header_params,
+    )
+    .await
+    .unwrap_or_else(|_| {
+        format!(
+            "**期間**: {from_jst} 〜 {to_jst} (JST)\n\n**総通知数**: {} 件\n\n",
+            stats.total_count
+        )
+    });
 
     if !stats.message_type_counts.is_empty() {
-        description.push_str("**メッセージタイプ別内訳**:\n");
+        let message_type_header = get_message_or_fallback_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::ScheduleCommandStatsMessageTypeHeader,
+            HashMap::new(),
+            "**メッセージタイプ別内訳**:\n",
+        )
+        .await;
+        description.push_str(&message_type_header);
 
         // 件数の多い順にソート
         let mut counts: Vec<_> = stats.message_type_counts.iter().collect();
@@ -71,15 +100,44 @@ pub async fn schedule_stats(
         }
 
         if counts.len() > 10 {
-            description.push_str(&format!("\n*...他 {} 種類*\n", counts.len() - 10));
+            let mut params = HashMap::new();
+            params.insert("count".to_string(), (counts.len() - 10).to_string());
+            let other_types = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::ScheduleCommandStatsOtherTypes,
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("\n*...他 {} 種類*\n", counts.len() - 10));
+            description.push_str(&other_types);
         }
     }
 
+    let mut title_params = HashMap::new();
+    title_params.insert("days".to_string(), days.to_string());
+    let title = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandStatsTitleWithDays,
+        title_params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("📊 通知統計（過去{days}日間）"));
+    let footer = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandStatsFooter,
+        HashMap::new(),
+        "詳細な統計情報",
+    )
+    .await;
+
     let embed = CreateEmbed::default()
-        .title(format!("📊 通知統計（過去{days}日間）"))
+        .title(title)
         .description(description)
         .color(0x00aaff)
-        .footer(CreateEmbedFooter::new("詳細な統計情報"));
+        .footer(CreateEmbedFooter::new(footer));
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;

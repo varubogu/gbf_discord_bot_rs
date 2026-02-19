@@ -152,6 +152,15 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::SPREADSHEET_GLOBAL_PUSH_FAILED => {
             Some(t!(keys::SPREADSHEET_GLOBAL_PUSH_FAILED, locale = locale).to_string())
         }
+        keys::SPREADSHEET_GLOBAL_LOADING => {
+            Some(t!(keys::SPREADSHEET_GLOBAL_LOADING, locale = locale).to_string())
+        }
+        keys::SPREADSHEET_GLOBAL_LOAD_SUCCESS => {
+            Some(t!(keys::SPREADSHEET_GLOBAL_LOAD_SUCCESS, locale = locale).to_string())
+        }
+        keys::SPREADSHEET_GLOBAL_LOAD_FAILED => {
+            Some(t!(keys::SPREADSHEET_GLOBAL_LOAD_FAILED, locale = locale).to_string())
+        }
 
         // Kosenjo messages
         keys::KOSENJO_BEFORE_3_DAYS => {
@@ -375,6 +384,26 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS => {
             Some(t!(keys::RECRUITMENT_COMMAND_CHANGE_SUCCESS, locale = locale).to_string())
         }
+        keys::RECRUITMENT_COMMAND_CANCEL_CONFIRM_PROMPT => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CANCEL_CONFIRM_PROMPT,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CANCEL_ABORTED => {
+            Some(t!(keys::RECRUITMENT_COMMAND_CANCEL_ABORTED, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_COMMAND_CANCEL_UNKNOWN_SELECTION => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CANCEL_UNKNOWN_SELECTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT => {
+            Some(t!(keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT, locale = locale).to_string())
+        }
 
         // General messages
         keys::MESSAGES_WELCOME => Some(t!(keys::MESSAGES_WELCOME, locale = locale).to_string()),
@@ -395,6 +424,485 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
+        keys::AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
+        // App error messages
+        keys::APP_ERROR_DATABASE => Some(t!(keys::APP_ERROR_DATABASE, locale = locale).to_string()),
+        keys::APP_ERROR_DISCORD => Some(t!(keys::APP_ERROR_DISCORD, locale = locale).to_string()),
+        keys::APP_ERROR_CONFIG => Some(t!(keys::APP_ERROR_CONFIG, locale = locale).to_string()),
+        keys::APP_ERROR_VALIDATION => {
+            Some(t!(keys::APP_ERROR_VALIDATION, locale = locale).to_string())
+        }
+        keys::APP_ERROR_DISCORD_OPERATION => {
+            Some(t!(keys::APP_ERROR_DISCORD_OPERATION, locale = locale).to_string())
+        }
+        keys::APP_ERROR_CHANNEL_CREATION_FAILED => {
+            Some(t!(keys::APP_ERROR_CHANNEL_CREATION_FAILED, locale = locale).to_string())
+        }
+        keys::APP_ERROR_IN_CATEGORY_CHANNEL => {
+            Some(t!(keys::APP_ERROR_IN_CATEGORY_CHANNEL, locale = locale).to_string())
+        }
+
+        // Schedule command messages
+        keys::SCHEDULE_COMMAND_GENERATE_LOADING => {
+            Some(t!(keys::SCHEDULE_COMMAND_GENERATE_LOADING, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_TITLE => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_NAME,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FIELD_VALUE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_SUCCESS_FOOTER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_ERROR_TITLE => {
+            Some(t!(keys::SCHEDULE_COMMAND_GENERATE_ERROR_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_ERROR_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GENERATE_ERROR_FOOTER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_LOADING,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_TITLE => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_NAME,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FIELD_VALUE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_SUCCESS_FOOTER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_GLOBAL_GENERATE_ERROR_FOOTER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_LIST_TITLE => {
+            Some(t!(keys::SCHEDULE_COMMAND_LIST_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_LIST_EMPTY_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_LIST_EMPTY_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_LIST_FOOTER => {
+            Some(t!(keys::SCHEDULE_COMMAND_LIST_FOOTER, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_HISTORY_TITLE => {
+            Some(t!(keys::SCHEDULE_COMMAND_HISTORY_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_HISTORY_EMPTY_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_HISTORY_EMPTY_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_HISTORY_TITLE_WITH_DAYS => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_HISTORY_TITLE_WITH_DAYS,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_HISTORY_FOOTER => {
+            Some(t!(keys::SCHEDULE_COMMAND_HISTORY_FOOTER, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_STATS_TITLE_WITH_DAYS => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_STATS_TITLE_WITH_DAYS,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_STATS_FOOTER => {
+            Some(t!(keys::SCHEDULE_COMMAND_STATS_FOOTER, locale = locale).to_string())
+        }
+        keys::SCHEDULE_COMMAND_STATS_DESCRIPTION_HEADER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_STATS_DESCRIPTION_HEADER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_STATS_MESSAGE_TYPE_HEADER => Some(
+            t!(
+                keys::SCHEDULE_COMMAND_STATS_MESSAGE_TYPE_HEADER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES => {
+            Some(t!(keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES, locale = locale).to_string())
+        }
+
+        // Recruitment schedule command messages
+        keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_ALL => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_ALL, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_SELF => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_EMPTY_SELF, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_LIST_TITLE_ALL => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_TITLE_ALL, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_LIST_TITLE_SELF => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_TITLE_SELF, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_LIST_STATUS_ENABLED => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_LIST_STATUS_ENABLED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_LIST_STATUS_DISABLED => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_LIST_STATUS_DISABLED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_LIST_DISMISSAL_PREFIX => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_LIST_DISMISSAL_PREFIX,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_LIST_MORE_COUNT => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_MORE_COUNT, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_LIST_FOOTER => {
+            Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_FOOTER, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_TITLE => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_DESCRIPTION => Some(
+            t!(
+                keys::RECRUITMENT_SCHEDULE_DELETE_SUCCESS_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
+        // Recruitment role show messages
+        keys::RECRUITMENT_ROLE_SHOW_NOT_REGISTERED => {
+            Some(t!(keys::RECRUITMENT_ROLE_SHOW_NOT_REGISTERED, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_ROLE_SHOW_HEADER => {
+            Some(t!(keys::RECRUITMENT_ROLE_SHOW_HEADER, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_ROLE_SHOW_SECTION_ALL => {
+            Some(t!(keys::RECRUITMENT_ROLE_SHOW_SECTION_ALL, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_ROLE_SHOW_SECTION_QUEST => {
+            Some(t!(keys::RECRUITMENT_ROLE_SHOW_SECTION_QUEST, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_ROLE_SHOW_UNKNOWN_QUEST => {
+            Some(t!(keys::RECRUITMENT_ROLE_SHOW_UNKNOWN_QUEST, locale = locale).to_string())
+        }
+
+        // Recruitment change panel messages
+        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_QUEST_UNCHANGED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_STYLE_UNCHANGED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_DATE_UNCHANGED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PANEL_CONTENT,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_OPTION_QUEST_UNCHANGED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_OPTION_QUEST_UNCHANGED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_OPTION_STYLE_UNCHANGED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_OPTION_STYLE_UNCHANGED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_QUEST => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_QUEST,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_STYLE => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PLACEHOLDER_STYLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_OPEN_DATE => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_OPEN_DATE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_CLEAR_DATE => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_CLEAR_DATE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_APPLY => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_BUTTON_APPLY,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_MODAL_TITLE => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_LABEL => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_LABEL,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_EVENT_DATE_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_ERROR_PREFIX,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_ABSOLUTE_DATETIME_REQUIRED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_MODAL_PARSE_FAILED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_MODAL_PARSE_FAILED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
+        // Channel show messages
+        keys::CHANNEL_SHOW_EMPTY => Some(t!(keys::CHANNEL_SHOW_EMPTY, locale = locale).to_string()),
+        keys::CHANNEL_SHOW_HEADER => {
+            Some(t!(keys::CHANNEL_SHOW_HEADER, locale = locale).to_string())
+        }
+        keys::CHANNEL_SHOW_UNSET => Some(t!(keys::CHANNEL_SHOW_UNSET, locale = locale).to_string()),
+
+        // Auto recruitment interaction messages
+        keys::AUTO_RECRUITMENT_QUEST_SELECT_REQUIRED => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_QUEST_SELECT_REQUIRED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_QUEST_SELECT_REGISTERED => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_QUEST_SELECT_REGISTERED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_TIME_SELECT_REQUIRED => {
+            Some(t!(keys::AUTO_RECRUITMENT_TIME_SELECT_REQUIRED, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_TIME_SELECT_REGISTERED => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_TIME_SELECT_REGISTERED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_OPERATION_ERROR_PREFIX,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
+        // Help embed messages
+        keys::HELP_EMBED_TITLE => Some(t!(keys::HELP_EMBED_TITLE, locale = locale).to_string()),
+        keys::HELP_EMBED_DESCRIPTION => {
+            Some(t!(keys::HELP_EMBED_DESCRIPTION, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_COMMANDS_FIELD_TITLE => {
+            Some(t!(keys::HELP_EMBED_COMMANDS_FIELD_TITLE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_COMMANDS_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_COMMANDS_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_RECRUIT_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_RECRUIT_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_ENVIRON_LOAD_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_ENVIRON_LOAD_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_GSPREAD_LOAD_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_GSPREAD_LOAD_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_GSPREAD_PUSH_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_GSPREAD_PUSH_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_HELP_FIELD_VALUE => {
+            Some(t!(keys::HELP_EMBED_HELP_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::HELP_EMBED_FOOTER => Some(t!(keys::HELP_EMBED_FOOTER, locale = locale).to_string()),
 
         // 未知のメッセージID
         _ => None,

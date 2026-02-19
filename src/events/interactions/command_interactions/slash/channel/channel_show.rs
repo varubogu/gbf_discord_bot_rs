@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
+use crate::events::helpers::get_message_or_fallback_from_context;
 use crate::facades::channel::ChannelManagementFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 
 /// チャンネル設定を表示
 ///
@@ -31,17 +34,42 @@ pub async fn channel_show(ctx: PoiseContext<'_>) -> Result<()> {
 
     // チャンネル種別が登録されていない場合
     if settings_display.settings.is_empty() {
+        let message = get_message_or_fallback_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::ChannelShowEmpty,
+            HashMap::new(),
+            "⚠️ チャンネル種別が登録されていません。",
+        )
+        .await;
         ctx.send(
             poise::CreateReply::default()
-                .content("⚠️ チャンネル種別が登録されていません。")
+                .content(message)
                 .ephemeral(true),
         )
         .await?;
         return Ok(());
     }
 
+    let header = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ChannelShowHeader,
+        HashMap::new(),
+        "**現在のチャンネル設定:**\n\n",
+    )
+    .await;
+    let unset = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ChannelShowUnset,
+        HashMap::new(),
+        "未設定",
+    )
+    .await;
+
     // 設定状況を作成
-    let mut message = "**現在のチャンネル設定:**\n\n".to_string();
+    let mut message = header;
 
     for setting in &settings_display.settings {
         if let Some(channel_id) = setting.channel_id {
@@ -50,7 +78,7 @@ pub async fn channel_show(ctx: PoiseContext<'_>) -> Result<()> {
                 setting.channel_type_name, channel_id
             ));
         } else {
-            message.push_str(&format!("• **{}**: 未設定\n", setting.channel_type_name));
+            message.push_str(&format!("• **{}**: {unset}\n", setting.channel_type_name));
         }
     }
 

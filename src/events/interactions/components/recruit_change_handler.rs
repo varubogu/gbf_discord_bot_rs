@@ -1,6 +1,7 @@
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::gateway::PoiseDiscordGateway;
+use crate::services::message::MessageTextId;
 use crate::types::discord::MessageData;
 use crate::types::{AppError, PoiseData, Result};
 use chrono::{DateTime, Utc};
@@ -45,6 +46,26 @@ const ID_PREFIX_OPEN_DATE_MODAL: &str = "recruit_change_open_date_modal";
 const ID_PREFIX_CLEAR_DATE: &str = "recruit_change_clear_date";
 const ID_PREFIX_APPLY: &str = "recruit_change_apply";
 
+async fn get_message_or_fallback(
+    data: &PoiseData,
+    guild_id: Option<u64>,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+    fallback_text: &str,
+) -> String {
+    data.app_state
+        .message_service()
+        .get_message(
+            data.app_state.guild_db(),
+            message_id.as_str(),
+            params,
+            guild_id.map(|id| id as i64),
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| fallback_text.to_string())
+}
+
 /// 募集変更関連のコンポーネントインタラクションを処理
 pub async fn handle_recruit_change_interaction(
     ctx: &Context,
@@ -58,7 +79,7 @@ pub async fn handle_recruit_change_interaction(
     } else if custom_id.starts_with(&format!("{ID_PREFIX_STYLE}:")) {
         handle_battle_style_selection(ctx, interaction, data).await
     } else if custom_id.starts_with(&format!("{ID_PREFIX_OPEN_DATE_MODAL}:")) {
-        handle_open_date_modal(ctx, interaction).await
+        handle_open_date_modal(ctx, interaction, data).await
     } else if custom_id.starts_with(&format!("{ID_PREFIX_CLEAR_DATE}:")) {
         handle_clear_date(ctx, interaction, data).await
     } else if custom_id.starts_with(&format!("{ID_PREFIX_APPLY}:")) {
@@ -87,24 +108,61 @@ pub async fn build_panel_content_and_components(
         drafts.get(&key).cloned().unwrap_or_default()
     };
 
+    let unchanged_quest = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangePanelQuestUnchanged,
+        HashMap::new(),
+        "変更しない",
+    )
+    .await;
+    let unchanged_style = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangePanelStyleUnchanged,
+        HashMap::new(),
+        "変更しない",
+    )
+    .await;
+    let apply_label = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeButtonApply,
+        HashMap::new(),
+        "適用",
+    )
+    .await;
+
     let quest_label = draft
         .quest_name
         .clone()
-        .unwrap_or_else(|| "変更しない".to_string());
+        .unwrap_or_else(|| unchanged_quest.clone());
     let style_label = draft
         .battle_style_name
         .clone()
-        .unwrap_or_else(|| "変更しない".to_string());
+        .unwrap_or_else(|| unchanged_style.clone());
     let date_label = format_event_date_label(data, guild_id, draft.event_date).await;
 
-    let content = format!(
-        "変更内容を選択・入力してください。\n\n\
-         現在の入力値\n\
-         - クエスト: {quest_label}\n\
-         - 攻略方法: {style_label}\n\
-         - 出発日時: {date_label}\n\n\
-         `適用`を押すまで反映されません。"
-    );
+    let mut content_params = HashMap::new();
+    content_params.insert("quest_label".to_string(), quest_label.clone());
+    content_params.insert("style_label".to_string(), style_label.clone());
+    content_params.insert("date_label".to_string(), date_label.clone());
+    content_params.insert("apply_label".to_string(), apply_label.clone());
+    let content = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangePanelContent,
+        content_params,
+        &format!(
+            "変更内容を選択・入力してください。\n\n\
+             現在の入力値\n\
+             - クエスト: {quest_label}\n\
+             - 攻略方法: {style_label}\n\
+             - 出発日時: {date_label}\n\n\
+             `{apply_label}`を押すまで反映されません。"
+        ),
+    )
+    .await;
 
     let quest_pairs = quest_list::list_quests_for_select(
         data.app_state.guild_db(),
@@ -112,8 +170,16 @@ pub async fn build_panel_content_and_components(
     )
     .await;
 
+    let option_quest_unchanged = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeOptionQuestUnchanged,
+        HashMap::new(),
+        "クエスト：変更しない",
+    )
+    .await;
     let mut quest_options = vec![
-        CreateSelectMenuOption::new("クエスト：変更しない", QUEST_NONE_VALUE)
+        CreateSelectMenuOption::new(option_quest_unchanged, QUEST_NONE_VALUE)
             .default_selection(draft.quest_name.is_none()),
     ];
     quest_options.extend(quest_pairs.into_iter().take(24).map(|(name, id)| {
@@ -126,8 +192,16 @@ pub async fn build_panel_content_and_components(
     }));
 
     let style_pairs = battle_style_list::list_battle_styles_for_select(&data.app_state).await;
+    let option_style_unchanged = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeOptionStyleUnchanged,
+        HashMap::new(),
+        "攻略方法：変更しない",
+    )
+    .await;
     let mut style_options = vec![
-        CreateSelectMenuOption::new("攻略方法：変更しない", STYLE_NONE_VALUE)
+        CreateSelectMenuOption::new(option_style_unchanged, STYLE_NONE_VALUE)
             .default_selection(draft.battle_style_id.is_none()),
     ];
     style_options.extend(style_pairs.into_iter().take(24).map(|(name, id)| {
@@ -135,36 +209,69 @@ pub async fn build_panel_content_and_components(
         CreateSelectMenuOption::new(name, id.to_string()).default_selection(is_selected)
     }));
 
+    let quest_placeholder = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangePlaceholderQuest,
+        HashMap::new(),
+        "クエストを選択",
+    )
+    .await;
     let quest_select = CreateSelectMenu::new(
         format!("{ID_PREFIX_QUEST}:{channel_id}:{message_id}"),
         CreateSelectMenuKind::String {
             options: quest_options,
         },
     )
-    .placeholder("クエストを選択");
+    .placeholder(quest_placeholder);
 
+    let style_placeholder = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangePlaceholderStyle,
+        HashMap::new(),
+        "攻略方法を選択",
+    )
+    .await;
     let style_select = CreateSelectMenu::new(
         format!("{ID_PREFIX_STYLE}:{channel_id}:{message_id}"),
         CreateSelectMenuKind::String {
             options: style_options,
         },
     )
-    .placeholder("攻略方法を選択");
+    .placeholder(style_placeholder);
+
+    let open_date_label = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeButtonOpenDate,
+        HashMap::new(),
+        "出発日時を入力",
+    )
+    .await;
+    let clear_date_label = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeButtonClearDate,
+        HashMap::new(),
+        "日時をクリア",
+    )
+    .await;
 
     let open_date_button = CreateButton::new(format!(
         "{ID_PREFIX_OPEN_DATE_MODAL}:{channel_id}:{message_id}"
     ))
     .style(ButtonStyle::Primary)
-    .label("出発日時を入力");
+    .label(open_date_label);
 
     let clear_date_button =
         CreateButton::new(format!("{ID_PREFIX_CLEAR_DATE}:{channel_id}:{message_id}"))
             .style(ButtonStyle::Secondary)
-            .label("日時をクリア");
+            .label(clear_date_label);
 
     let apply_button = CreateButton::new(format!("{ID_PREFIX_APPLY}:{channel_id}:{message_id}"))
         .style(ButtonStyle::Success)
-        .label("適用");
+        .label(apply_label);
 
     Ok((
         content,
@@ -182,7 +289,14 @@ async fn format_event_date_label(
     event_date: Option<DateTime<Utc>>,
 ) -> String {
     let Some(event_date) = event_date else {
-        return "変更しない".to_string();
+        return get_message_or_fallback(
+            data,
+            guild_id,
+            MessageTextId::RecruitmentCommandChangePanelDateUnchanged,
+            HashMap::new(),
+            "変更しない",
+        )
+        .await;
     };
 
     if let Some(guild_id) = guild_id {
@@ -378,16 +492,46 @@ async fn handle_battle_style_selection(
     Ok(())
 }
 
-async fn handle_open_date_modal(ctx: &Context, interaction: &ComponentInteraction) -> Result<()> {
+async fn handle_open_date_modal(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+    data: &PoiseData,
+) -> Result<()> {
     let (target_channel_id, target_message_id) =
         parse_target_ids(&interaction.data.custom_id, ID_PREFIX_OPEN_DATE_MODAL)?;
 
     let custom_id = format!("recruit_change_date_modal:{target_channel_id}:{target_message_id}");
 
+    let guild_id = interaction.guild_id.map(|id| id.get());
+    let modal_title = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeModalTitle,
+        HashMap::new(),
+        "出発日時変更",
+    )
+    .await;
+    let modal_label = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeModalEventDateLabel,
+        HashMap::new(),
+        "出発日時",
+    )
+    .await;
+    let modal_placeholder = get_message_or_fallback(
+        data,
+        guild_id,
+        MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder,
+        HashMap::new(),
+        "例: 12/25 22:30",
+    )
+    .await;
+
     let modal =
-        CreateModal::new(custom_id, "出発日時変更").components(vec![CreateActionRow::InputText(
-            CreateInputText::new(InputTextStyle::Short, "出発日時", "event_date")
-                .placeholder("例: 12/25 22:30")
+        CreateModal::new(custom_id, modal_title).components(vec![CreateActionRow::InputText(
+            CreateInputText::new(InputTextStyle::Short, modal_label, "event_date")
+                .placeholder(modal_placeholder)
                 .required(true),
         )]);
 
@@ -466,15 +610,21 @@ async fn handle_apply_changes(
             Some(interaction_guild_id),
         )
         .await?;
+        let no_changes_message = get_message_or_fallback(
+            data,
+            Some(interaction_guild_id),
+            MessageTextId::RecruitmentCommandChangeNoChanges,
+            HashMap::new(),
+            "変更項目を少なくとも1つ指定してください。",
+        )
+        .await;
 
         interaction
             .create_response(
                 &ctx.http,
                 CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::new()
-                        .content(format!(
-                            "{content}\n\n変更項目を少なくとも1つ指定してください。"
-                        ))
+                        .content(format!("{content}\n\n{no_changes_message}"))
                         .components(components),
                 ),
             )
@@ -526,11 +676,20 @@ async fn handle_apply_changes(
             let mut drafts = RECRUIT_CHANGE_DRAFTS.write().await;
             drafts.remove(&key);
 
+            let success_message = get_message_or_fallback(
+                data,
+                Some(interaction_guild_id),
+                MessageTextId::RecruitmentCommandChangeSuccess,
+                HashMap::new(),
+                "募集内容を更新しました。",
+            )
+            .await;
+
             interaction
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content("募集内容を更新しました。")
+                        .content(success_message)
                         .components(vec![]),
                 )
                 .await?;
@@ -554,12 +713,22 @@ async fn handle_apply_changes(
                 Some(interaction_guild_id),
             )
             .await?;
+            let mut error_params = HashMap::new();
+            error_params.insert("error_message".to_string(), e.user_message());
+            let error_prefix = get_message_or_fallback(
+                data,
+                Some(interaction_guild_id),
+                MessageTextId::RecruitmentCommandChangeErrorPrefix,
+                error_params,
+                &format!("エラー: {}", e.user_message()),
+            )
+            .await;
 
             interaction
                 .edit_response(
                     &ctx.http,
                     poise::serenity_prelude::EditInteractionResponse::new()
-                        .content(format!("エラー: {}\n\n{content}", e.user_message()))
+                        .content(format!("{error_prefix}\n\n{content}"))
                         .components(components),
                 )
                 .await?;

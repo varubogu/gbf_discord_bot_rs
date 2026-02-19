@@ -6,6 +6,7 @@ use crate::errors::PresentationError;
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::spreadsheet::SpreadsheetImportFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -30,7 +31,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "errors.guild_only",
+                MessageTextId::ErrorsGuildOnly,
                 HashMap::new(),
             )
             .await
@@ -56,7 +57,21 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             Ok(f) => f,
             Err(e) => {
                 let error_msg = PresentationError::from(e).to_string();
-                ctx.say(format!("❌ {error_msg}")).await?;
+                let mut params = HashMap::new();
+                params.insert("error_msg".to_string(), error_msg.clone());
+
+                let message = get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::SpreadsheetLoadFailed,
+                    params,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    format!("❌ ギルドスプレッドシート読み込み失敗\n\n{error_msg}")
+                });
+
+                ctx.say(&message).await?;
                 return Ok(());
             }
         };
@@ -68,7 +83,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "errors.spreadsheet_not_registered",
+                MessageTextId::ErrorsSpreadsheetNotRegistered,
                 HashMap::new(),
             )
             .await
@@ -93,7 +108,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "errors.spreadsheet_config_fetch_failed",
+                MessageTextId::ErrorsSpreadsheetConfigFetchFailed,
                 params,
             )
             .await
@@ -113,7 +128,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
     let loading_message = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
-        "spreadsheet.loading",
+        MessageTextId::SpreadsheetLoading,
         HashMap::new(),
     )
     .await
@@ -127,8 +142,75 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
         .await
     {
         Ok(result) => {
-            // Display実装を使用してメッセージを生成
-            let message = format!("✅ ギルドスプレッドシート読み込み完了\n\n{result}");
+            let message = if result.failure_count == 0 && result.errors.is_empty() {
+                let mut params = HashMap::new();
+                params.insert(
+                    "success_count".to_string(),
+                    result.success_count.to_string(),
+                );
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::SpreadsheetLoadSuccess,
+                    params,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "✅ ギルドスプレッドシート読み込み完了\n\n\
+                         📊 読み込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 総行数: {}行",
+                        result.success_count, result.total_rows
+                    )
+                })
+            } else {
+                let error_details = if result.errors.len() <= 5 {
+                    format!("❌ エラー:\n{}", result.errors.join("\n"))
+                } else {
+                    format!(
+                        "❌ エラー（最初の5件）:\n{}\n... 他{}件",
+                        result.errors[..5].join("\n"),
+                        result.errors.len() - 5
+                    )
+                };
+
+                let mut params = HashMap::new();
+                params.insert(
+                    "success_count".to_string(),
+                    result.success_count.to_string(),
+                );
+                params.insert(
+                    "failure_count".to_string(),
+                    result.failure_count.to_string(),
+                );
+                params.insert("total_rows".to_string(), result.total_rows.to_string());
+                params.insert("error_details".to_string(), error_details.clone());
+
+                get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::SpreadsheetLoadPartialSuccess,
+                    params,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    format!(
+                        "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n\
+                         📊 読み込み結果:\n\
+                         - 成功: {}テーブル\n\
+                         - 失敗: {}テーブル\n\
+                         - 総行数: {}行\n\n\
+                         {}",
+                        result.success_count,
+                        result.failure_count,
+                        result.total_rows,
+                        error_details
+                    )
+                })
+            };
 
             ctx.say(&message).await?;
 
@@ -150,7 +232,7 @@ pub async fn gspread_load(ctx: PoiseContext<'_>) -> Result<()> {
             let message = get_message_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
-                "spreadsheet.load_failed",
+                MessageTextId::SpreadsheetLoadFailed,
                 params,
             )
             .await

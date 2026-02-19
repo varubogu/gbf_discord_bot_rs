@@ -5,12 +5,34 @@
 use crate::facades::auto_recruitment;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
+use crate::services::message::MessageTextId;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
 use sea_orm::TransactionTrait;
+use std::collections::HashMap;
 use tracing::{error, info};
+
+async fn get_message_or_fallback(
+    data: &PoiseData,
+    guild_id: u64,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+    fallback_text: &str,
+) -> String {
+    data.app_state
+        .message_service()
+        .get_message(
+            data.app_state.guild_db(),
+            message_id.as_str(),
+            params,
+            Some(guild_id as i64),
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| fallback_text.to_string())
+}
 
 /// 時間選択インタラクションを処理
 ///
@@ -66,11 +88,16 @@ pub async fn handle_time_selection_interaction(
     };
 
     if selected_hours.is_empty() {
+        let message = get_message_or_fallback(
+            data,
+            guild_id,
+            MessageTextId::AutoRecruitmentTimeSelectRequired,
+            HashMap::new(),
+            "時間を選択してください。",
+        )
+        .await;
         interaction
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("時間を選択してください。"),
-            )
+            .edit_response(&ctx.http, EditInteractionResponse::new().content(message))
             .await?;
         return Ok(());
     }
@@ -103,14 +130,26 @@ pub async fn handle_time_selection_interaction(
                 .map(|h| format!("{h}時"))
                 .collect::<Vec<_>>()
                 .join(", ");
+            let mut params = HashMap::new();
+            params.insert("month".to_string(), month.to_string());
+            params.insert("day".to_string(), day.to_string());
+            params.insert("hours_str".to_string(), hours_str.clone());
+            let success_message = get_message_or_fallback(
+                data,
+                guild_id,
+                MessageTextId::AutoRecruitmentTimeSelectRegistered,
+                params,
+                &format!(
+                    "✅ {month}月{day}日の参加可能時間を登録しました。\n登録した時間: {hours_str}"
+                ),
+            )
+            .await;
 
             // ユーザーへの応答を先に送信
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!(
-                        "✅ {month}月{day}日の参加可能時間を登録しました。\n登録した時間: {hours_str}"
-                    )),
+                    EditInteractionResponse::new().content(success_message),
                 )
                 .await?;
 
@@ -129,10 +168,20 @@ pub async fn handle_time_selection_interaction(
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, "時間選択の処理に失敗しました");
+            let mut params = HashMap::new();
+            params.insert("error_message".to_string(), e.to_string());
+            let error_message = get_message_or_fallback(
+                data,
+                guild_id,
+                MessageTextId::AutoRecruitmentOperationErrorPrefix,
+                params,
+                &format!("エラー: {e}"),
+            )
+            .await;
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!("エラー: {e}")),
+                    EditInteractionResponse::new().content(error_message),
                 )
                 .await?;
         }

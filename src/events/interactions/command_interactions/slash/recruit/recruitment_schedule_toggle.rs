@@ -1,6 +1,9 @@
+use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, Permissions};
+use std::collections::HashMap;
 use tracing::info;
 
 use super::super::autocomplete::recruitment_schedule_auto_complete;
@@ -70,9 +73,28 @@ pub async fn recruitment_schedule_toggle(
         "定期募集スケジュールの有効/無効を切り替えました"
     );
 
+    let title = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentScheduleToggleSuccessTitle,
+        HashMap::new(),
+        "🔄 定期募集スケジュールの有効/無効を切り替えました",
+    )
+    .await;
+    let mut description_params = HashMap::new();
+    description_params.insert("schedule_id".to_string(), schedule_id.to_string());
+    let description = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentScheduleToggleSuccessDescription,
+        description_params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("**スケジュールID**: {schedule_id}"));
+
     let embed = CreateEmbed::default()
-        .title("🔄 定期募集スケジュールの有効/無効を切り替えました")
-        .description(format!("**スケジュールID**: {schedule_id}"))
+        .title(title)
+        .description(description)
         .color(0x00aaff);
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))

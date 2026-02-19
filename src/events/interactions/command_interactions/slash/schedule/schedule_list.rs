@@ -1,7 +1,10 @@
+use crate::events::helpers::get_message_or_fallback_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::NotificationScheduleFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use std::collections::HashMap;
 use tracing::info;
 
 /// 登録されているスケジュール一覧を表示
@@ -40,10 +43,28 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
         .get_future_notifications_formatted(guild_id.get() as i64, 10)
         .await?;
 
+    let title = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandListTitle,
+        HashMap::new(),
+        "📅 スケジュール一覧",
+    )
+    .await;
+
     if formatted.is_empty() {
+        let empty_description = get_message_or_fallback_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::ScheduleCommandListEmptyDescription,
+            HashMap::new(),
+            "登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。",
+        )
+        .await;
+
         let embed = CreateEmbed::default()
-            .title("📅 スケジュール一覧")
-            .description("登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。")
+            .title(title)
+            .description(empty_description)
             .color(0xffaa00);
 
         ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
@@ -51,13 +72,20 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
         return Ok(());
     }
 
+    let footer = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandListFooter,
+        HashMap::new(),
+        "未来のスケジュールを最大10件まで表示",
+    )
+    .await;
+
     let embed = CreateEmbed::default()
-        .title("📅 スケジュール一覧")
+        .title(title)
         .description(formatted)
         .color(0x00aaff)
-        .footer(CreateEmbedFooter::new(
-            "未来のスケジュールを最大10件まで表示",
-        ));
+        .footer(CreateEmbedFooter::new(footer));
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;

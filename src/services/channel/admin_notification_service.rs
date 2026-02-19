@@ -1,8 +1,8 @@
 use crate::gateway::DiscordGateway;
 use crate::models::entities::master::channel_types::GuildChannelType;
 use crate::repository::GuildChannelRepository;
-use crate::types::discord::{DiscordChannelId, MessageContent};
 use crate::types::Result;
+use crate::types::discord::{DiscordChannelId, MessageContent};
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -151,7 +151,11 @@ mod tests {
     }
 
     /// テスト用guild_channelsモデルを作成するヘルパー
-    fn make_channel_model(guild_id: i64, channel_type: i32, channel_id: i64) -> guild_channels::Model {
+    fn make_channel_model(
+        guild_id: i64,
+        channel_type: i32,
+        channel_id: i64,
+    ) -> guild_channels::Model {
         guild_channels::Model {
             guild_id,
             channel_type,
@@ -173,7 +177,11 @@ mod tests {
 
         // モック設定: チャンネルあり
         let repo = MockGuildChannelRepo {
-            channel: Some(make_channel_model(guild_id, GuildChannelType::AdminNotification.as_i32(), channel_id)),
+            channel: Some(make_channel_model(
+                guild_id,
+                GuildChannelType::AdminNotification.as_i32(),
+                channel_id,
+            )),
         };
 
         // Discordゲートウェイモック: send_messageが1回呼ばれることを期待
@@ -228,7 +236,11 @@ mod tests {
 
         // モック設定: チャンネルあり
         let repo = MockGuildChannelRepo {
-            channel: Some(make_channel_model(guild_id, GuildChannelType::AdminNotification.as_i32(), channel_id)),
+            channel: Some(make_channel_model(
+                guild_id,
+                GuildChannelType::AdminNotification.as_i32(),
+                channel_id,
+            )),
         };
 
         // Discordゲートウェイモック: send_messageがエラーを返す
@@ -236,7 +248,11 @@ mod tests {
         mock_gateway
             .expect_send_message()
             .times(1)
-            .returning(|_, _| Err(GatewayError::SendMessageFailed("チャンネルが見つかりません".to_string())));
+            .returning(|_, _| {
+                Err(GatewayError::SendMessageFailed(
+                    "チャンネルが見つかりません".to_string(),
+                ))
+            });
 
         let service = AdminNotificationService::new(Arc::new(mock_gateway), repo);
         let txn = create_test_txn().await;

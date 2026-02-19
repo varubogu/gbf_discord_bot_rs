@@ -146,21 +146,46 @@ async fn execute_cancel_with_confirmation(
     ctx: PoiseContext<'_>,
     message: &Message,
 ) -> types::Result<()> {
+    let yes_label = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::CommonYes,
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "はい".to_string());
+    let no_label = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::CommonNo,
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "いいえ".to_string());
+    let confirm_prompt = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentCommandCancelConfirmPrompt,
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "この募集をキャンセルしますか？".to_string());
+
     // 確認ボタンを表示
     let confirm_button = CreateButton::new("confirm_cancel")
         .style(ButtonStyle::Danger)
-        .label("はい");
+        .label(yes_label);
 
     let cancel_button = CreateButton::new("deny_cancel")
         .style(ButtonStyle::Secondary)
-        .label("いいえ");
+        .label(no_label);
 
     let action_row = CreateActionRow::Buttons(vec![confirm_button, cancel_button]);
 
     let reply = ctx
         .send(
             poise::CreateReply::default()
-                .content("この募集をキャンセルしますか？")
+                .content(confirm_prompt)
                 .components(vec![action_row])
                 .ephemeral(true),
         )
@@ -182,11 +207,19 @@ async fn execute_cancel_with_confirmation(
             match interaction.data.custom_id.as_str() {
                 "confirm_cancel" => {
                     // 「キャンセル中...」に更新
+                    let cancelling_message = get_message_from_context(
+                        &ctx,
+                        ctx.data().app_state.message_service(),
+                        MessageTextId::RecruitmentCommandCancellingProgress,
+                        HashMap::new(),
+                    )
+                    .await
+                    .unwrap_or_else(|_| "キャンセル中...".to_string());
                     reply
                         .edit(
                             ctx,
                             poise::CreateReply::default()
-                                .content("キャンセル中...")
+                                .content(cancelling_message)
                                 .components(vec![]),
                         )
                         .await?;
@@ -215,11 +248,19 @@ async fn execute_cancel_with_confirmation(
                     {
                         Ok(_) => {
                             // 成功時：確認メッセージを更新して完了表示
+                            let success_message = get_message_from_context(
+                                &ctx,
+                                ctx.data().app_state.message_service(),
+                                MessageTextId::RecruitmentCommandCancelNotificationNoParticipants,
+                                HashMap::new(),
+                            )
+                            .await
+                            .unwrap_or_else(|_| "募集がキャンセルされました。".to_string());
                             reply
                                 .edit(
                                     ctx,
                                     poise::CreateReply::default()
-                                        .content("募集をキャンセルしました。")
+                                        .content(success_message)
                                         .components(vec![]),
                                 )
                                 .await?;
@@ -248,11 +289,19 @@ async fn execute_cancel_with_confirmation(
                 }
                 "deny_cancel" => {
                     // キャンセルを取りやめ
+                    let aborted_message = get_message_from_context(
+                        &ctx,
+                        ctx.data().app_state.message_service(),
+                        MessageTextId::RecruitmentCommandCancelAborted,
+                        HashMap::new(),
+                    )
+                    .await
+                    .unwrap_or_else(|_| "キャンセルを取りやめました。".to_string());
                     reply
                         .edit(
                             ctx,
                             poise::CreateReply::default()
-                                .content("キャンセルを取りやめました。")
+                                .content(aborted_message)
                                 .components(vec![]),
                         )
                         .await?;
@@ -260,11 +309,19 @@ async fn execute_cancel_with_confirmation(
                 }
                 _ => {
                     // 不明な選択
+                    let unknown_selection_message = get_message_from_context(
+                        &ctx,
+                        ctx.data().app_state.message_service(),
+                        MessageTextId::RecruitmentCommandCancelUnknownSelection,
+                        HashMap::new(),
+                    )
+                    .await
+                    .unwrap_or_else(|_| "不明な選択です。".to_string());
                     reply
                         .edit(
                             ctx,
                             poise::CreateReply::default()
-                                .content("不明な選択です。")
+                                .content(unknown_selection_message)
                                 .components(vec![]),
                         )
                         .await?;
@@ -274,11 +331,19 @@ async fn execute_cancel_with_confirmation(
         }
         None => {
             // タイムアウト
+            let timeout_message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentCommandCancelTimeout,
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "操作がタイムアウトしました。".to_string());
             reply
                 .edit(
                     ctx,
                     poise::CreateReply::default()
-                        .content("操作がタイムアウトしました。")
+                        .content(timeout_message)
                         .components(vec![]),
                 )
                 .await?;

@@ -1,6 +1,9 @@
+use crate::events::helpers::get_message_or_fallback_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::role_management;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use std::collections::HashMap;
 
 #[poise::command(
     slash_command,
@@ -28,16 +31,57 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
 
     // 設定が存在しない場合
     if settings.all_recruitment_roles.is_empty() && settings.quest_recruitment_roles.is_empty() {
-        ctx.say("⚠️ 募集通知ロールが登録されていません。").await?;
+        let message = get_message_or_fallback_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::RecruitmentRoleShowNotRegistered,
+            HashMap::new(),
+            "⚠️ 募集通知ロールが登録されていません。",
+        )
+        .await;
+        ctx.say(message).await?;
         return Ok(());
     }
 
+    let header = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentRoleShowHeader,
+        HashMap::new(),
+        "**現在の募集通知ロール設定:**\n\n",
+    )
+    .await;
+    let section_all = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentRoleShowSectionAll,
+        HashMap::new(),
+        "**【すべての募集】**\n",
+    )
+    .await;
+    let section_quest = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentRoleShowSectionQuest,
+        HashMap::new(),
+        "**【クエスト別募集】**\n",
+    )
+    .await;
+    let unknown_quest = get_message_or_fallback_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::RecruitmentRoleShowUnknownQuest,
+        HashMap::new(),
+        "不明なクエスト",
+    )
+    .await;
+
     // メッセージを構築
-    let mut message = "**現在の募集通知ロール設定:**\n\n".to_string();
+    let mut message = header;
 
     // 全募集通知ロール
     if !settings.all_recruitment_roles.is_empty() {
-        message.push_str("**【すべての募集】**\n");
+        message.push_str(&section_all);
         for role_id in &settings.all_recruitment_roles {
             message.push_str(&format!("• <@&{role_id}>\n"));
         }
@@ -46,7 +90,7 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
 
     // クエスト別募集通知ロール
     if !settings.quest_recruitment_roles.is_empty() {
-        message.push_str("**【クエスト別募集】**\n");
+        message.push_str(&section_quest);
 
         // クエストIDでソート
         let mut quest_ids: Vec<i32> = settings.quest_recruitment_roles.keys().copied().collect();
@@ -58,7 +102,7 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
                     .quest_names
                     .get(&quest_id)
                     .map(|s| s.as_str())
-                    .unwrap_or("不明なクエスト");
+                    .unwrap_or(&unknown_quest);
 
                 message.push_str(&format!("**{quest_name}**\n"));
                 for role_id in role_ids {
@@ -69,7 +113,7 @@ pub async fn recruit_role_show(ctx: PoiseContext<'_>) -> Result<()> {
         }
     }
 
-    ctx.say(&message).await?;
+    ctx.say(message).await?;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ use gbf_discord_bot_rs::events::{
     handler::event_handler,
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
+use gbf_discord_bot_rs::services::message::MessageTextId;
 use gbf_discord_bot_rs::services::schedule::SchedulerManager;
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
@@ -11,6 +12,7 @@ use migration::{Migrator, MigratorTrait};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use sea_orm::{ConnectOptions, Database};
 use sea_orm_migration::prelude::*;
+use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::sync::Arc;
@@ -308,6 +310,104 @@ async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Res
     Ok(())
 }
 
+async fn resolve_user_error_message(
+    ctx: &poise::Context<'_, PoiseData, AppError>,
+    app_error: &AppError,
+) -> String {
+    let guild_id = ctx.guild_id().map(|id| id.get() as i64);
+    let locale = ctx.locale().map(|s| s.to_string());
+    let message_service = ctx.data().app_state.message_service();
+    let db = ctx.data().app_state.guild_db();
+
+    match app_error {
+        AppError::Database(_) => message_service
+            .get_message(
+                db,
+                MessageTextId::AppErrorDatabase.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale.as_deref(),
+            )
+            .await
+            .unwrap_or_else(|_| app_error.user_message()),
+        AppError::Discord(_) => message_service
+            .get_message(
+                db,
+                MessageTextId::AppErrorDiscord.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale.as_deref(),
+            )
+            .await
+            .unwrap_or_else(|_| app_error.user_message()),
+        AppError::Config { message } => {
+            let mut params = HashMap::new();
+            params.insert("message".to_string(), message.clone());
+            message_service
+                .get_message(
+                    db,
+                    MessageTextId::AppErrorConfig.as_str(),
+                    params,
+                    guild_id,
+                    locale.as_deref(),
+                )
+                .await
+                .unwrap_or_else(|_| app_error.user_message())
+        }
+        AppError::Validation { field } => {
+            let mut params = HashMap::new();
+            params.insert("field".to_string(), field.clone());
+            message_service
+                .get_message(
+                    db,
+                    MessageTextId::AppErrorValidation.as_str(),
+                    params,
+                    guild_id,
+                    locale.as_deref(),
+                )
+                .await
+                .unwrap_or_else(|_| app_error.user_message())
+        }
+        AppError::DiscordOperation(err) => {
+            let mut params = HashMap::new();
+            params.insert("message".to_string(), err.to_string());
+            message_service
+                .get_message(
+                    db,
+                    MessageTextId::AppErrorDiscordOperation.as_str(),
+                    params,
+                    guild_id,
+                    locale.as_deref(),
+                )
+                .await
+                .unwrap_or_else(|_| app_error.user_message())
+        }
+        AppError::ChannelCreationFailed => message_service
+            .get_message(
+                db,
+                MessageTextId::AppErrorChannelCreationFailed.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale.as_deref(),
+            )
+            .await
+            .unwrap_or_else(|_| app_error.user_message()),
+        AppError::InCategoryChannelError => message_service
+            .get_message(
+                db,
+                MessageTextId::AppErrorInCategoryChannel.as_str(),
+                HashMap::new(),
+                guild_id,
+                locale.as_deref(),
+            )
+            .await
+            .unwrap_or_else(|_| app_error.user_message()),
+        AppError::Business { .. } | AppError::Generic(_) | AppError::NotFound(_) => {
+            app_error.user_message()
+        }
+    }
+}
+
 async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
     use poise::FrameworkError;
 
@@ -324,7 +424,7 @@ async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
             );
 
             // Discord上にはユーザーフレンドリーなメッセージのみ表示
-            let user_message = error.user_message();
+            let user_message = resolve_user_error_message(&ctx, &error).await;
             if let Err(e) = ctx
                 .send(
                     poise::CreateReply::default()

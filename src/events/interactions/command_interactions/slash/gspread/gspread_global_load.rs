@@ -36,7 +36,6 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     let spreadsheet_id = match env::var("GLOBAL_SPREADSHEET_ID") {
         Ok(id) => id,
         Err(_) => {
-            // 新しいメッセージサービスを使用
             let mut params = HashMap::new();
             params.insert("var_name".to_string(), "GLOBAL_SPREADSHEET_ID".to_string());
 
@@ -57,8 +56,15 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
         }
     };
 
-    ctx.say("🔄 グローバルスプレッドシートからデータを読み込んでいます...")
-        .await?;
+    let loading_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::SpreadsheetGlobalLoading,
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| "🔄 グローバルスプレッドシートからデータを読み込んでいます...".to_string());
+    ctx.say(loading_message).await?;
 
     // Facadeを作成（Global ロールを使用 - master スキーマへの書き込み権限が必要）
     let app_state = Arc::new(ctx.data().app_state.clone());
@@ -67,7 +73,19 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             Ok(f) => f,
             Err(e) => {
                 let error_msg = PresentationError::from(e).to_string();
-                ctx.say(format!("❌ {error_msg}")).await?;
+                let mut params = HashMap::new();
+                params.insert("error_msg".to_string(), error_msg.clone());
+                let message = get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::SpreadsheetGlobalLoadFailed,
+                    params,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    format!("❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}")
+                });
+                ctx.say(message).await?;
                 return Ok(());
             }
         };
@@ -75,9 +93,16 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
     // インポート実行
     match facade.import_global_spreadsheet(&spreadsheet_id).await {
         Ok(result) => {
-            // Display実装を使用してメッセージを生成
-            let message = format!("✅ グローバルスプレッドシート読み込み完了\n\n{result}");
-
+            let mut params = HashMap::new();
+            params.insert("result_text".to_string(), result.to_string());
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::SpreadsheetGlobalLoadSuccess,
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| format!("✅ グローバルスプレッドシート読み込み完了\n\n{result}"));
             ctx.say(message).await?;
 
             info!(
@@ -98,10 +123,19 @@ pub async fn gspread_global_load(ctx: PoiseContext<'_>) -> Result<()> {
             );
 
             let error_msg = PresentationError::from(e).to_string();
-            ctx.say(format!(
-                "❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}"
-            ))
-            .await?;
+            let mut params = HashMap::new();
+            params.insert("error_msg".to_string(), error_msg.clone());
+            let message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::SpreadsheetGlobalLoadFailed,
+                params,
+            )
+            .await
+            .unwrap_or_else(|_| {
+                format!("❌ グローバルスプレッドシート読み込み失敗\n\n{error_msg}")
+            });
+            ctx.say(message).await?;
 
             Ok(())
         }

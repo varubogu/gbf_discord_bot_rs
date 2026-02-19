@@ -8,29 +8,6 @@ use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
 
-/// メッセージIDとして使用できる型のトレイト
-pub trait IntoMessageId {
-    fn into_message_id(self) -> String;
-}
-
-impl IntoMessageId for MessageTextId {
-    fn into_message_id(self) -> String {
-        self.as_str().to_string()
-    }
-}
-
-impl IntoMessageId for &str {
-    fn into_message_id(self) -> String {
-        self.to_string()
-    }
-}
-
-impl IntoMessageId for String {
-    fn into_message_id(self) -> String {
-        self
-    }
-}
-
 /// PoiseContextから最適なロケールを取得
 ///
 /// 優先順位: ユーザーロケール → ギルドロケール → None（デフォルトはmessage_serviceで"en"にフォールバック）
@@ -50,30 +27,45 @@ pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
 /// # 引数
 /// * `ctx` - Poiseコンテキスト
 /// * `message_service` - メッセージサービス
-/// * `message_id` - メッセージID（MessageId enum または &str）
+/// * `message_id` - メッセージID（`MessageTextId`）
 /// * `params` - パラメータ
-pub async fn get_message_from_context<T, G, M>(
+pub async fn get_message_from_context<G, M>(
     ctx: &PoiseContext<'_>,
     message_service: &MessageService<G, M>,
-    message_id: T,
+    message_id: MessageTextId,
     params: HashMap<String, String>,
 ) -> Result<String, crate::errors::ServiceError>
 where
-    T: IntoMessageId,
     G: GuildMessageTextRepository,
     M: MessageTextRepository,
 {
     let guild_id = get_guild_id_from_context(ctx);
     let locale = get_locale_from_context(ctx);
-    let message_id_str = message_id.into_message_id();
 
     message_service
         .get_message(
             ctx.data().app_state.guild_db(),
-            &message_id_str,
+            message_id.as_str(),
             params,
             guild_id,
             locale.as_deref(),
         )
         .await
+}
+
+/// メッセージ取得に失敗した場合、呼び出し側で指定した文言へフォールバックする
+pub async fn get_message_or_fallback_from_context<G, M>(
+    ctx: &PoiseContext<'_>,
+    message_service: &MessageService<G, M>,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+    fallback_text: &str,
+) -> String
+where
+    G: GuildMessageTextRepository,
+    M: MessageTextRepository,
+{
+    get_message_from_context(ctx, message_service, message_id, params)
+        .await
+        .unwrap_or_else(|_| fallback_text.to_string())
 }

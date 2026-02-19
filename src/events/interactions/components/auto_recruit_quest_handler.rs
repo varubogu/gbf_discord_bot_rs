@@ -3,11 +3,33 @@
 //! クエスト選択チャンネルでのセレクトメニュー操作を処理する
 
 use crate::facades::auto_recruitment;
+use crate::services::message::MessageTextId;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
+use std::collections::HashMap;
 use tracing::{error, info};
+
+async fn get_message_or_fallback(
+    data: &PoiseData,
+    guild_id: u64,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+    fallback_text: &str,
+) -> String {
+    data.app_state
+        .message_service()
+        .get_message(
+            data.app_state.guild_db(),
+            message_id.as_str(),
+            params,
+            Some(guild_id as i64),
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| fallback_text.to_string())
+}
 
 /// クエスト選択インタラクションを処理
 ///
@@ -41,11 +63,16 @@ pub async fn handle_quest_selection_interaction(
     };
 
     if selected_quest_ids.is_empty() {
+        let message = get_message_or_fallback(
+            data,
+            guild_id,
+            MessageTextId::AutoRecruitmentQuestSelectRequired,
+            HashMap::new(),
+            "クエストを選択してください。",
+        )
+        .await;
         interaction
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("クエストを選択してください。"),
-            )
+            .edit_response(&ctx.http, EditInteractionResponse::new().content(message))
             .await?;
         return Ok(());
     }
@@ -70,13 +97,22 @@ pub async fn handle_quest_selection_interaction(
     {
         Ok(_result) => {
             let quest_count = selected_quest_ids.len();
+            let mut params = HashMap::new();
+            params.insert("count".to_string(), quest_count.to_string());
+            let success_message = get_message_or_fallback(
+                data,
+                guild_id,
+                MessageTextId::AutoRecruitmentQuestSelectRegistered,
+                params,
+                &format!("✅ {quest_count}個のクエストを登録しました。"),
+            )
+            .await;
 
             // ユーザーへの応答を先に送信
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new()
-                        .content(format!("✅ {quest_count}個のクエストを登録しました。")),
+                    EditInteractionResponse::new().content(success_message),
                 )
                 .await?;
 
@@ -93,10 +129,20 @@ pub async fn handle_quest_selection_interaction(
         }
         Err(e) => {
             error!(error = %e, guild_id, user_id, "クエスト選択の処理に失敗しました");
+            let mut params = HashMap::new();
+            params.insert("error_message".to_string(), e.to_string());
+            let error_message = get_message_or_fallback(
+                data,
+                guild_id,
+                MessageTextId::AutoRecruitmentOperationErrorPrefix,
+                params,
+                &format!("エラー: {e}"),
+            )
+            .await;
             interaction
                 .edit_response(
                     &ctx.http,
-                    EditInteractionResponse::new().content(format!("エラー: {e}")),
+                    EditInteractionResponse::new().content(error_message),
                 )
                 .await?;
         }

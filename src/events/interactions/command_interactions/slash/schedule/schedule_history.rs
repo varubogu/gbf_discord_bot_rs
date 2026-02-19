@@ -1,7 +1,10 @@
+use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::NotificationScheduleFacade;
+use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
+use std::collections::HashMap;
 use tracing::info;
 
 /// 過去の通知履歴を表示
@@ -53,9 +56,28 @@ pub async fn schedule_history(
         .await?;
 
     if formatted.is_empty() {
+        let title = get_message_or_fallback_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::ScheduleCommandHistoryTitle,
+            HashMap::new(),
+            "📜 通知履歴",
+        )
+        .await;
+        let mut params = HashMap::new();
+        params.insert("days".to_string(), days.to_string());
+        let empty_description = get_message_from_context(
+            &ctx,
+            ctx.data().app_state.message_service(),
+            MessageTextId::ScheduleCommandHistoryEmptyDescription,
+            params,
+        )
+        .await
+        .unwrap_or_else(|_| format!("過去 {days} 日間の通知履歴はありません。"));
+
         let embed = CreateEmbed::default()
-            .title("📜 通知履歴")
-            .description(format!("過去 {days} 日間の通知履歴はありません。"))
+            .title(title)
+            .description(empty_description)
             .color(0xffaa00);
 
         ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
@@ -63,14 +85,40 @@ pub async fn schedule_history(
         return Ok(());
     }
 
-    let embed = CreateEmbed::default()
-        .title(format!("📜 通知履歴（過去{days}日間）"))
-        .description(formatted)
-        .color(0x00aaff)
-        .footer(CreateEmbedFooter::new(format!(
+    let mut title_params = HashMap::new();
+    title_params.insert("days".to_string(), days.to_string());
+    let title = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandHistoryTitleWithDays,
+        title_params,
+    )
+    .await
+    .unwrap_or_else(|_| format!("📜 通知履歴（過去{days}日間）"));
+
+    let mut footer_params = HashMap::new();
+    footer_params.insert("total_count".to_string(), stats.total_count.to_string());
+    footer_params.insert("from".to_string(), stats.from.to_string());
+    footer_params.insert("to".to_string(), stats.to.to_string());
+    let footer = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ScheduleCommandHistoryFooter,
+        footer_params,
+    )
+    .await
+    .unwrap_or_else(|_| {
+        format!(
             "合計 {} 件（期間: {} 〜 {}）",
             stats.total_count, stats.from, stats.to
-        )));
+        )
+    });
+
+    let embed = CreateEmbed::default()
+        .title(title)
+        .description(formatted)
+        .color(0x00aaff)
+        .footer(CreateEmbedFooter::new(footer));
 
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;

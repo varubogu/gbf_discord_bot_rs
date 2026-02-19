@@ -1,8 +1,10 @@
 use crate::facades::recruitment::button_handler;
 use crate::gateway::PoiseDiscordGateway;
+use crate::services::message::MessageTextId;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
 use crate::types::{PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, Context};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info};
 
@@ -124,7 +126,7 @@ pub async fn on_component_interaction(
                         &ctx.http,
                         poise::serenity_prelude::CreateInteractionResponse::Message(
                             poise::serenity_prelude::CreateInteractionResponseMessage::new()
-                                .content(format!("エラー: {}", e.user_message()))
+                                .content(e.user_message())
                                 .ephemeral(true),
                         ),
                     )
@@ -162,12 +164,23 @@ pub async fn on_component_interaction(
             .collect();
 
         if element_ids.is_empty() {
+            let message = data
+                .app_state
+                .message_service()
+                .get_message(
+                    data.app_state.guild_db(),
+                    MessageTextId::ErrorsInvalidInput.as_str(),
+                    HashMap::new(),
+                    interaction.guild_id.map(|id| id.get() as i64),
+                    None,
+                )
+                .await
+                .unwrap_or_else(|_| "❌ エラー: 属性を選択してください".to_string());
             // エラーメッセージを返す
             if let Err(e) = interaction
                 .edit_response(
                     &ctx.http,
-                    poise::serenity_prelude::EditInteractionResponse::new()
-                        .content("❌ エラー: 属性を選択してください"),
+                    poise::serenity_prelude::EditInteractionResponse::new().content(message),
                 )
                 .await
             {
@@ -186,11 +199,22 @@ pub async fn on_component_interaction(
             Some(gid) => DiscordGuildId::new(gid.get()),
             None => {
                 error!("ギルドIDが取得できませんでした");
+                let message = data
+                    .app_state
+                    .message_service()
+                    .get_message(
+                        data.app_state.guild_db(),
+                        MessageTextId::ErrorsGuildOnly.as_str(),
+                        HashMap::new(),
+                        None,
+                        None,
+                    )
+                    .await
+                    .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());
                 if let Err(e) = interaction
                     .edit_response(
                         &ctx.http,
-                        poise::serenity_prelude::EditInteractionResponse::new()
-                            .content("❌ エラー: サーバー内でのみ使用できます"),
+                        poise::serenity_prelude::EditInteractionResponse::new().content(message),
                     )
                     .await
                 {
@@ -238,7 +262,7 @@ pub async fn on_component_interaction(
                     .edit_response(
                         &ctx.http,
                         poise::serenity_prelude::EditInteractionResponse::new()
-                            .content(format!("❌ エラー: {}", e.user_message())),
+                            .content(e.user_message()),
                     )
                     .await
                 {
@@ -262,11 +286,22 @@ pub async fn on_component_interaction(
             Some(gid) => DiscordGuildId::new(gid.get()),
             None => {
                 error!("ギルドIDが取得できませんでした");
+                let message = data
+                    .app_state
+                    .message_service()
+                    .get_message(
+                        data.app_state.guild_db(),
+                        MessageTextId::ErrorsGuildOnly.as_str(),
+                        HashMap::new(),
+                        None,
+                        None,
+                    )
+                    .await
+                    .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());
                 if let Err(e) = interaction
                     .edit_response(
                         &ctx.http,
-                        poise::serenity_prelude::EditInteractionResponse::new()
-                            .content("❌ エラー: サーバー内でのみ使用できます"),
+                        poise::serenity_prelude::EditInteractionResponse::new().content(message),
                     )
                     .await
                 {
@@ -314,7 +349,7 @@ pub async fn on_component_interaction(
                     .edit_response(
                         &ctx.http,
                         poise::serenity_prelude::EditInteractionResponse::new()
-                            .content(format!("❌ エラー: {}", e.user_message())),
+                            .content(e.user_message()),
                     )
                     .await
                 {

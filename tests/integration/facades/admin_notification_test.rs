@@ -85,22 +85,20 @@ async fn test_notify_admin_sends_message_when_channel_configured() {
         .times(1)
         .returning(|_, _| Ok(DiscordMessageId::new(11111)));
 
-    let service = AdminNotificationService::new(
-        Arc::new(mock_gateway),
-        SeaOrmGuildChannelRepository::new(),
-    );
+    let service =
+        AdminNotificationService::new(Arc::new(mock_gateway), SeaOrmGuildChannelRepository::new());
 
     let txn = app_state.guild_db().begin().await.unwrap();
     let result = service
-        .notify_admin(&txn, AN_TEST_GUILD_ID, MessageContent::text("テストエラー通知"))
+        .notify_admin(
+            &txn,
+            AN_TEST_GUILD_ID,
+            MessageContent::text("テストエラー通知"),
+        )
         .await;
     txn.commit().await.unwrap();
 
-    assert!(
-        result.is_ok(),
-        "管理者通知送信に失敗: {:?}",
-        result.err()
-    );
+    assert!(result.is_ok(), "管理者通知送信に失敗: {:?}", result.err());
 
     cleanup_all(app_state.guild_db(), AN_TEST_GUILD_ID).await;
 }
@@ -123,14 +121,16 @@ async fn test_notify_admin_skips_when_channel_not_configured() {
     let mut mock_gateway = MockTestGateway::new();
     mock_gateway.expect_send_message().times(0);
 
-    let service = AdminNotificationService::new(
-        Arc::new(mock_gateway),
-        SeaOrmGuildChannelRepository::new(),
-    );
+    let service =
+        AdminNotificationService::new(Arc::new(mock_gateway), SeaOrmGuildChannelRepository::new());
 
     let txn = app_state.guild_db().begin().await.unwrap();
     let result = service
-        .notify_admin(&txn, AN_TEST_GUILD_ID, MessageContent::text("テストエラー通知"))
+        .notify_admin(
+            &txn,
+            AN_TEST_GUILD_ID,
+            MessageContent::text("テストエラー通知"),
+        )
         .await;
     txn.commit().await.unwrap();
 
@@ -165,14 +165,16 @@ async fn test_notify_admin_returns_err_on_gateway_failure() {
             ))
         });
 
-    let service = AdminNotificationService::new(
-        Arc::new(mock_gateway),
-        SeaOrmGuildChannelRepository::new(),
-    );
+    let service =
+        AdminNotificationService::new(Arc::new(mock_gateway), SeaOrmGuildChannelRepository::new());
 
     let txn = app_state.guild_db().begin().await.unwrap();
     let result = service
-        .notify_admin(&txn, AN_TEST_GUILD_ID, MessageContent::text("テストエラー通知"))
+        .notify_admin(
+            &txn,
+            AN_TEST_GUILD_ID,
+            MessageContent::text("テストエラー通知"),
+        )
         .await;
     // エラーが返るためtxnはdropに任せる（rollback相当）
 

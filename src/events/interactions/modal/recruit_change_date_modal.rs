@@ -1,5 +1,6 @@
 use crate::events::interactions::components::recruit_change_handler;
 use crate::facades::guild_settings::GuildSettingsFacade;
+use crate::services::message::MessageTextId;
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
@@ -8,8 +9,29 @@ use poise::serenity_prelude::{
     ActionRowComponent, Context, CreateInteractionResponse, EditInteractionResponse,
     ModalInteraction,
 };
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{error, info};
+
+async fn get_message_or_fallback(
+    data: &PoiseData,
+    guild_id: u64,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+    fallback_text: &str,
+) -> String {
+    data.app_state
+        .message_service()
+        .get_message(
+            data.app_state.guild_db(),
+            message_id.as_str(),
+            params,
+            Some(guild_id as i64),
+            None,
+        )
+        .await
+        .unwrap_or_else(|_| fallback_text.to_string())
+}
 
 /// 日時入力モーダルからの送信を処理
 pub async fn handle_recruit_change_date_modal(
@@ -72,11 +94,19 @@ pub async fn handle_recruit_change_date_modal(
                 ParsedDateTime::Absolute(dt) => *dt,
                 _ => {
                     error!("日時の解析に失敗しました: 絶対日時ではありません");
+                    let parse_failed_message = get_message_or_fallback(
+                        data,
+                        guild_id,
+                        MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
+                        HashMap::new(),
+                        "日時の解析に失敗しました: 絶対日時で指定してください",
+                    )
+                    .await;
                     interaction
                         .edit_response(
                             &ctx.http,
                             EditInteractionResponse::new()
-                                .content("日時の解析に失敗しました: 絶対日時で指定してください")
+                                .content(parse_failed_message)
                                 .components(vec![]),
                         )
                         .await?;
@@ -85,11 +115,21 @@ pub async fn handle_recruit_change_date_modal(
             },
             Err(e) => {
                 error!(error = %e, "日時の解析に失敗しました");
+                let mut params = HashMap::new();
+                params.insert("error_message".to_string(), e.to_string());
+                let parse_failed_message = get_message_or_fallback(
+                    data,
+                    guild_id,
+                    MessageTextId::RecruitmentCommandChangeModalParseFailed,
+                    params,
+                    &format!("日時の解析に失敗しました: {e}"),
+                )
+                .await;
                 interaction
                     .edit_response(
                         &ctx.http,
                         EditInteractionResponse::new()
-                            .content(format!("日時の解析に失敗しました: {e}"))
+                            .content(parse_failed_message)
                             .components(vec![]),
                     )
                     .await?;
