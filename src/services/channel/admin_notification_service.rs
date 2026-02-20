@@ -99,6 +99,7 @@ mod tests {
     #[derive(Clone)]
     struct MockGuildChannelRepo {
         channel: Option<guild_channels::Model>,
+        should_error: bool,
     }
 
     #[async_trait]
@@ -119,6 +120,11 @@ mod tests {
             _guild_id: i64,
             _channel_type: i32,
         ) -> crate::types::Result<Option<guild_channels::Model>> {
+            if self.should_error {
+                return Err(crate::types::AppError::Generic(
+                    "GuildChannelRepositoryの取得に失敗しました".to_string(),
+                ));
+            }
             Ok(self.channel.clone())
         }
 
@@ -187,6 +193,7 @@ mod tests {
                 GuildChannelType::AdminNotification.as_i32(),
                 channel_id,
             )),
+            should_error: false,
         };
 
         // Discordゲートウェイモック: send_messageが1回呼ばれることを期待
@@ -215,7 +222,10 @@ mod tests {
         };
 
         // モック設定: チャンネルなし
-        let repo = MockGuildChannelRepo { channel: None };
+        let repo = MockGuildChannelRepo {
+            channel: None,
+            should_error: false,
+        };
 
         // Discordゲートウェイモック: send_messageは呼ばれないことを期待
         let mut mock_gateway = MockDiscordGateway::new();
@@ -252,6 +262,7 @@ mod tests {
                 GuildChannelType::AdminNotification.as_i32(),
                 channel_id,
             )),
+            should_error: false,
         };
 
         // Discordゲートウェイモック: send_messageがエラーを返す
@@ -272,5 +283,33 @@ mod tests {
             .await;
 
         assert!(result.is_err(), "送信失敗時にOkが返った");
+    }
+
+    /// 1-4: 異常系 - Repository取得に失敗した場合、Errを返す
+    #[tokio::test]
+    async fn test_notify_admin_repository_error() {
+        let guild_id = 1004_i64;
+        let Some(txn) = create_test_txn().await else {
+            println!("test_notify_admin_repository_error: DB未設定のためスキップ");
+            return;
+        };
+
+        // モック設定: Repositoryがエラーを返す
+        let repo = MockGuildChannelRepo {
+            channel: None,
+            should_error: true,
+        };
+
+        // Repository失敗時はsend_messageが呼ばれないことを期待
+        let mut mock_gateway = MockDiscordGateway::new();
+        mock_gateway.expect_send_message().times(0);
+
+        let service = AdminNotificationService::new(Arc::new(mock_gateway), repo);
+
+        let result = service
+            .notify_admin(&txn, guild_id, MessageContent::text("エラーが発生しました"))
+            .await;
+
+        assert!(result.is_err(), "Repository失敗時にOkが返った");
     }
 }
