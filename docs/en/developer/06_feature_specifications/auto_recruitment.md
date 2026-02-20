@@ -147,8 +147,17 @@ Use the messages above to change your selections.
 
 - Add a new internal scheduler task type and run it periodically
 - Do not delete old date channels
-- Rename outdated date channels to newer dates
+- Reassign date channels to contiguous dates from today (`today + 0..n-1`)
+- Even after long downtime, repair channels into non-overlapping contiguous future dates
 - Reorder channels within the category (and update DB accordingly)
+
+### Startup date repair
+
+- On bot startup, scan all guilds that have auto-recruitment enabled and repair date channels.
+- If `channels.len() < days_range`, automatically create missing date channels (when permissions allow).
+- Do not delete excess channels even when the count exceeds `days_range`.
+- Reassign all date channels (including excess ones) to contiguous future dates.
+- If channel create/rename/reorder fails in part of a guild, keep bot startup running and record errors in logs.
 
 ## Behavior on registering quests/times
 

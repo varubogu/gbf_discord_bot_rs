@@ -21,6 +21,9 @@ pub struct CreateAutoRecruitmentParams {
 /// 自動募集設定リポジトリの抽象インターフェース
 #[async_trait]
 pub trait AutoRecruitmentRepository: Send + Sync {
+    /// 全ギルドの自動募集設定を取得
+    async fn find_all(&self, txn: &DatabaseTransaction) -> Result<Vec<auto_recruitments::Model>>;
+
     /// ギルドIDで自動募集設定を取得
     async fn find_by_guild_id(
         &self,

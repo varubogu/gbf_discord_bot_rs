@@ -39,13 +39,23 @@ src/di/repositories.rs
 
 1. Re-check task existence and `pending`
 2. Read all `auto_recruitment_channels`
-3. Process channels by date for each guild
-4. Update past-date channels to `current max date + 1 day`
+3. Sort channels by logical date for each guild
+4. Reassign unique contiguous dates `today + 0..n-1` to each channel
 5. After DB date updates, rename Discord channels to `M-D`
 6. Reorder channel positions
    (`matching=0` -> date channels `1..n` -> `quest=n+1`)
 7. Set current task to `succeeded`
 8. Create next task (00:00 JST next day)
+
+## Startup repair flow
+
+`SchedulerManager::start` runs `repair_on_startup` once during startup.
+
+1. Load all rows from `auto_recruitments`
+2. For each guild, if date channels are fewer than `days_range`, create missing channels
+3. Do not delete excess channels; reassign contiguous future dates across all existing channels
+4. Reorder category channel positions
+5. Log failures and continue bot startup
 
 ## Execution status and error control
 
@@ -59,6 +69,7 @@ src/di/repositories.rs
 - Date judgment is based on JST (`UTC + 9`).
 - Invalid dates (for example, 2/30) are skipped.
 - It includes comparison logic that handles year boundaries.
+- This reassignment avoids collapsing multiple channels into the same date after long downtime.
 
 ## Related tables
 

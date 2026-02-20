@@ -90,6 +90,16 @@ where
     pub async fn start(&mut self, db: Arc<DatabaseConnection>) -> Result<()> {
         info!("SchedulerManagerを起動します");
 
+        // 起動時に自動募集日時チャンネルを補正（失敗しても起動継続）
+        if let Err(e) =
+            Self::repair_auto_recruitment_channels_on_startup(&db, &self.gateway, &self.repos).await
+        {
+            error!(
+                error = %e,
+                "起動時の自動募集日時チャンネル補正に失敗しました。スケジューラー起動は継続します"
+            );
+        }
+
         // 10秒間隔でタスクをプリロードするジョブを作成
         let gateway = Arc::clone(&self.gateway);
         let recruitment_repo = Arc::clone(&self.recruitment_repo);
@@ -142,6 +152,47 @@ where
         })?;
         info!("SchedulerManagerを停止しました");
         Ok(())
+    }
+
+    /// 起動時の自動募集日時チャンネル補正を実行
+    async fn repair_auto_recruitment_channels_on_startup(
+        db: &Arc<DatabaseConnection>,
+        gateway: &Arc<G>,
+        repos: &Repositories,
+    ) -> Result<()> {
+        use crate::services::schedule::auto_recruitment_rotation_task_executor::AutoRecruitmentRotationTaskExecutor;
+
+        let txn = db.begin().await?;
+        let executor = AutoRecruitmentRotationTaskExecutor::new(
+            Arc::new(repos.scheduled_task),
+            Arc::new(repos.auto_recruitment_channel),
+            repos.auto_recruitment,
+        );
+
+        let result = executor.repair_on_startup(&txn, gateway.as_ref()).await;
+        match result {
+            Ok(stats) => {
+                txn.commit().await?;
+                info!(
+                    total_guilds = stats.total_guilds,
+                    repaired_guilds = stats.repaired_guilds,
+                    failed_guilds = stats.failed_guilds,
+                    created_channels = stats.created_channels,
+                    rotated_channels = stats.rotated_channels,
+                    "起動時の自動募集日時チャンネル補正が完了しました"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                if let Err(rollback_err) = txn.rollback().await {
+                    error!(
+                        error = %rollback_err,
+                        "起動時補正トランザクションのロールバックに失敗しました"
+                    );
+                }
+                Err(e)
+            }
+        }
     }
 
     /// タスクをプリロードして実行

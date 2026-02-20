@@ -15,6 +15,21 @@ pub struct SeaOrmAutoRecruitmentRepository;
 
 #[async_trait]
 impl AutoRecruitmentRepositoryTrait for SeaOrmAutoRecruitmentRepository {
+    async fn find_all(&self, txn: &DatabaseTransaction) -> Result<Vec<auto_recruitments::Model>> {
+        debug!("全ギルドの自動募集設定を取得します");
+
+        let result = auto_recruitments::Entity::find()
+            .all(txn)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "自動募集設定の全件取得に失敗しました");
+                e
+            })?;
+
+        debug!(count = result.len(), "自動募集設定を全件取得しました");
+        Ok(result)
+    }
+
     async fn find_by_guild_id(
         &self,
         txn: &DatabaseTransaction,
