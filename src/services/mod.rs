@@ -3,6 +3,7 @@ pub mod channel;
 pub mod datetime_parser;
 pub mod environment;
 pub mod guild_environment_service;
+pub mod locale_service;
 pub mod maintenance;
 pub mod message;
 pub mod number_normalizer;

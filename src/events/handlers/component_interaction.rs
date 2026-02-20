@@ -1,3 +1,4 @@
+use crate::events::helpers::resolve_guild_locale;
 use crate::facades::recruitment::button_handler;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
@@ -162,6 +163,11 @@ pub async fn on_component_interaction(
             .iter()
             .filter_map(|s| s.parse().ok())
             .collect();
+        let locale = resolve_guild_locale(
+            &data.app_state,
+            interaction.guild_id.map(|id| id.get() as i64),
+        )
+        .await;
 
         if element_ids.is_empty() {
             let message = data
@@ -172,7 +178,7 @@ pub async fn on_component_interaction(
                     MessageTextId::ErrorsInvalidInput.as_str(),
                     HashMap::new(),
                     interaction.guild_id.map(|id| id.get() as i64),
-                    None,
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| "❌ エラー: 属性を選択してください".to_string());
@@ -207,7 +213,7 @@ pub async fn on_component_interaction(
                         MessageTextId::ErrorsGuildOnly.as_str(),
                         HashMap::new(),
                         None,
-                        None,
+                        Some(&locale),
                     )
                     .await
                     .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());
@@ -280,6 +286,11 @@ pub async fn on_component_interaction(
         })?;
 
         info!(custom_id = %custom_id, "募集ボタンのクリックを検出");
+        let locale = resolve_guild_locale(
+            &data.app_state,
+            interaction.guild_id.map(|id| id.get() as i64),
+        )
+        .await;
 
         // interactionからドメイン型を抽出
         let guild_id = match interaction.guild_id {
@@ -294,7 +305,7 @@ pub async fn on_component_interaction(
                         MessageTextId::ErrorsGuildOnly.as_str(),
                         HashMap::new(),
                         None,
-                        None,
+                        Some(&locale),
                     )
                     .await
                     .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());

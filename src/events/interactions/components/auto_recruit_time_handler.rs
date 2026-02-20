@@ -2,6 +2,7 @@
 //!
 //! 日時チャンネルでの時間セレクトメニュー操作を処理する
 
+use crate::events::helpers::resolve_guild_locale;
 use crate::facades::auto_recruitment;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
@@ -19,6 +20,7 @@ async fn get_message_or_fallback(
     guild_id: u64,
     message_id: MessageTextId,
     params: HashMap<String, String>,
+    locale: &str,
     fallback_text: &str,
 ) -> String {
     data.app_state
@@ -28,7 +30,7 @@ async fn get_message_or_fallback(
             message_id.as_str(),
             params,
             Some(guild_id as i64),
-            None,
+            Some(locale),
         )
         .await
         .unwrap_or_else(|_| fallback_text.to_string())
@@ -59,6 +61,7 @@ pub async fn handle_time_selection_interaction(
 
     // DBからチャンネル情報を取得してmonth、dayを取得
     let app_state = &data.app_state;
+    let locale = resolve_guild_locale(app_state, Some(guild_id as i64)).await;
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
     set_current_guild_id(&txn, guild_id as i64).await?;
@@ -93,6 +96,7 @@ pub async fn handle_time_selection_interaction(
             guild_id,
             MessageTextId::AutoRecruitmentTimeSelectRequired,
             HashMap::new(),
+            &locale,
             "時間を選択してください。",
         )
         .await;
@@ -110,9 +114,6 @@ pub async fn handle_time_selection_interaction(
         hour_count = selected_hours.len(),
         "時間選択を処理します"
     );
-
-    // Facadeを呼び出し
-    let app_state = &data.app_state;
 
     match auto_recruitment::handle_time_selection(
         app_state,
@@ -139,6 +140,7 @@ pub async fn handle_time_selection_interaction(
                 guild_id,
                 MessageTextId::AutoRecruitmentTimeSelectRegistered,
                 params,
+                &locale,
                 &format!(
                     "✅ {month}月{day}日の参加可能時間を登録しました。\n登録した時間: {hours_str}"
                 ),
@@ -175,6 +177,7 @@ pub async fn handle_time_selection_interaction(
                 guild_id,
                 MessageTextId::CommonErrorPrefix,
                 params,
+                &locale,
                 &format!("エラー: {e}"),
             )
             .await;

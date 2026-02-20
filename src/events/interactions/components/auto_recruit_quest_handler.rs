@@ -2,6 +2,7 @@
 //!
 //! クエスト選択チャンネルでのセレクトメニュー操作を処理する
 
+use crate::events::helpers::resolve_guild_locale;
 use crate::facades::auto_recruitment;
 use crate::services::message::MessageTextId;
 use crate::types::{AppError, PoiseData, Result};
@@ -16,6 +17,7 @@ async fn get_message_or_fallback(
     guild_id: u64,
     message_id: MessageTextId,
     params: HashMap<String, String>,
+    locale: &str,
     fallback_text: &str,
 ) -> String {
     data.app_state
@@ -25,7 +27,7 @@ async fn get_message_or_fallback(
             message_id.as_str(),
             params,
             Some(guild_id as i64),
-            None,
+            Some(locale),
         )
         .await
         .unwrap_or_else(|_| fallback_text.to_string())
@@ -47,6 +49,7 @@ pub async fn handle_quest_selection_interaction(
 
     // Guild IDを抽出
     let guild_id = extract_guild_id(&interaction.data.custom_id)?;
+    let locale = resolve_guild_locale(&data.app_state, Some(guild_id as i64)).await;
     let user_id = interaction.user.id.get();
 
     // 選択された値を取得
@@ -68,6 +71,7 @@ pub async fn handle_quest_selection_interaction(
             guild_id,
             MessageTextId::AutoRecruitmentQuestSelectRequired,
             HashMap::new(),
+            &locale,
             "クエストを選択してください。",
         )
         .await;
@@ -104,6 +108,7 @@ pub async fn handle_quest_selection_interaction(
                 guild_id,
                 MessageTextId::AutoRecruitmentQuestSelectRegistered,
                 params,
+                &locale,
                 &format!("✅ {quest_count}個のクエストを登録しました。"),
             )
             .await;
@@ -136,6 +141,7 @@ pub async fn handle_quest_selection_interaction(
                 guild_id,
                 MessageTextId::CommonErrorPrefix,
                 params,
+                &locale,
                 &format!("エラー: {e}"),
             )
             .await;

@@ -1,3 +1,4 @@
+use crate::events::helpers::resolve_guild_locale;
 use crate::events::interactions::components::recruit_change_handler;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::services::message::MessageTextId;
@@ -18,6 +19,7 @@ async fn get_message_or_fallback(
     guild_id: u64,
     message_id: MessageTextId,
     params: HashMap<String, String>,
+    locale: &str,
     fallback_text: &str,
 ) -> String {
     data.app_state
@@ -27,7 +29,7 @@ async fn get_message_or_fallback(
             message_id.as_str(),
             params,
             Some(guild_id as i64),
-            None,
+            Some(locale),
         )
         .await
         .unwrap_or_else(|_| fallback_text.to_string())
@@ -76,6 +78,7 @@ pub async fn handle_recruit_change_date_modal(
         .guild_id
         .ok_or_else(|| AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?
         .get();
+    let locale = resolve_guild_locale(&data.app_state, Some(guild_id as i64)).await;
 
     // 既存メッセージを更新するため、Deferred Updateで応答する
     interaction
@@ -99,6 +102,7 @@ pub async fn handle_recruit_change_date_modal(
                         guild_id,
                         MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
                         HashMap::new(),
+                        &locale,
                         "日時の解析に失敗しました: 絶対日時で指定してください",
                     )
                     .await;
@@ -122,6 +126,7 @@ pub async fn handle_recruit_change_date_modal(
                     guild_id,
                     MessageTextId::RecruitmentCommandChangeModalParseFailed,
                     params,
+                    &locale,
                     &format!("日時の解析に失敗しました: {e}"),
                 )
                 .await;

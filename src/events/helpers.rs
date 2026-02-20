@@ -4,22 +4,52 @@
 //! poise依存をeventsレイヤーに閉じ込める。
 
 use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
+use crate::services::locale_service::{DEFAULT_LOCALE, LocaleService};
 use crate::services::message::{MessageService, MessageTextId};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
+use tracing::warn;
 
 /// PoiseContextから最適なロケールを取得
 ///
-/// 優先順位: ユーザーロケール → ギルドロケール → None（デフォルトはmessage_serviceで"en"にフォールバック）
-pub fn get_locale_from_context(ctx: &PoiseContext<'_>) -> Option<String> {
-    // Poiseのコンテキストからユーザーまたはギルドのロケールを取得
-    // Discord APIから返される locale() を使用
-    ctx.locale().map(|s| s.to_string())
+/// guild_settings.locale を参照し、未設定または取得失敗時は `ja` を返す。
+pub async fn get_locale_from_context(ctx: &PoiseContext<'_>) -> String {
+    let guild_id = get_guild_id_from_context(ctx);
+    resolve_guild_locale(&ctx.data().app_state, guild_id).await
 }
 
 /// PoiseContextからギルドIDを取得
 pub fn get_guild_id_from_context(ctx: &PoiseContext<'_>) -> Option<i64> {
     ctx.guild_id().map(|id| id.get() as i64)
+}
+
+/// guild_settings.locale を取得して返す
+///
+/// - guild_id がない場合: `ja`
+/// - DB取得に失敗した場合: warnを出して `ja`
+pub async fn resolve_guild_locale(
+    app_state: &crate::types::AppState,
+    guild_id: Option<i64>,
+) -> String {
+    let Some(guild_id) = guild_id else {
+        return DEFAULT_LOCALE.to_string();
+    };
+
+    let locale_service = LocaleService::new(app_state.repositories.guild_settings);
+    match locale_service
+        .get_guild_locale(app_state.guild_db(), guild_id)
+        .await
+    {
+        Ok(locale) => locale,
+        Err(e) => {
+            warn!(
+                error = %e,
+                guild_id = guild_id,
+                "ギルドロケールの取得に失敗したため、デフォルト（ja）を使用します"
+            );
+            DEFAULT_LOCALE.to_string()
+        }
+    }
 }
 
 /// PoiseContextを使用してメッセージを取得
@@ -40,7 +70,7 @@ where
     M: MessageTextRepository,
 {
     let guild_id = get_guild_id_from_context(ctx);
-    let locale = get_locale_from_context(ctx);
+    let locale = get_locale_from_context(ctx).await;
 
     message_service
         .get_message(
@@ -48,7 +78,7 @@ where
             message_id.as_str(),
             params,
             guild_id,
-            locale.as_deref(),
+            Some(&locale),
         )
         .await
 }

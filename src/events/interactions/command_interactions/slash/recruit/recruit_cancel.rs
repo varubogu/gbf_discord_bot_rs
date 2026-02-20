@@ -1,4 +1,4 @@
-use crate::events::helpers::get_message_from_context;
+use crate::events::helpers::{get_message_from_context, resolve_guild_locale};
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
@@ -238,11 +238,16 @@ async fn execute_cancel_with_confirmation(
                     let app_state = &ctx.data().app_state;
                     let gateway =
                         PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
-                    let locale = ctx.locale();
+                    let locale = resolve_guild_locale(app_state, Some(guild_id as i64)).await;
 
                     // キャンセル実行（facade層）
                     match CancelFacade::execute_cancel(
-                        app_state, &gateway, guild_id, channel_id, message_id, locale,
+                        app_state,
+                        &gateway,
+                        guild_id,
+                        channel_id,
+                        message_id,
+                        Some(locale.as_str()),
                     )
                     .await
                     {

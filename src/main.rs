@@ -1,6 +1,7 @@
 use gbf_discord_bot_rs::events::{
     command::{admin_commands, commands, global_commands},
     handler::event_handler,
+    helpers::resolve_guild_locale,
 };
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
 use gbf_discord_bot_rs::services::message::MessageTextId;
@@ -315,7 +316,7 @@ async fn resolve_user_error_message(
     app_error: &AppError,
 ) -> String {
     let guild_id = ctx.guild_id().map(|id| id.get() as i64);
-    let locale = ctx.locale().map(|s| s.to_string());
+    let locale = resolve_guild_locale(&ctx.data().app_state, guild_id).await;
     let message_service = ctx.data().app_state.message_service();
     let db = ctx.data().app_state.guild_db();
 
@@ -326,7 +327,7 @@ async fn resolve_user_error_message(
                 MessageTextId::AppErrorDatabase.as_str(),
                 HashMap::new(),
                 guild_id,
-                locale.as_deref(),
+                Some(&locale),
             )
             .await
             .unwrap_or_else(|_| app_error.user_message()),
@@ -336,7 +337,7 @@ async fn resolve_user_error_message(
                 MessageTextId::AppErrorDiscord.as_str(),
                 HashMap::new(),
                 guild_id,
-                locale.as_deref(),
+                Some(&locale),
             )
             .await
             .unwrap_or_else(|_| app_error.user_message()),
@@ -349,7 +350,7 @@ async fn resolve_user_error_message(
                     MessageTextId::AppErrorConfig.as_str(),
                     params,
                     guild_id,
-                    locale.as_deref(),
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| app_error.user_message())
@@ -363,7 +364,7 @@ async fn resolve_user_error_message(
                     MessageTextId::AppErrorValidation.as_str(),
                     params,
                     guild_id,
-                    locale.as_deref(),
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| app_error.user_message())
@@ -377,7 +378,7 @@ async fn resolve_user_error_message(
                     MessageTextId::AppErrorDiscordOperation.as_str(),
                     params,
                     guild_id,
-                    locale.as_deref(),
+                    Some(&locale),
                 )
                 .await
                 .unwrap_or_else(|_| app_error.user_message())
@@ -388,7 +389,7 @@ async fn resolve_user_error_message(
                 MessageTextId::AppErrorChannelCreationFailed.as_str(),
                 HashMap::new(),
                 guild_id,
-                locale.as_deref(),
+                Some(&locale),
             )
             .await
             .unwrap_or_else(|_| app_error.user_message()),
@@ -398,7 +399,7 @@ async fn resolve_user_error_message(
                 MessageTextId::AppErrorInCategoryChannel.as_str(),
                 HashMap::new(),
                 guild_id,
-                locale.as_deref(),
+                Some(&locale),
             )
             .await
             .unwrap_or_else(|_| app_error.user_message()),

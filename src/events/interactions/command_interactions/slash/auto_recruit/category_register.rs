@@ -1,5 +1,6 @@
 //! 自動募集カテゴリ登録コマンド
 
+use crate::events::helpers::resolve_guild_locale;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::auto_recruitment;
 use crate::gateway::PoiseDiscordGateway;
@@ -73,6 +74,7 @@ pub async fn auto_recruit_category_register(
     let days_range = days.unwrap_or(7);
 
     let app_state = &ctx.data().app_state;
+    let locale = resolve_guild_locale(app_state, Some(guild_id.get() as i64)).await;
     let gateway = PoiseDiscordGateway::new(std::sync::Arc::clone(&ctx.serenity_context().http));
 
     match auto_recruitment::register_category(
@@ -114,14 +116,11 @@ pub async fn auto_recruit_category_register(
 
             // エラーメッセージを多言語対応で取得
             let error_message = match &e {
-                AppError::ChannelCreationFailed => {
-                    let locale = ctx.locale().unwrap_or("ja");
-                    t!(
-                        MessageTextId::AutoRecruitmentChannelCreateFailed.as_str(),
-                        locale = locale
-                    )
-                    .to_string()
-                }
+                AppError::ChannelCreationFailed => t!(
+                    MessageTextId::AutoRecruitmentChannelCreateFailed.as_str(),
+                    locale = locale.as_str()
+                )
+                .to_string(),
                 _ => format!("エラー: {e}"),
             };
 

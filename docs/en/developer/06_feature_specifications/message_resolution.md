@@ -38,9 +38,18 @@ Language selection for message text is based on the locale provided by the calle
 - `ja` locale family: use Japanese text
 - Non-`ja` locales: prefer English text; if English is undefined, fall back to Japanese text
 
+### Locale in guild-scoped features
+
+For guild-scoped responses, locale is resolved from `guild_settings.locale`.
+If unset, `ja` is used.
+
+- `MessageService` keeps its internal fallback behavior (`locale=None` -> `en`).
+- Therefore, guild-scoped callers must not call `MessageService` with `locale=None`.
+- Callers must resolve `guild_settings.locale` first and pass it explicitly (fallback to `ja` when unset).
+
 ### Locale in schedule notifications
 
-For schedule notifications, locale is resolved from `guild_settings.locale`.
+Schedule notifications follow the same rule above and resolve locale from `guild_settings.locale`.
 If unset, `ja` is used.
 
 ## Parameter substitution
@@ -72,6 +81,7 @@ If unset, `ja` is used.
 - `src/infrastructure/database/repositories/master_data/message_text_repository.rs`
 - `src/di/message.rs`
 - `src/types/app_state.rs`
+- `src/services/locale_service.rs`
 - `src/events/helpers.rs`
 - `locales/messages.yml`
 

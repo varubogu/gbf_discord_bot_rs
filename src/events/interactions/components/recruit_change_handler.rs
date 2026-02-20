@@ -1,3 +1,4 @@
+use crate::events::helpers::resolve_guild_locale;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::gateway::PoiseDiscordGateway;
@@ -51,6 +52,7 @@ async fn get_message_or_fallback(
     guild_id: Option<u64>,
     message_id: MessageTextId,
     params: HashMap<String, String>,
+    locale: &str,
     fallback_text: &str,
 ) -> String {
     data.app_state
@@ -60,7 +62,7 @@ async fn get_message_or_fallback(
             message_id.as_str(),
             params,
             guild_id.map(|id| id as i64),
-            None,
+            Some(locale),
         )
         .await
         .unwrap_or_else(|_| fallback_text.to_string())
@@ -97,6 +99,7 @@ pub async fn build_panel_content_and_components(
     message_id: u64,
     guild_id: Option<u64>,
 ) -> Result<(String, Vec<CreateActionRow>)> {
+    let locale = resolve_guild_locale(&data.app_state, guild_id.map(|id| id as i64)).await;
     let key = DraftKey {
         user_id,
         channel_id,
@@ -113,6 +116,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangePanelUnchanged,
         HashMap::new(),
+        &locale,
         "変更しない",
     )
     .await;
@@ -121,6 +125,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangePanelUnchanged,
         HashMap::new(),
+        &locale,
         "変更しない",
     )
     .await;
@@ -129,6 +134,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangeButtonApply,
         HashMap::new(),
+        &locale,
         "適用",
     )
     .await;
@@ -141,7 +147,7 @@ pub async fn build_panel_content_and_components(
         .battle_style_name
         .clone()
         .unwrap_or_else(|| unchanged_style.clone());
-    let date_label = format_event_date_label(data, guild_id, draft.event_date).await;
+    let date_label = format_event_date_label(data, guild_id, draft.event_date, &locale).await;
 
     let mut content_params = HashMap::new();
     content_params.insert("quest_label".to_string(), quest_label.clone());
@@ -153,6 +159,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangePanelContent,
         content_params,
+        &locale,
         &format!(
             "変更内容を選択・入力してください。\n\n\
              現在の入力値\n\
@@ -175,6 +182,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangeOptionQuestUnchanged,
         HashMap::new(),
+        &locale,
         "クエスト：変更しない",
     )
     .await;
@@ -197,6 +205,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangeOptionStyleUnchanged,
         HashMap::new(),
+        &locale,
         "攻略方法：変更しない",
     )
     .await;
@@ -214,6 +223,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangePlaceholderQuest,
         HashMap::new(),
+        &locale,
         "クエストを選択",
     )
     .await;
@@ -230,6 +240,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangePlaceholderStyle,
         HashMap::new(),
+        &locale,
         "攻略方法を選択",
     )
     .await;
@@ -246,6 +257,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangeButtonOpenDate,
         HashMap::new(),
+        &locale,
         "出発日時を入力",
     )
     .await;
@@ -254,6 +266,7 @@ pub async fn build_panel_content_and_components(
         guild_id,
         MessageTextId::RecruitmentCommandChangeButtonClearDate,
         HashMap::new(),
+        &locale,
         "日時をクリア",
     )
     .await;
@@ -287,6 +300,7 @@ async fn format_event_date_label(
     data: &PoiseData,
     guild_id: Option<u64>,
     event_date: Option<DateTime<Utc>>,
+    locale: &str,
 ) -> String {
     let Some(event_date) = event_date else {
         return get_message_or_fallback(
@@ -294,6 +308,7 @@ async fn format_event_date_label(
             guild_id,
             MessageTextId::RecruitmentCommandChangePanelUnchanged,
             HashMap::new(),
+            locale,
             "変更しない",
         )
         .await;
@@ -503,11 +518,13 @@ async fn handle_open_date_modal(
     let custom_id = format!("recruit_change_date_modal:{target_channel_id}:{target_message_id}");
 
     let guild_id = interaction.guild_id.map(|id| id.get());
+    let locale = resolve_guild_locale(&data.app_state, guild_id.map(|id| id as i64)).await;
     let modal_title = get_message_or_fallback(
         data,
         guild_id,
         MessageTextId::RecruitmentCommandChangeModalTitle,
         HashMap::new(),
+        &locale,
         "出発日時変更",
     )
     .await;
@@ -516,6 +533,7 @@ async fn handle_open_date_modal(
         guild_id,
         MessageTextId::RecruitmentCommandChangeModalEventDateLabel,
         HashMap::new(),
+        &locale,
         "出発日時",
     )
     .await;
@@ -524,6 +542,7 @@ async fn handle_open_date_modal(
         guild_id,
         MessageTextId::RecruitmentCommandChangeModalEventDatePlaceholder,
         HashMap::new(),
+        &locale,
         "例: 12/25 22:30",
     )
     .await;
@@ -589,6 +608,7 @@ async fn handle_apply_changes(
         .guild_id
         .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
         .get();
+    let locale = resolve_guild_locale(&data.app_state, Some(interaction_guild_id as i64)).await;
 
     let key = DraftKey {
         user_id,
@@ -615,6 +635,7 @@ async fn handle_apply_changes(
             Some(interaction_guild_id),
             MessageTextId::RecruitmentCommandChangeNoChanges,
             HashMap::new(),
+            &locale,
             "変更項目を少なくとも1つ指定してください。",
         )
         .await;
@@ -681,6 +702,7 @@ async fn handle_apply_changes(
                 Some(interaction_guild_id),
                 MessageTextId::RecruitmentCommandChangeSuccess,
                 HashMap::new(),
+                &locale,
                 "募集内容を更新しました。",
             )
             .await;
@@ -720,6 +742,7 @@ async fn handle_apply_changes(
                 Some(interaction_guild_id),
                 MessageTextId::CommonErrorPrefix,
                 error_params,
+                &locale,
                 &format!("エラー: {}", e.user_message()),
             )
             .await;

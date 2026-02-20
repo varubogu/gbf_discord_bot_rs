@@ -1,5 +1,6 @@
 //! 自動募集カテゴリ解除コマンド
 
+use crate::events::helpers::resolve_guild_locale;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::auto_recruitment;
 use crate::gateway::PoiseDiscordGateway;
@@ -33,7 +34,7 @@ pub async fn auto_recruit_category_unregister(ctx: PoiseContext<'_>) -> Result<(
     let channel_id = ctx.channel_id();
     let app_state = &ctx.data().app_state;
     let gateway = PoiseDiscordGateway::new(std::sync::Arc::clone(&ctx.serenity_context().http));
-    let locale = ctx.locale().unwrap_or("ja");
+    let locale = resolve_guild_locale(app_state, Some(guild_id.get() as i64)).await;
 
     match auto_recruitment::unregister_category(
         &gateway,
@@ -57,7 +58,7 @@ pub async fn auto_recruit_category_unregister(ctx: PoiseContext<'_>) -> Result<(
             // カテゴリ内チャンネルで実行された場合は多言語メッセージを表示
             let message = t!(
                 MessageTextId::AutoRecruitmentUnregisterInCategoryError.as_str(),
-                locale = locale
+                locale = locale.as_str()
             )
             .to_string();
             ctx.send(
