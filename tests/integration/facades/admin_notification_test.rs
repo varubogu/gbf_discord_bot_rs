@@ -4,8 +4,8 @@
 
 use gbf_discord_bot_rs::facades::channel::channel_management_facade::ChannelManagementFacade;
 use gbf_discord_bot_rs::facades::guild::guild_management_facade::GuildManagementFacade;
+use gbf_discord_bot_rs::infrastructure::database::repositories::SeaOrmGuildChannelRepository;
 use gbf_discord_bot_rs::models::entities::master::channel_types::GuildChannelType;
-use gbf_discord_bot_rs::repository::database::SeaOrmGuildChannelRepository;
 use gbf_discord_bot_rs::services::channel::AdminNotificationService;
 use gbf_discord_bot_rs::types::discord::{DiscordMessageId, MessageContent};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait};

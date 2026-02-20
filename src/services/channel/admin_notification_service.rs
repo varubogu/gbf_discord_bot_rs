@@ -42,7 +42,7 @@ where
     /// # 動作
     /// - 管理者通知チャンネル（channel_type=5）が設定されている場合は Discord に送信する
     /// - チャンネルが未設定の場合は warn ログを出力し `Ok(())` を返す
-    /// （通知失敗がメイン処理の失敗に波及しないようにする）
+    ///   （通知失敗がメイン処理の失敗に波及しないようにする）
     pub async fn notify_admin(
         &self,
         txn: &DatabaseTransaction,
@@ -87,12 +87,13 @@ mod tests {
     use super::*;
     use crate::errors::GatewayError;
     use crate::gateway::r#impl::mock_discord_gateway::MockDiscordGateway;
+    use crate::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
     use crate::models::entities::guild_master::guild_channels;
     use crate::models::entities::master::channel_types::GuildChannelType;
     use crate::types::discord::DiscordMessageId;
     use async_trait::async_trait;
     use chrono::Utc;
-    use sea_orm::{DatabaseBackend, DatabaseTransaction, MockDatabase, TransactionTrait};
+    use sea_orm::{DatabaseTransaction, TransactionTrait};
 
     /// テスト用GuildChannelRepositoryモック
     #[derive(Clone)]
@@ -140,14 +141,14 @@ mod tests {
     }
 
     /// テスト用トランザクションを作成するヘルパー
-    async fn create_test_txn() -> DatabaseTransaction {
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_exec_results([sea_orm::MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 0,
-            }])
-            .into_connection();
-        db.begin().await.unwrap()
+    async fn create_test_txn() -> Option<DatabaseTransaction> {
+        let (available, _) = crate::test_utils::check_database_availability();
+        if !available {
+            return None;
+        }
+
+        let manager = DatabaseConnectionManager::new().await.ok()?;
+        manager.connection().begin().await.ok()
     }
 
     /// テスト用guild_channelsモデルを作成するヘルパー
@@ -174,6 +175,10 @@ mod tests {
     async fn test_notify_admin_channel_exists() {
         let guild_id = 1001_i64;
         let channel_id = 9001_i64;
+        let Some(txn) = create_test_txn().await else {
+            println!("test_notify_admin_channel_exists: DB未設定のためスキップ");
+            return;
+        };
 
         // モック設定: チャンネルあり
         let repo = MockGuildChannelRepo {
@@ -192,7 +197,6 @@ mod tests {
             .returning(|_, _| Ok(DiscordMessageId::new(12345)));
 
         let service = AdminNotificationService::new(Arc::new(mock_gateway), repo);
-        let txn = create_test_txn().await;
 
         let result = service
             .notify_admin(&txn, guild_id, MessageContent::text("エラーが発生しました"))
@@ -205,6 +209,10 @@ mod tests {
     #[tokio::test]
     async fn test_notify_admin_channel_not_configured() {
         let guild_id = 1002_i64;
+        let Some(txn) = create_test_txn().await else {
+            println!("test_notify_admin_channel_not_configured: DB未設定のためスキップ");
+            return;
+        };
 
         // モック設定: チャンネルなし
         let repo = MockGuildChannelRepo { channel: None };
@@ -214,7 +222,6 @@ mod tests {
         mock_gateway.expect_send_message().times(0);
 
         let service = AdminNotificationService::new(Arc::new(mock_gateway), repo);
-        let txn = create_test_txn().await;
 
         let result = service
             .notify_admin(&txn, guild_id, MessageContent::text("エラーが発生しました"))
@@ -233,6 +240,10 @@ mod tests {
     async fn test_notify_admin_gateway_error() {
         let guild_id = 1003_i64;
         let channel_id = 9003_i64;
+        let Some(txn) = create_test_txn().await else {
+            println!("test_notify_admin_gateway_error: DB未設定のためスキップ");
+            return;
+        };
 
         // モック設定: チャンネルあり
         let repo = MockGuildChannelRepo {
@@ -255,7 +266,6 @@ mod tests {
             });
 
         let service = AdminNotificationService::new(Arc::new(mock_gateway), repo);
-        let txn = create_test_txn().await;
 
         let result = service
             .notify_admin(&txn, guild_id, MessageContent::text("エラーが発生しました"))

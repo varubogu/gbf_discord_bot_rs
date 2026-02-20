@@ -609,7 +609,7 @@ fn resolve_channel_logical_date(
     channel: &auto_recruitment_channels::Model,
 ) -> Option<NaiveDate> {
     let base = NaiveDate::from_ymd_opt(today.year(), channel.month as u32, channel.day as u32)?;
-    if base < today && channel.month as u32 > today.month() {
+    if base < today && (channel.month as u32) < today.month() {
         NaiveDate::from_ymd_opt(today.year() + 1, channel.month as u32, channel.day as u32)
             .or(Some(base))
     } else {
