@@ -13,6 +13,10 @@ use crate::types::discord::{DiscordChannelId, DiscordMessageId, DiscordUserId, R
 pub trait DiscordReactionGateway: Send + Sync {
     /// リアクションしたユーザー一覧を取得する
     ///
+    /// ボットユーザーは結果から除外される。
+    /// これはbot自身が募集メッセージにリアクションを追加するため、
+    /// 参加者一覧に含まれないようにするためである。
+    ///
     /// # Arguments
     ///
     /// * `channel_id` - チャンネルID
@@ -22,7 +26,7 @@ pub trait DiscordReactionGateway: Send + Sync {
     ///
     /// # Returns
     ///
-    /// リアクションしたユーザーID一覧
+    /// リアクションしたユーザーID一覧（ボットユーザーを除く）
     async fn get_reaction_users(
         &self,
         channel_id: DiscordChannelId,

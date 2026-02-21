@@ -235,7 +235,7 @@ where
             .await
         {
             Ok(user_ids) => {
-                // Gateway経由ではボット判定ができないため、取得したユーザーをそのまま使用
+                // Gatewayがボットユーザーを除外済みのため、そのままメンションに変換する
                 let user_mentions: Vec<String> = user_ids
                     .iter()
                     .map(|user_id| format!("<@{}>", user_id.get()))

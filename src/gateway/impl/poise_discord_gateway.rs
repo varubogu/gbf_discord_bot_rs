@@ -778,8 +778,10 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
             .await
             .map_err(GatewayError::get_reactions_failed)?;
 
+        // ボットユーザーを除外する（bot自身がリアクションを追加するため参加者に含まれてしまう）
         Ok(users
             .into_iter()
+            .filter(|u| !u.bot)
             .map(|u| DiscordUserId::new(u.id.get()))
             .collect())
     }

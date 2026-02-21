@@ -6,7 +6,9 @@ use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::errors::GatewayError;
 use gbf_discord_bot_rs::facades::recruitment::cancel;
 use gbf_discord_bot_rs::models::entities::worker::battle_recruitments;
-use gbf_discord_bot_rs::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId};
+use gbf_discord_bot_rs::types::discord::{
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, ReactionData, ReactionEmoji,
+};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use std::sync::Arc;
 
@@ -729,4 +731,99 @@ async fn test_can_cancel_not_found() {
         }
         other => panic!("NotFoundが期待されましたが {:?} が返りました", other),
     }
+}
+
+// =================================================
+// bot除外（リアクション参加者通知）
+// =================================================
+
+/// 4-5: 正常系 - リアクションした参加者がキャンセル通知に含まれる（botは除外済み）
+///
+/// Gatewayの `get_reaction_users` はbotユーザーを除外して返す。
+/// このテストではbotを除外した後の参加者IDのみをモックが返すことで、
+/// キャンセル通知に人間の参加者メンションが正しく含まれることを検証する。
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_execute_cancel_participants_notified_bot_excluded() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 40;
+    let channel_id = CANCEL_CHANNEL_ID + 40;
+    let message_id = CANCEL_MESSAGE_ID + 40;
+
+    // 人間の参加者ユーザーID（botは含まない）
+    let human_user_id: u64 = 111111111;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false,
+        24,
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+
+    // リアクション付きメッセージを返す
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        let mut msg =
+            create_test_message_data(message_id as u64, channel_id as u64, 123456, "募集本文");
+        msg.reactions = vec![ReactionData {
+            emoji: ReactionEmoji::unicode("⚔"),
+            count: 1,
+        }];
+        Ok(msg)
+    });
+
+    // Gatewayはbotを除外した後の参加者IDのみ返す（bot除外はGateway実装で行われる）
+    mock_gateway
+        .expect_get_reaction_users()
+        .returning(move |_, _, _, _| Ok(vec![DiscordUserId::new(human_user_id)]));
+
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+
+    // キャンセル通知に人間ユーザーのメンションが含まれることを検証
+    let expected_mention = format!("<@{human_user_id}>");
+    mock_gateway
+        .expect_send_reply()
+        .withf(move |_, _, content, _| {
+            content
+                .text
+                .as_ref()
+                .map(|t| t.contains(&format!("<@{human_user_id}>")))
+                .unwrap_or(false)
+        })
+        .returning(move |_, _, _, _| Ok(DiscordMessageId::new(123450)));
+
+    let result = cancel::execute_cancel(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        channel_id as u64,
+        message_id as u64,
+        Some("ja"),
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "参加者ありのキャンセルに失敗: {:?}",
+        result.err()
+    );
+
+    // DBでキャンセル済みになっていることを確認
+    let updated = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(updated.is_canceled, "DBでis_canceledがtrueになっていません");
+
+    // expected_mentionが参照されていることを明示（コンパイラの未使用警告を抑制）
+    let _ = expected_mention;
+
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
 }
