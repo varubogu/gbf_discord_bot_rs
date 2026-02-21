@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
     environment:
       RUST_LOG: debug
-
+      DB_HOST: db
 #    volumes:
 #      - ../..:/workspaces:cached
 
