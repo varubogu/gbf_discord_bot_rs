@@ -1,653 +1,622 @@
 _version: 2
-
-bot.mention:
-  ja: "{{user_mention}} 基本的にスラッシュコマンド（ / ) でお願いします。"
-  en: "{{user_mention}} Please use slash commands ( / )."
-bot.mention_calling:
-  ja: "ワン！"
-  en: "Woof!"
-bot.mention_six:
-  ja: "キエエエェェェェーーーッ！！"
-  en: "KIEEEEEEEEE!!"
-
-common.cancel:
-  ja: "キャンセル"
-  en: "Cancel"
-common.confirm:
-  ja: "確認"
-  en: "Confirm"
-common.error:
-  ja: "エラー"
-  en: "Error"
-common.error_prefix:
-  ja: "エラー: {{error_message}}"
-  en: "Error: {{error_message}}"
-common.info:
-  ja: "情報"
-  en: "Information"
-common.loading:
-  ja: "読み込み中..."
-  en: "Loading..."
-common.no:
-  ja: "いいえ"
-  en: "No"
-common.success:
-  ja: "成功"
-  en: "Success"
-common.unknown:
-  ja: "不明"
-  en: "Unknown"
-common.warning:
-  ja: "警告"
-  en: "Warning"
-common.yes:
-  ja: "はい"
-  en: "Yes"
-
-dorebara.end:
-  ja: "ドレバラお疲れ様でした。"
-  en: "Good work on Dread Barrage."
-dorebara.last_day:
-  ja: "ドレバラ最終日です。\n報酬取り逃しが無いようにしましょう。"
-  en: "This is the last day of Dread Barrage.\nMake sure not to miss any rewards."
-dorebara.reset:
-  ja: "ドレバラの強敵がリセットされました。"
-  en: "Dread Barrage bosses have been reset."
-dorebara.start:
-  ja: "ドレバラ開始しました。報酬全部取れるまで走りましょう。"
-  en: "Dread Barrage has started. Let's aim to get all the rewards."
-dorebara.variant:
-  ja: "バリアントバトルが追加されました。"
-  en: "Variant Battle has been added."
-
-errors.command_failed:
-  ja: "コマンドの実行に失敗しました"
-  en: "Command execution failed"
-errors.env_var_not_set:
-  ja: "❌ エラー: 環境変数 {{var_name}} が設定されていません"
-  en: "❌ Error: Environment variable {{var_name}} is not set"
-errors.guild_only:
-  ja: "❌ このコマンドはギルド内でのみ実行可能です"
-  en: "❌ This command can only be executed within a guild"
-errors.internal_error:
-  ja: "内部エラーが発生しました"
-  en: "An internal error occurred"
-errors.invalid_input:
-  ja: "無効な入力です"
-  en: "Invalid input provided"
-errors.permission_denied:
-  ja: "権限がありません"
-  en: "Permission denied"
-errors.spreadsheet_config_fetch_failed:
-  ja: "❌ エラー: スプレッドシート設定の取得に失敗しました\n{{error_msg}}"
-  en: "❌ Error: Failed to fetch spreadsheet configuration\n{{error_msg}}"
-errors.spreadsheet_not_registered:
-  ja: "❌ エラー: このギルドにスプレッドシートが登録されていません\n`/gspread_regist` コマンドでスプレッドシートを登録してください"
-  en: "❌ Error: No spreadsheet registered for this guild\nPlease register a spreadsheet using the `/gspread_regist` command"
-errors.user_not_found:
-  ja: "ユーザーが見つかりません"
-  en: "User not found"
-
-guild_settings.not_set:
-  ja: "値が設定されていません"
-  en: "Not configured"
-guild_settings.set_success:
-  ja: "設定を更新しました"
-  en: "Settings updated successfully"
-guild_settings.show_success:
-  ja: "現在の設定"
-  en: "Current settings"
-
-kosenjo.before_1_day:
-  ja: "明日、古戦場が始まります。\n各自個人のアサルトタイムを見直しましょう。"
-  en: "The Guild War will begin tomorrow.\nPlease review your Assault Time settings."
-kosenjo.before_3_days:
-  ja: "3日後に古戦場が始まります。"
-  en: "The Guild War will begin in 3 days."
-kosenjo.main_tournament_before_1_day:
-  ja: "7:00から本戦が始まります。明日に備えて寝ましょう"
-  en: "The finals will begin at 7:00. Get some rest for tomorrow."
-kosenjo.main_tournament_day_end:
-  ja: "古戦場本戦終了時間です。明日に備えて寝ましょう。"
-  en: "The Guild War finals day has ended. Get some rest for tomorrow."
-kosenjo.main_tournament_day_start:
-  ja: "古戦場本戦が始まりました。"
-  en: "The Guild War finals have started."
-kosenjo.main_tournament_end:
-  ja: "本戦お疲れ様でした。明日はスペシャルバトルです。"
-  en: "Good work on the finals. Tomorrow is the Special Battle."
-kosenjo.main_tournament_half_day:
-  ja: "古戦場本戦の半日が経過しました。"
-  en: "Half a day has passed in the Guild War finals."
-kosenjo.qualifying_end:
-  ja: "予選お疲れ様でした。明日はインターバルです。"
-  en: "Good work on the preliminaries. Tomorrow is the interval day."
-kosenjo.qualifying_end_no_interval:
-  ja: "予選お疲れ様でした。明日はインターバルではなく7:00から本戦です。明日に備えて寝ましょう。"
-  en: "Good work on the preliminaries. Tomorrow is not an interval - the finals start at 7:00. Get some rest for tomorrow."
-kosenjo.qualifying_start:
-  ja: "古戦場予選が始まりました。"
-  en: "The Guild War preliminaries have started."
-kosenjo.sp_battle_end:
-  ja: "スペシャルバトルお疲れ様でした。次回古戦場予定を確認しましょう。"
-  en: "Good work on the Special Battle. Please check the schedule for the next Guild War."
-kosenjo.team_ability_1:
-  ja: "@here 団アビ1回目の発動時間です。"
-  en: "@here It's time to activate the 1st crew buff."
-kosenjo.team_ability_2:
-  ja: "2回目の団アビが発動し忘れてないか確認しましょう"
-  en: "Let's check if we forgot to activate the 2nd crew buff."
-
-messages.help:
-  ja: "`/help`を使用して利用可能なコマンドを確認してください"
-  en: "Use `/help` to see available commands"
-messages.welcome:
-  ja: "GBF Discord Botへようこそ！"
-  en: "Welcome to the GBF Discord Bot!"
-
-omikuji.hakyoku:
-  ja: "破局を受けたポメ！"
-  en: "Got hit by Paradise Lost!"
-omikuji.hihi:
-  ja: "ヒヒイロカネが落ちたポメ！"
-  en: "A Gold Brick dropped!"
-omikuji.omega_unit:
-  ja: "オメガユニットしか落ちなかったポメ"
-  en: "Only Omega Unit dropped."
-
-recruitment.command.cancel_already_cancelled:
-  ja: "募集は既にキャンセルされています。"
-  en: "The recruitment has already been cancelled."
-recruitment.command.cancel_error:
-  ja: "エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。"
-  en: "An error occurred. Please try the command again. If the issue persists, please contact the developer."
-recruitment.command.cancel_invalid_message:
-  ja: "指定されたメッセージは募集メッセージではありません。"
-  en: "The specified message is not a recruitment message."
-recruitment.command.cancel_message_deleted:
-  ja: "募集メッセージが削除されています。"
-  en: "The recruitment message has been deleted."
-recruitment.command.cancel_not_found:
-  ja: "指定された募集が見つかりません。"
-  en: "The specified recruitment was not found."
-recruitment.command.cancel_event_date_passed:
-  ja: "開催日時を過ぎているためキャンセルできません。"
-  en: "Cannot cancel because the event date has passed."
-recruitment.command.cancel_notification_no_participants:
-  ja: "募集がキャンセルされました。"
-  en: "The recruitment has been cancelled."
-recruitment.command.cancel_notification_with_participants:
-  ja: "募集がキャンセルされました。\n参加予定だった皆さん"
-  en: "The recruitment has been cancelled.\nFor those who were planning to participate"
-recruitment.command.cancelled_message_suffix:
-  ja: "この募集はキャンセルされました"
-  en: "This recruitment has been cancelled"
-recruitment.command.cancelling_progress:
-  ja: "キャンセル中..."
-  en: "Cancelling..."
-recruitment.command.change_no_changes:
-  ja: "変更する項目を少なくとも1つ指定してください。"
-  en: "Please specify at least one item to change."
-recruitment.command.change_success:
-  ja: "募集内容を更新しました。"
-  en: "Recruitment details have been updated."
-recruitment.command.cancel_confirm_prompt:
-  ja: "この募集をキャンセルしますか？"
-  en: "Do you want to cancel this recruitment?"
-recruitment.command.cancel_aborted:
-  ja: "キャンセルを取りやめました。"
-  en: "Cancellation has been aborted."
-recruitment.command.cancel_unknown_selection:
-  ja: "不明な選択です。"
-  en: "Unknown selection."
-recruitment.command.cancel_timeout:
-  ja: "操作がタイムアウトしました。"
-  en: "The operation timed out."
-
-recruitment.display.all_elements:
-  ja: "全属性可能"
-  en: "All Elements"
-recruitment.display.date_format:
-  ja: "%m/%d %H:%M %Z"
-  en: "%m/%d %I:%M %p %Z"
-recruitment.display.dismissal_times_label:
-  ja: "解散時刻："
-  en: "Dismissal Times: "
-recruitment.display.element_dark:
-  ja: "闇"
-  en: "Dark"
-recruitment.display.element_earth:
-  ja: "土"
-  en: "Earth"
-recruitment.display.element_fire:
-  ja: "火"
-  en: "Fire"
-recruitment.display.element_light:
-  ja: "光"
-  en: "Light"
-recruitment.display.element_water:
-  ja: "水"
-  en: "Water"
-recruitment.display.element_wind:
-  ja: "風"
-  en: "Wind"
-recruitment.display.event_date_label:
-  ja: "開催日時："
-  en: "Event Date: "
-recruitment.display.leave_all_button:
-  ja: "❌ 全て取り消し"
-  en: "❌ Cancel All"
-recruitment.display.no_participants:
-  ja: "なし"
-  en: "None"
-recruitment.display.normal:
-  ja: "{{quest_name}}の参加者を募集します。"
-  en: "Recruiting participants for {{quest_name}}."
-recruitment.display.six_elements:
-  ja: "{{quest_name}}の参加者を募集します。\n参加属性を選んでください"
-  en: "Recruiting participants for {{quest_name}}.\nPlease select your element."
-
-recruitment.notification.before_5_minutes:
-  ja: "クエスト出発5分前です。"
-  en: "5 minutes until quest departure."
-recruitment.notification.dismissal:
-  ja: "人数が集まらなかったため、この募集は解散しました。"
-  en: "This recruitment has been dismissed due to insufficient participants."
-recruitment.notification.dismissal_with_participants:
-  ja: "人数が集まらなかったため、この募集は解散しました。\n参加予定だった皆さん"
-  en: "This recruitment has been dismissed due to insufficient participants.\nFor those who were planning to participate"
-recruitment.notification.member_full:
-  ja: "メンバーが揃いました。"
-  en: "The party is full."
-recruitment.notification.start:
-  ja: "クエスト出発時刻です。"
-  en: "It's quest departure time."
-
-recruitment.role.add_success:
-  ja: "{{count}}個のロールを募集通知ロールとして登録しました。"
-  en: "{{count}} role(s) registered as recruitment notification roles."
-recruitment.role.remove_success:
-  ja: "{{count}}個のロールを募集通知ロールから削除しました。"
-  en: "{{count}} role(s) removed from recruitment notification roles."
-
-recruitment.ui.already_joined:
-  ja: "既にこのバトルに参加しています"
-  en: "You have already joined this battle"
-recruitment.ui.join_success:
-  ja: "バトルに参加しました"
-  en: "Successfully joined the battle"
-recruitment.ui.leave_success:
-  ja: "バトルから離脱しました"
-  en: "Successfully left the battle"
-recruitment.ui.new_recruitment:
-  ja: "新しいバトル募集が作成されました"
-  en: "New battle recruitment created"
-recruitment.ui.not_found:
-  ja: "バトル募集が見つかりません"
-  en: "Battle recruitment not found"
-recruitment.ui.not_joined:
-  ja: "このバトルに参加していません"
-  en: "You are not part of this battle"
-recruitment.ui.recruitment_cancelled:
-  ja: "バトル募集がキャンセルされました"
-  en: "Battle recruitment cancelled"
-recruitment.ui.recruitment_closed:
-  ja: "バトル募集が締切りました"
-  en: "Battle recruitment closed"
-recruitment.ui.recruitment_full:
-  ja: "バトル募集は満員です"
-  en: "Battle recruitment is full"
-recruitment.ui.title:
-  ja: "バトル募集"
-  en: "Battle Recruitment"
-
-spreadsheet.global_push_failed:
-  ja: "❌ グローバルデータ書き込み失敗\n\n{{error_msg}}"
-  en: "❌ Global data write failed\n\n{{error_msg}}"
-spreadsheet.global_push_partial_success:
-  ja: "⚠️ グローバルデータ書き込み完了（一部エラー）\n\n📊 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
-  en: "⚠️ Global data write completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
-spreadsheet.global_push_success:
-  ja: "✅ グローバルデータ書き込み完了\n\n📊 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
-  en: "✅ Global data write completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
-spreadsheet.global_pushing:
-  ja: "🔄 グローバルデータをスプレッドシートに書き込んでいます..."
-  en: "🔄 Writing global data to spreadsheet..."
-spreadsheet.global_loading:
-  ja: "🔄 グローバルスプレッドシートからデータを読み込んでいます..."
-  en: "🔄 Loading data from global spreadsheet..."
-spreadsheet.global_load_success:
-  ja: "✅ グローバルスプレッドシート読み込み完了\n\n{{result_text}}"
-  en: "✅ Global spreadsheet load completed\n\n{{result_text}}"
-spreadsheet.global_load_failed:
-  ja: "❌ グローバルスプレッドシート読み込み失敗\n\n{{error_msg}}"
-  en: "❌ Global spreadsheet load failed\n\n{{error_msg}}"
-spreadsheet.load_failed:
-  ja: "❌ ギルドスプレッドシート読み込み失敗\n\n{{error_msg}}"
-  en: "❌ Guild spreadsheet load failed\n\n{{error_msg}}"
-spreadsheet.load_partial_success:
-  ja: "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n📊 読み込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
-  en: "⚠️ Guild spreadsheet load completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
-spreadsheet.load_success:
-  ja: "✅ ギルドスプレッドシート読み込み完了\n\n📊 読み込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
-  en: "✅ Guild spreadsheet load completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
-spreadsheet.loading:
-  ja: "🔄 ギルドスプレッドシートからデータを読み込んでいます..."
-  en: "🔄 Loading data from guild spreadsheet..."
-spreadsheet.push_failed:
-  ja: "❌ ギルドデータ書き込み失敗\n\n{{error_msg}}"
-  en: "❌ Guild data write failed\n\n{{error_msg}}"
-spreadsheet.push_partial_success:
-  ja: "⚠️ ギルドデータ書き込み完了（一部エラー）\n\n📊 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
-  en: "⚠️ Guild data write completed (with errors)\n\n📊 Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
-spreadsheet.push_success:
-  ja: "✅ ギルドデータ書き込み完了\n\n📊 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
-  en: "✅ Guild data write completed\n\n📊 Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
-spreadsheet.pushing:
-  ja: "🔄 ギルドデータをスプレッドシートに書き込んでいます..."
-  en: "🔄 Writing guild data to spreadsheet..."
-spreadsheet.register_failed:
-  ja: "❌ ギルドスプレッドシート登録失敗\n\n{{error_msg}}"
-  en: "❌ Guild spreadsheet registration failed\n\n{{error_msg}}"
-spreadsheet.register_success:
-  ja: "✅ ギルドスプレッドシートを登録しました\n\n📊 登録内容:\n- 読み込み用: <{{load_url}}>\n- 書き込み用: <{{push_url}}>\n\nこれで `/gspread_load` と `/gspread_push` コマンドが使用可能になりました。"
-  en: "✅ Guild spreadsheet registered successfully\n\n📊 Registration details:\n- Load spreadsheet: <{{load_url}}>\n- Push spreadsheet: <{{push_url}}>\n\nYou can now use the `/gspread_load` and `/gspread_push` commands."
-spreadsheet.registering:
-  ja: "🔄 ギルドスプレッドシートを登録しています..."
-  en: "🔄 Registering guild spreadsheet..."
-
-timezone.set_success:
-  ja: "タイムゾーンを {{timezone}} に設定しました。"
-  en: "Timezone has been set to {{timezone}}."
-timezone.show_current:
-  ja: "現在のタイムゾーン: {{timezone}}"
-  en: "Current timezone: {{timezone}}"
-
-auto_recruitment.channel_create_failed:
-  ja: "チャンネルの作成に失敗しました。\nカテゴリに対してこのアプリが「チャンネルの管理」権限を持っているか確認してください。"
-  en: "Failed to create channel.\nPlease check that this app has \"Manage Channels\" permission for the category."
-auto_recruitment.time_select_placeholder:
-  ja: "参加可能な時間を選択（複数選択可）"
-  en: "Select available times (multiple selection)"
-auto_recruitment.unregister_in_category_error:
-  ja: "このコマンドは自動募集カテゴリ外のチャンネルで実行してください。"
-  en: "Please execute this command in a channel outside the auto-recruitment category."
-
-app_error.database:
-  ja: "データベースエラーが発生しました。管理者に連絡してください。"
-  en: "A database error occurred. Please contact an administrator."
-app_error.discord:
-  ja: "Discord APIエラーが発生しました。しばらく待ってから再度お試しください。"
-  en: "A Discord API error occurred. Please wait and try again."
-app_error.config:
-  ja: "設定エラー: {{message}}"
-  en: "Configuration error: {{message}}"
-app_error.validation:
-  ja: "入力エラー: {{field}} の値が不正です。"
-  en: "Input error: {{field}} is invalid."
-app_error.discord_operation:
-  ja: "Discord操作エラー: {{message}}"
-  en: "Discord operation error: {{message}}"
 app_error.channel_creation_failed:
-  ja: "チャンネルの作成に失敗しました。"
   en: "Failed to create a channel."
+  ja: "チャンネルの作成に失敗しました。"
+app_error.config:
+  en: "Configuration error: {{message}}"
+  ja: "設定エラー: {{message}}"
+app_error.database:
+  en: "A database error occurred. Please contact an administrator."
+  ja: "データベースエラーが発生しました。管理者に連絡してください。"
+app_error.discord:
+  en: "A Discord API error occurred. Please wait and try again."
+  ja: "Discord APIエラーが発生しました。しばらく待ってから再度お試しください。"
+app_error.discord_operation:
+  en: "Discord operation error: {{message}}"
+  ja: "Discord操作エラー: {{message}}"
 app_error.in_category_channel:
-  ja: "このコマンドはカテゴリ外のチャンネルで実行してください。"
   en: "Please run this command outside the category."
-
-schedule.command.generate.loading:
-  ja: "スケジュールを生成しています..."
-  en: "Generating schedules..."
-schedule.command.generate.success_title:
-  ja: "✅ スケジュール生成完了"
-  en: "✅ Schedule generation completed"
-schedule.command.generate.success_description:
-  ja: "イベントスケジュールから通知スケジュールを生成しました。"
-  en: "Generated notification schedules from event schedules."
-schedule.command.generate.success_field_value:
-  ja: "- 既存のスケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
-  en: "- Deleted existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
-schedule.command.generate.error_title:
-  ja: "❌ スケジュール生成エラー"
-  en: "❌ Schedule generation error"
-schedule.command.generate.error_description:
-  ja: "スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
-  en: "An error occurred while generating schedules.\n```\n{{error_msg}}\n```"
-
-schedule.command.global_generate.loading:
-  ja: "全体スケジュールを生成しています..."
-  en: "Generating global schedules..."
-schedule.command.global_generate.success_title:
-  ja: "✅ 全体スケジュール生成完了"
-  en: "✅ Global schedule generation completed"
-schedule.command.global_generate.success_description:
-  ja: "全guildのイベントスケジュールから通知スケジュールを生成しました。"
-  en: "Generated notification schedules from all guild event schedules."
-schedule.command.global_generate.success_field_value:
-  ja: "- 対象の既存スケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
-  en: "- Deleted target existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
-schedule.command.global_generate.error_title:
-  ja: "❌ 全体スケジュール生成エラー"
-  en: "❌ Global schedule generation error"
-schedule.command.global_generate.error_description:
-  ja: "全体スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
-  en: "An error occurred while generating global schedules.\n```\n{{error_msg}}\n```"
-
-schedule.command.shared.success_field_name:
-  ja: "処理内容"
-  en: "Processed Steps"
-schedule.command.shared.success_footer:
-  ja: "10秒間隔で自動的に通知が送信されます"
-  en: "Notifications are sent automatically every 10 seconds."
-schedule.command.shared.error_footer:
-  ja: "詳細はログを確認してください"
-  en: "Check logs for details."
-
-schedule.command.list.title:
-  ja: "📅 スケジュール一覧"
-  en: "📅 Schedule List"
-schedule.command.list.empty_description:
-  ja: "登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。"
-  en: "No schedules are registered.\n\nGenerate schedules with `/schedule_generate`."
-schedule.command.list.footer:
-  ja: "未来のスケジュールを最大10件まで表示"
-  en: "Shows up to 10 upcoming schedules."
-
-schedule.command.history.title:
-  ja: "📜 通知履歴"
-  en: "📜 Notification History"
-schedule.command.history.empty_description:
-  ja: "過去 {{days}} 日間の通知履歴はありません。"
-  en: "No notification history in the past {{days}} day(s)."
-schedule.command.history.title_with_days:
-  ja: "📜 通知履歴（過去{{days}}日間）"
-  en: "📜 Notification History (Past {{days}} days)"
-schedule.command.history.footer:
-  ja: "合計 {{total_count}} 件（期間: {{from}} 〜 {{to}}）"
-  en: "Total {{total_count}} item(s) (Period: {{from}} - {{to}})"
-
-schedule.command.stats.title_with_days:
-  ja: "📊 通知統計（過去{{days}}日間）"
-  en: "📊 Notification Stats (Past {{days}} days)"
-schedule.command.stats.footer:
-  ja: "詳細な統計情報"
-  en: "Detailed statistics"
-schedule.command.stats.description_header:
-  ja: "**期間**: {{from}} 〜 {{to}} (JST)\n\n**総通知数**: {{total_count}} 件\n\n"
-  en: "**Period**: {{from}} - {{to}} (JST)\n\n**Total Notifications**: {{total_count}}\n\n"
-schedule.command.stats.message_type_header:
-  ja: "**メッセージタイプ別内訳**:\n"
-  en: "**Breakdown by Message Type**:\n"
-schedule.command.stats.other_types:
-  ja: "\n*...他 {{count}} 種類*\n"
-  en: "\n*...and {{count}} more type(s)*\n"
-
-recruitment.schedule.list.empty_all:
-  ja: "登録されているスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
-  en: "No schedules are registered.\n\nCreate one with `/recruitment-schedule-create`."
-recruitment.schedule.list.empty_self:
-  ja: "あなたが作成したスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
-  en: "You have not created any schedules.\n\nCreate one with `/recruitment-schedule-create`."
-recruitment.schedule.list.title_all:
-  ja: "📅 定期募集スケジュール一覧（全員）"
-  en: "📅 Recurring Recruitment Schedules (All)"
-recruitment.schedule.list.title_self:
-  ja: "📅 定期募集スケジュール一覧（自分のみ）"
-  en: "📅 Recurring Recruitment Schedules (Mine)"
-recruitment.schedule.list.status_enabled:
-  ja: "✅ 有効"
-  en: "✅ Enabled"
-recruitment.schedule.list.status_disabled:
-  ja: "❌ 無効"
-  en: "❌ Disabled"
-recruitment.schedule.list.dismissal_prefix:
-  ja: "\n                解散: {{dismissal}}"
-  en: "\n                Dismissal: {{dismissal}}"
-recruitment.schedule.list.more_count:
-  ja: "\n*...他 {{count}} 件のスケジュールがあります*"
-  en: "\n*...and {{count}} more schedules*"
-recruitment.schedule.list.footer:
-  ja: "全 {{total_count}} 件のスケジュール（{{display_count}}件表示）"
-  en: "{{display_count}} / {{total_count}} schedules shown"
-
-recruitment.list.title:
-  ja: "現在の募集一覧"
-  en: "Active Recruitment List"
-recruitment.list.empty:
-  ja: "現在募集中のマルチバトルはありません。"
-  en: "There are no active battle recruitments."
-recruitment.list.link_text:
-  ja: "→ 募集メッセージ"
-  en: "→ View recruitment"
-recruitment.list.more_count:
-  ja: "\n*...他 {{count}} 件の募集があります*"
-  en: "\n*...and {{count}} more recruitments*"
-recruitment.list.footer:
-  ja: "全 {{total_count}} 件の募集（{{display_count}}件表示）"
-  en: "{{display_count}} / {{total_count}} recruitments shown"
-
-recruitment.schedule.toggle.success_title:
-  ja: "🔄 定期募集スケジュールの有効/無効を切り替えました"
-  en: "🔄 Toggled recurring recruitment schedule"
-recruitment.schedule.toggle.success_description:
-  ja: "**スケジュールID**: {{schedule_id}}"
-  en: "**Schedule ID**: {{schedule_id}}"
-
-recruitment.schedule.delete.success_title:
-  ja: "✅ 定期募集スケジュールを削除しました"
-  en: "✅ Deleted recurring recruitment schedule"
-recruitment.schedule.delete.success_description:
-  ja: "**スケジュールID**: {{schedule_id}}\n\nこのスケジュールは削除され、今後自動投稿されなくなります。"
-  en: "**Schedule ID**: {{schedule_id}}\n\nThis schedule was deleted and will no longer post automatically."
-
-recruitment.role.show.not_registered:
-  ja: "⚠️ 募集通知ロールが登録されていません。"
-  en: "⚠️ No recruitment notification roles are registered."
-recruitment.role.show.header:
-  ja: "**現在の募集通知ロール設定:**\n\n"
-  en: "**Current Recruitment Notification Role Settings:**\n\n"
-recruitment.role.show.section_all:
-  ja: "**【すべての募集】**\n"
-  en: "**[All Recruitments]**\n"
-recruitment.role.show.section_quest:
-  ja: "**【クエスト別募集】**\n"
-  en: "**[Recruitments by Quest]**\n"
-recruitment.role.show.unknown_quest:
-  ja: "不明なクエスト"
-  en: "Unknown quest"
-
-recruitment.command.change.panel_unchanged:
-  ja: "変更しない"
-  en: "No change"
-recruitment.command.change.panel_content:
-  ja: "変更内容を選択・入力してください。\n\n現在の入力値\n- クエスト: {{quest_label}}\n- 攻略方法: {{style_label}}\n- 出発日時: {{date_label}}\n\n`{{apply_label}}`を押すまで反映されません。"
-  en: "Select or enter changes.\n\nCurrent input\n- Quest: {{quest_label}}\n- Battle style: {{style_label}}\n- Departure date/time: {{date_label}}\n\nChanges are not applied until you press `{{apply_label}}`."
-recruitment.command.change.option_quest_unchanged:
-  ja: "クエスト：変更しない"
-  en: "Quest: No change"
-recruitment.command.change.option_style_unchanged:
-  ja: "攻略方法：変更しない"
-  en: "Battle style: No change"
-recruitment.command.change.placeholder_quest:
-  ja: "クエストを選択"
-  en: "Select a quest"
-recruitment.command.change.placeholder_style:
-  ja: "攻略方法を選択"
-  en: "Select a battle style"
-recruitment.command.change.button_open_date:
-  ja: "出発日時を入力"
-  en: "Set departure date/time"
-recruitment.command.change.button_clear_date:
-  ja: "日時をクリア"
-  en: "Clear date/time"
-recruitment.command.change.button_apply:
-  ja: "適用"
-  en: "Apply"
-recruitment.command.change.modal_title:
-  ja: "出発日時変更"
-  en: "Change departure date/time"
-recruitment.command.change.modal_event_date_label:
-  ja: "出発日時"
-  en: "Departure date/time"
-recruitment.command.change.modal_event_date_placeholder:
-  ja: "例: 12/25 22:30"
-  en: "Example: 12/25 22:30"
-recruitment.command.change.modal.absolute_datetime_required:
-  ja: "日時の解析に失敗しました: 絶対日時で指定してください"
-  en: "Failed to parse date/time: please specify an absolute date/time."
-recruitment.command.change.modal.parse_failed:
-  ja: "日時の解析に失敗しました: {{error_message}}"
-  en: "Failed to parse date/time: {{error_message}}"
-
-channel.show.empty:
-  ja: "⚠️ チャンネル種別が登録されていません。"
-  en: "⚠️ No channel types are registered."
-channel.show.header:
-  ja: "**現在のチャンネル設定:**\n\n"
-  en: "**Current Channel Settings:**\n\n"
-channel.show.unset:
-  ja: "未設定"
-  en: "Not set"
-
-auto_recruitment.quest_select_required:
-  ja: "クエストを選択してください。"
-  en: "Please select at least one quest."
+  ja: "このコマンドはカテゴリ外のチャンネルで実行してください。"
+app_error.validation:
+  en: "Input error: {{field}} is invalid."
+  ja: "入力エラー: {{field}} の値が不正です。"
+auto_recruitment.channel_create_failed:
+  en: "Failed to create channel.\nPlease check that this app has \"Manage Channels\" permission for the category."
+  ja: "チャンネルの作成に失敗しました。\nカテゴリに対してこのアプリが「チャンネルの管理」権限を持っているか確認してください。"
 auto_recruitment.quest_select_registered:
-  ja: "✅ {{count}}個のクエストを登録しました。"
   en: "✅ Registered {{count}} quest(s)."
-auto_recruitment.time_select_required:
-  ja: "時間を選択してください。"
-  en: "Please select at least one time."
+  ja: "✅ {{count}}個のクエストを登録しました。"
+auto_recruitment.quest_select_required:
+  en: "Please select at least one quest."
+  ja: "クエストを選択してください。"
+auto_recruitment.time_select_placeholder:
+  en: "Select available times (multiple selection)"
+  ja: "参加可能な時間を選択（複数選択可）"
 auto_recruitment.time_select_registered:
-  ja: "✅ {{month}}月{{day}}日の参加可能時間を登録しました。\n登録した時間: {{hours_str}}"
   en: "✅ Registered available times for {{month}}/{{day}}.\nRegistered time(s): {{hours_str}}"
-help.embed.title:
-  ja: "GBF Discord Bot ヘルプ"
-  en: "GBF Discord Bot Help"
-help.embed.description:
-  ja: "このBotは、Discordサーバーでのグランブルーファンタジーの活動管理を支援します。"
-  en: "This bot helps manage Granblue Fantasy game activities in Discord servers."
+  ja: "✅ {{month}}月{{day}}日の参加可能時間を登録しました。\n登録した時間: {{hours_str}}"
+auto_recruitment.time_select_required:
+  en: "Please select at least one time."
+  ja: "時間を選択してください。"
+auto_recruitment.unregister_in_category_error:
+  en: "Please execute this command in a channel outside the auto-recruitment category."
+  ja: "このコマンドは自動募集カテゴリ外のチャンネルで実行してください。"
+bot.mention:
+  en: "{{user_mention}} Please use slash commands ( / )."
+  ja: "{{user_mention}} 基本的にスラッシュコマンド（ / ) でお願いします。"
+bot.mention_calling:
+  en: "Woof!"
+  ja: "ワン！"
+bot.mention_six:
+  en: "KIEEEEEEEEE!!"
+  ja: "キエエエェェェェーーーッ！！"
+channel.show.empty:
+  en: "⚠️ No channel types are registered."
+  ja: "⚠️ チャンネル種別が登録されていません。"
+channel.show.header:
+  en: "**Current Channel Settings:**\n\n"
+  ja: "**現在のチャンネル設定:**\n\n"
+channel.show.unset:
+  en: "Not set"
+  ja: "未設定"
+common.cancel:
+  en: "Cancel"
+  ja: "キャンセル"
+common.confirm:
+  en: "Confirm"
+  ja: "確認"
+common.error:
+  en: "Error"
+  ja: "エラー"
+common.error_prefix:
+  en: "Error: {{error_message}}"
+  ja: "エラー: {{error_message}}"
+common.info:
+  en: "Information"
+  ja: "情報"
+common.loading:
+  en: "Loading..."
+  ja: "読み込み中..."
+common.no:
+  en: "No"
+  ja: "いいえ"
+common.success:
+  en: "Success"
+  ja: "成功"
+common.unknown:
+  en: "Unknown"
+  ja: "不明"
+common.warning:
+  en: "Warning"
+  ja: "警告"
+common.yes:
+  en: "Yes"
+  ja: "はい"
+dorebara.end:
+  en: "Good work on Dread Barrage."
+  ja: "ドレバラお疲れ様でした。"
+dorebara.last_day:
+  en: "This is the last day of Dread Barrage.\nMake sure not to miss any rewards."
+  ja: "ドレバラ最終日です。\n報酬取り逃しが無いようにしましょう。"
+dorebara.reset:
+  en: "Dread Barrage bosses have been reset."
+  ja: "ドレバラの強敵がリセットされました。"
+dorebara.start:
+  en: "Dread Barrage has started. Let's aim to get all the rewards."
+  ja: "ドレバラ開始しました。報酬全部取れるまで走りましょう。"
+dorebara.variant:
+  en: "Variant Battle has been added."
+  ja: "バリアントバトルが追加されました。"
+errors.command_failed:
+  en: "Command execution failed"
+  ja: "コマンドの実行に失敗しました"
+errors.env_var_not_set:
+  en: "❌ Error: Environment variable {{var_name}} is not set"
+  ja: "❌ エラー: 環境変数 {{var_name}} が設定されていません"
+errors.guild_only:
+  en: "❌ This command can only be executed within a guild"
+  ja: "❌ このコマンドはギルド内でのみ実行可能です"
+errors.internal_error:
+  en: "An internal error occurred"
+  ja: "内部エラーが発生しました"
+errors.invalid_input:
+  en: "Invalid input provided"
+  ja: "無効な入力です"
+errors.permission_denied:
+  en: "Permission denied"
+  ja: "権限がありません"
+errors.spreadsheet_config_fetch_failed:
+  en: "❌ Error: Failed to fetch spreadsheet configuration\n{{error_msg}}"
+  ja: "❌ エラー: スプレッドシート設定の取得に失敗しました\n{{error_msg}}"
+errors.spreadsheet_not_registered:
+  en: "❌ Error: No spreadsheet registered for this guild\nPlease register a spreadsheet using the `/gspread_regist` command"
+  ja: "❌ エラー: このギルドにスプレッドシートが登録されていません\n`/gspread_regist` コマンドでスプレッドシートを登録してください"
+errors.user_not_found:
+  en: "User not found"
+  ja: "ユーザーが見つかりません"
+guild_settings.not_set:
+  en: "Not configured"
+  ja: "値が設定されていません"
+guild_settings.set_success:
+  en: "Settings updated successfully"
+  ja: "設定を更新しました"
+guild_settings.show_success:
+  en: "Current settings"
+  ja: "現在の設定"
 help.embed.commands_field_title:
-  ja: "コマンド"
   en: "Commands"
+  ja: "コマンド"
 help.embed.commands_field_value:
-  ja: "利用可能なコマンド一覧です:"
   en: "Here are the available commands:"
-help.embed.recruit_field_value:
-  ja: "属性別リアクション付きのマルチ募集を作成します。\n使用方法: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
-  en: "Create a battle recruitment with reactions for different elements.\nUsage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
+  ja: "利用可能なコマンド一覧です:"
+help.embed.description:
+  en: "This bot helps manage Granblue Fantasy game activities in Discord servers."
+  ja: "このBotは、Discordサーバーでのグランブルーファンタジーの活動管理を支援します。"
 help.embed.environ_load_field_value:
-  ja: "データベースから環境変数を再読み込みします。\n使用方法: `/environ_load`\n注意: `gbf_bot_control` ロールが必要です。"
   en: "Reload environment variables from the database.\nUsage: `/environ_load`\nNote: Requires the 'gbf_bot_control' role."
-help.embed.gspread_load_field_value:
-  ja: "サーバー固有のGoogleスプレッドシートからデータを読み込みます。\n使用方法: `/gspread_load`\n注意: `gbf_bot_control` ロールが必要です。"
-  en: "Load data from server-specific Google Spreadsheet.\nUsage: `/gspread_load`\nNote: Requires the 'gbf_bot_control' role."
-help.embed.gspread_push_field_value:
-  ja: "データベースのデータをサーバー固有のGoogleスプレッドシートへ書き込みます。\n使用方法: `/gspread_push`\n注意: `gbf_bot_control` ロールが必要です。"
-  en: "Push data from database to server-specific Google Spreadsheet.\nUsage: `/gspread_push`\nNote: Requires the 'gbf_bot_control' role."
-help.embed.help_field_value:
-  ja: "このヘルプメッセージを表示します。\n使用方法: `/help`"
-  en: "Show this help message.\nUsage: `/help`"
+  ja: "データベースから環境変数を再読み込みします。\n使用方法: `/environ_load`\n注意: `gbf_bot_control` ロールが必要です。"
 help.embed.footer:
-  ja: "GBF Discord Bot - Rust版"
   en: "GBF Discord Bot - Rust Edition"
+  ja: "GBF Discord Bot - Rust版"
+help.embed.gspread_load_field_value:
+  en: "Load data from server-specific Google Spreadsheet.\nUsage: `/gspread_load`\nNote: Requires the 'gbf_bot_control' role."
+  ja: "サーバー固有のGoogleスプレッドシートからデータを読み込みます。\n使用方法: `/gspread_load`\n注意: `gbf_bot_control` ロールが必要です。"
+help.embed.gspread_push_field_value:
+  en: "Push data from database to server-specific Google Spreadsheet.\nUsage: `/gspread_push`\nNote: Requires the 'gbf_bot_control' role."
+  ja: "データベースのデータをサーバー固有のGoogleスプレッドシートへ書き込みます。\n使用方法: `/gspread_push`\n注意: `gbf_bot_control` ロールが必要です。"
+help.embed.help_field_value:
+  en: "Show this help message.\nUsage: `/help`"
+  ja: "このヘルプメッセージを表示します。\n使用方法: `/help`"
+help.embed.recruit_field_value:
+  en: "Create a battle recruitment with reactions for different elements.\nUsage: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
+  ja: "属性別リアクション付きのマルチ募集を作成します。\n使用方法: `/recruit quest:<quest_name> event_date:<date> [battle_style:<type>]`"
+help.embed.title:
+  en: "GBF Discord Bot Help"
+  ja: "GBF Discord Bot ヘルプ"
+kosenjo.before_1_day:
+  en: "The Guild War will begin tomorrow.\nPlease review your Assault Time settings."
+  ja: "明日、古戦場が始まります。\n各自個人のアサルトタイムを見直しましょう。"
+kosenjo.before_3_days:
+  en: "The Guild War will begin in 3 days."
+  ja: "3日後に古戦場が始まります。"
+kosenjo.main_tournament_before_1_day:
+  en: "The finals will begin at 7:00. Get some rest for tomorrow."
+  ja: "7:00から本戦が始まります。明日に備えて寝ましょう"
+kosenjo.main_tournament_day_end:
+  en: "The Guild War finals day has ended. Get some rest for tomorrow."
+  ja: "古戦場本戦終了時間です。明日に備えて寝ましょう。"
+kosenjo.main_tournament_day_start:
+  en: "The Guild War finals have started."
+  ja: "古戦場本戦が始まりました。"
+kosenjo.main_tournament_end:
+  en: "Good work on the finals. Tomorrow is the Special Battle."
+  ja: "本戦お疲れ様でした。明日はスペシャルバトルです。"
+kosenjo.main_tournament_half_day:
+  en: "Half a day has passed in the Guild War finals."
+  ja: "古戦場本戦の半日が経過しました。"
+kosenjo.qualifying_end:
+  en: "Good work on the preliminaries. Tomorrow is the interval day."
+  ja: "予選お疲れ様でした。明日はインターバルです。"
+kosenjo.qualifying_end_no_interval:
+  en: "Good work on the preliminaries. Tomorrow is not an interval - the finals start at 7:00. Get some rest for tomorrow."
+  ja: "予選お疲れ様でした。明日はインターバルではなく7:00から本戦です。明日に備えて寝ましょう。"
+kosenjo.qualifying_start:
+  en: "The Guild War preliminaries have started."
+  ja: "古戦場予選が始まりました。"
+kosenjo.sp_battle_end:
+  en: "Good work on the Special Battle. Please check the schedule for the next Guild War."
+  ja: "スペシャルバトルお疲れ様でした。次回古戦場予定を確認しましょう。"
+kosenjo.team_ability_1:
+  en: "@here It's time to activate the 1st crew buff."
+  ja: "@here 団アビ1回目の発動時間です。"
+kosenjo.team_ability_2:
+  en: "Let's check if we forgot to activate the 2nd crew buff."
+  ja: "2回目の団アビが発動し忘れてないか確認しましょう"
+messages.help:
+  en: "Use `/help` to see available commands"
+  ja: "`/help`を使用して利用可能なコマンドを確認してください"
+messages.welcome:
+  en: "Welcome to the GBF Discord Bot!"
+  ja: "GBF Discord Botへようこそ！"
+omikuji.hakyoku:
+  en: "Got hit by Paradise Lost!"
+  ja: "破局を受けたポメ！"
+omikuji.hihi:
+  en: "A Gold Brick dropped!"
+  ja: "ヒヒイロカネが落ちたポメ！"
+omikuji.omega_unit:
+  en: "Only Omega Unit dropped."
+  ja: "オメガユニットしか落ちなかったポメ"
+recruitment.command.cancel_aborted:
+  en: "Cancellation has been aborted."
+  ja: "キャンセルを取りやめました。"
+recruitment.command.cancel_already_cancelled:
+  en: "The recruitment has already been cancelled."
+  ja: "募集は既にキャンセルされています。"
+recruitment.command.cancel_confirm_prompt:
+  en: "Do you want to cancel this recruitment?"
+  ja: "この募集をキャンセルしますか？"
+recruitment.command.cancel_error:
+  en: "An error occurred. Please try the command again. If the issue persists, please contact the developer."
+  ja: "エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。"
+recruitment.command.cancel_event_date_passed:
+  en: "Cannot cancel because the event date has passed."
+  ja: "開催日時を過ぎているためキャンセルできません。"
+recruitment.command.cancel_invalid_message:
+  en: "The specified message is not a recruitment message."
+  ja: "指定されたメッセージは募集メッセージではありません。"
+recruitment.command.cancel_message_deleted:
+  en: "The recruitment message has been deleted."
+  ja: "募集メッセージが削除されています。"
+recruitment.command.cancel_not_found:
+  en: "The specified recruitment was not found."
+  ja: "指定された募集が見つかりません。"
+recruitment.command.cancel_notification_no_participants:
+  en: "The recruitment has been cancelled."
+  ja: "募集がキャンセルされました。"
+recruitment.command.cancel_notification_with_participants:
+  en: "The recruitment has been cancelled.\nFor those who were planning to participate"
+  ja: "募集がキャンセルされました。\n参加予定だった皆さん"
+recruitment.command.cancel_timeout:
+  en: "The operation timed out."
+  ja: "操作がタイムアウトしました。"
+recruitment.command.cancel_unknown_selection:
+  en: "Unknown selection."
+  ja: "不明な選択です。"
+recruitment.command.cancelled_message_suffix:
+  en: "This recruitment has been cancelled"
+  ja: "この募集はキャンセルされました"
+recruitment.command.cancelling_progress:
+  en: "Cancelling..."
+  ja: "キャンセル中..."
+recruitment.command.change.button_apply:
+  en: "Apply"
+  ja: "適用"
+recruitment.command.change.button_clear_date:
+  en: "Clear date/time"
+  ja: "日時をクリア"
+recruitment.command.change.button_open_date:
+  en: "Set departure date/time"
+  ja: "出発日時を入力"
+recruitment.command.change.modal.absolute_datetime_required:
+  en: "Failed to parse date/time: please specify an absolute date/time."
+  ja: "日時の解析に失敗しました: 絶対日時で指定してください"
+recruitment.command.change.modal.parse_failed:
+  en: "Failed to parse date/time: {{error_message}}"
+  ja: "日時の解析に失敗しました: {{error_message}}"
+recruitment.command.change.modal_event_date_label:
+  en: "Departure date/time"
+  ja: "出発日時"
+recruitment.command.change.modal_event_date_placeholder:
+  en: "Example: 12/25 22:30"
+  ja: "例: 12/25 22:30"
+recruitment.command.change.modal_title:
+  en: "Change departure date/time"
+  ja: "出発日時変更"
+recruitment.command.change.option_quest_unchanged:
+  en: "Quest: No change"
+  ja: "クエスト：変更しない"
+recruitment.command.change.option_style_unchanged:
+  en: "Battle style: No change"
+  ja: "攻略方法：変更しない"
+recruitment.command.change.panel_content:
+  en: "Select or enter changes.\n\nCurrent input\n- Quest: {{quest_label}}\n- Battle style: {{style_label}}\n- Departure date/time: {{date_label}}\n\nChanges are not applied until you press `{{apply_label}}`."
+  ja: "変更内容を選択・入力してください。\n\n現在の入力値\n- クエスト: {{quest_label}}\n- 攻略方法: {{style_label}}\n- 出発日時: {{date_label}}\n\n`{{apply_label}}`を押すまで反映されません。"
+recruitment.command.change.panel_unchanged:
+  en: "No change"
+  ja: "変更しない"
+recruitment.command.change.placeholder_quest:
+  en: "Select a quest"
+  ja: "クエストを選択"
+recruitment.command.change.placeholder_style:
+  en: "Select a battle style"
+  ja: "攻略方法を選択"
+recruitment.command.change_no_changes:
+  en: "Please specify at least one item to change."
+  ja: "変更する項目を少なくとも1つ指定してください。"
+recruitment.command.change_success:
+  en: "Recruitment details have been updated."
+  ja: "募集内容を更新しました。"
+recruitment.display.all_elements:
+  en: "All Elements"
+  ja: "全属性可能"
+recruitment.display.date_format:
+  en: "%m/%d %I:%M %p %Z"
+  ja: "%m/%d %H:%M %Z"
+recruitment.display.dismissal_times_label:
+  en: "Dismissal Times: "
+  ja: "解散時刻："
+recruitment.display.element_dark:
+  en: "Dark"
+  ja: "闇"
+recruitment.display.element_earth:
+  en: "Earth"
+  ja: "土"
+recruitment.display.element_fire:
+  en: "Fire"
+  ja: "火"
+recruitment.display.element_light:
+  en: "Light"
+  ja: "光"
+recruitment.display.element_water:
+  en: "Water"
+  ja: "水"
+recruitment.display.element_wind:
+  en: "Wind"
+  ja: "風"
+recruitment.display.event_date_label:
+  en: "Event Date: "
+  ja: "開催日時："
+recruitment.display.leave_all_button:
+  en: "❌ Cancel All"
+  ja: "❌ 全て取り消し"
+recruitment.display.no_participants:
+  en: "None"
+  ja: "なし"
+recruitment.display.normal:
+  en: "Recruiting participants for {{quest_name}}."
+  ja: "{{quest_name}}の参加者を募集します。"
+recruitment.display.six_elements:
+  en: "Recruiting participants for {{quest_name}}.\nPlease select your element."
+  ja: "{{quest_name}}の参加者を募集します。\n参加属性を選んでください"
+recruitment.list.empty:
+  en: "There are no active battle recruitments."
+  ja: "現在募集中のマルチバトルはありません。"
+recruitment.list.footer:
+  en: "{{display_count}} / {{total_count}} recruitments shown"
+  ja: "全 {{total_count}} 件の募集（{{display_count}}件表示）"
+recruitment.list.link_text:
+  en: "→ View recruitment"
+  ja: "→ 募集メッセージ"
+recruitment.list.more_count:
+  en: "\n*...and {{count}} more recruitments*"
+  ja: "\n*...他 {{count}} 件の募集があります*"
+recruitment.list.title:
+  en: "Active Recruitment List"
+  ja: "現在の募集一覧"
+recruitment.notification.before_5_minutes:
+  en: "5 minutes until quest departure."
+  ja: "クエスト出発5分前です。"
+recruitment.notification.dismissal:
+  en: "This recruitment has been dismissed due to insufficient participants."
+  ja: "人数が集まらなかったため、この募集は解散しました。"
+recruitment.notification.dismissal_with_participants:
+  en: "This recruitment has been dismissed due to insufficient participants.\nFor those who were planning to participate"
+  ja: "人数が集まらなかったため、この募集は解散しました。\n参加予定だった皆さん"
+recruitment.notification.member_full:
+  en: "The party is full."
+  ja: "メンバーが揃いました。"
+recruitment.notification.start:
+  en: "It's quest departure time."
+  ja: "クエスト出発時刻です。"
+recruitment.role.add_success:
+  en: "{{count}} role(s) registered as recruitment notification roles."
+  ja: "{{count}}個のロールを募集通知ロールとして登録しました。"
+recruitment.role.remove_success:
+  en: "{{count}} role(s) removed from recruitment notification roles."
+  ja: "{{count}}個のロールを募集通知ロールから削除しました。"
+recruitment.role.show.header:
+  en: "**Current Recruitment Notification Role Settings:**\n\n"
+  ja: "**現在の募集通知ロール設定:**\n\n"
+recruitment.role.show.not_registered:
+  en: "⚠️ No recruitment notification roles are registered."
+  ja: "⚠️ 募集通知ロールが登録されていません。"
+recruitment.role.show.section_all:
+  en: "**[All Recruitments]**\n"
+  ja: "**【すべての募集】**\n"
+recruitment.role.show.section_quest:
+  en: "**[Recruitments by Quest]**\n"
+  ja: "**【クエスト別募集】**\n"
+recruitment.role.show.unknown_quest:
+  en: "Unknown quest"
+  ja: "不明なクエスト"
+recruitment.schedule.delete.success_description:
+  en: "**Schedule ID**: {{schedule_id}}\n\nThis schedule was deleted and will no longer post automatically."
+  ja: "**スケジュールID**: {{schedule_id}}\n\nこのスケジュールは削除され、今後自動投稿されなくなります。"
+recruitment.schedule.delete.success_title:
+  en: "✅ Deleted recurring recruitment schedule"
+  ja: "✅ 定期募集スケジュールを削除しました"
+recruitment.schedule.list.dismissal_prefix:
+  en: "\n                Dismissal: {{dismissal}}"
+  ja: "\n                解散: {{dismissal}}"
+recruitment.schedule.list.empty_all:
+  en: "No schedules are registered.\n\nCreate one with `/recruitment-schedule-create`."
+  ja: "登録されているスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
+recruitment.schedule.list.empty_self:
+  en: "You have not created any schedules.\n\nCreate one with `/recruitment-schedule-create`."
+  ja: "あなたが作成したスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
+recruitment.schedule.list.footer:
+  en: "{{display_count}} / {{total_count}} schedules shown"
+  ja: "全 {{total_count}} 件のスケジュール（{{display_count}}件表示）"
+recruitment.schedule.list.more_count:
+  en: "\n*...and {{count}} more schedules*"
+  ja: "\n*...他 {{count}} 件のスケジュールがあります*"
+recruitment.schedule.list.status_disabled:
+  en: "❌ Disabled"
+  ja: "❌ 無効"
+recruitment.schedule.list.status_enabled:
+  en: "✅ Enabled"
+  ja: "✅ 有効"
+recruitment.schedule.list.title_all:
+  en: "\U0001F4C5 Recurring Recruitment Schedules (All)"
+  ja: "\U0001F4C5 定期募集スケジュール一覧（全員）"
+recruitment.schedule.list.title_self:
+  en: "\U0001F4C5 Recurring Recruitment Schedules (Mine)"
+  ja: "\U0001F4C5 定期募集スケジュール一覧（自分のみ）"
+recruitment.schedule.toggle.success_description:
+  en: "**Schedule ID**: {{schedule_id}}"
+  ja: "**スケジュールID**: {{schedule_id}}"
+recruitment.schedule.toggle.success_title:
+  en: "\U0001F504 Toggled recurring recruitment schedule"
+  ja: "\U0001F504 定期募集スケジュールの有効/無効を切り替えました"
+recruitment.ui.already_joined:
+  en: "You have already joined this battle"
+  ja: "既にこのバトルに参加しています"
+recruitment.ui.join_success:
+  en: "Successfully joined the battle"
+  ja: "バトルに参加しました"
+recruitment.ui.leave_success:
+  en: "Successfully left the battle"
+  ja: "バトルから離脱しました"
+recruitment.ui.new_recruitment:
+  en: "New battle recruitment created"
+  ja: "新しいバトル募集が作成されました"
+recruitment.ui.not_found:
+  en: "Battle recruitment not found"
+  ja: "バトル募集が見つかりません"
+recruitment.ui.not_joined:
+  en: "You are not part of this battle"
+  ja: "このバトルに参加していません"
+recruitment.ui.recruitment_cancelled:
+  en: "Battle recruitment cancelled"
+  ja: "バトル募集がキャンセルされました"
+recruitment.ui.recruitment_closed:
+  en: "Battle recruitment closed"
+  ja: "バトル募集が締切りました"
+recruitment.ui.recruitment_full:
+  en: "Battle recruitment is full"
+  ja: "バトル募集は満員です"
+recruitment.ui.title:
+  en: "Battle Recruitment"
+  ja: "バトル募集"
+schedule.command.generate.error_description:
+  en: "An error occurred while generating schedules.\n```\n{{error_msg}}\n```"
+  ja: "スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
+schedule.command.generate.error_title:
+  en: "❌ Schedule generation error"
+  ja: "❌ スケジュール生成エラー"
+schedule.command.generate.loading:
+  en: "Generating schedules..."
+  ja: "スケジュールを生成しています..."
+schedule.command.generate.success_description:
+  en: "Generated notification schedules from event schedules."
+  ja: "イベントスケジュールから通知スケジュールを生成しました。"
+schedule.command.generate.success_field_value:
+  en: "- Deleted existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
+  ja: "- 既存のスケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
+schedule.command.generate.success_title:
+  en: "✅ Schedule generation completed"
+  ja: "✅ スケジュール生成完了"
+schedule.command.global_generate.error_description:
+  en: "An error occurred while generating global schedules.\n```\n{{error_msg}}\n```"
+  ja: "全体スケジュールの生成中にエラーが発生しました。\n```\n{{error_msg}}\n```"
+schedule.command.global_generate.error_title:
+  en: "❌ Global schedule generation error"
+  ja: "❌ 全体スケジュール生成エラー"
+schedule.command.global_generate.loading:
+  en: "Generating global schedules..."
+  ja: "全体スケジュールを生成しています..."
+schedule.command.global_generate.success_description:
+  en: "Generated notification schedules from all guild event schedules."
+  ja: "全guildのイベントスケジュールから通知スケジュールを生成しました。"
+schedule.command.global_generate.success_field_value:
+  en: "- Deleted target existing schedules\n- Loaded event schedules\n- Calculated and saved notification schedules"
+  ja: "- 対象の既存スケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存"
+schedule.command.global_generate.success_title:
+  en: "✅ Global schedule generation completed"
+  ja: "✅ 全体スケジュール生成完了"
+schedule.command.history.empty_description:
+  en: "No notification history in the past {{days}} day(s)."
+  ja: "過去 {{days}} 日間の通知履歴はありません。"
+schedule.command.history.footer:
+  en: "Total {{total_count}} item(s) (Period: {{from}} - {{to}})"
+  ja: "合計 {{total_count}} 件（期間: {{from}} 〜 {{to}}）"
+schedule.command.history.title:
+  en: "\U0001F4DC Notification History"
+  ja: "\U0001F4DC 通知履歴"
+schedule.command.history.title_with_days:
+  en: "\U0001F4DC Notification History (Past {{days}} days)"
+  ja: "\U0001F4DC 通知履歴（過去{{days}}日間）"
+schedule.command.list.empty_description:
+  en: "No schedules are registered.\n\nGenerate schedules with `/schedule_generate`."
+  ja: "登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。"
+schedule.command.list.footer:
+  en: "Shows up to 10 upcoming schedules."
+  ja: "未来のスケジュールを最大10件まで表示"
+schedule.command.list.title:
+  en: "\U0001F4C5 Schedule List"
+  ja: "\U0001F4C5 スケジュール一覧"
+schedule.command.shared.error_footer:
+  en: "Check logs for details."
+  ja: "詳細はログを確認してください"
+schedule.command.shared.success_field_name:
+  en: "Processed Steps"
+  ja: "処理内容"
+schedule.command.shared.success_footer:
+  en: "Notifications are sent automatically every 10 seconds."
+  ja: "10秒間隔で自動的に通知が送信されます"
+schedule.command.stats.description_header:
+  en: "**Period**: {{from}} - {{to}} (JST)\n\n**Total Notifications**: {{total_count}}\n\n"
+  ja: "**期間**: {{from}} 〜 {{to}} (JST)\n\n**総通知数**: {{total_count}} 件\n\n"
+schedule.command.stats.footer:
+  en: "Detailed statistics"
+  ja: "詳細な統計情報"
+schedule.command.stats.message_type_header:
+  en: "**Breakdown by Message Type**:\n"
+  ja: "**メッセージタイプ別内訳**:\n"
+schedule.command.stats.other_types:
+  en: "\n*...and {{count}} more type(s)*\n"
+  ja: "\n*...他 {{count}} 種類*\n"
+schedule.command.stats.title_with_days:
+  en: "\U0001F4CA Notification Stats (Past {{days}} days)"
+  ja: "\U0001F4CA 通知統計（過去{{days}}日間）"
+spreadsheet.global_load_failed:
+  en: "❌ Global spreadsheet load failed\n\n{{error_msg}}"
+  ja: "❌ グローバルスプレッドシート読み込み失敗\n\n{{error_msg}}"
+spreadsheet.global_load_success:
+  en: "✅ Global spreadsheet load completed\n\n{{result_text}}"
+  ja: "✅ グローバルスプレッドシート読み込み完了\n\n{{result_text}}"
+spreadsheet.global_loading:
+  en: "\U0001F504 Loading data from global spreadsheet..."
+  ja: "\U0001F504 グローバルスプレッドシートからデータを読み込んでいます..."
+spreadsheet.global_push_failed:
+  en: "❌ Global data write failed\n\n{{error_msg}}"
+  ja: "❌ グローバルデータ書き込み失敗\n\n{{error_msg}}"
+spreadsheet.global_push_partial_success:
+  en: "⚠️ Global data write completed (with errors)\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+  ja: "⚠️ グローバルデータ書き込み完了（一部エラー）\n\n\U0001F4CA 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
+spreadsheet.global_push_success:
+  en: "✅ Global data write completed\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+  ja: "✅ グローバルデータ書き込み完了\n\n\U0001F4CA 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
+spreadsheet.global_pushing:
+  en: "\U0001F504 Writing global data to spreadsheet..."
+  ja: "\U0001F504 グローバルデータをスプレッドシートに書き込んでいます..."
+spreadsheet.load_failed:
+  en: "❌ Guild spreadsheet load failed\n\n{{error_msg}}"
+  ja: "❌ ギルドスプレッドシート読み込み失敗\n\n{{error_msg}}"
+spreadsheet.load_partial_success:
+  en: "⚠️ Guild spreadsheet load completed (with errors)\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+  ja: "⚠️ ギルドスプレッドシート読み込み完了（一部エラー）\n\n\U0001F4CA 読み込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
+spreadsheet.load_success:
+  en: "✅ Guild spreadsheet load completed\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+  ja: "✅ ギルドスプレッドシート読み込み完了\n\n\U0001F4CA 読み込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
+spreadsheet.loading:
+  en: "\U0001F504 Loading data from guild spreadsheet..."
+  ja: "\U0001F504 ギルドスプレッドシートからデータを読み込んでいます..."
+spreadsheet.push_failed:
+  en: "❌ Guild data write failed\n\n{{error_msg}}"
+  ja: "❌ ギルドデータ書き込み失敗\n\n{{error_msg}}"
+spreadsheet.push_partial_success:
+  en: "⚠️ Guild data write completed (with errors)\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Failed: {{failure_count}} tables\n- Total rows: {{total_rows}}\n\n{{error_details}}"
+  ja: "⚠️ ギルドデータ書き込み完了（一部エラー）\n\n\U0001F4CA 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 失敗: {{failure_count}}テーブル\n- 総行数: {{total_rows}}行\n\n{{error_details}}"
+spreadsheet.push_success:
+  en: "✅ Guild data write completed\n\n\U0001F4CA Results:\n- Success: {{success_count}} tables\n- Total rows: {{total_rows}}"
+  ja: "✅ ギルドデータ書き込み完了\n\n\U0001F4CA 書き込み結果:\n- 成功: {{success_count}}テーブル\n- 総行数: {{total_rows}}行"
+spreadsheet.pushing:
+  en: "\U0001F504 Writing guild data to spreadsheet..."
+  ja: "\U0001F504 ギルドデータをスプレッドシートに書き込んでいます..."
+spreadsheet.register_failed:
+  en: "❌ Guild spreadsheet registration failed\n\n{{error_msg}}"
+  ja: "❌ ギルドスプレッドシート登録失敗\n\n{{error_msg}}"
+spreadsheet.register_success:
+  en: "✅ Guild spreadsheet registered successfully\n\n\U0001F4CA Registration details:\n- Load spreadsheet: <{{load_url}}>\n- Push spreadsheet: <{{push_url}}>\n\nYou can now use the `/gspread_load` and `/gspread_push` commands."
+  ja: "✅ ギルドスプレッドシートを登録しました\n\n\U0001F4CA 登録内容:\n- 読み込み用: <{{load_url}}>\n- 書き込み用: <{{push_url}}>\n\nこれで `/gspread_load` と `/gspread_push` コマンドが使用可能になりました。"
+spreadsheet.registering:
+  en: "\U0001F504 Registering guild spreadsheet..."
+  ja: "\U0001F504 ギルドスプレッドシートを登録しています..."
+timezone.set_success:
+  en: "Timezone has been set to {{timezone}}."
+  ja: "タイムゾーンを {{timezone}} に設定しました。"
+timezone.show_current:
+  en: "Current timezone: {{timezone}}"
+  ja: "現在のタイムゾーン: {{timezone}}"
