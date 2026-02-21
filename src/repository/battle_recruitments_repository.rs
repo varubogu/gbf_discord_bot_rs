@@ -115,6 +115,17 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
         txn: &sea_orm::DatabaseTransaction,
         before: DateTime<Utc>,
     ) -> Result<u64>;
+
+    /// ギルド内の募集中バトル一覧を取得（トランザクション対応）
+    ///
+    /// is_recruiting=true, is_canceled=false, message_id!=0 かつ
+    /// quest_start_at が現在以降の件を quest_start_at 昇順で返す。
+    /// 呼び出し前に set_current_guild_id で RLS 設定が必要。
+    async fn get_active_by_guild_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<BattleRecruitments>>;
 }
 
 /// Arc<T>に対するBattleRecruitmentsRepositoryの実装
@@ -255,5 +266,13 @@ where
         before: DateTime<Utc>,
     ) -> Result<u64> {
         (**self).delete_before_date_with_txn(txn, before).await
+    }
+
+    async fn get_active_by_guild_with_txn(
+        &self,
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<BattleRecruitments>> {
+        (**self).get_active_by_guild_with_txn(txn, guild_id).await
     }
 }

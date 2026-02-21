@@ -242,6 +242,14 @@ pub mod keys {
         "recruitment.schedule.list.dismissal_prefix";
     pub const RECRUITMENT_SCHEDULE_LIST_MORE_COUNT: &str = "recruitment.schedule.list.more_count";
     pub const RECRUITMENT_SCHEDULE_LIST_FOOTER: &str = "recruitment.schedule.list.footer";
+
+    // Recruitment list command messages
+    pub const RECRUITMENT_LIST_TITLE: &str = "recruitment.list.title";
+    pub const RECRUITMENT_LIST_EMPTY: &str = "recruitment.list.empty";
+    pub const RECRUITMENT_LIST_LINK_TEXT: &str = "recruitment.list.link_text";
+    pub const RECRUITMENT_LIST_MORE_COUNT: &str = "recruitment.list.more_count";
+    pub const RECRUITMENT_LIST_FOOTER: &str = "recruitment.list.footer";
+
     pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE: &str =
         "recruitment.schedule.toggle.success_title";
     pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION: &str =
@@ -519,6 +527,14 @@ pub enum MessageTextId {
     RecruitmentScheduleListDismissalPrefix,
     RecruitmentScheduleListMoreCount,
     RecruitmentScheduleListFooter,
+
+    // 募集一覧コマンドメッセージ
+    RecruitmentListTitle,
+    RecruitmentListEmpty,
+    RecruitmentListLinkText,
+    RecruitmentListMoreCount,
+    RecruitmentListFooter,
+
     RecruitmentScheduleToggleSuccessTitle,
     RecruitmentScheduleToggleSuccessDescription,
     RecruitmentScheduleDeleteSuccessTitle,
@@ -915,6 +931,11 @@ impl MessageTextId {
                 keys::RECRUITMENT_SCHEDULE_LIST_MORE_COUNT
             }
             MessageTextId::RecruitmentScheduleListFooter => keys::RECRUITMENT_SCHEDULE_LIST_FOOTER,
+            MessageTextId::RecruitmentListTitle => keys::RECRUITMENT_LIST_TITLE,
+            MessageTextId::RecruitmentListEmpty => keys::RECRUITMENT_LIST_EMPTY,
+            MessageTextId::RecruitmentListLinkText => keys::RECRUITMENT_LIST_LINK_TEXT,
+            MessageTextId::RecruitmentListMoreCount => keys::RECRUITMENT_LIST_MORE_COUNT,
+            MessageTextId::RecruitmentListFooter => keys::RECRUITMENT_LIST_FOOTER,
             MessageTextId::RecruitmentScheduleToggleSuccessTitle => {
                 keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE
             }
@@ -1434,6 +1455,11 @@ mod tests {
             MessageTextId::RecruitmentScheduleListDismissalPrefix,
             MessageTextId::RecruitmentScheduleListMoreCount,
             MessageTextId::RecruitmentScheduleListFooter,
+            MessageTextId::RecruitmentListTitle,
+            MessageTextId::RecruitmentListEmpty,
+            MessageTextId::RecruitmentListLinkText,
+            MessageTextId::RecruitmentListMoreCount,
+            MessageTextId::RecruitmentListFooter,
             MessageTextId::RecruitmentScheduleToggleSuccessTitle,
             MessageTextId::RecruitmentScheduleToggleSuccessDescription,
             MessageTextId::RecruitmentScheduleDeleteSuccessTitle,

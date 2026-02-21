@@ -22,6 +22,7 @@ pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::recruit::recruit_new_v2::recruit_new_v2(),
         slash::recruit::recruit_cancel::recruit_cancel(),
         slash::recruit::recruit_change::recruit_change(),
+        slash::recruit::recruit_list::recruit_list(),
         slash::recruit::recruit_role_add::recruit_role_add(),
         slash::recruit::recruit_role_remove::recruit_role_remove(),
         slash::recruit::recruit_role_show::recruit_role_show(),

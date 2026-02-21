@@ -5,6 +5,7 @@ pub mod change;
 pub mod new_recruit;
 pub mod participants;
 pub mod quest_list;
+pub mod recruit_list;
 pub mod recruitment_schedule_facade;
 pub mod recruitment_schedule_list;
 pub mod role_management;

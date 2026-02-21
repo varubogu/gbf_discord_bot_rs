@@ -647,6 +647,24 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::RECRUITMENT_SCHEDULE_LIST_FOOTER => {
             Some(t!(keys::RECRUITMENT_SCHEDULE_LIST_FOOTER, locale = locale).to_string())
         }
+
+        // Recruitment list command messages
+        keys::RECRUITMENT_LIST_TITLE => {
+            Some(t!(keys::RECRUITMENT_LIST_TITLE, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_LIST_EMPTY => {
+            Some(t!(keys::RECRUITMENT_LIST_EMPTY, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_LIST_LINK_TEXT => {
+            Some(t!(keys::RECRUITMENT_LIST_LINK_TEXT, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_LIST_MORE_COUNT => {
+            Some(t!(keys::RECRUITMENT_LIST_MORE_COUNT, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_LIST_FOOTER => {
+            Some(t!(keys::RECRUITMENT_LIST_FOOTER, locale = locale).to_string())
+        }
+
         keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE => Some(
             t!(
                 keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE,

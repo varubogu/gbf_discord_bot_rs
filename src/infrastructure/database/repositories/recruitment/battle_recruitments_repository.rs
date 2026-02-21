@@ -271,4 +271,28 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
 
         Ok(delete_result.rows_affected)
     }
+
+    async fn get_active_by_guild_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Vec<BattleRecruitments>> {
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+
+        let now = chrono::Utc::now();
+
+        let results = BattleRecruitmentEntity::find()
+            .filter(Column::GuildId.eq(guild_id))
+            .filter(Column::IsRecruiting.eq(true))
+            .filter(Column::IsCanceled.eq(false))
+            .filter(Column::MessageId.ne(0_i64))
+            // 出発日時が現在以降のもののみ対象とする
+            .filter(Column::QuestStartAt.gte(now))
+            .order_by_asc(Column::QuestStartAt)
+            .all(txn)
+            .await
+            .map_err(AppError::Database)?;
+
+        Ok(results.into_iter().map(BattleRecruitments::from).collect())
+    }
 }

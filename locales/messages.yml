@@ -510,6 +510,22 @@ recruitment.schedule.list.footer:
   ja: "全 {{total_count}} 件のスケジュール（{{display_count}}件表示）"
   en: "{{display_count}} / {{total_count}} schedules shown"
 
+recruitment.list.title:
+  ja: "現在の募集一覧"
+  en: "Active Recruitment List"
+recruitment.list.empty:
+  ja: "現在募集中のマルチバトルはありません。"
+  en: "There are no active battle recruitments."
+recruitment.list.link_text:
+  ja: "→ 募集メッセージ"
+  en: "→ View recruitment"
+recruitment.list.more_count:
+  ja: "\n*...他 {{count}} 件の募集があります*"
+  en: "\n*...and {{count}} more recruitments*"
+recruitment.list.footer:
+  ja: "全 {{total_count}} 件の募集（{{display_count}}件表示）"
+  en: "{{display_count}} / {{total_count}} recruitments shown"
+
 recruitment.schedule.toggle.success_title:
   ja: "🔄 定期募集スケジュールの有効/無効を切り替えました"
   en: "🔄 Toggled recurring recruitment schedule"
