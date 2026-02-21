@@ -45,6 +45,14 @@ pub mod test_utils {
             .unwrap_or(now)
     }
 
+    /// YAMLメッセージを取得するテスト用ユーティリティ
+    ///
+    /// `yaml_loader::get_yaml_message` を統合テストから呼び出すためのラッパー。
+    /// 統合テストからクレート内部モジュールにアクセスするためにここで公開する。
+    pub fn resolve_yaml_message(message_id: &str, locale: &str) -> Option<String> {
+        crate::services::message::yaml_loader::get_yaml_message(message_id, locale)
+    }
+
     /// Test utility to parse event date using unified_datetime_parser
     pub fn parse_event_date(date_str: &str) -> Result<DateTime<Local>, String> {
         let trimmed_input = date_str.trim();

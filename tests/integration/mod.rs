@@ -15,3 +15,6 @@ mod recruitment_v2_tests;
 
 // Facade integration tests (facade→service→repository結合テスト)
 mod facades;
+
+// メッセージキー整合性テスト（DBなし）
+mod message_consistency_test;

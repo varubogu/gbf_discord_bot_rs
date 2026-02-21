@@ -59,6 +59,82 @@ If unset, `ja` is used.
 - Example: `Hello {{user_name}}`
 - Behavior: replace only when the corresponding key exists
 
+## Adding a new message ID
+
+When adding a new message key, you must update **all** of the following files.
+Missing even one will cause a runtime "message not found" warning.
+
+### Required file updates (3 locations)
+
+#### 1. `locales/messages.yml`
+
+Add the new key with `ja` and `en` text.
+
+```yaml
+your.new.key:
+  ja: "日本語テキスト"
+  en: "English text"
+```
+
+#### 2. `src/services/message/message_text_id.rs`
+
+- Add a string constant in the `keys` module (same string as the YAML key)
+- Add a variant to the `MessageTextId` enum
+- Add a match arm to `as_str()`
+- Add an entry to the `all_message_ids()` vector in tests
+
+```rust
+// keys module
+pub const YOUR_NEW_KEY: &str = "your.new.key";
+
+// enum
+YourNewKey,
+
+// as_str()
+MessageTextId::YourNewKey => keys::YOUR_NEW_KEY,
+```
+
+#### 3. `src/services/message/yaml_loader.rs` ⚠️ **Easy to forget**
+
+Add a match arm for the new key inside `load_message_from_yaml()`.
+The `t!` macro used here requires **compile-time string literals** — dynamic key variables are not supported.
+You must update this file every time you add a new message key.
+
+```rust
+keys::YOUR_NEW_KEY => {
+    Some(t!(keys::YOUR_NEW_KEY, locale = locale).to_string())
+}
+```
+
+> **Warning**: If `yaml_loader.rs` is not updated, the message will not be resolved at runtime
+> even if the key exists in the YAML file, and the system will fall back to alternatives.
+
+#### With parameter substitution
+
+If the YAML key has placeholders like `{{count}}`, pass the arguments to the `t!` macro as well.
+
+```rust
+keys::YOUR_KEY_WITH_PARAM => {
+    let count = params.get("count").map(|s| s.as_str()).unwrap_or("");
+    Some(t!(keys::YOUR_KEY_WITH_PARAM, locale = locale, count = count).to_string())
+}
+```
+
+### Checklist
+
+| File | What to update |
+|------|----------------|
+| `locales/messages.yml` | Add `ja` / `en` text |
+| `message_text_id.rs` | Add `keys` constant, enum variant, `as_str()` arm, test vector entry |
+| `yaml_loader.rs` | Add match arm (⚠️ required) |
+
+### Verification
+
+```bash
+cargo test test_all_message_ids_exist_in_yaml  # validates YAML / enum consistency
+cargo clippy                                   # ensure zero warnings
+```
+
 ## Error policy
 
 - Missing data at 1 or 2: do not treat as an error; continue fallback
@@ -75,6 +151,7 @@ If unset, `ja` is used.
 
 - `src/services/message/message_service.rs`
 - `src/services/message/message_text_id.rs`
+- `src/services/message/yaml_loader.rs`
 - `src/repository/guild_message_text_repository.rs`
 - `src/repository/message_text_repository.rs`
 - `src/infrastructure/database/repositories/guild/guild_message_text_repository.rs`
