@@ -49,9 +49,7 @@ fn test_all_yaml_keys_resolved_by_yaml_loader() {
     // 各キーが yaml_loader で解決されるか確認し、未解決のキーを収集
     let unresolved_keys: Vec<String> = yaml_keys
         .iter()
-        .filter(|key| {
-            gbf_discord_bot_rs::test_utils::resolve_yaml_message(key, "ja").is_none()
-        })
+        .filter(|key| gbf_discord_bot_rs::test_utils::resolve_yaml_message(key, "ja").is_none())
         .cloned()
         .collect();
 

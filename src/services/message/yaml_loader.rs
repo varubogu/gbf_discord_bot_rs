@@ -350,11 +350,13 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::RECRUITMENT_COMMAND_CANCEL_NOT_FOUND => {
             Some(t!(keys::RECRUITMENT_COMMAND_CANCEL_NOT_FOUND, locale = locale).to_string())
         }
-        keys::RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED => {
-            Some(
-                t!(keys::RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED, locale = locale).to_string(),
+        keys::RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CANCEL_EVENT_DATE_PASSED,
+                locale = locale
             )
-        }
+            .to_string(),
+        ),
         keys::RECRUITMENT_COMMAND_CANCEL_ERROR => {
             Some(t!(keys::RECRUITMENT_COMMAND_CANCEL_ERROR, locale = locale).to_string())
         }
