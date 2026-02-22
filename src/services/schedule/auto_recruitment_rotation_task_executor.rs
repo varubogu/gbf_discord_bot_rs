@@ -447,7 +447,7 @@ where
                 .update_date(txn, channel.id, target_month, target_day)
                 .await?;
 
-            let target_name = format!("{}月{}日", target_month, target_day);
+            let target_name = format!("{target_month}月{target_day}日");
             if let Err(e) = self
                 .update_discord_channel_name(gateway, channel.channel_id as u64, &target_name)
                 .await
