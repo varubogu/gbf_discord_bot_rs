@@ -37,6 +37,8 @@ This feature helps you gather participants for a co-op (multi) battle.
 - `12月31日 21時`
 - `今日 21:00`
 - `明日 21時半`
+- `明日21時`
+- `明日22時半`
 - `tomorrow 2200`
 
 <a id="what-should-i-enter"></a>

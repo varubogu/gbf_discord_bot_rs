@@ -331,11 +331,11 @@ fn parse_relative_day_keyword_datetime(
     let trimmed = normalized.trim();
 
     lazy_static! {
-        static ref RE_TODAY: Regex = Regex::new(r"(?i)^(今日|きょう|today)(?:\s+(.+))?$")
+        static ref RE_TODAY: Regex = Regex::new(r"(?i)^(今日|きょう|today)(?:\s*(.+))?$")
             .expect("todayキーワードRegexパターンが無効です");
-        static ref RE_TOMORROW: Regex = Regex::new(r"(?i)^(明日|あした|tomorrow)(?:\s+(.+))?$")
+        static ref RE_TOMORROW: Regex = Regex::new(r"(?i)^(明日|あした|tomorrow)(?:\s*(.+))?$")
             .expect("tomorrowキーワードRegexパターンが無効です");
-        static ref RE_NEXT_WEEK: Regex = Regex::new(r"(?i)^(来週|next\s+week)(?:\s+(.+))?$")
+        static ref RE_NEXT_WEEK: Regex = Regex::new(r"(?i)^(来週|next\s+week)(?:\s*(.+))?$")
             .expect("next weekキーワードRegexパターンが無効です");
     }
 
@@ -1149,6 +1149,34 @@ mod tests {
             }
             _ => panic!("Expected Absolute"),
         }
+
+        let result = parse_datetime("明日21時", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(1)
+                );
+                assert_eq!(local.hour(), 21);
+                assert_eq!(local.minute(), 0);
+            }
+            _ => panic!("Expected Absolute"),
+        }
+
+        let result = parse_datetime("明日22時半", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(1)
+                );
+                assert_eq!(local.hour(), 22);
+                assert_eq!(local.minute(), 30);
+            }
+            _ => panic!("Expected Absolute"),
+        }
     }
 
     #[test]
@@ -1180,6 +1208,20 @@ mod tests {
                     now_jst.date_naive() + chrono::Duration::days(7)
                 );
                 assert_eq!(local.hour(), 21);
+                assert_eq!(local.minute(), 0);
+            }
+            _ => panic!("Expected Absolute"),
+        }
+
+        let result = parse_datetime("tomorrow2200", &options).unwrap();
+        match &result[0] {
+            ParsedDateTime::Absolute(dt) => {
+                let local = dt.with_timezone(&timezone);
+                assert_eq!(
+                    local.date_naive(),
+                    now_jst.date_naive() + chrono::Duration::days(1)
+                );
+                assert_eq!(local.hour(), 22);
                 assert_eq!(local.minute(), 0);
             }
             _ => panic!("Expected Absolute"),

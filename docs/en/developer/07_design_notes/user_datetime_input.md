@@ -41,7 +41,8 @@ In the unified parser, input patterns are enabled/disabled per use case.
 - ISO-like formats such as `2024-12-31 21:00`
 - No-year formats such as `12/31 21:00`
 - Japanese formats such as `12月31日 21時半`
-- Relative day words + time such as `today 21:00` / `tomorrow 2200`
+- Relative day words + time such as `today 21:00` / `tomorrow 2200` / `明日22時半`
+  - Both spaced and unspaced forms are allowed between the keyword and time (e.g., `明日 21時`, `明日21時`)
 
 ### Time only
 
