@@ -13,6 +13,8 @@ pub enum CanCancelResult {
     NotFound,
     /// 開催日時を過ぎているためキャンセル対象外
     EventDatePassed,
+    /// 操作権限なし（募集主本人でも gbf_bot_control ロール保持者でもない）
+    PermissionDenied,
 }
 
 /// メッセージ削除時のキャンセル処理結果

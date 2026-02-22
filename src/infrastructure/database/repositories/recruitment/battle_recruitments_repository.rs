@@ -112,6 +112,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
         active_model.quest_id = Set(params.quest_id);
         active_model.battle_style_id = Set(params.battle_style_id);
         active_model.quest_start_at = Set(params.quest_start_at);
+        active_model.host_discord_user_id = Set(params.host_discord_user_id.get() as i64);
 
         let result = active_model.insert(txn).await.map_err(AppError::Database)?;
 

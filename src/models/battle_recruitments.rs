@@ -21,6 +21,8 @@ pub struct BattleRecruitments {
     pub is_canceled: bool,
     pub recruit_end_message_id: Option<u64>,
     pub full_notification_sent: bool,
+    /// 募集作成者（ホスト）のDiscordユーザーID。0は不明（旧データ）を表す。
+    pub host_discord_user_id: u64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -39,6 +41,7 @@ impl From<battle_recruitments::Model> for BattleRecruitments {
             is_canceled: model.is_canceled,
             recruit_end_message_id: model.recruit_end_message_id.map(|id| id as u64), // i64 → u64に変換
             full_notification_sent: model.full_notification_sent,
+            host_discord_user_id: model.host_discord_user_id as u64, // i64 → u64に変換
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

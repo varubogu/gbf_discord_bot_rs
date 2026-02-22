@@ -13,6 +13,8 @@ pub struct CreateBattleRecruitmentParams {
     pub quest_id: i32,
     pub battle_style_id: i32,
     pub quest_start_at: DateTime<Utc>,
+    /// 募集作成者のDiscordユーザーID。自動作成の場合は0を設定する。
+    pub host_discord_user_id: crate::types::discord::DiscordUserId,
 }
 
 /// バトル募集リポジトリの抽象インターフェース

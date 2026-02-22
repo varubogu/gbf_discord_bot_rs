@@ -1,7 +1,7 @@
 use super::participant_mentions;
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::RecruitmentParticipantsRepository;
+use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
@@ -18,6 +18,68 @@ use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
 use tracing::{debug, error, info, instrument};
 
+/// 募集変更権限チェック（パネル表示前の早期チェック用）
+///
+/// # 引数
+/// * `app_state` - アプリケーション状態
+/// * `guild_id` - ギルドID
+/// * `channel_id` - チャンネルID
+/// * `message_id` - メッセージID
+/// * `invoker_user_id` - 操作を実行するユーザーのID
+/// * `has_bot_control` - 実行者が gbf_bot_control ロールを保持しているか
+pub async fn check_can_change_recruitment(
+    app_state: &crate::types::AppState,
+    guild_id: u64,
+    channel_id: u64,
+    message_id: u64,
+    invoker_user_id: u64,
+    has_bot_control: bool,
+) -> types::Result<()> {
+    let txn = app_state.guild_db().begin().await?;
+    set_current_guild_id(&txn, guild_id as i64).await?;
+
+    let result = async {
+        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let recruitment = battle_recruitment_repo
+            .get_by_message_with_txn(
+                &txn,
+                DiscordGuildId::new(guild_id),
+                DiscordChannelId::new(channel_id),
+                DiscordMessageId::new(message_id),
+            )
+            .await?
+            .ok_or_else(|| {
+                types::AppError::NotFound("募集情報が見つかりませんでした".to_string())
+            })?;
+
+        // 権限チェック: 募集主本人または gbf_bot_control ロール保持者のみ変更可能
+        // host_discord_user_id == 0 は旧データ（作成者不明）を表す
+        let is_owner = recruitment.host_discord_user_id != 0
+            && recruitment.host_discord_user_id == invoker_user_id;
+        if !is_owner && !has_bot_control {
+            return Err(types::AppError::Business {
+                message:
+                    "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                        .to_string(),
+            });
+        }
+
+        Ok::<(), types::AppError>(())
+    }
+    .await;
+
+    match result {
+        Ok(_) => {
+            txn.commit().await?;
+            Ok(())
+        }
+        Err(e) => {
+            txn.rollback().await?;
+            Err(e)
+        }
+    }
+}
+
 /// 募集内容を更新する
 ///
 /// # 引数
@@ -28,6 +90,8 @@ use tracing::{debug, error, info, instrument};
 /// * `quest` - クエスト名（変更する場合）
 /// * `event_date` - 開催日時（変更する場合）
 /// * `battle_style_id` - 攻略方法ID（変更する場合）
+/// * `invoker_user_id` - 操作を実行するユーザーのID
+/// * `has_bot_control` - 実行者が gbf_bot_control ロールを保持しているか
 #[instrument(level = "debug", skip(app_state, gateway, message))]
 pub async fn change_recruitment_information<G>(
     app_state: &crate::types::AppState,
@@ -37,6 +101,8 @@ pub async fn change_recruitment_information<G>(
     quest: Option<&str>,
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
+    invoker_user_id: u64,
+    has_bot_control: bool,
 ) -> types::Result<()>
 where
     G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
@@ -49,6 +115,8 @@ where
         quest,
         event_date,
         battle_style_id,
+        invoker_user_id,
+        has_bot_control,
     )
     .await
 }
@@ -63,6 +131,8 @@ pub async fn change_recruitment_information_internal<G>(
     quest: Option<&str>,
     event_date: Option<DateTime<Utc>>,
     battle_style_id: Option<i32>,
+    invoker_user_id: u64,
+    has_bot_control: bool,
 ) -> types::Result<()>
 where
     G: DiscordMessageGateway + DiscordReactionGateway + crate::gateway::DiscordGuildGateway + Sync,
@@ -116,6 +186,18 @@ where
                 );
                 types::AppError::NotFound("募集情報が見つかりませんでした".to_string())
             })?;
+
+        // 権限チェック: 募集主本人または gbf_bot_control ロール保持者のみ変更可能
+        // host_discord_user_id == 0 は旧データ（作成者不明）を表す
+        let is_owner = existing_recruitment.host_discord_user_id != 0
+            && existing_recruitment.host_discord_user_id == invoker_user_id;
+        if !is_owner && !has_bot_control {
+            return Err(types::AppError::Business {
+                message:
+                    "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                        .to_string(),
+            });
+        }
 
         // 2. 更新する値を決定（指定されていればそれを使用、未指定なら既存の値を使用）
         let new_quest_id = if let Some(quest_name) = quest {

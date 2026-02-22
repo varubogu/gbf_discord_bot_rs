@@ -45,6 +45,7 @@ pub struct RecruitmentResult {
 /// * `event_date` - 開催日時（オプション）
 /// * `use_buttons` - ボタンを使用する場合は true、リアクションを使用する場合は false
 /// * `dismissal_times` - 解散時刻（オプション）
+/// * `host_discord_user_id` - 募集作成者のDiscordユーザーID
 ///
 /// # 戻り値
 /// RecruitmentResult - 募集ID、表示用メッセージ、Embed、コンポーネント等
@@ -61,6 +62,7 @@ pub async fn new_recruitment<G>(
     event_date: Option<DateTime<Utc>>,
     use_buttons: bool,
     dismissal_times: Option<String>,
+    host_discord_user_id: u64,
 ) -> types::Result<RecruitmentResult>
 where
     G: DiscordGuildGateway + Sync,
@@ -200,7 +202,7 @@ where
         }
 
         // 2. データ保存（message_id=0で仮保存、events層でメッセージ送信後に更新）
-        let recruitment = new::save_recruitment(&txn, &battle_recruitment_repo, &recruitment_data, 0).await?;
+        let recruitment = new::save_recruitment(&txn, &battle_recruitment_repo, &recruitment_data, 0, host_discord_user_id).await?;
 
         // 4. 出発時刻の通知を登録（5分前とちょうどの時刻）
         debug!(

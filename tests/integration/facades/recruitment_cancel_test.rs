@@ -483,6 +483,8 @@ async fn test_can_cancel_available() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
+        123456, // message.author_id（募集主として実行）
+        false,  // has_bot_control
     )
     .await;
 
@@ -539,6 +541,8 @@ async fn test_can_cancel_already_cancelled() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
+        123456, // message.author_id（募集主として実行）
+        false,  // has_bot_control
     )
     .await;
 
@@ -595,6 +599,8 @@ async fn test_can_cancel_message_deleted() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
+        123456, // message.author_id（募集主として実行）
+        false,  // has_bot_control
     )
     .await;
 
@@ -639,6 +645,8 @@ async fn test_can_cancel_not_recruit_message() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
+        123456, // message.author_id（募集主として実行）
+        false,  // has_bot_control
     )
     .await;
 
@@ -695,6 +703,8 @@ async fn test_can_cancel_event_date_passed() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
+        123456, // message.author_id（募集主として実行）
+        false,  // has_bot_control
     )
     .await;
 
@@ -733,6 +743,8 @@ async fn test_can_cancel_not_found() {
         DiscordGuildId::new(CANCEL_GUILD_ID as u64 + 99),
         DiscordChannelId::new(CANCEL_CHANNEL_ID as u64 + 99),
         DiscordMessageId::new(99999999_u64),
+        123456, // invoker_user_id（DBに募集なし・通知なし）
+        false,  // has_bot_control
     )
     .await;
 
@@ -903,6 +915,123 @@ async fn test_execute_cancel_participants_notified_from_db_only() {
     .await;
 
     assert!(result.is_ok(), "DB参加者通知に失敗: {:?}", result.err());
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 3-7: 正常系 - 操作権限なし（募集主でなく gbf_bot_control ロールもない）
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_can_cancel_permission_denied() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 15;
+    let channel_id = CANCEL_CHANNEL_ID + 15;
+    let message_id = CANCEL_MESSAGE_ID + 15;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false, // is_canceled = false
+        24,    // 24時間後
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456, // author_id（募集主）
+            "test content",
+        ))
+    });
+
+    // 別ユーザー（999999）が gbf_bot_control ロールなしでキャンセルを試みる
+    let result = cancel::can_cancel(
+        &app_state,
+        &mock_gateway,
+        DiscordGuildId::new(guild_id as u64),
+        DiscordChannelId::new(channel_id as u64),
+        DiscordMessageId::new(message_id as u64),
+        999999, // 募集主（123456）ではない別ユーザー
+        false,  // gbf_bot_control ロールなし
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "キャンセル可否確認に失敗: {:?}",
+        result.err()
+    );
+
+    match result.unwrap() {
+        gbf_discord_bot_rs::types::CanCancelResult::PermissionDenied => {
+            // 権限なしが返る
+        }
+        other => panic!(
+            "PermissionDeniedが期待されましたが {:?} が返りました",
+            other
+        ),
+    }
+
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 3-8: 正常系 - gbf_bot_control ロールを持つ管理者は他人の募集もキャンセル可能
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_can_cancel_admin_can_cancel_others() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 16;
+    let channel_id = CANCEL_CHANNEL_ID + 16;
+    let message_id = CANCEL_MESSAGE_ID + 16;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false, // is_canceled = false
+        24,    // 24時間後
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456, // author_id（募集主）
+            "test content",
+        ))
+    });
+
+    // 別ユーザー（999999）が gbf_bot_control ロールでキャンセルを試みる
+    let result = cancel::can_cancel(
+        &app_state,
+        &mock_gateway,
+        DiscordGuildId::new(guild_id as u64),
+        DiscordChannelId::new(channel_id as u64),
+        DiscordMessageId::new(message_id as u64),
+        999999, // 募集主（123456）ではない別ユーザー
+        true,   // gbf_bot_control ロールあり
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "キャンセル可否確認に失敗: {:?}",
+        result.err()
+    );
+
+    match result.unwrap() {
+        gbf_discord_bot_rs::types::CanCancelResult::Success => {
+            // 管理者はキャンセル可能
+        }
+        other => panic!("Successが期待されましたが {:?} が返りました", other),
+    }
+
     cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
 }
 

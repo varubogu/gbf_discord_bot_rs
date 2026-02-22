@@ -16,6 +16,7 @@ pub struct Model {
     pub is_canceled: bool,
     pub recruit_end_message_id: Option<i64>,
     pub full_notification_sent: bool,
+    pub host_discord_user_id: i64,
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -75,6 +76,7 @@ impl ActiveModelBehavior for ActiveModel {
             is_canceled: sea_orm::Set(false),
             recruit_end_message_id: sea_orm::NotSet,
             full_notification_sent: sea_orm::Set(false),
+            host_discord_user_id: sea_orm::Set(0),
             created_at: sea_orm::Set(now),
             updated_at: sea_orm::Set(now),
         }

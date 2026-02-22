@@ -205,6 +205,8 @@ async fn test_change_recruitment_information_change_quest() {
         Some("ルシファーHL"),
         None,
         None,
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
     assert!(result.is_ok(), "クエスト変更に失敗: {:?}", result.err());
@@ -255,6 +257,8 @@ async fn test_change_recruitment_information_change_event_date() {
         None,
         Some(new_date),
         None,
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
     assert!(result.is_ok(), "開催日時変更に失敗: {:?}", result.err());
@@ -302,6 +306,8 @@ async fn test_change_recruitment_information_change_battle_style() {
         None,
         None,
         Some(2),
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
     assert!(result.is_ok(), "攻略方法変更に失敗: {:?}", result.err());
@@ -339,6 +345,8 @@ async fn test_change_recruitment_information_not_found() {
         Some("ルシファーHL"),
         None,
         None,
+        TEST_USER_ID, // message.author_id（存在しない募集のため権限チェック後に NotFound）
+        false,        // has_bot_control
     )
     .await;
 
@@ -382,6 +390,8 @@ async fn test_change_recruitment_information_edit_failed_rollback() {
         Some("ルシファーHL"),
         None,
         None,
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
     assert!(result.is_err(), "Gateway編集失敗でエラーが返りませんでした");
@@ -470,6 +480,8 @@ async fn test_change_recruitment_information_v2_notification_mentions_union_dedu
         Some("ルシファーHL"),
         None,
         None,
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
 
@@ -537,6 +549,8 @@ async fn test_change_recruitment_information_v1_notification_mentions_union() {
         Some("ルシファーHL"),
         None,
         None,
+        TEST_USER_ID, // message.author_id（募集主として実行）
+        false,        // has_bot_control
     )
     .await;
 
@@ -962,6 +976,95 @@ async fn test_handle_recruitment_select_menu_cancelled_error() {
         result.is_err(),
         "キャンセル済み募集へのセレクト操作でエラーが返りませんでした"
     );
+
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-8: 異常系 - 操作権限なし（募集主でなく gbf_bot_control ロールもない）
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_change_recruitment_permission_denied() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let mut mock_gateway = MockTestGateway::new();
+    // 権限チェックで弾かれるため、Discordへのアクセスは発生しない
+    mock_gateway.expect_get_emojis().never();
+    mock_gateway.expect_edit_message().never();
+    mock_gateway.expect_send_reply().never();
+
+    let guild_id = CHANGE_GUILD_ID + 8;
+    let channel_id = CHANGE_CHANNEL_ID + 8;
+    let message_id = CHANGE_MESSAGE_ID + 8;
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    let message = create_message_for_change(channel_id as u64, message_id as u64);
+
+    // author_id は TEST_USER_ID だが、別ユーザー（999999）が変更を試みる
+    let result = change::change_recruitment_information_internal(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        Some("ルシファーHL"),
+        None,
+        None,
+        999999, // 募集主（TEST_USER_ID）ではない別ユーザー
+        false,  // gbf_bot_control ロールなし
+    )
+    .await;
+
+    assert!(result.is_err(), "権限なしでエラーが返りませんでした");
+
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-9: 正常系 - gbf_bot_control ロールを持つ管理者は他人の募集も変更可能
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_change_recruitment_admin_can_change_others() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let mut mock_gateway = MockTestGateway::new();
+    setup_common_gateway_for_change(&mut mock_gateway);
+
+    let guild_id = CHANGE_GUILD_ID + 9;
+    let channel_id = CHANGE_CHANNEL_ID + 9;
+    let message_id = CHANGE_MESSAGE_ID + 9;
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    let message = create_message_for_change(channel_id as u64, message_id as u64);
+
+    // author_id は TEST_USER_ID だが、別ユーザー（999999）が gbf_bot_control ロールで変更する
+    let result = change::change_recruitment_information_internal(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        Some("ルシファーHL"),
+        None,
+        None,
+        999999, // 募集主（TEST_USER_ID）ではない別ユーザー
+        true,   // gbf_bot_control ロールあり
+    )
+    .await;
+
+    assert!(result.is_ok(), "管理者の変更に失敗: {:?}", result.err());
 
     cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
 }

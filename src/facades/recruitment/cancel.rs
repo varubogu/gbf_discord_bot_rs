@@ -28,6 +28,8 @@ use tracing::{error, info, instrument};
 /// * `guild_id` - ギルドID
 /// * `channel_id` - チャンネルID
 /// * `message_id` - メッセージID
+/// * `invoker_user_id` - 操作を実行するユーザーのID
+/// * `has_bot_control` - 実行者が gbf_bot_control ロールを保持しているか
 #[instrument(
     level = "debug",
     skip(app_state, gateway),
@@ -43,12 +45,22 @@ pub async fn can_cancel<G>(
     guild_id: DiscordGuildId,
     channel_id: DiscordChannelId,
     message_id: DiscordMessageId,
+    invoker_user_id: u64,
+    has_bot_control: bool,
 ) -> types::Result<CanCancelResult>
 where
     G: DiscordMessageGateway + Sync,
 {
-    check_can_cancel_recruitment_internal(app_state, gateway, guild_id, channel_id, message_id)
-        .await
+    check_can_cancel_recruitment_internal(
+        app_state,
+        gateway,
+        guild_id,
+        channel_id,
+        message_id,
+        invoker_user_id,
+        has_bot_control,
+    )
+    .await
 }
 
 /// 募集をキャンセルできるか確認（内部関数）
@@ -67,6 +79,8 @@ async fn check_can_cancel_recruitment_internal<G>(
     guild_id: DiscordGuildId,
     channel_id: DiscordChannelId,
     message_id: DiscordMessageId,
+    invoker_user_id: u64,
+    has_bot_control: bool,
 ) -> types::Result<CanCancelResult>
 where
     G: DiscordMessageGateway + Sync,
@@ -83,7 +97,7 @@ where
         // Repositoryの取得
         let battle_recruitment_repo = app_state.repositories.battle_recruitments;
 
-        // Gateway経由でDBの募集情報とDiscordメッセージの状況をチェック
+        // Gateway経由でDBの募集情報とDiscordメッセージの状況をチェック（権限チェック含む）
         let can_cancel_result = check_can_cancel_recruitment(
             gateway,
             guild_id.get(),
@@ -91,6 +105,8 @@ where
             message_id.get(),
             &battle_recruitment_repo,
             &txn,
+            invoker_user_id,
+            has_bot_control,
         )
         .await?;
 

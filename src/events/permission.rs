@@ -6,6 +6,7 @@
 use crate::constants::ROLL_GBF_BOT_CONTROLS;
 use crate::types::PoiseContext;
 use poise::serenity_prelude::all::Member;
+use poise::serenity_prelude::{ComponentInteraction, Context, GuildId, Http, RoleId};
 use std::env;
 
 /// Checks if a member has the specified role name
@@ -82,6 +83,56 @@ pub async fn check_bot_admin_server(
     }
 
     Ok(true)
+}
+
+/// ギルドロール一覧から gbf_bot_control ロールIDを探し、メンバーが保持しているか判定する
+///
+/// Discord APIエラーやロール未設定の場合は `false` を返す（権限なし扱い）。
+/// PoiseContext・ComponentInteraction どちらのコンテキストからも呼び出せるよう
+/// HTTP クライアント・ギルドID・メンバーのロールIDリストを引数で受け取る。
+pub async fn resolve_has_bot_control(
+    http: &Http,
+    guild_id: GuildId,
+    member_roles: &[RoleId],
+) -> bool {
+    let Ok(roles) = http.get_guild_roles(guild_id).await else {
+        return false;
+    };
+    let Some(control_role) = roles.iter().find(|r| r.name == ROLL_GBF_BOT_CONTROLS) else {
+        return false;
+    };
+    member_roles.iter().any(|rid| rid == &control_role.id)
+}
+
+/// PoiseContext から gbf_bot_control ロール保持状況を解決する
+///
+/// スラッシュコマンド・コンテキストメニューコマンドから呼び出す。
+/// エラー時は `false` を返す（権限なし扱い）。
+pub async fn resolve_bot_control(ctx: &PoiseContext<'_>) -> bool {
+    let Some(guild_id) = ctx.guild_id() else {
+        return false;
+    };
+    let Some(member) = ctx.author_member().await else {
+        return false;
+    };
+    resolve_has_bot_control(ctx.http(), guild_id, &member.roles).await
+}
+
+/// ComponentInteraction から gbf_bot_control ロール保持状況を解決する
+///
+/// ボタン・セレクトメニュー等のコンポーネントインタラクションから呼び出す。
+/// エラー時は `false` を返す（権限なし扱い）。
+pub async fn resolve_bot_control_for_interaction(
+    ctx: &Context,
+    interaction: &ComponentInteraction,
+) -> bool {
+    let Some(guild_id) = interaction.guild_id else {
+        return false;
+    };
+    let Some(member) = &interaction.member else {
+        return false;
+    };
+    resolve_has_bot_control(&ctx.http, guild_id, &member.roles).await
 }
 
 /// Poise check function: gbf_bot_control ロール保持者のみ実行可能

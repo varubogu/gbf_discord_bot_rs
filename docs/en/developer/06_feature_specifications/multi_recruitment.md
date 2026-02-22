@@ -69,6 +69,7 @@ src/events/message_delete.rs  # メッセージ削除イベントのハンドリ
 - Authorization checks for role-setting commands
 - Authorization checks for recurring recruitment commands
 - Detect message deletion events and cancel recruitments
+- **Resolve invoker identity for cancel/change**: extract `invoker_user_id` (u64) and `has_bot_control` (bool) from Discord context, then pass to the facade layer. The `has_bot_control` flag is derived by looking up the `gbf_bot_control` role via HTTP and checking the invoker's role list.
 
 #### Facade layer (`facades/`)
 ```
@@ -82,6 +83,7 @@ src/facades/recruitment/role_management.rs
 - Abstract Discord API operations
 - Aggregate results for change/cancel
 - Provide unified add/remove for notification role settings
+- **Enforce cancel/change ownership rule**: accept `invoker_user_id: u64` and `has_bot_control: bool` as parameters; deny operation unless `invoker_user_id == message.author_id || has_bot_control`. This rule is a business rule, not a framework guard, because it depends on the domain entity (the recruitment message's author).
 
 #### Service layer (`services/`)
 ```

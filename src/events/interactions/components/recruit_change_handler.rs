@@ -1,4 +1,5 @@
 use crate::events::helpers::resolve_guild_locale;
+use crate::events::permission::resolve_bot_control_for_interaction;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::{battle_style_list, quest_list};
 use crate::gateway::PoiseDiscordGateway;
@@ -681,6 +682,9 @@ async fn handle_apply_changes(
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.http));
     let message_data = MessageData::from(target_message);
 
+    // 実行者情報を解決（events層でDiscordコンテキストから取得し、ドメイン値として渡す）
+    let has_bot_control = resolve_bot_control_for_interaction(ctx, interaction).await;
+
     let result = crate::facades::recruitment::change::change_recruitment_information_internal(
         &data.app_state,
         &gateway,
@@ -689,6 +693,8 @@ async fn handle_apply_changes(
         draft.quest_name.as_deref(),
         draft.event_date,
         draft.battle_style_id,
+        user_id,
+        has_bot_control,
     )
     .await;
 
@@ -723,6 +729,27 @@ async fn handle_apply_changes(
                 message_id = target_message_id,
                 "募集内容変更が完了しました"
             );
+        }
+        Err(AppError::Business { .. }) => {
+            // 権限エラー等のビジネスエラーはロケール対応メッセージを表示
+            let error_msg = get_message_or_fallback(
+                data,
+                Some(interaction_guild_id),
+                MessageTextId::RecruitmentCommandChangePermissionDenied,
+                HashMap::new(),
+                &locale,
+                "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。",
+            )
+            .await;
+
+            interaction
+                .edit_response(
+                    &ctx.http,
+                    poise::serenity_prelude::EditInteractionResponse::new()
+                        .content(error_msg)
+                        .components(vec![]),
+                )
+                .await?;
         }
         Err(e) => {
             error!(error = %e, "募集内容変更に失敗しました");

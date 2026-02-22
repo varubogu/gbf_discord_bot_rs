@@ -257,6 +257,12 @@ recruitment.command.cancel_notification_no_participants:
 recruitment.command.cancel_notification_with_participants:
   en: "The recruitment has been cancelled.\nFor those who were planning to participate"
   ja: "募集がキャンセルされました。\n参加予定だった皆さん"
+recruitment.command.cancel_permission_denied:
+  en: "Only the recruitment creator or a user with the gbf_bot_control role can cancel this recruitment."
+  ja: "この募集のキャンセルは作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+recruitment.command.change_permission_denied:
+  en: "Only the recruitment creator or a user with the gbf_bot_control role can change this recruitment."
+  ja: "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
 recruitment.command.cancel_timeout:
   en: "The operation timed out."
   ja: "操作がタイムアウトしました。"

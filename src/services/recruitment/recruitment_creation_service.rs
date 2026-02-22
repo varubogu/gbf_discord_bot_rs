@@ -15,7 +15,7 @@ use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
 use crate::types::discord::{
-    DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, EmbedContent, MessageContent,
 };
 use chrono::{TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
@@ -352,6 +352,7 @@ where
                     quest_id: quest.id,
                     battle_style_id: calculated_time.battle_style_id,
                     quest_start_at: calculated_time.quest_start_at,
+                    host_discord_user_id: DiscordUserId::new(0), // 自動作成のため作成者不明
                 },
             )
             .await?;
@@ -567,6 +568,7 @@ where
                     quest_id: quest.id,
                     battle_style_id: quest.default_battle_style_id,
                     quest_start_at: params.quest_start_at,
+                    host_discord_user_id: DiscordUserId::new(0), // 自動作成のため作成者不明
                 },
             )
             .await?;

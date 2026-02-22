@@ -15,6 +15,7 @@ mod m20260123_000000_add_auto_recruitment_flags;
 mod m20260123_100000_refactor_auto_matching;
 mod m20260216_000000_add_execution_status_to_scheduled_tasks;
 mod m20260217_000000_add_notification_channel_id_to_event_schedule_details;
+mod m20260222_000000_add_host_discord_user_id_to_battle_recruitments;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260123_100000_refactor_auto_matching::Migration),
             Box::new(m20260216_000000_add_execution_status_to_scheduled_tasks::Migration),
             Box::new(m20260217_000000_add_notification_channel_id_to_event_schedule_details::Migration),
+            Box::new(m20260222_000000_add_host_discord_user_id_to_battle_recruitments::Migration),
         ]
     }
 }

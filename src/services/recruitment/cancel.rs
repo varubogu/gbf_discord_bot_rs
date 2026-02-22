@@ -25,6 +25,8 @@ use crate::types::{AppError, Result};
 /// * `message_id` - メッセージID
 /// * `battle_recruitment_repo` - 募集リポジトリ
 /// * `txn` - データベーストランザクション
+/// * `invoker_user_id` - 操作を実行するユーザーのID
+/// * `has_bot_control` - 実行者が gbf_bot_control ロールを保持しているか
 pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmentsRepository>(
     gateway: &dyn DiscordMessageGateway,
     guild_id: u64,
@@ -32,6 +34,8 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
     message_id: u64,
     battle_recruitment_repo: &R,
     txn: &DatabaseTransaction,
+    invoker_user_id: u64,
+    has_bot_control: bool,
 ) -> Result<CanCancelResult> {
     info!(
         "キャンセル可能性チェック開始: guild_id={}, channel_id={}, message_id={}",
@@ -58,7 +62,7 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
 
     let result = match (recruitment_opt, discord_message_opt) {
         // DBあり + メッセージあり
-        (Some(recruitment), Ok(_)) => {
+        (Some(recruitment), Ok(_message)) => {
             if recruitment.is_canceled {
                 CanCancelResult::AlreadyCancelled
             } else {
@@ -67,7 +71,15 @@ pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmen
                 if recruitment.quest_start_at <= now {
                     CanCancelResult::EventDatePassed
                 } else {
-                    CanCancelResult::Success
+                    // 権限チェック: 募集主本人または gbf_bot_control ロール保持者のみキャンセル可能
+                    // host_discord_user_id == 0 は旧データ（作成者不明）を表す
+                    let is_owner = recruitment.host_discord_user_id != 0
+                        && recruitment.host_discord_user_id == invoker_user_id;
+                    if !is_owner && !has_bot_control {
+                        CanCancelResult::PermissionDenied
+                    } else {
+                        CanCancelResult::Success
+                    }
                 }
             }
         }

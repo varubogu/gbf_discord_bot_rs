@@ -414,6 +414,20 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT => {
             Some(t!(keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT, locale = locale).to_string())
         }
+        keys::RECRUITMENT_COMMAND_CANCEL_PERMISSION_DENIED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CANCEL_PERMISSION_DENIED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED,
+                locale = locale
+            )
+            .to_string(),
+        ),
 
         // General messages
         keys::MESSAGES_WELCOME => Some(t!(keys::MESSAGES_WELCOME, locale = locale).to_string()),

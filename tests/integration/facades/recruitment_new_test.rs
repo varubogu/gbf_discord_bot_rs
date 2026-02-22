@@ -8,7 +8,9 @@ use gbf_discord_bot_rs::models::entities::worker::battle_recruitments;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait};
 use std::sync::Arc;
 
-use super::test_helper::{MockTestGateway, TEST_CHANNEL_ID, TEST_GUILD_ID, create_test_app_state};
+use super::test_helper::{
+    MockTestGateway, TEST_CHANNEL_ID, TEST_GUILD_ID, TEST_USER_ID, create_test_app_state,
+};
 
 /// テスト用ID（新規募集テスト専用）
 const NEW_GUILD_ID: u64 = (TEST_GUILD_ID + 600) as u64;
@@ -178,6 +180,7 @@ async fn test_new_recruitment_button_success() {
         None,
         true,
         None,
+        TEST_USER_ID,
     )
     .await;
 
@@ -225,6 +228,7 @@ async fn test_new_recruitment_reaction_success() {
         None,
         false,
         None,
+        TEST_USER_ID,
     )
     .await;
 
@@ -268,6 +272,7 @@ async fn test_new_recruitment_with_battle_style_success() {
         None,
         true,
         None,
+        TEST_USER_ID,
     )
     .await;
 
@@ -311,6 +316,7 @@ async fn test_new_recruitment_with_event_date_success() {
         Some(event_date),
         true,
         None,
+        TEST_USER_ID,
     )
     .await;
 
@@ -353,6 +359,7 @@ async fn test_new_recruitment_with_dismissal_times_success() {
         None,
         true,
         Some("30m".to_string()),
+        TEST_USER_ID,
     )
     .await;
 
@@ -392,6 +399,7 @@ async fn test_new_recruitment_quest_not_found() {
         None,
         true,
         None,
+        TEST_USER_ID,
     )
     .await;
 
@@ -430,6 +438,7 @@ async fn test_new_recruitment_battle_style_not_found() {
         None,
         true,
         None,
+        TEST_USER_ID,
     )
     .await;
 

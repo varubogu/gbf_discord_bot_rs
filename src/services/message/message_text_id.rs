@@ -160,6 +160,10 @@ pub mod keys {
     pub const RECRUITMENT_COMMAND_CANCEL_UNKNOWN_SELECTION: &str =
         "recruitment.command.cancel_unknown_selection";
     pub const RECRUITMENT_COMMAND_CANCEL_TIMEOUT: &str = "recruitment.command.cancel_timeout";
+    pub const RECRUITMENT_COMMAND_CANCEL_PERMISSION_DENIED: &str =
+        "recruitment.command.cancel_permission_denied";
+    pub const RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED: &str =
+        "recruitment.command.change_permission_denied";
 
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
@@ -469,6 +473,8 @@ pub enum MessageTextId {
     RecruitmentCommandCancelAborted,
     RecruitmentCommandCancelUnknownSelection,
     RecruitmentCommandCancelTimeout,
+    RecruitmentCommandCancelPermissionDenied,
+    RecruitmentCommandChangePermissionDenied,
 
     // General messages
     MessagesWelcome,
@@ -806,6 +812,12 @@ impl MessageTextId {
             }
             MessageTextId::RecruitmentCommandCancelTimeout => {
                 keys::RECRUITMENT_COMMAND_CANCEL_TIMEOUT
+            }
+            MessageTextId::RecruitmentCommandCancelPermissionDenied => {
+                keys::RECRUITMENT_COMMAND_CANCEL_PERMISSION_DENIED
+            }
+            MessageTextId::RecruitmentCommandChangePermissionDenied => {
+                keys::RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED
             }
 
             // Messages
@@ -1407,6 +1419,8 @@ mod tests {
             MessageTextId::RecruitmentCommandCancelAborted,
             MessageTextId::RecruitmentCommandCancelUnknownSelection,
             MessageTextId::RecruitmentCommandCancelTimeout,
+            MessageTextId::RecruitmentCommandCancelPermissionDenied,
+            MessageTextId::RecruitmentCommandChangePermissionDenied,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
             MessageTextId::AutoRecruitmentChannelCreateFailed,

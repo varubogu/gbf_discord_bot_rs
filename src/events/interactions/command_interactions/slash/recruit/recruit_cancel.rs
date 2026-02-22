@@ -1,4 +1,5 @@
 use crate::events::helpers::{get_message_from_context, resolve_guild_locale};
+use crate::events::permission::resolve_bot_control;
 use crate::facades::recruitment::cancel as CancelFacade;
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
@@ -45,8 +46,22 @@ pub async fn recruit_cancel(
     let channel_id = DiscordChannelId::new(message.channel_id.get());
     let message_id = DiscordMessageId::new(message.id.get());
 
-    // キャンセル可能か確認
-    match CancelFacade::can_cancel(app_state, &gateway, guild_id, channel_id, message_id).await {
+    // 実行者情報を解決（events層でDiscordコンテキストから取得し、ドメイン値として渡す）
+    let invoker_user_id = ctx.author().id.get();
+    let has_bot_control = resolve_bot_control(&ctx).await;
+
+    // キャンセル可能か確認（権限チェック含む）
+    match CancelFacade::can_cancel(
+        app_state,
+        &gateway,
+        guild_id,
+        channel_id,
+        message_id,
+        invoker_user_id,
+        has_bot_control,
+    )
+    .await
+    {
         Ok(CanCancelResult::Success) => {
             // キャンセル可能な場合、確認付きでキャンセル処理を実行（events層でUI操作）
             execute_cancel_with_confirmation(ctx, &message).await
@@ -116,6 +131,23 @@ pub async fn recruit_cancel(
             )
             .await
             .unwrap_or_else(|_| "開催日時を過ぎているためキャンセルできません。".to_string());
+
+            ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
+                .await?;
+            Ok(())
+        }
+        Ok(CanCancelResult::PermissionDenied) => {
+            let msg = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentCommandCancelPermissionDenied,
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| {
+                "この募集のキャンセルは作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;

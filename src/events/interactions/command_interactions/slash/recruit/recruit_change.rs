@@ -1,4 +1,5 @@
 use crate::events::helpers::get_message_from_context;
+use crate::events::permission::resolve_bot_control;
 use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::change_recruitment_information;
 use crate::gateway::PoiseDiscordGateway;
@@ -7,7 +8,7 @@ use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
 };
 use crate::types::discord::{DiscordGuildId, MessageData};
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Message;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -98,7 +99,11 @@ pub async fn recruit_change(
     let message_data = MessageData::from(message.clone());
     let guild_id = ctx.guild_id().map(|id| id.get()).unwrap_or(0);
 
-    change_recruitment_information(
+    // 実行者情報を解決（events層でDiscordコンテキストから取得し、ドメイン値として渡す）
+    let invoker_user_id = ctx.author().id.get();
+    let has_bot_control = resolve_bot_control(&ctx).await;
+
+    match change_recruitment_information(
         app_state,
         &gateway,
         DiscordGuildId::new(guild_id),
@@ -106,24 +111,52 @@ pub async fn recruit_change(
         quest.as_deref(),
         parsed_date,
         battle_style,
-    )
-    .await?;
-
-    // 処理完了をユーザーに通知
-    let message = get_message_from_context(
-        &ctx,
-        ctx.data().app_state.message_service(),
-        MessageTextId::RecruitmentCommandChangeSuccess,
-        HashMap::new(),
+        invoker_user_id,
+        has_bot_control,
     )
     .await
-    .unwrap_or_else(|_| "募集内容を更新しました。".to_string());
+    {
+        Ok(_) => {
+            // 処理完了をユーザーに通知
+            let success_message = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentCommandChangeSuccess,
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| "募集内容を更新しました。".to_string());
 
-    ctx.send(
-        poise::CreateReply::default()
-            .content(message)
-            .ephemeral(true),
-    )
-    .await?;
-    Ok(())
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(success_message)
+                    .ephemeral(true),
+            )
+            .await?;
+            Ok(())
+        }
+        Err(AppError::Business { .. }) => {
+            // 権限エラー等のビジネスエラーはロケール対応メッセージを表示
+            let error_msg = get_message_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentCommandChangePermissionDenied,
+                HashMap::new(),
+            )
+            .await
+            .unwrap_or_else(|_| {
+                "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                    .to_string()
+            });
+
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(error_msg)
+                    .ephemeral(true),
+            )
+            .await?;
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }

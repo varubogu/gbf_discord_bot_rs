@@ -82,6 +82,7 @@ pub async fn recruit_new(
         Some(parsed_date),
         false, // リアクション版
         dismissal_times,
+        ctx.author().id.get(),
     )
     .await?;
 
