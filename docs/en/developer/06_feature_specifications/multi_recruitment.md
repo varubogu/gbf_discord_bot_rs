@@ -95,7 +95,7 @@ src/services/recruitment/role_notification.rs
 - Add reactions
 - Persist data
 - Update DB and message on change (work in progress)
-- Aggregate participants from reactions and send notifications on cancel
+- Aggregate participants from DB + reactions and send notifications on cancel
 - Fetch notification roles and build mention strings
 - Check duplicates and insert/delete role settings
 
@@ -244,7 +244,7 @@ For detailed specs, technical implementation, and error handling, see:
   2. Facade fetches the target message and DB record, then begins a transaction
   3. Service re-generates recruitment content and edits the Discord message
   4. If a new host is specified, update host ID in DB and keep internal caches in sync
-  5. Send a “recruitment updated” notification mentioning participants
+  5. Send a “recruitment updated” notification mentioning participants (DB + reactions, deduplicated)
   6. Update DB fields (quest, start datetime, battle type, template)
   7. Commit on success; rollback on failure
 
@@ -255,7 +255,7 @@ For detailed specs, technical implementation, and error handling, see:
   1. Facade verifies the actor is the host or has the admin role
   2. Facade determines whether cancel is allowed (recruitment state, message existence)
   3. Present a confirmation UI; continue when `confirm_cancel` is pressed
-  4. Service collects participants from reactions and edits the original message (strike-through + note)
+  4. Service/Facade merges participants from DB + reactions (deduplicated) and edits the original message (strike-through + note)
   5. Reply with a cancel notification mentioning participants
   6. Repository records `is_canceled = true` and the cancel notification message ID
   7. Commit on success; on error, delete “cancel in progress” message and rollback

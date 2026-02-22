@@ -3,6 +3,7 @@ pub mod button_handler;
 pub mod cancel;
 pub mod change;
 pub mod new_recruit;
+mod participant_mentions;
 pub mod participants;
 pub mod quest_list;
 pub mod recruit_list;

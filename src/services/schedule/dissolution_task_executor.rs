@@ -264,17 +264,12 @@ where
             .get_all_participant_user_ids_with_txn(txn, recruitment.id)
             .await?;
 
-        let participant_mentions: Vec<String> = participant_user_ids
-            .into_iter()
-            .map(|user_id| format!("<@{user_id}>"))
-            .collect();
-
         let notification_text = create_cancel_notification_text(
             txn,
             self.message_service.as_ref(),
             guild_id,
             Some(&locale),
-            &participant_mentions,
+            &participant_user_ids,
         )
         .await?;
 

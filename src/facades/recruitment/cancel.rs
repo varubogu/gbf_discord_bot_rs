@@ -3,6 +3,7 @@
 //! Gateway経由でDiscord APIを操作し、
 //! サービス層のビジネスロジックを呼び出す。
 
+use super::participant_mentions;
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::{
@@ -14,9 +15,7 @@ use crate::services::recruitment::cancel::{
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
-use crate::types::discord::{
-    DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent, MessageData,
-};
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
@@ -190,12 +189,16 @@ where
         let original_message = gateway.get_message(channel_id_obj, message_id_obj).await?;
         let original_content = original_message.content.clone();
 
-        // 2. リアクションから参加者一覧を取得（Gatewayを使用）
-        let participants = get_participants_from_reactions(
+        // 2. DB参加者とリアクション参加者を合算して通知対象を作成
+        let participants_repo = app_state.repositories.recruitment_participants;
+        let participant_user_ids = participant_mentions::collect_notification_participant_user_ids(
+            &participants_repo,
             gateway,
-            &original_message,
+            &txn,
+            recruitment.id,
             channel_id_obj,
             message_id_obj,
+            &original_message,
         )
         .await?;
 
@@ -224,7 +227,7 @@ where
             message_service,
             guild_id_i64,
             locale,
-            &participants,
+            &participant_user_ids,
         )
         .await?;
 
@@ -413,12 +416,6 @@ where
             .get_all_participant_user_ids_with_txn(&txn, recruitment.id)
             .await?;
 
-        // 参加者メンションを作成
-        let participant_mentions: Vec<String> = participant_user_ids
-            .into_iter()
-            .map(|user_id| format!("<@{user_id}>"))
-            .collect();
-
         // ギルド設定からロケールを取得
         let guild_settings_repo = app_state.repositories.guild_settings;
         let locale = match guild_settings_repo
@@ -436,7 +433,7 @@ where
             message_service,
             Some(guild_id as i64),
             Some(&locale),
-            &participant_mentions,
+            &participant_user_ids,
         )
         .await?;
 
@@ -477,7 +474,7 @@ where
 
         info!(
             recruitment_id = recruitment.id,
-            participants_count = participant_mentions.len(),
+            participants_count = participant_user_ids.len(),
             "メッセージ削除に伴うキャンセル処理が完了しました"
         );
 
@@ -502,68 +499,4 @@ where
             Err(e)
         }
     }
-}
-
-// ============================================================
-// 以下はservice層から移動したDiscord操作関数（facade層で実装）
-// ============================================================
-
-/// リアクションから参加者一覧取得（facade層実装）
-///
-/// メッセージのリアクションを列挙し、各リアクションのユーザーを取得して
-/// 参加者一覧を返す。
-///
-/// # 引数
-/// * `gateway` - Discord Gateway
-/// * `message` - メッセージデータ（リアクション情報を含む）
-/// * `channel_id` - チャンネルID
-/// * `message_id` - メッセージID
-async fn get_participants_from_reactions<G>(
-    gateway: &G,
-    message: &MessageData,
-    channel_id: DiscordChannelId,
-    message_id: DiscordMessageId,
-) -> types::Result<Vec<String>>
-where
-    G: DiscordReactionGateway + Sync,
-{
-    info!(
-        "リアクション参加者取得開始: channel_id={}, message_id={}",
-        channel_id.get(),
-        message_id.get()
-    );
-
-    let mut all_participants = Vec::new();
-
-    for reaction in &message.reactions {
-        // リアクションしたユーザーを取得（Gatewayを使用）
-        match gateway
-            .get_reaction_users(channel_id, message_id, reaction.emoji.clone(), Some(100))
-            .await
-        {
-            Ok(user_ids) => {
-                // Gatewayがボットユーザーを除外済みのため、そのままメンションに変換する
-                let user_mentions: Vec<String> = user_ids
-                    .iter()
-                    .map(|user_id| format!("<@{}>", user_id.get()))
-                    .collect();
-
-                all_participants.extend(user_mentions);
-            }
-            Err(e) => {
-                error!("リアクションユーザー取得エラー: {:?}", e);
-                // エラーが発生しても他のリアクションの処理は続行
-            }
-        }
-    }
-
-    // 重複を除去
-    all_participants.sort();
-    all_participants.dedup();
-
-    info!(
-        "リアクション参加者取得完了: {} participants found",
-        all_participants.len()
-    );
-    Ok(all_participants)
 }

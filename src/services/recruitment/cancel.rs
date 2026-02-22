@@ -212,14 +212,14 @@ pub async fn create_cancel_notification_text<C, GM, MT>(
     message_service: &MessageService<GM, MT>,
     guild_id: Option<i64>,
     locale: Option<&str>,
-    participants: &[String],
+    participant_user_ids: &[u64],
 ) -> Result<String>
 where
     C: ConnectionTrait,
     GM: GuildMessageTextRepository,
     MT: MessageTextRepository,
 {
-    if participants.is_empty() {
+    if participant_user_ids.is_empty() {
         // 参加者なしの場合
         let message = message_service
             .get_message(
@@ -245,7 +245,11 @@ where
             .await
             .unwrap_or_else(|_| "募集がキャンセルされました。\n参加予定だった皆さん".to_string());
 
-        let participants_str = participants.join(" ");
+        let participants_str = participant_user_ids
+            .iter()
+            .map(|user_id| format!("<@{user_id}>"))
+            .collect::<Vec<_>>()
+            .join(" ");
         Ok(format!("{base_message}: {participants_str}"))
     }
 }

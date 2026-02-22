@@ -5,11 +5,11 @@
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::errors::GatewayError;
 use gbf_discord_bot_rs::facades::recruitment::cancel;
-use gbf_discord_bot_rs::models::entities::worker::battle_recruitments;
+use gbf_discord_bot_rs::models::entities::worker::{battle_recruitments, recruitment_participants};
 use gbf_discord_bot_rs::types::discord::{
     DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, ReactionData, ReactionEmoji,
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use std::sync::Arc;
 
 use super::test_helper::{
@@ -55,9 +55,26 @@ async fn create_test_recruitment(
 
 /// テスト用募集レコードを削除
 async fn cleanup_recruitment(db: &sea_orm::DatabaseConnection, recruitment_id: i32) {
+    let _ = recruitment_participants::Entity::delete_many()
+        .filter(recruitment_participants::Column::RecruitmentId.eq(recruitment_id))
+        .exec(db)
+        .await;
     let _ = battle_recruitments::Entity::delete_by_id(recruitment_id)
         .exec(db)
         .await;
+}
+
+/// テスト用参加者レコードを作成
+async fn add_test_participant(db: &sea_orm::DatabaseConnection, recruitment_id: i32, user_id: u64) {
+    recruitment_participants::ActiveModel {
+        recruitment_id: Set(recruitment_id),
+        user_id: Set(user_id as i64),
+        element_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
 }
 
 // =================================================
@@ -825,5 +842,137 @@ async fn test_execute_cancel_participants_notified_bot_excluded() {
     // expected_mentionが参照されていることを明示（コンパイラの未使用警告を抑制）
     let _ = expected_mention;
 
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 4-6: 正常系 - DB参加者のみでもキャンセル通知に含まれる
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_execute_cancel_participants_notified_from_db_only() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 41;
+    let channel_id = CANCEL_CHANNEL_ID + 41;
+    let message_id = CANCEL_MESSAGE_ID + 41;
+    let db_user_id: u64 = 222_222_222;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false,
+        24,
+    )
+    .await;
+    add_test_participant(app_state.guild_db(), recruitment.id, db_user_id).await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        Ok(create_test_message_data(
+            message_id as u64,
+            channel_id as u64,
+            123456,
+            "募集本文",
+        ))
+    });
+    mock_gateway.expect_get_reaction_users().never();
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+
+    let expected_mention = format!("<@{db_user_id}>");
+    mock_gateway
+        .expect_send_reply()
+        .withf(move |_, _, content, _| {
+            content
+                .text
+                .as_ref()
+                .map(|t| t.contains(&expected_mention))
+                .unwrap_or(false)
+        })
+        .returning(|_, _, _, _| Ok(DiscordMessageId::new(123451)));
+
+    let result = cancel::execute_cancel(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        channel_id as u64,
+        message_id as u64,
+        Some("ja"),
+    )
+    .await;
+
+    assert!(result.is_ok(), "DB参加者通知に失敗: {:?}", result.err());
+    cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 4-7: 正常系 - DBとリアクションを合算し重複を除去して通知する
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_execute_cancel_participants_notified_union_dedup() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CANCEL_GUILD_ID + 42;
+    let channel_id = CANCEL_CHANNEL_ID + 42;
+    let message_id = CANCEL_MESSAGE_ID + 42;
+    let duplicated_user_id: u64 = 333_333_333;
+    let reaction_only_user_id: u64 = 444_444_444;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        false,
+        24,
+    )
+    .await;
+    add_test_participant(app_state.guild_db(), recruitment.id, duplicated_user_id).await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_message().returning(move |_, _| {
+        let mut msg =
+            create_test_message_data(message_id as u64, channel_id as u64, 123456, "募集本文");
+        msg.reactions = vec![ReactionData {
+            emoji: ReactionEmoji::unicode("⚔"),
+            count: 2,
+        }];
+        Ok(msg)
+    });
+    mock_gateway
+        .expect_get_reaction_users()
+        .returning(move |_, _, _, _| {
+            Ok(vec![
+                DiscordUserId::new(duplicated_user_id),
+                DiscordUserId::new(reaction_only_user_id),
+            ])
+        });
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+
+    let duplicated_mention = format!("<@{duplicated_user_id}>");
+    let reaction_only_mention = format!("<@{reaction_only_user_id}>");
+    mock_gateway
+        .expect_send_reply()
+        .withf(move |_, _, content, _| {
+            content.text.as_ref().is_some_and(|text| {
+                text.contains(&duplicated_mention)
+                    && text.contains(&reaction_only_mention)
+                    && text.matches(&duplicated_mention).count() == 1
+            })
+        })
+        .returning(|_, _, _, _| Ok(DiscordMessageId::new(123452)));
+
+    let result = cancel::execute_cancel(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        channel_id as u64,
+        message_id as u64,
+        Some("ja"),
+    )
+    .await;
+
+    assert!(result.is_ok(), "合算通知に失敗: {:?}", result.err());
     cleanup_recruitment(app_state.guild_db(), recruitment.id).await;
 }

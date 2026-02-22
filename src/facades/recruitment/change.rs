@@ -1,3 +1,4 @@
+use super::participant_mentions;
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::repository::RecruitmentParticipantsRepository;
@@ -183,15 +184,28 @@ where
         )
         .await?;
 
-        // 4. 参加者を取得（v2はDBから、v1はリアクションから）
+        // 4. 通知向け参加者を取得（DB + リアクションを合算）
+        let participants_repo = app_state.repositories.recruitment_participants;
+        let participant_user_ids = participant_mentions::collect_notification_participant_user_ids(
+            &participants_repo,
+            gateway,
+            &txn,
+            existing_recruitment.id,
+            channel_id_obj,
+            message_id_obj,
+            message,
+        )
+        .await?;
+        let mentions = participant_mentions::to_mentions(&participant_user_ids).join(" ");
+
+        // 5. 更新後メッセージのEmbedを作成
         // メッセージにコンポーネント（ボタン）があればv2、なければv1と判定
         let is_v2 = !message.components.is_empty();
 
-        let (mentions, embed_for_update) = if is_v2 {
+        let embed_for_update = if is_v2 {
             // v2: DBから参加者を取得し、embed用のテキストも作成
             debug!("v2募集: DBから参加者を取得します");
 
-            let participants_repo = app_state.repositories.recruitment_participants;
             let participants = participants_repo
                 .find_by_recruitment_id_with_txn(&txn, existing_recruitment.id)
                 .await?;
@@ -201,13 +215,6 @@ where
                 participants.iter().map(|p| p.user_id).collect();
             let participant_count = unique_user_ids.len();
 
-            // 参加者メンション（通知用）
-            let mentions_str = unique_user_ids
-                .iter()
-                .map(|user_id| format!("<@{user_id}>"))
-                .collect::<Vec<_>>()
-                .join(" ");
-
             // 参加者一覧テキストを作成（embed用）
             let participants_text = create_participants_text_for_v2(
                 &recruitment_data.battle_style_name,
@@ -216,45 +223,17 @@ where
             );
 
             // ドメインモデルでEmbedを作成
-            let embed_content = EmbedContent::new()
+            EmbedContent::new()
                 .with_title("参加者一覧")
                 .with_description(&participants_text)
                 .with_footer(format!("参加者数: {participant_count}人"))
-                .with_color(0x0099ff);
-
-            (mentions_str, embed_content)
+                .with_color(0x0099ff)
         } else {
-            // v1: リアクションから参加者を取得
-            debug!("v1募集: リアクションから参加者を取得します");
-            let mut participant_ids = std::collections::HashSet::new();
-            for reaction in &message.reactions {
-                // Gatewayを使用してリアクションユーザーを取得
-                let user_ids = gateway
-                    .get_reaction_users(
-                        channel_id_obj,
-                        message_id_obj,
-                        reaction.emoji.clone(),
-                        Some(100),
-                    )
-                    .await?;
-
-                // 取得したユーザーIDを追加（Bot判定は省略 - v1は既存参加者のみ）
-                for user_id in user_ids {
-                    participant_ids.insert(user_id.get());
-                }
-            }
-
-            let mentions_str = participant_ids
-                .into_iter()
-                .map(|user_id| format!("<@{user_id}>"))
-                .collect::<Vec<_>>()
-                .join(" ");
-
             // v1は新規作成用のembedをそのまま使用（ドメインモデル）
-            (mentions_str, recruitment_data.embed_content.clone())
+            recruitment_data.embed_content.clone()
         };
 
-        // 5. DBの募集情報を更新
+        // 6. DBの募集情報を更新
         update_service
             .update_recruitment(
                 &txn,
@@ -265,7 +244,7 @@ where
             )
             .await?;
 
-        // 6. Discordのメッセージを更新（ドメインモデルを使用）
+        // 7. Discordのメッセージを更新（ドメインモデルを使用）
         let edit_content = MessageContent::new()
             .with_text(&recruitment_data.message_content)
             .with_embed(embed_for_update);
@@ -274,7 +253,7 @@ where
             .edit_message(channel_id_obj, message_id_obj, edit_content)
             .await?;
 
-        // 7. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
+        // 8. 変更通知メッセージを送信（ロールメンション + 参加者メンション）
         // ロールメンションを取得
         let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
         let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
@@ -313,7 +292,7 @@ where
             )
             .await?;
 
-        // 8. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
+        // 9. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
         if event_date.is_some() {
             // 既存の通知を削除
             notification_service

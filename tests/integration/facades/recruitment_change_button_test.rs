@@ -10,7 +10,7 @@ use gbf_discord_bot_rs::facades::recruitment::{button_handler, change};
 use gbf_discord_bot_rs::models::entities::worker::{battle_recruitments, recruitment_participants};
 use gbf_discord_bot_rs::types::discord::{
     ActionRowData, ChannelKind, ComponentData, DiscordChannelId, DiscordGuildId, DiscordMessageId,
-    EmbedData, EmbedFieldData, MessageData, ReactionData, ReactionEmoji,
+    DiscordUserId, EmbedData, EmbedFieldData, MessageData, ReactionData, ReactionEmoji,
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use std::sync::Arc;
@@ -67,6 +67,23 @@ async fn cleanup_recruitment_with_participants(
     let _ = battle_recruitments::Entity::delete_by_id(recruitment_id)
         .exec(db)
         .await;
+}
+
+async fn add_test_participant(
+    db: &sea_orm::DatabaseConnection,
+    recruitment_id: i32,
+    user_id: u64,
+    element_id: Option<i32>,
+) {
+    recruitment_participants::ActiveModel {
+        recruitment_id: Set(recruitment_id),
+        user_id: Set(user_id as i64),
+        element_id: Set(element_id),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .unwrap();
 }
 
 fn create_message_for_change(channel_id: u64, message_id: u64) -> MessageData {
@@ -379,6 +396,151 @@ async fn test_change_recruitment_information_edit_failed_rollback() {
         "ロールバックされずquest_idが更新されています"
     );
 
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-6: 正常系 - v2募集の変更通知でDB+リアクションを合算し重複除去する
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_change_recruitment_information_v2_notification_mentions_union_dedup() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CHANGE_GUILD_ID + 6;
+    let channel_id = CHANGE_CHANNEL_ID + 6;
+    let message_id = CHANGE_MESSAGE_ID + 6;
+    let duplicated_user_id: u64 = 555_555_555;
+    let reaction_only_user_id: u64 = 666_666_666;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    add_test_participant(
+        app_state.guild_db(),
+        recruitment.id,
+        duplicated_user_id,
+        Some(1),
+    )
+    .await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_emojis().returning(|_| Ok(vec![]));
+    mock_gateway
+        .expect_get_reaction_users()
+        .returning(move |_, _, _, _| {
+            Ok(vec![
+                DiscordUserId::new(duplicated_user_id),
+                DiscordUserId::new(reaction_only_user_id),
+            ])
+        });
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+
+    let duplicated_mention = format!("<@{duplicated_user_id}>");
+    let reaction_only_mention = format!("<@{reaction_only_user_id}>");
+    mock_gateway
+        .expect_send_reply()
+        .withf(move |_, _, content, _| {
+            content.text.as_ref().is_some_and(|text| {
+                text.contains(&duplicated_mention)
+                    && text.contains(&reaction_only_mention)
+                    && text.matches(&duplicated_mention).count() == 1
+            })
+        })
+        .returning(|_, _, _, _| Ok(DiscordMessageId::new(987651)));
+
+    let mut message = create_message_for_change(channel_id as u64, message_id as u64);
+    message.reactions = vec![ReactionData {
+        emoji: ReactionEmoji::unicode("⚔"),
+        count: 2,
+    }];
+
+    let result = change::change_recruitment_information_internal(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        Some("ルシファーHL"),
+        None,
+        None,
+    )
+    .await;
+
+    assert!(result.is_ok(), "v2通知の合算に失敗: {:?}", result.err());
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-7: 正常系 - v1募集の変更通知でDB+リアクションを合算する
+#[tokio::test]
+#[ignore] // 実際のDBが必要
+async fn test_change_recruitment_information_v1_notification_mentions_union() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let guild_id = CHANGE_GUILD_ID + 7;
+    let channel_id = CHANGE_CHANNEL_ID + 7;
+    let message_id = CHANGE_MESSAGE_ID + 7;
+    let db_user_id: u64 = 777_777_777;
+    let reaction_user_id: u64 = 888_888_888;
+
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    add_test_participant(app_state.guild_db(), recruitment.id, db_user_id, None).await;
+
+    let mut mock_gateway = MockTestGateway::new();
+    mock_gateway.expect_get_emojis().returning(|_| Ok(vec![]));
+    mock_gateway
+        .expect_get_reaction_users()
+        .returning(move |_, _, _, _| Ok(vec![DiscordUserId::new(reaction_user_id)]));
+    mock_gateway
+        .expect_edit_message()
+        .returning(|_, _, _| Ok(()));
+
+    let db_mention = format!("<@{db_user_id}>");
+    let reaction_mention = format!("<@{reaction_user_id}>");
+    mock_gateway
+        .expect_send_reply()
+        .withf(move |_, _, content, _| {
+            content
+                .text
+                .as_ref()
+                .is_some_and(|text| text.contains(&db_mention) && text.contains(&reaction_mention))
+        })
+        .returning(|_, _, _, _| Ok(DiscordMessageId::new(987652)));
+
+    let mut message = create_message_for_change(channel_id as u64, message_id as u64);
+    message.components = vec![]; // v1募集として扱う
+    message.reactions = vec![ReactionData {
+        emoji: ReactionEmoji::unicode("⚔"),
+        count: 1,
+    }];
+
+    let result = change::change_recruitment_information_internal(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        Some("ルシファーHL"),
+        None,
+        None,
+    )
+    .await;
+
+    assert!(result.is_ok(), "v1通知の合算に失敗: {:?}", result.err());
     cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
 }
 
