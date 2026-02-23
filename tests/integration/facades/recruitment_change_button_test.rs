@@ -6,6 +6,7 @@
 
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::errors::GatewayError;
+use gbf_discord_bot_rs::facades::recruitment::change::RecruitmentChangeContent;
 use gbf_discord_bot_rs::facades::recruitment::{button_handler, change};
 use gbf_discord_bot_rs::models::entities::worker::{battle_recruitments, recruitment_participants};
 use gbf_discord_bot_rs::types::discord::{
@@ -202,9 +203,11 @@ async fn test_change_recruitment_information_change_quest() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -254,9 +257,11 @@ async fn test_change_recruitment_information_change_event_date() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        None,
-        Some(new_date),
-        None,
+        RecruitmentChangeContent {
+            quest: None,
+            event_date: Some(new_date),
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -303,9 +308,11 @@ async fn test_change_recruitment_information_change_battle_style() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        None,
-        None,
-        Some(2),
+        RecruitmentChangeContent {
+            quest: None,
+            event_date: None,
+            battle_style_id: Some(2),
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -342,9 +349,11 @@ async fn test_change_recruitment_information_not_found() {
         &mock_gateway,
         (CHANGE_GUILD_ID + 4) as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（存在しない募集のため権限チェック後に NotFound）
         false,        // has_bot_control
     )
@@ -387,9 +396,11 @@ async fn test_change_recruitment_information_edit_failed_rollback() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -477,9 +488,11 @@ async fn test_change_recruitment_information_v2_notification_mentions_union_dedu
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -546,9 +559,11 @@ async fn test_change_recruitment_information_v1_notification_mentions_union() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         TEST_USER_ID, // message.author_id（募集主として実行）
         false,        // has_bot_control
     )
@@ -1013,9 +1028,11 @@ async fn test_change_recruitment_permission_denied() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         999999, // 募集主（TEST_USER_ID）ではない別ユーザー
         false,  // gbf_bot_control ロールなし
     )
@@ -1056,9 +1073,11 @@ async fn test_change_recruitment_admin_can_change_others() {
         &mock_gateway,
         guild_id as u64,
         &message,
-        Some("ルシファーHL"),
-        None,
-        None,
+        RecruitmentChangeContent {
+            quest: Some("ルシファーHL".to_string()),
+            event_date: None,
+            battle_style_id: None,
+        },
         999999, // 募集主（TEST_USER_ID）ではない別ユーザー
         true,   // gbf_bot_control ロールあり
     )

@@ -11,7 +11,8 @@ use crate::repository::{
     RecruitmentParticipantsRepository,
 };
 use crate::services::recruitment::cancel::{
-    cancel_recruitment_by_message, check_can_cancel_recruitment, create_cancel_notification_text,
+    CancelInvokerContext, cancel_recruitment_by_message, check_can_cancel_recruitment,
+    create_cancel_notification_text,
 };
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
@@ -105,8 +106,10 @@ where
             message_id.get(),
             &battle_recruitment_repo,
             &txn,
-            invoker_user_id,
-            has_bot_control,
+            CancelInvokerContext {
+                user_id: invoker_user_id,
+                has_bot_control,
+            },
         )
         .await?;
 

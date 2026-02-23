@@ -690,9 +690,11 @@ async fn handle_apply_changes(
         &gateway,
         target_guild_id,
         &message_data,
-        draft.quest_name.as_deref(),
-        draft.event_date,
-        draft.battle_style_id,
+        crate::facades::recruitment::change::RecruitmentChangeContent {
+            quest: draft.quest_name,
+            event_date: draft.event_date,
+            battle_style_id: draft.battle_style_id,
+        },
         user_id,
         has_bot_control,
     )

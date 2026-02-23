@@ -16,6 +16,17 @@ use crate::types::discord::{
 };
 use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
+
+/// 募集変更内容
+#[derive(Debug)]
+pub struct RecruitmentChangeContent {
+    /// クエスト名（変更する場合）
+    pub quest: Option<String>,
+    /// 開催日時（変更する場合）
+    pub event_date: Option<DateTime<Utc>>,
+    /// 攻略方法ID（変更する場合）
+    pub battle_style_id: Option<i32>,
+}
 use tracing::{debug, error, info, instrument};
 
 /// 募集変更権限チェック（パネル表示前の早期チェック用）
@@ -87,9 +98,7 @@ pub async fn check_can_change_recruitment(
 /// * `gateway` - Discord Gateway
 /// * `guild_id` - ギルドID
 /// * `message` - 対象メッセージ（ドメイン型）
-/// * `quest` - クエスト名（変更する場合）
-/// * `event_date` - 開催日時（変更する場合）
-/// * `battle_style_id` - 攻略方法ID（変更する場合）
+/// * `content` - 変更内容（クエスト名・開催日時・攻略方法ID）
 /// * `invoker_user_id` - 操作を実行するユーザーのID
 /// * `has_bot_control` - 実行者が gbf_bot_control ロールを保持しているか
 #[instrument(level = "debug", skip(app_state, gateway, message))]
@@ -98,9 +107,7 @@ pub async fn change_recruitment_information<G>(
     gateway: &G,
     guild_id: DiscordGuildId,
     message: &MessageData,
-    quest: Option<&str>,
-    event_date: Option<DateTime<Utc>>,
-    battle_style_id: Option<i32>,
+    content: RecruitmentChangeContent,
     invoker_user_id: u64,
     has_bot_control: bool,
 ) -> types::Result<()>
@@ -112,9 +119,7 @@ where
         gateway,
         guild_id.get(),
         message,
-        quest,
-        event_date,
-        battle_style_id,
+        content,
         invoker_user_id,
         has_bot_control,
     )
@@ -128,9 +133,7 @@ pub async fn change_recruitment_information_internal<G>(
     gateway: &G,
     guild_id: u64,
     message: &MessageData,
-    quest: Option<&str>,
-    event_date: Option<DateTime<Utc>>,
-    battle_style_id: Option<i32>,
+    content: RecruitmentChangeContent,
     invoker_user_id: u64,
     has_bot_control: bool,
 ) -> types::Result<()>
@@ -200,7 +203,7 @@ where
         }
 
         // 2. 更新する値を決定（指定されていればそれを使用、未指定なら既存の値を使用）
-        let new_quest_id = if let Some(quest_name) = quest {
+        let new_quest_id = if let Some(quest_name) = content.quest.as_deref() {
             // クエスト名が指定されている場合、新しいクエストを検索
             let quest = quest_query_service
                 .search_and_get_quest_by_name(db, quest_name)
@@ -212,10 +215,10 @@ where
             existing_recruitment.quest_id
         };
 
-        let new_battle_style_id = if let Some(style_id) = battle_style_id {
+        let new_battle_style_id = if let Some(style_id) = content.battle_style_id {
             // 攻略方法が指定されている場合、それを使用
             style_id
-        } else if quest.is_some() {
+        } else if content.quest.is_some() {
             // クエストが変更されている場合、新しいクエストのデフォルト攻略方法を使用
             let quest = quest_query_service
                 .get_quest_by_id(db, new_quest_id)
@@ -226,7 +229,7 @@ where
             existing_recruitment.battle_style_id
         };
 
-        let new_expiry_date = event_date.unwrap_or(existing_recruitment.quest_start_at);
+        let new_expiry_date = content.event_date.unwrap_or(existing_recruitment.quest_start_at);
 
         // タイムゾーンを取得
         let timezone_repo = app_state.repositories.guild_settings;
@@ -375,7 +378,7 @@ where
             .await?;
 
         // 9. 出発日時が変更された場合、既存の通知を削除して新しい通知を作成
-        if event_date.is_some() {
+        if content.event_date.is_some() {
             // 既存の通知を削除
             notification_service
                 .delete_recruitment_notifications(&txn, existing_recruitment.id)

@@ -1,7 +1,9 @@
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::resolve_bot_control;
 use crate::facades::guild_settings::GuildSettingsFacade;
-use crate::facades::recruitment::change::change_recruitment_information;
+use crate::facades::recruitment::change::{
+    RecruitmentChangeContent, change_recruitment_information,
+};
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
 use crate::services::unified_datetime_parser::{
@@ -108,9 +110,11 @@ pub async fn recruit_change(
         &gateway,
         DiscordGuildId::new(guild_id),
         &message_data,
-        quest.as_deref(),
-        parsed_date,
-        battle_style,
+        RecruitmentChangeContent {
+            quest,
+            event_date: parsed_date,
+            battle_style_id: battle_style,
+        },
         invoker_user_id,
         has_bot_control,
     )
