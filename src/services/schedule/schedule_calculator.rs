@@ -182,7 +182,7 @@ impl ScheduleCalculator {
     /// - "*" または "all": イベント期間中の全日
     /// - "start": 開始日のみ（オフセット0）
     /// - "end": 終了日のみ
-    /// - "0-30" または "0 to 30": 範囲指定（0日目から30日目まで）
+    /// - "0-30" または "0 to 30" または "0to30": 範囲指定（0日目から30日目まで）
     /// - "5" または "-1": 単一の日数
     ///
     /// # 範囲外チェック
@@ -312,6 +312,7 @@ impl ScheduleCalculator {
     /// 範囲指定文字列から開始と終了を抽出
     /// 例: "0-30" -> Some(("0", "30"))
     /// 例: "0 to 30" -> Some(("0", "30"))
+    /// 例: "0to30" -> Some(("0", "30"))
     fn parse_range<'a>(&self, s: &'a str) -> Option<(&'a str, &'a str)> {
         // "-" で分割を試みる（"-1-5" のような負の数を含む場合に対応）
         if let Some(pos) = s.rfind('-') {
@@ -327,11 +328,14 @@ impl ScheduleCalculator {
             }
         }
 
-        // " to " で分割を試みる
-        if let Some(pos) = s.find(" to ") {
+        // "to" で分割を試みる（スペースあり・なし両対応）
+        // 正規表現 \d+to\d+ にマッチする位置を探す
+        if let Some(pos) = s.find("to") {
             let start = s[..pos].trim();
-            let end = s[pos + 4..].trim();
-            return Some((start, end));
+            let end = s[pos + 2..].trim();
+            if start.parse::<i64>().is_ok() && end.parse::<i64>().is_ok() {
+                return Some((start, end));
+            }
         }
 
         None
@@ -423,11 +427,17 @@ mod tests {
         assert_eq!(result[0], 0);
         assert_eq!(result[30], 30);
 
-        // "0 to 5" の範囲指定
+        // "0 to 5" の範囲指定（スペースあり）
         let result = calculator
             .parse_start_day_relative("0 to 5", start, end)
             .unwrap();
         assert_eq!(result, vec![0, 1, 2, 3, 4, 5]);
+
+        // "0to6" の範囲指定（スペースなし）
+        let result = calculator
+            .parse_start_day_relative("0to6", start, end)
+            .unwrap();
+        assert_eq!(result, vec![0, 1, 2, 3, 4, 5, 6]);
     }
 
     #[test]
