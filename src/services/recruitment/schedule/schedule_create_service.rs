@@ -1,3 +1,4 @@
+use crate::models::entities::master::channel_types::GuildChannelType;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
@@ -339,7 +340,11 @@ where
     ) -> Result<i64> {
         let guild_channel = self
             .guild_channel_repo
-            .get_by_guild_and_type_with_txn(txn, guild_id, 2)
+            .get_by_guild_and_type_with_txn(
+                txn,
+                guild_id,
+                GuildChannelType::MultiRecruitment.as_i32(),
+            )
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "マルチ募集チャンネルが登録されていません。\n\n\

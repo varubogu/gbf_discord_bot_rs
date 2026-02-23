@@ -1,6 +1,7 @@
 // Note: converters are no longer needed as we use domain types directly with Gateway
 use crate::gateway::DiscordGateway;
 use crate::infrastructure::database::session::set_current_guild_id;
+use crate::models::entities::master::channel_types::GuildChannelType;
 use crate::presenter::RecruitmentPresenter;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::BattleStyleRepository;
@@ -153,10 +154,14 @@ where
         // RLSポリシーのためにセッション変数を設定
         set_current_guild_id(txn, calculated_time.guild_id).await?;
 
-        // 0. マルチ募集チャンネルを取得（channel_type = 2）
+        // 0. マルチ募集チャンネルを取得
         let guild_channel = self
             .guild_channel_repo
-            .get_by_guild_and_type_with_txn(txn, calculated_time.guild_id, 2)
+            .get_by_guild_and_type_with_txn(
+                txn,
+                calculated_time.guild_id,
+                GuildChannelType::MultiRecruitment.as_i32(),
+            )
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!(
@@ -428,10 +433,14 @@ where
         // RLSポリシーのためにセッション変数を設定
         set_current_guild_id(txn, params.guild_id).await?;
 
-        // 0. マルチ募集チャンネルを取得（channel_type = 2）
+        // 0. マルチ募集チャンネルを取得
         let guild_channel = self
             .guild_channel_repo
-            .get_by_guild_and_type_with_txn(txn, params.guild_id, 2)
+            .get_by_guild_and_type_with_txn(
+                txn,
+                params.guild_id,
+                GuildChannelType::MultiRecruitment.as_i32(),
+            )
             .await?
             .ok_or_else(|| {
                 crate::types::AppError::NotFound(format!(

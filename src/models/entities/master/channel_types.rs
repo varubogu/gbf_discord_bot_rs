@@ -25,6 +25,12 @@ pub enum GuildChannelType {
     EventNotification = 1,
     /// マルチ募集チャンネル（id=2）
     MultiRecruitment = 2,
+    /// 団連絡チャンネル（id=3）
+    /// 団員のみ閲覧可能なチャンネルの場合、Botにも権限を与える必要がある
+    GuildContact = 3,
+    /// 他サーバー共用マルチ募集チャンネル（id=4）
+    /// 外部のguildで募集した時用の通知先。通常のマルチ募集チャンネルと同じでも良いし、未定義も可能
+    SharedMultiRecruitment = 4,
     /// 管理者通知チャンネル（id=5）
     /// bot実行中のエラーや設定不足を管理者（gbf_bot_controlロール保持者）に通知するチャンネル
     AdminNotification = 5,
@@ -41,6 +47,8 @@ impl GuildChannelType {
         match value {
             1 => Some(Self::EventNotification),
             2 => Some(Self::MultiRecruitment),
+            3 => Some(Self::GuildContact),
+            4 => Some(Self::SharedMultiRecruitment),
             5 => Some(Self::AdminNotification),
             _ => None,
         }
