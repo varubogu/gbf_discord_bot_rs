@@ -1,8 +1,9 @@
+use crate::errors::RecruitmentError;
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::role_management;
 use crate::services::message::MessageTextId;
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Role;
 use std::collections::HashMap;
 
@@ -82,9 +83,9 @@ pub async fn recruit_role_remove(
     }
 
     // ギルドIDを取得
-    let guild_id = ctx.guild_id().ok_or_else(|| {
-        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
-    })?;
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| AppError::from(RecruitmentError::GuildOnly))?;
 
     let app_state = &ctx.data().app_state;
 

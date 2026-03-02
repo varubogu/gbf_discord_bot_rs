@@ -6,14 +6,14 @@
 use super::participant_mentions;
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::{
-    BattleRecruitmentsRepository, GuildSettingsRepository, QuestRepository,
-    RecruitmentParticipantsRepository,
-};
+use crate::services::locale_service::LocaleService;
 use crate::services::recruitment::cancel::{
     CancelInvokerContext, cancel_recruitment_by_message, check_can_cancel_recruitment,
     create_cancel_notification_text,
 };
+use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
+use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::services::schedule::NotificationManagementService;
 use crate::types;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent};
@@ -174,6 +174,12 @@ where
     let result = async {
         // Repositoryの取得
         let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let recruitment_query_service = RecruitmentQueryService::new(
+            app_state.repositories.battle_style,
+            battle_recruitment_repo,
+        );
+        let participants_service =
+            RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
 
         info!(
             "キャンセル処理開始: guild_id={}, channel_id={}, message_id={}",
@@ -181,14 +187,8 @@ where
         );
 
         // 0. DBから募集情報を取得して開催日時をチェック
-        // u64をドメイン型に変換
-        let recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(
-                &txn,
-                DiscordGuildId::new(guild_id),
-                DiscordChannelId::new(channel_id),
-                DiscordMessageId::new(message_id),
-            )
+        let recruitment = recruitment_query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| AppError::Business {
                 message: "募集情報が見つかりません".to_string(),
@@ -209,12 +209,12 @@ where
         let original_content = original_message.content.clone();
 
         // 2. DB参加者とリアクション参加者を合算して通知対象を作成
-        let participants_repo = app_state.repositories.recruitment_participants;
+        let db_participant_user_ids = participants_service
+            .get_all_participant_user_ids(&txn, recruitment.id)
+            .await?;
         let participant_user_ids = participant_mentions::collect_notification_participant_user_ids(
-            &participants_repo,
+            db_participant_user_ids,
             gateway,
-            &txn,
-            recruitment.id,
             channel_id_obj,
             message_id_obj,
             &original_message,
@@ -356,16 +356,18 @@ where
     let result = async {
         // Repositoryの取得
         let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+        let recruitment_query_service = RecruitmentQueryService::new(
+            app_state.repositories.battle_style,
+            battle_recruitment_repo,
+        );
+        let participants_service =
+            RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
+        let locale_service = LocaleService::new(app_state.repositories.guild_settings);
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
         // 募集メッセージかどうか確認
-        // u64をドメイン型に変換
-        let recruitment_opt = battle_recruitment_repo
-            .get_by_message_with_txn(
-                &txn,
-                DiscordGuildId::new(guild_id),
-                DiscordChannelId::new(channel_id),
-                DiscordMessageId::new(message_id),
-            )
+        let recruitment_opt = recruitment_query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
             .await?;
 
         let recruitment = match recruitment_opt {
@@ -430,20 +432,14 @@ where
             .await?;
 
         // DBから参加者情報を取得
-        let participants_repo = app_state.repositories.recruitment_participants;
-        let participant_user_ids = participants_repo
-            .get_all_participant_user_ids_with_txn(&txn, recruitment.id)
+        let participant_user_ids = participants_service
+            .get_all_participant_user_ids(&txn, recruitment.id)
             .await?;
 
         // ギルド設定からロケールを取得
-        let guild_settings_repo = app_state.repositories.guild_settings;
-        let locale = match guild_settings_repo
-            .find_by_guild_id_with_txn(&txn, guild_id as i64)
-            .await?
-        {
-            Some(settings) => settings.locale,
-            None => "ja".to_string(),
-        };
+        let locale = locale_service
+            .get_guild_locale_with_txn(&txn, guild_id as i64)
+            .await?;
 
         // キャンセル通知メッセージを作成
         let message_service = app_state.message_service();
@@ -457,24 +453,18 @@ where
         .await?;
 
         // クエスト情報を取得して通知メッセージに追加
-        let quest_repo = app_state.repositories.quest;
-        let final_notification_text = match quest_repo
-            .get_by_target_id(&txn, recruitment.quest_id)
-            .await?
-        {
-            Some(quest) => {
-                let quest_start_at_jst = recruitment
-                    .quest_start_at
-                    .with_timezone(&chrono_tz::Asia::Tokyo);
-                format!(
-                    "【メッセージ削除によるキャンセル - {} / {}】\n{}",
-                    quest.name,
-                    quest_start_at_jst.format("%Y/%m/%d %H:%M"),
-                    notification_text
-                )
-            }
-            None => notification_text,
-        };
+        let quest = quest_query_service
+            .get_quest_by_id(&txn, recruitment.quest_id)
+            .await?;
+        let quest_start_at_jst = recruitment
+            .quest_start_at
+            .with_timezone(&chrono_tz::Asia::Tokyo);
+        let final_notification_text = format!(
+            "【メッセージ削除によるキャンセル - {} / {}】\n{}",
+            quest.name,
+            quest_start_at_jst.format("%Y/%m/%d %H:%M"),
+            notification_text
+        );
 
         // 募集チャンネルに通知を送信（Gatewayを使用）
         let message_content = MessageContent::text(&final_notification_text);

@@ -455,6 +455,167 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
+        keys::AUTO_RECRUITMENT_CATEGORY_SETUP_TIME_SELECT_MESSAGE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_TIME_SELECT_MESSAGE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_CATEGORY_SETUP_MATCHING_CHANNEL_MESSAGE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_MATCHING_CHANNEL_MESSAGE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_CATEGORY_SETUP_QUEST_CHANNEL_EMPTY_MESSAGE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_QUEST_CHANNEL_EMPTY_MESSAGE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_BUTTON => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_BUTTON,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_MESSAGE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_MESSAGE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_STATUS_HEADER => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_HEADER, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_QUEST_EMPTY => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_QUEST_EMPTY, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_QUEST_COUNT => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_QUEST_COUNT, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_QUEST_IDS => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_QUEST_IDS, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_TIME_EMPTY => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_TIME_EMPTY, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_TIME_HEADER => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_TIME_HEADER, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_STATUS_TIME_SLOT => {
+            Some(t!(keys::AUTO_RECRUITMENT_STATUS_TIME_SLOT, locale = locale).to_string())
+        }
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_FIRE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_FIRE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WATER => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WATER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_EARTH => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_EARTH,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WIND => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WIND,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_LIGHT => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_LIGHT,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_DARK => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_DARK,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_JOIN_BUTTON => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_JOIN_BUTTON,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_PLACEHOLDER => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_PLACEHOLDER => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_MESSAGE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_MESSAGE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_TIME_SELECT_PLACEHOLDER => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_TIME_SELECT_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TITLE => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_DESCRIPTION => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_QUEST_FIELD => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_QUEST_FIELD,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TIME_FIELD => Some(
+            t!(
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TIME_FIELD,
+                locale = locale
+            )
+            .to_string(),
+        ),
 
         // App error messages
         keys::APP_ERROR_DATABASE => Some(t!(keys::APP_ERROR_DATABASE, locale = locale).to_string()),
@@ -684,6 +845,26 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         }
         keys::RECRUITMENT_LIST_FOOTER => {
             Some(t!(keys::RECRUITMENT_LIST_FOOTER, locale = locale).to_string())
+        }
+
+        // Quest list command messages
+        keys::QUEST_LIST_TITLE_ALL => {
+            Some(t!(keys::QUEST_LIST_TITLE_ALL, locale = locale).to_string())
+        }
+        keys::QUEST_LIST_TITLE_ENABLED => {
+            Some(t!(keys::QUEST_LIST_TITLE_ENABLED, locale = locale).to_string())
+        }
+        keys::QUEST_LIST_TITLE_DISABLED => {
+            Some(t!(keys::QUEST_LIST_TITLE_DISABLED, locale = locale).to_string())
+        }
+        keys::QUEST_LIST_MORE_COUNT => {
+            Some(t!(keys::QUEST_LIST_MORE_COUNT, locale = locale).to_string())
+        }
+        keys::QUEST_LIST_EMPTY_ENABLED => {
+            Some(t!(keys::QUEST_LIST_EMPTY_ENABLED, locale = locale).to_string())
+        }
+        keys::QUEST_LIST_EMPTY_DISABLED => {
+            Some(t!(keys::QUEST_LIST_EMPTY_DISABLED, locale = locale).to_string())
         }
 
         keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE => Some(

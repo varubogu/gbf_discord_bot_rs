@@ -3,10 +3,8 @@
 //! ユーザーの参加可能時間選択を処理する
 
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::auto_recruitment::{
-    AutoRecruitmentParticipantRepository, AutoRecruitmentRepository,
-};
-use crate::types::{AppError, AppState, Result};
+use crate::services::auto_recruitment::TimeSelectionService;
+use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -55,27 +53,16 @@ pub async fn handle_time_selection(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let participant_repo = app_state.repositories.auto_recruitment_participant;
-
-        // 自動募集設定を確認
-        let _auto_recruitment = auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .ok_or_else(|| AppError::Business {
-                message: "このギルドには自動募集が登録されていません".to_string(),
-            })?;
-
-        // 既存の時間登録を削除して新しく登録
-        participant_repo
-            .delete_all_by_user_date(&txn, guild_id as i64, user_id as i64, month, day)
+        let service = TimeSelectionService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.auto_recruitment_participant,
+        );
+        service
+            .ensure_auto_recruitment_exists(&txn, guild_id as i64)
             .await?;
-
-        for hour in &hours {
-            participant_repo
-                .create(&txn, guild_id as i64, user_id as i64, month, day, *hour)
-                .await?;
-        }
+        service
+            .replace_user_time_selection(&txn, guild_id as i64, user_id as i64, month, day, &hours)
+            .await?;
 
         info!(
             guild_id,

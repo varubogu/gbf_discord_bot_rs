@@ -3,10 +3,8 @@
 //! ユーザーの自動募集参加状況を取得する
 
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::auto_recruitment::{
-    AutoRecruitmentParticipantRepository, AutoRecruitmentRepository, UserDesiredQuestRepository,
-};
-use crate::types::{AppError, AppState, Result};
+use crate::services::auto_recruitment::ParticipationStatusService;
+use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -51,55 +49,26 @@ pub async fn get_participation_status(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let quest_repo = app_state.repositories.user_desired_quest;
-        let participant_repo = app_state.repositories.auto_recruitment_participant;
-
-        // 自動募集設定を確認
-        let _auto_recruitment = auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .ok_or_else(|| AppError::Business {
-                message: "このギルドには自動募集が登録されていません".to_string(),
-            })?;
-
-        // ユーザーのクエスト選択を取得
-        let user_quests = quest_repo
-            .find_by_user(&txn, guild_id as i64, user_id as i64)
+        let service = ParticipationStatusService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.user_desired_quest,
+            app_state.repositories.auto_recruitment_participant,
+        );
+        let status = service
+            .get_participation_status(&txn, guild_id as i64, user_id as i64)
             .await?;
-
-        let quest_ids: Vec<i32> = user_quests.iter().map(|q| q.quest_id).collect();
-
-        // ユーザーの時間選択を取得
-        let user_participants = participant_repo
-            .find_by_user(&txn, guild_id as i64, user_id as i64)
-            .await?;
-
-        // 日時ごとにグループ化
-        let mut time_slot_map: std::collections::HashMap<(i32, i32), Vec<i32>> =
-            std::collections::HashMap::new();
-
-        for participant in user_participants {
-            time_slot_map
-                .entry((participant.month, participant.day))
-                .or_default()
-                .push(participant.hour);
-        }
-
-        // 日付順でソート
-        let mut time_slots: Vec<TimeSlot> = time_slot_map
-            .into_iter()
-            .map(|((month, day), mut hours)| {
-                hours.sort();
-                TimeSlot { month, day, hours }
-            })
-            .collect();
-
-        time_slots.sort_by_key(|slot| (slot.month, slot.day));
 
         Ok(ParticipationStatus {
-            quest_ids,
-            time_slots,
+            quest_ids: status.quest_ids,
+            time_slots: status
+                .time_slots
+                .into_iter()
+                .map(|slot| TimeSlot {
+                    month: slot.month,
+                    day: slot.day,
+                    hours: slot.hours,
+                })
+                .collect(),
         })
     }
     .await;

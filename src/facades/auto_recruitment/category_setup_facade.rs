@@ -4,16 +4,9 @@
 
 use crate::gateway::{DiscordChannelGateway, DiscordMessageGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
 use crate::models::quests::Quest;
 use crate::presenter::auto_recruitment_presenter::AutoRecruitmentPresenter;
-use crate::repository::QuestRepository;
-use crate::repository::auto_recruitment::{
-    AutoRecruitmentChannelRepository, AutoRecruitmentQuestMessageRepository,
-    AutoRecruitmentRepository, CreateAutoRecruitmentParams, QuestMatchingRepository,
-    QuestMatchingUserRepository,
-};
-use crate::repository::schedule::ScheduledTaskRepository;
+use crate::services::auto_recruitment::CategorySetupService;
 use crate::services::message::MessageTextId;
 use crate::types::discord::{
     ActionRowContent, ButtonContent, ButtonStyleType, ChannelCreateParams, ChannelEditParams,
@@ -73,20 +66,20 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let channel_repo = app_state.repositories.auto_recruitment_channel;
+        let setup_service = CategorySetupService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.auto_recruitment_channel,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_quest_message,
+            app_state.repositories.quest_matching_user,
+            app_state.repositories.quest_matching,
+            app_state.repositories.scheduled_task,
+        );
 
         // 既存の登録をチェック
-        if auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .is_some()
-        {
-            return Err(AppError::Business {
-                message: "このギルドには既に自動募集が登録されています。先に解除してください。"
-                    .to_string(),
-            });
-        }
+        setup_service
+            .ensure_not_registered(&txn, guild_id as i64)
+            .await?;
 
         let discord_guild_id = DiscordGuildId::new(guild_id);
 
@@ -122,22 +115,9 @@ where
             };
 
         // クエスト一覧を取得（有効なクエストのみ）
-        let quest_repo = app_state.repositories.quest;
-        let quest_message_repo = app_state.repositories.auto_recruitment_quest_message;
-
-        // 有効なクエストIDを取得
-        let enabled_quest_results = quest_repo
-            .search_enabled_quests(&txn, guild_id as i64, "")
+        let enabled_quests = setup_service
+            .get_enabled_quests(&txn, guild_id as i64)
             .await?;
-        let enabled_quest_ids: Vec<i32> =
-            enabled_quest_results.iter().map(|q| q.quest_id).collect();
-
-        // 全クエストを取得してフィルタリング（available_battle_style_ids含む）
-        let all_quests = quest_repo.get_all(&txn).await?;
-        let enabled_quests: Vec<Quest> = all_quests
-            .into_iter()
-            .filter(|q| enabled_quest_ids.contains(&q.id))
-            .collect();
 
         // クエストチャンネルの処理（position days+1、日付チャンネル作成後に位置を設定）
         let (final_quest_channel_id, quest_is_bot_created) = if let Some(ch_id) = quest_channel_id {
@@ -160,29 +140,33 @@ where
 
         // 1クエスト1メッセージ形式でメッセージを送信し、メッセージIDを保存
         let quest_channel_id_domain = DiscordChannelId::new(final_quest_channel_id);
-        send_quest_channel_messages(
+        let quest_message_mappings = send_quest_channel_messages(
             gateway,
             quest_channel_id_domain,
             guild_id,
             &enabled_quests,
-            &quest_message_repo,
-            &txn,
         )
         .await?;
+        for (quest_id, sent_message_id) in quest_message_mappings {
+            setup_service
+                .upsert_quest_message(&txn, guild_id as i64, quest_id, sent_message_id)
+                .await?;
+        }
 
         // auto_recruitmentsテーブルに登録
-        let params = CreateAutoRecruitmentParams {
-            guild_id: guild_id as i64,
-            category_id: category_id as i64,
-            matching_channel_id: Some(final_matching_channel_id as i64),
-            quest_channel_id: Some(final_quest_channel_id as i64),
-            matching_channel_is_bot_created: matching_is_bot_created,
-            quest_channel_is_bot_created: quest_is_bot_created,
-            matching_message_id: matching_message_id.map(|id| id as i64),
-            days_range: days,
-        };
-
-        let auto_recruitment = auto_recruitment_repo.create(&txn, params).await?;
+        let auto_recruitment = setup_service
+            .create_auto_recruitment(
+                &txn,
+                guild_id as i64,
+                category_id as i64,
+                Some(final_matching_channel_id as i64),
+                Some(final_quest_channel_id as i64),
+                matching_is_bot_created,
+                quest_is_bot_created,
+                matching_message_id.map(|id| id as i64),
+                days,
+            )
+            .await?;
 
         info!(
             guild_id = auto_recruitment.guild_id,
@@ -190,8 +174,50 @@ where
         );
 
         // 日時チャンネルを作成（position 1〜days）
-        let created_channels =
-            create_date_channels(gateway, guild_id, category_id, days, &channel_repo, &txn).await?;
+        let now_utc = Utc::now();
+        let now_jst = now_utc + Duration::hours(9);
+        let today = now_jst.date_naive();
+        let discord_guild_id = DiscordGuildId::new(guild_id);
+        let mut created_channels = 0;
+
+        for i in 0..days {
+            let date = today + Duration::days(i as i64);
+            let channel_name = format!("{}月{}日", date.month(), date.day());
+            let channel_position = (i + 1) as u16;
+
+            let channel_params = ChannelCreateParams::text(&channel_name)
+                .with_parent(DiscordChannelId::new(category_id))
+                .with_position(channel_position);
+
+            let new_channel_id = gateway
+                .create_channel(discord_guild_id, channel_params)
+                .await
+                .map_err(|e| {
+                    error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
+                    AppError::ChannelCreationFailed
+                })?;
+
+            let message_id = send_time_selection_message(gateway, new_channel_id).await?;
+
+            setup_service
+                .create_date_channel(
+                    &txn,
+                    guild_id as i64,
+                    new_channel_id.get() as i64,
+                    date.month() as i32,
+                    date.day() as i32,
+                    i,
+                    true,
+                    Some(message_id.get() as i64),
+                )
+                .await?;
+
+            created_channels += 1;
+            debug!(
+                channel_id = new_channel_id.get(),
+                channel_name, "日時チャンネルを作成しました"
+            );
+        }
 
         // クエストチャンネルの位置を日付チャンネルの後に設定（position days+1）
         let quest_channel = DiscordChannelId::new(final_quest_channel_id);
@@ -202,12 +228,11 @@ where
             )
             .await;
 
-        // ローテーションタスクを初期登録（翌日0時）
-        let task_repo = app_state.repositories.scheduled_task;
-        create_initial_rotation_task(&task_repo, &txn).await?;
-
-        // 自動マッチングタスクを初期登録（10秒後）
-        create_initial_auto_matching_task(&task_repo, &txn).await?;
+        // ローテーションタスクと自動マッチングタスクを初期登録
+        setup_service.ensure_initial_rotation_task(&txn).await?;
+        setup_service
+            .ensure_initial_auto_matching_task(&txn)
+            .await?;
 
         Ok(CategoryRegistrationResult {
             category_id,
@@ -264,16 +289,20 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let channel_repo = app_state.repositories.auto_recruitment_channel;
+        let setup_service = CategorySetupService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.auto_recruitment_channel,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_quest_message,
+            app_state.repositories.quest_matching_user,
+            app_state.repositories.quest_matching,
+            app_state.repositories.scheduled_task,
+        );
 
         // 自動募集設定を取得
-        let auto_recruitment = auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .ok_or_else(|| AppError::Business {
-                message: "このギルドには自動募集が登録されていません".to_string(),
-            })?;
+        let auto_recruitment = setup_service
+            .get_auto_recruitment_or_err(&txn, guild_id as i64)
+            .await?;
 
         // コマンド実行チャンネルがカテゴリ内かどうかを判定
         let command_channel = DiscordChannelId::new(command_channel_id);
@@ -311,7 +340,6 @@ where
         }
 
         // クエストチャンネルの処理
-        let quest_message_repo = app_state.repositories.auto_recruitment_quest_message;
         if let Some(quest_ch_id) = auto_recruitment.quest_channel_id {
             let channel_id = DiscordChannelId::new(quest_ch_id as u64);
             if auto_recruitment.quest_channel_is_bot_created {
@@ -325,8 +353,8 @@ where
                 }
             } else {
                 // 指定チャンネルは各クエストメッセージを削除
-                let quest_messages = quest_message_repo
-                    .find_all_by_guild(&txn, guild_id as i64)
+                let quest_messages = setup_service
+                    .find_quest_messages(&txn, guild_id as i64)
                     .await?;
 
                 for quest_msg in quest_messages {
@@ -345,12 +373,14 @@ where
         }
 
         // クエストメッセージのDBレコードを削除
-        quest_message_repo
-            .delete_all_by_guild(&txn, guild_id as i64)
+        setup_service
+            .delete_all_quest_messages(&txn, guild_id as i64)
             .await?;
 
         // 日時チャンネルの処理
-        let channels = channel_repo.find_by_guild_id(&txn, guild_id as i64).await?;
+        let channels = setup_service
+            .find_date_channels(&txn, guild_id as i64)
+            .await?;
 
         for channel in channels {
             let channel_id = DiscordChannelId::new(channel.channel_id as u64);
@@ -377,22 +407,18 @@ where
             }
         }
 
-        // マッチング関連データを削除（外部キー制約のためquest_matching_usersを先に削除）
-        let matching_user_repo = app_state.repositories.quest_matching_user;
-        let matching_repo = app_state.repositories.quest_matching;
-
-        matching_user_repo
-            .delete_all_by_guild(&txn, guild_id as i64)
-            .await?;
-        matching_repo
-            .delete_all_by_guild(&txn, guild_id as i64)
+        // マッチング関連データを削除（外部キー制約順）
+        setup_service
+            .delete_all_matching_data(&txn, guild_id as i64)
             .await?;
 
         // DBから削除
-        channel_repo
-            .delete_all_by_guild_id(&txn, guild_id as i64)
+        setup_service
+            .delete_all_date_channels(&txn, guild_id as i64)
             .await?;
-        auto_recruitment_repo.delete(&txn, guild_id as i64).await?;
+        setup_service
+            .delete_auto_recruitment(&txn, guild_id as i64)
+            .await?;
 
         Ok(())
     }
@@ -445,16 +471,20 @@ where
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let channel_repo = app_state.repositories.auto_recruitment_channel;
+        let setup_service = CategorySetupService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.auto_recruitment_channel,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_quest_message,
+            app_state.repositories.quest_matching_user,
+            app_state.repositories.quest_matching,
+            app_state.repositories.scheduled_task,
+        );
 
         // 自動募集設定を取得
-        let auto_recruitment = auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .ok_or_else(|| AppError::Business {
-                message: "このギルドには自動募集が登録されていません".to_string(),
-            })?;
+        let auto_recruitment = setup_service
+            .get_auto_recruitment_or_err(&txn, guild_id as i64)
+            .await?;
 
         let current_days = auto_recruitment.days_range;
 
@@ -465,7 +495,9 @@ where
         }
 
         // 既存のチャンネルを取得
-        let existing_channels = channel_repo.find_by_guild_id(&txn, guild_id as i64).await?;
+        let existing_channels = setup_service
+            .find_date_channels(&txn, guild_id as i64)
+            .await?;
 
         let category_id = auto_recruitment.category_id as u64;
 
@@ -508,15 +540,15 @@ where
                 let message_id = send_time_selection_message(gateway, new_channel_id).await?;
 
                 // DBに登録（Bot作成フラグ=true、メッセージID保存）
-                channel_repo
-                    .create(
+                setup_service
+                    .create_date_channel(
                         &txn,
                         guild_id as i64,
                         new_channel_id.get() as i64,
                         new_date.month() as i32,
                         new_date.day() as i32,
                         sort_order,
-                        true, // is_bot_created
+                        true,
                         Some(message_id.get() as i64),
                     )
                     .await?;
@@ -566,14 +598,14 @@ where
                 }
 
                 // DBから削除
-                channel_repo
-                    .delete_by_channel_id(&txn, guild_id as i64, channel.channel_id)
+                setup_service
+                    .delete_date_channel_by_channel_id(&txn, guild_id as i64, channel.channel_id)
                     .await?;
             }
         }
 
         // 日数を更新
-        auto_recruitment_repo
+        setup_service
             .update_days_range(&txn, guild_id as i64, new_days)
             .await?;
 
@@ -593,75 +625,6 @@ where
             Err(e)
         }
     }
-}
-
-/// 日時チャンネルを作成
-async fn create_date_channels<G, C>(
-    gateway: &G,
-    guild_id: u64,
-    category_id: u64,
-    days: i32,
-    channel_repo: &C,
-    txn: &sea_orm::DatabaseTransaction,
-) -> Result<usize>
-where
-    G: DiscordChannelGateway + DiscordMessageGateway + Sync,
-    C: AutoRecruitmentChannelRepository,
-{
-    debug!(guild_id, category_id, days, "日時チャンネルを作成します");
-
-    // 今日の日付を取得（JST）
-    let now_utc = Utc::now();
-    let now_jst = now_utc + Duration::hours(9);
-    let today = now_jst.date_naive();
-
-    let discord_guild_id = DiscordGuildId::new(guild_id);
-    let mut created_count = 0;
-
-    for i in 0..days {
-        let date = today + Duration::days(i as i64);
-        let channel_name = format!("{}月{}日", date.month(), date.day());
-        // 日付チャンネルはposition 1から開始（position 0はマッチングチャンネル）
-        let channel_position = (i + 1) as u16;
-
-        // Discordチャンネルを作成（カテゴリの権限を継承、位置指定）
-        let channel_params = ChannelCreateParams::text(&channel_name)
-            .with_parent(DiscordChannelId::new(category_id))
-            .with_position(channel_position);
-
-        let new_channel_id = gateway
-            .create_channel(discord_guild_id, channel_params)
-            .await
-            .map_err(|e| {
-                error!(error = %e, guild_id, category_id, "チャンネルの作成に失敗しました");
-                AppError::ChannelCreationFailed
-            })?;
-
-        // 時間選択コンポーネントを送信してメッセージIDを取得
-        let message_id = send_time_selection_message(gateway, new_channel_id).await?;
-
-        // DBに登録（Bot作成フラグ=true、メッセージID保存）
-        channel_repo
-            .create(
-                txn,
-                guild_id as i64,
-                new_channel_id.get() as i64,
-                date.month() as i32,
-                date.day() as i32,
-                i,
-                true, // is_bot_created
-                Some(message_id.get() as i64),
-            )
-            .await?;
-
-        created_count += 1;
-        debug!(
-            channel_id = new_channel_id.get(),
-            channel_name, "日時チャンネルを作成しました"
-        );
-    }
-
-    Ok(created_count)
 }
 
 /// 時間選択メッセージを送信し、メッセージIDを返す
@@ -695,11 +658,7 @@ where
     }
 
     // 多言語対応のplaceholderを取得（デフォルトは日本語）
-    let placeholder = t!(
-        MessageTextId::AutoRecruitmentTimeSelectPlaceholder.as_str(),
-        locale = "ja"
-    )
-    .to_string();
+    let placeholder = localized_ja(MessageTextId::AutoRecruitmentTimeSelectPlaceholder);
 
     // custom_id形式: auto_time_select:{channel_id}
     let custom_id = format!("auto_time_select:{}", channel_id.get());
@@ -714,7 +673,9 @@ where
 
     // ドメインモデルでメッセージを作成
     let message_content = MessageContent::new()
-        .with_text("**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。")
+        .with_text(localized_ja(
+            MessageTextId::AutoRecruitmentCategorySetupTimeSelectMessage,
+        ))
         .with_component(action_row);
 
     let sent_message_id = gateway
@@ -739,9 +700,9 @@ where
     G: DiscordMessageGateway + Sync,
 {
     // ドメインモデルでメッセージを作成
-    let message_content = MessageContent::text(
-        "**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。",
-    );
+    let message_content = MessageContent::text(localized_ja(
+        MessageTextId::AutoRecruitmentCategorySetupMatchingChannelMessage,
+    ));
 
     let sent_message_id = gateway
         .send_message(channel_id, message_content)
@@ -763,25 +724,23 @@ where
 /// * `channel_id` - 送信先チャンネルID
 /// * `guild_id` - ギルドID（カスタムID生成用）
 /// * `quests` - クエストリスト（available_battle_style_ids含む）
-/// * `quest_message_repo` - クエストメッセージリポジトリ
-/// * `txn` - データベーストランザクション
-async fn send_quest_channel_messages<G, R>(
+///
+/// # 戻り値
+/// 送信したクエストメッセージの `(quest_id, message_id)` 一覧
+async fn send_quest_channel_messages<G>(
     gateway: &G,
     channel_id: DiscordChannelId,
     guild_id: u64,
     quests: &[Quest],
-    quest_message_repo: &R,
-    txn: &sea_orm::DatabaseTransaction,
-) -> Result<()>
+) -> Result<Vec<(i32, i64)>>
 where
     G: DiscordMessageGateway + Sync,
-    R: AutoRecruitmentQuestMessageRepository,
 {
     if quests.is_empty() {
         // クエストがない場合は説明メッセージのみ
-        let message_content = MessageContent::text(
-            "**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。",
-        );
+        let message_content = MessageContent::text(localized_ja(
+            MessageTextId::AutoRecruitmentCategorySetupQuestChannelEmptyMessage,
+        ));
 
         gateway.send_message(channel_id, message_content).await.map_err(|e| {
             error!(error = %e, channel_id = channel_id.get(), "クエストチャンネルメッセージの送信に失敗しました");
@@ -790,8 +749,10 @@ where
             }
         })?;
 
-        return Ok(());
+        return Ok(Vec::new());
     }
+
+    let mut quest_message_mappings = Vec::with_capacity(quests.len());
 
     // 各クエストに対してメッセージを送信
     for quest in quests {
@@ -812,10 +773,7 @@ where
             }
         })?;
 
-        // メッセージIDをDBに保存
-        quest_message_repo
-            .upsert(txn, guild_id as i64, quest.id, sent_message_id.get() as i64)
-            .await?;
+        quest_message_mappings.push((quest.id, sent_message_id.get() as i64));
 
         debug!(
             quest_id = quest.id,
@@ -827,16 +785,16 @@ where
     // 最後に「選択済みのクエスト」ボタン付きメッセージを送信（ドメインモデル使用）
     let check_button = ButtonContent::new(
         format!("auto_quest_selection_check:{guild_id}"),
-        "📋 選択済みのクエスト",
+        localized_ja(MessageTextId::AutoRecruitmentCategorySetupSelectionCheckButton),
     )
     .with_style(ButtonStyleType::Secondary);
 
     let action_row = ActionRowContent::buttons(vec![check_button]);
 
     let check_message_content = MessageContent::new()
-        .with_text(
-            "**選択状況の確認**\n下のボタンを押すと、あなたが選択しているクエストを確認できます。",
-        )
+        .with_text(localized_ja(
+            MessageTextId::AutoRecruitmentCategorySetupSelectionCheckMessage,
+        ))
         .with_component(action_row);
 
     gateway
@@ -855,86 +813,10 @@ where
         "クエストメッセージを全て送信しました"
     );
 
-    Ok(())
+    Ok(quest_message_mappings)
 }
 
-/// 初期ローテーションタスクを作成
-async fn create_initial_rotation_task<T: ScheduledTaskRepository>(
-    task_repo: &T,
-    txn: &sea_orm::DatabaseTransaction,
-) -> Result<()> {
-    // 翌日の0時（JST）をUTCに変換
-    let now_utc = Utc::now();
-    let now_jst = now_utc + Duration::hours(9);
-    let tomorrow_jst = (now_jst + Duration::days(1))
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
-    // JST 0時 = UTC 15時（前日）
-    let next_execution_utc = tomorrow_jst - Duration::hours(9);
-    let next_execution =
-        chrono::DateTime::<Utc>::from_naive_utc_and_offset(next_execution_utc, Utc);
-
-    // 既存のローテーションタスクがあるか確認（重複防止）
-    let pending_tasks = task_repo
-        .find_pending_to(txn, next_execution + Duration::days(1))
-        .await?;
-
-    let has_rotation_task = pending_tasks
-        .iter()
-        .any(|t| t.task_type == ScheduledTaskType::AutoRecruitmentRotation as i32);
-
-    if !has_rotation_task {
-        task_repo
-            .create(
-                txn,
-                next_execution,
-                ScheduledTaskType::AutoRecruitmentRotation as i32,
-                None,
-                None,
-            )
-            .await?;
-        info!(
-            next_execution = %next_execution,
-            "初期ローテーションタスクを作成しました"
-        );
-    }
-
-    Ok(())
-}
-
-/// 初期自動マッチングタスクを作成
-async fn create_initial_auto_matching_task<T: ScheduledTaskRepository>(
-    task_repo: &T,
-    txn: &sea_orm::DatabaseTransaction,
-) -> Result<()> {
-    // 10秒後に実行
-    let next_execution = Utc::now() + Duration::seconds(10);
-
-    // 既存の自動マッチングタスクがあるか確認（重複防止）
-    let pending_tasks = task_repo
-        .find_pending_to(txn, next_execution + Duration::minutes(1))
-        .await?;
-
-    let has_matching_task = pending_tasks
-        .iter()
-        .any(|t| t.task_type == ScheduledTaskType::AutoMatching as i32);
-
-    if !has_matching_task {
-        task_repo
-            .create(
-                txn,
-                next_execution,
-                ScheduledTaskType::AutoMatching as i32,
-                None,
-                None,
-            )
-            .await?;
-        info!(
-            next_execution = %next_execution,
-            "初期自動マッチングタスクを作成しました"
-        );
-    }
-
-    Ok(())
+/// 自動募集関連メッセージを日本語で取得する
+fn localized_ja(message_id: MessageTextId) -> String {
+    t!(message_id.as_str(), locale = "ja").to_string()
 }

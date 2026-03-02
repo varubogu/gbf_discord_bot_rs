@@ -1,11 +1,12 @@
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
+use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::recruitment_participants_service::{
     ParticipationAction, RecruitmentParticipantsService,
 };
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
+use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::types::constants::ELEMENT_NAMES;
 use crate::types::discord::{
     DiscordChannelId, DiscordGuildId, DiscordMessageId, EmbedContent, MessageContent,
@@ -446,9 +447,10 @@ where
         })?;
 
     // 2. DBから参加者一覧を取得
-    let participants_repo = app_state.repositories.recruitment_participants;
-    let participants = participants_repo
-        .find_by_recruitment_id_with_txn(txn, recruitment.id)
+    let participants_service =
+        RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
+    let participants = participants_service
+        .find_by_recruitment_id(txn, recruitment.id)
         .await?;
 
     // 2.5. 属性絵文字を取得（ギルド固有設定 or デフォルト値）
@@ -613,14 +615,10 @@ where
     info!("規定人数到達チェックを開始します");
 
     // クエスト情報を取得して規定人数を確認
-    use crate::repository::QuestRepository;
-    let quest_repository = app_state.repositories.quest;
-    let quest = quest_repository
-        .get_by_target_id(txn, recruitment.quest_id)
-        .await?
-        .ok_or_else(|| AppError::Business {
-            message: "クエスト情報が見つかりませんでした".to_string(),
-        })?;
+    let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
+    let quest = quest_query_service
+        .get_quest_by_id(txn, recruitment.quest_id)
+        .await?;
 
     let required_count = quest.recruit_count as usize;
     let is_full = participant_count >= required_count;
@@ -634,8 +632,8 @@ where
         "人数チェック結果"
     );
 
-    // リポジトリを取得
-    let recruitment_repo = app_state.repositories.battle_recruitments;
+    let recruitment_update_service =
+        RecruitmentUpdateService::new(app_state.repositories.battle_recruitments);
 
     match (notification_sent, is_full) {
         (false, false) => {
@@ -654,8 +652,8 @@ where
             send_full_notification(gateway, channel_id, message_id, participants).await?;
 
             // フラグを立てる
-            recruitment_repo
-                .set_full_notification_sent_with_txn(txn, recruitment.id, true)
+            recruitment_update_service
+                .set_full_notification_sent(txn, recruitment.id, true)
                 .await?;
 
             info!("規定人数到達通知を送信しました");
@@ -669,8 +667,8 @@ where
             send_decreased_notification(gateway, channel_id, message_id).await?;
 
             // フラグを下げる
-            recruitment_repo
-                .set_full_notification_sent_with_txn(txn, recruitment.id, false)
+            recruitment_update_service
+                .set_full_notification_sent(txn, recruitment.id, false)
                 .await?;
 
             info!("参加者減少通知を送信しました");
@@ -696,9 +694,10 @@ async fn get_all_participant_mentions(
 ) -> Result<Vec<String>> {
     use std::collections::HashSet;
 
-    let participants_repo = app_state.repositories.recruitment_participants;
-    let participants = participants_repo
-        .find_by_recruitment_id_with_txn(txn, recruitment_id)
+    let participants_service =
+        RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
+    let participants = participants_service
+        .find_by_recruitment_id(txn, recruitment_id)
         .await?;
 
     // ユニークなユーザーIDを取得（重複排除）

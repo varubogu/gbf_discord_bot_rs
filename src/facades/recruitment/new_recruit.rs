@@ -1,9 +1,10 @@
 use crate::gateway::DiscordGuildGateway;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::presenter::RecruitmentPresenter;
-use crate::repository::BattleRecruitmentsRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
+use crate::services::recruitment::recruit_datetime_service::parse_quest_departure_datetime;
+use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
@@ -14,7 +15,6 @@ use crate::services::unified_datetime_parser::{
 use crate::types;
 use crate::types::AppState;
 use crate::types::discord::{ActionRowContent, DiscordMessageId, EmbedContent};
-use chrono::{DateTime, Utc};
 use sea_orm::TransactionTrait;
 use tracing::{debug, info, instrument};
 
@@ -42,7 +42,7 @@ pub struct RecruitmentResult {
 /// * `channel_id` - チャンネルID
 /// * `quest_alias` - クエスト名またはエイリアス
 /// * `battle_style_id` - 攻略方法ID（オプション）
-/// * `event_date` - 開催日時（オプション）
+/// * `event_date_input` - 開催日時入力（オプション）
 /// * `use_buttons` - ボタンを使用する場合は true、リアクションを使用する場合は false
 /// * `dismissal_times` - 解散時刻（オプション）
 /// * `host_discord_user_id` - 募集作成者のDiscordユーザーID
@@ -59,7 +59,7 @@ pub async fn new_recruitment<G>(
     channel_id: u64,
     quest_alias: &str,
     battle_style_id: Option<i32>,
-    event_date: Option<DateTime<Utc>>,
+    event_date_input: Option<String>,
     use_buttons: bool,
     dismissal_times: Option<String>,
     host_discord_user_id: u64,
@@ -84,6 +84,11 @@ where
         let timezone = timezone_service
             .get_guild_timezone_with_txn(&txn, guild_id as i64)
             .await?;
+        let event_date = if let Some(input) = event_date_input.as_deref() {
+            Some(parse_quest_departure_datetime(input, timezone)?)
+        } else {
+            None
+        };
 
         // 属性絵文字を取得（ギルド固有設定 or デフォルト値）
         let guild_env_repo = app_state.repositories.guild_environment;
@@ -148,27 +153,25 @@ where
                 .map(|(idx, result)| {
                     let input_value = input_values.get(idx).unwrap_or(&"").to_string();
                     match result {
-                        ParsedDateTime::Absolute(datetime) => ParsedDismissalTime::Absolute {
+                        ParsedDateTime::Absolute(datetime) => Ok(ParsedDismissalTime::Absolute {
                             input_value,
                             datetime: *datetime,
-                        },
-                        ParsedDateTime::Relative {
-                            days,
-                            hours,
-                            minutes,
-                        } => ParsedDismissalTime::Relative {
+                        }),
+                        ParsedDateTime::Relative { days, hours, minutes } => {
+                            Ok(ParsedDismissalTime::Relative {
                             input_value,
                             days: *days,
                             hours: *hours,
                             minutes: *minutes,
-                        },
-                        ParsedDateTime::Time(_) => {
-                            // 解散時刻でTime型が返されることは想定外だが、念のためエラー処理
-                            panic!("解散時刻でTime型が返されました（想定外）");
+                        })
                         }
+                        ParsedDateTime::Time(_) => Err(types::AppError::Business {
+                            message: "解散時刻の解析結果が不正です。運用管理者に連絡してください。"
+                                .to_string(),
+                        }),
                     }
                 })
-                .collect();
+                .collect::<types::Result<Vec<_>>>()?;
 
             // 解散時刻を含むメッセージを生成
             let message_service = app_state.message_service();
@@ -318,15 +321,15 @@ pub async fn update_message_id(
         "募集のmessage_idを更新します"
     );
 
-    let battle_recruitment_repo = app_state.repositories.battle_recruitments;
     let db = app_state.guild_db();
     let txn = db.begin().await?;
 
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
 
-    let result = battle_recruitment_repo
-        .update_message_id_with_txn(&txn, recruitment_id, DiscordMessageId::new(message_id))
+    let update_service = RecruitmentUpdateService::new(app_state.repositories.battle_recruitments);
+    let result = update_service
+        .update_message_id(&txn, recruitment_id, DiscordMessageId::new(message_id))
         .await;
 
     match result {

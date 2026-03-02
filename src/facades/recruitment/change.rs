@@ -1,10 +1,10 @@
 use super::participant_mentions;
 use crate::gateway::{DiscordMessageGateway, DiscordReactionGateway};
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::{BattleRecruitmentsRepository, RecruitmentParticipantsRepository};
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
@@ -50,14 +50,12 @@ pub async fn check_can_change_recruitment(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
-        let recruitment = battle_recruitment_repo
-            .get_by_message_with_txn(
-                &txn,
-                DiscordGuildId::new(guild_id),
-                DiscordChannelId::new(channel_id),
-                DiscordMessageId::new(message_id),
-            )
+        let query_service = RecruitmentQueryService::new(
+            app_state.repositories.battle_style,
+            app_state.repositories.battle_recruitments,
+        );
+        let recruitment = query_service
+            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
             .await?
             .ok_or_else(|| {
                 types::AppError::NotFound("募集情報が見つかりませんでした".to_string())
@@ -270,12 +268,14 @@ where
         .await?;
 
         // 4. 通知向け参加者を取得（DB + リアクションを合算）
-        let participants_repo = app_state.repositories.recruitment_participants;
+        let participants_service =
+            RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
+        let db_participant_user_ids = participants_service
+            .get_all_participant_user_ids(&txn, existing_recruitment.id)
+            .await?;
         let participant_user_ids = participant_mentions::collect_notification_participant_user_ids(
-            &participants_repo,
+            db_participant_user_ids,
             gateway,
-            &txn,
-            existing_recruitment.id,
             channel_id_obj,
             message_id_obj,
             message,
@@ -291,8 +291,8 @@ where
             // v2: DBから参加者を取得し、embed用のテキストも作成
             debug!("v2募集: DBから参加者を取得します");
 
-            let participants = participants_repo
-                .find_by_recruitment_id_with_txn(&txn, existing_recruitment.id)
+            let participants = participants_service
+                .find_by_recruitment_id(&txn, existing_recruitment.id)
                 .await?;
 
             // ユニークなユーザーIDを取得（重複排除）

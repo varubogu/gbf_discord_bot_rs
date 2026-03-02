@@ -1,17 +1,14 @@
+use crate::errors::RecruitmentError;
 use crate::events::helpers::resolve_guild_locale;
 use crate::events::interactions::components::recruit_change_handler;
-use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::services::message::MessageTextId;
-use crate::services::unified_datetime_parser::{
-    DateTimeParseOptions, ParsedDateTime, parse_datetime,
-};
+use crate::services::recruitment::recruit_datetime_service::RecruitDateTimeService;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ActionRowComponent, Context, CreateInteractionResponse, EditInteractionResponse,
     ModalInteraction,
 };
 use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::{error, info};
 
 async fn get_message_or_fallback(
@@ -44,15 +41,19 @@ pub async fn handle_recruit_change_date_modal(
     // カスタムIDからチャンネルIDとメッセージIDを抽出
     let custom_id_parts: Vec<&str> = interaction.data.custom_id.split(':').collect();
     if custom_id_parts.len() != 3 || custom_id_parts[0] != "recruit_change_date_modal" {
-        return Err(AppError::Generic("不正なカスタムIDです".to_string()));
+        return Err(AppError::from(RecruitmentError::InvalidCustomId));
     }
 
-    let channel_id: u64 = custom_id_parts[1]
-        .parse()
-        .map_err(|_| AppError::Generic("チャンネルIDの解析に失敗しました".to_string()))?;
-    let message_id: u64 = custom_id_parts[2]
-        .parse()
-        .map_err(|_| AppError::Generic("メッセージIDの解析に失敗しました".to_string()))?;
+    let channel_id: u64 = custom_id_parts[1].parse().map_err(|_| {
+        AppError::from(RecruitmentError::ParseFailed {
+            field: "チャンネルID",
+        })
+    })?;
+    let message_id: u64 = custom_id_parts[2].parse().map_err(|_| {
+        AppError::from(RecruitmentError::ParseFailed {
+            field: "メッセージID",
+        })
+    })?;
 
     // モーダルから日時を取得
     let event_date_str = interaction
@@ -71,12 +72,12 @@ pub async fn handle_recruit_change_date_modal(
                 None
             }
         })
-        .ok_or_else(|| AppError::Generic("日時が入力されていません".to_string()))?;
+        .ok_or_else(|| AppError::from(RecruitmentError::MissingInput { field: "日時" }))?;
 
     // ギルドIDを取得
     let guild_id = interaction
         .guild_id
-        .ok_or_else(|| AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string()))?
+        .ok_or_else(|| AppError::from(RecruitmentError::GuildOnly))?
         .get();
     let locale = resolve_guild_locale(&data.app_state, Some(guild_id as i64)).await;
 
@@ -85,42 +86,40 @@ pub async fn handle_recruit_change_date_modal(
         .create_response(&ctx.http, CreateInteractionResponse::Acknowledge)
         .await?;
 
-    // タイムゾーンを取得
-    let guild_settings_facade = GuildSettingsFacade::new(Arc::new(data.app_state.clone()));
-    let timezone = guild_settings_facade.get_timezone(guild_id as i64).await?;
-
-    // 日時文字列を解析
+    // 日時文字列を共通サービスで解析
     let event_date = {
-        let options = DateTimeParseOptions::for_quest_departure(timezone);
-        match parse_datetime(&event_date_str, &options) {
-            Ok(results) => match &results[0] {
-                ParsedDateTime::Absolute(dt) => *dt,
-                _ => {
-                    error!("日時の解析に失敗しました: 絶対日時ではありません");
-                    let parse_failed_message = get_message_or_fallback(
-                        data,
-                        guild_id,
-                        MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
-                        HashMap::new(),
-                        &locale,
-                        "日時の解析に失敗しました: 絶対日時で指定してください",
+        let date_time_service =
+            RecruitDateTimeService::new(data.app_state.repositories.guild_settings);
+        match date_time_service
+            .parse_quest_departure(data.app_state.guild_db(), guild_id as i64, &event_date_str)
+            .await
+        {
+            Ok(datetime) => datetime,
+            Err(AppError::Business { .. }) => {
+                error!("日時の解析に失敗しました: 絶対日時ではありません");
+                let parse_failed_message = get_message_or_fallback(
+                    data,
+                    guild_id,
+                    MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
+                    HashMap::new(),
+                    &locale,
+                    "日時の解析に失敗しました: 絶対日時で指定してください",
+                )
+                .await;
+                interaction
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new()
+                            .content(parse_failed_message)
+                            .components(vec![]),
                     )
-                    .await;
-                    interaction
-                        .edit_response(
-                            &ctx.http,
-                            EditInteractionResponse::new()
-                                .content(parse_failed_message)
-                                .components(vec![]),
-                        )
-                        .await?;
-                    return Ok(());
-                }
-            },
+                    .await?;
+                return Ok(());
+            }
             Err(e) => {
                 error!(error = %e, "日時の解析に失敗しました");
                 let mut params = HashMap::new();
-                params.insert("error_message".to_string(), e.to_string());
+                params.insert("error_message".to_string(), e.user_message());
                 let parse_failed_message = get_message_or_fallback(
                     data,
                     guild_id,

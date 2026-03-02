@@ -119,10 +119,4 @@ impl SchedulerFacade {
             }
         }
     }
-
-    /// スケジュールを生成
-    /// 既存呼び出しとの互換性のため、管理サーバー向け全体再生成に委譲
-    pub async fn generate_schedules(&self) -> Result<()> {
-        self.generate_schedules_global(None).await
-    }
 }

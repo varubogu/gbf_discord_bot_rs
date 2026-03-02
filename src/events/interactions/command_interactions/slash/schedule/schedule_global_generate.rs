@@ -1,4 +1,4 @@
-use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
+use crate::events::helpers::get_message_or_key_from_context;
 use crate::events::interactions::command_interactions::slash::schedule::schedule_task_type::ScheduleTaskTypeChoice;
 use crate::events::permission::check_bot_admin_server;
 use crate::facades::scheduler::SchedulerFacade;
@@ -41,12 +41,11 @@ pub async fn schedule_global_generate(
     );
 
     // 処理中メッセージを送信
-    let loading_message = get_message_or_fallback_from_context(
+    let loading_message = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::ScheduleCommandGlobalGenerateLoading,
         HashMap::new(),
-        "全体スケジュールを生成しています...",
     )
     .await;
     ctx.say(loading_message).await?;
@@ -62,44 +61,39 @@ pub async fn schedule_global_generate(
         Ok(_) => {
             info!("全体スケジュール生成が完了しました");
 
-            let title = get_message_or_fallback_from_context(
+            let title = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandGlobalGenerateSuccessTitle,
                 HashMap::new(),
-                "✅ 全体スケジュール生成完了",
             )
             .await;
-            let description = get_message_or_fallback_from_context(
+            let description = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandGlobalGenerateSuccessDescription,
                 HashMap::new(),
-                "全guildのイベントスケジュールから通知スケジュールを生成しました。",
             )
             .await;
-            let field_name = get_message_or_fallback_from_context(
+            let field_name = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandSharedSuccessFieldName,
                 HashMap::new(),
-                "処理内容",
             )
             .await;
-            let field_value = get_message_or_fallback_from_context(
+            let field_value = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandGlobalGenerateSuccessFieldValue,
                 HashMap::new(),
-                "- 対象の既存スケジュールを削除\n- イベントスケジュールを読み込み\n- 通知スケジュールを計算・保存",
             )
             .await;
-            let footer = get_message_or_fallback_from_context(
+            let footer = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandSharedSuccessFooter,
                 HashMap::new(),
-                "10秒間隔で自動的に通知が送信されます",
             )
             .await;
 
@@ -116,32 +110,27 @@ pub async fn schedule_global_generate(
         Err(e) => {
             error!(error = %e, "全体スケジュール生成に失敗しました");
 
-            let title = get_message_or_fallback_from_context(
+            let title = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandGlobalGenerateErrorTitle,
                 HashMap::new(),
-                "❌ 全体スケジュール生成エラー",
             )
             .await;
             let mut params = HashMap::new();
             params.insert("error_msg".to_string(), e.to_string());
-            let description = get_message_from_context(
+            let description = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandGlobalGenerateErrorDescription,
                 params,
             )
-            .await
-            .unwrap_or_else(|_| {
-                format!("全体スケジュールの生成中にエラーが発生しました。\n```\n{e}\n```")
-            });
-            let footer = get_message_or_fallback_from_context(
+            .await;
+            let footer = get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::ScheduleCommandSharedErrorFooter,
                 HashMap::new(),
-                "詳細はログを確認してください",
             )
             .await;
 

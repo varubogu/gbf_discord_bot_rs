@@ -3,14 +3,9 @@
 //! events層から呼び出される各種コンポーネント操作のDB更新/参照を担当する。
 
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::QuestRepository;
-use crate::repository::auto_recruitment::{
-    UserDesiredQuestRepository,
-    auto_recruitment_channel_repository::AutoRecruitmentChannelRepository,
-};
-use crate::types::{AppError, AppState, Result};
+use crate::services::auto_recruitment::InteractionService;
+use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
-use std::collections::HashMap;
 use tracing::{error, info};
 
 /// 属性選択結果
@@ -52,17 +47,20 @@ pub async fn register_selected_elements(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result = async {
-        let quest_repo = app_state.repositories.user_desired_quest;
-
-        quest_repo
-            .delete_all_styles(&txn, guild_id, user_id, quest_id)
+        let service = InteractionService::new(
+            app_state.repositories.user_desired_quest,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_channel,
+        );
+        service
+            .replace_selected_elements(
+                &txn,
+                guild_id,
+                user_id,
+                quest_id,
+                &selected_battle_style_ids,
+            )
             .await?;
-
-        for battle_style_id in &selected_battle_style_ids {
-            quest_repo
-                .create(&txn, guild_id, user_id, quest_id, *battle_style_id)
-                .await?;
-        }
 
         info!(
             guild_id,
@@ -103,29 +101,17 @@ pub async fn toggle_quest_join(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result = async {
-        let quest_repo = app_state.repositories.user_desired_quest;
-        let existing = quest_repo
-            .find_by_user(&txn, guild_id, user_id)
-            .await?
-            .into_iter()
-            .filter(|q| q.quest_id == quest_id)
-            .collect::<Vec<_>>();
-        let is_participating = !existing.is_empty();
-
-        if is_participating {
-            quest_repo
-                .delete_all_styles(&txn, guild_id, user_id, quest_id)
-                .await?;
-            info!(guild_id, user_id, quest_id, "クエスト参加を解除しました");
-        } else {
-            quest_repo
-                .create(&txn, guild_id, user_id, quest_id, 0)
-                .await?;
-            info!(guild_id, user_id, quest_id, "クエスト参加を登録しました");
-        }
+        let service = InteractionService::new(
+            app_state.repositories.user_desired_quest,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_channel,
+        );
+        let is_now_participating = service
+            .toggle_quest_join(&txn, guild_id, user_id, quest_id)
+            .await?;
 
         Ok(QuestJoinToggleResult {
-            is_now_participating: !is_participating,
+            is_now_participating,
         })
     }
     .await;
@@ -154,42 +140,19 @@ pub async fn get_selected_quests(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result = async {
-        let quest_repo = app_state.repositories.user_desired_quest;
-        let master_quest_repo = app_state.repositories.quest;
-        let user_quests = quest_repo.find_by_user(&txn, guild_id, user_id).await?;
-        if user_quests.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let mut quest_styles: HashMap<i32, Vec<i32>> = HashMap::new();
-        for user_quest in &user_quests {
-            quest_styles
-                .entry(user_quest.quest_id)
-                .or_default()
-                .push(user_quest.battle_style_id);
-        }
-
-        let quest_ids: Vec<i32> = quest_styles.keys().copied().collect();
-        let all_quests = master_quest_repo.get_all(&txn).await?;
-        let quest_map: HashMap<i32, String> = all_quests
+        let service = InteractionService::new(
+            app_state.repositories.user_desired_quest,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_channel,
+        );
+        let selected_quests = service.get_selected_quests(&txn, guild_id, user_id).await?;
+        Ok(selected_quests
             .into_iter()
-            .filter(|q| quest_ids.contains(&q.id))
-            .map(|q| (q.id, q.name))
-            .collect();
-
-        let mut selections = Vec::new();
-        for (quest_id, styles) in quest_styles {
-            let quest_name = quest_map
-                .get(&quest_id)
-                .cloned()
-                .unwrap_or_else(|| "不明なクエスト".to_string());
-            selections.push(SelectedQuestItem {
-                quest_name,
-                battle_style_ids: styles,
-            });
-        }
-
-        Ok(selections)
+            .map(|item| SelectedQuestItem {
+                quest_name: item.quest_name,
+                battle_style_ids: item.battle_style_ids,
+            })
+            .collect())
     }
     .await;
 
@@ -217,15 +180,17 @@ pub async fn get_time_channel_date(
     set_current_guild_id(&txn, guild_id).await?;
 
     let result = async {
-        let channel_repo = app_state.repositories.auto_recruitment_channel;
-        let channel = channel_repo
-            .find_by_channel_id(&txn, guild_id, channel_id)
-            .await?
-            .ok_or_else(|| AppError::Generic("チャンネル情報が見つかりません".to_string()))?;
-
+        let service = InteractionService::new(
+            app_state.repositories.user_desired_quest,
+            app_state.repositories.quest,
+            app_state.repositories.auto_recruitment_channel,
+        );
+        let date = service
+            .get_time_channel_date(&txn, guild_id, channel_id)
+            .await?;
         Ok(TimeChannelDate {
-            month: channel.month,
-            day: channel.day,
+            month: date.month,
+            day: date.day,
         })
     }
     .await;

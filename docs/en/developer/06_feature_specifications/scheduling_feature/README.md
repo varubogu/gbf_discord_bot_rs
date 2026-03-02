@@ -26,7 +26,7 @@ For common specifications (execution cycle, execution statuses, and overall arch
 ## Notes
 
 - `task_type=1` is used by both event notifications and recruitment notifications.
-- For `task_type=3`, the table and repository exist, but the scheduler execution path is not implemented yet (see task type 3 documentation).
+- `task_type=3` is executed from the scheduler path via `TaskDispatchService` and shares cleanup logic with `src/bin/cleanup.rs`.
 
 ## Implementation boundaries
 

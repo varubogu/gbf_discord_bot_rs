@@ -29,8 +29,16 @@ async fn cleanup_schedules(db: &sea_orm::DatabaseConnection, guild_id: i64, user
 
 /// 1-1: 正常系 - 基本的なスケジュール作成
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_create_schedule_basic() {
+    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !db_available {
+        println!(
+            "テストスキップ: データベース接続情報が不足しています: {:?}",
+            missing
+        );
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let facade = RecruitmentScheduleFacade::new(app_state.clone());
     let guild_id = (SCHED_GUILD_ID + 1) as u64;
@@ -48,7 +56,7 @@ async fn test_create_schedule_basic() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -81,7 +89,7 @@ async fn test_create_schedule_with_battle_style() {
             "月火水",
             "19:00",
             Some(1), // battle_style_id指定
-            0,
+            Some(0),
             None,
             None,
         )
@@ -118,7 +126,7 @@ async fn test_create_schedule_with_note() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             Some("初心者歓迎".to_string()),
             None,
         )
@@ -155,7 +163,7 @@ async fn test_create_schedule_with_dismissal_times() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             Some("21:00".to_string()), // dismissal_times指定
         )
@@ -173,8 +181,16 @@ async fn test_create_schedule_with_dismissal_times() {
 
 /// 1-5: 異常系 - 存在しないquest_alias
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_create_schedule_quest_not_found() {
+    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !db_available {
+        println!(
+            "テストスキップ: データベース接続情報が不足しています: {:?}",
+            missing
+        );
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let facade = RecruitmentScheduleFacade::new(app_state);
 
@@ -188,7 +204,7 @@ async fn test_create_schedule_quest_not_found() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -202,8 +218,16 @@ async fn test_create_schedule_quest_not_found() {
 
 /// 1-6: 異常系 - 無効な時刻フォーマット
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_create_schedule_invalid_time_format() {
+    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !db_available {
+        println!(
+            "テストスキップ: データベース接続情報が不足しています: {:?}",
+            missing
+        );
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let facade = RecruitmentScheduleFacade::new(app_state);
 
@@ -217,7 +241,7 @@ async fn test_create_schedule_invalid_time_format() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -255,7 +279,7 @@ async fn test_list_all_schedules() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -301,7 +325,7 @@ async fn test_list_own_schedules() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -377,7 +401,7 @@ async fn test_delete_schedule_by_creator() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -417,7 +441,7 @@ async fn test_delete_schedule_by_admin() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -457,7 +481,7 @@ async fn test_delete_schedule_without_permission() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -519,7 +543,7 @@ async fn test_toggle_schedule_enable_to_disable() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -558,7 +582,7 @@ async fn test_toggle_schedule_disable_to_enable() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -604,7 +628,7 @@ async fn test_toggle_schedule_by_admin() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )
@@ -663,7 +687,7 @@ async fn test_get_schedules_for_autocomplete_with_data() {
             "月火水",
             "19:00",
             None,
-            0,
+            Some(0),
             None,
             None,
         )

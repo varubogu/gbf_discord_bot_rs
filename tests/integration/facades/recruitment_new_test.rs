@@ -141,8 +141,16 @@ async fn test_update_message_id_success() {
 
 /// 2-2: 異常系 - 存在しないrecruitment_id
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_update_message_id_not_found() {
+    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !db_available {
+        println!(
+            "テストスキップ: データベース接続情報が不足しています: {:?}",
+            missing
+        );
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
 
     // 存在しないrecruitment_idでmessage_id更新
@@ -300,10 +308,15 @@ async fn test_new_recruitment_with_event_date_success() {
     let mut mock_gateway = MockTestGateway::new();
     setup_new_recruitment_gateway(&mut mock_gateway);
     use chrono::{Duration, Utc};
+    use chrono_tz::Asia::Tokyo;
 
     let guild_id = (NEW_GUILD_ID + 23) as u64;
     let channel_id = (NEW_CHANNEL_ID + 23) as u64;
     let event_date = Utc::now() + Duration::hours(72);
+    let event_date_input = event_date
+        .with_timezone(&Tokyo)
+        .format("%Y/%m/%d %H:%M")
+        .to_string();
     cleanup_recruitments_by_guild(app_state.guild_db(), guild_id as i64).await;
 
     let result = new_recruit::new_recruitment(
@@ -313,7 +326,7 @@ async fn test_new_recruitment_with_event_date_success() {
         channel_id,
         "アルバハHL",
         None,
-        Some(event_date),
+        Some(event_date_input),
         true,
         None,
         TEST_USER_ID,
@@ -379,8 +392,16 @@ async fn test_new_recruitment_with_dismissal_times_success() {
 
 /// 1-6: 異常系 - 存在しないquest_alias
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_quest_not_found() {
+    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
+    if !db_available {
+        println!(
+            "テストスキップ: データベース接続情報が不足しています: {:?}",
+            missing
+        );
+        return;
+    }
+
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
     setup_new_recruitment_gateway(&mut mock_gateway);

@@ -22,7 +22,7 @@ This feature uses a Discord category: “date channels” manage time availabili
 - Repository ports (traits) are defined under `src/repository/auto_recruitment/**`.
 - Auto-recruitment concrete repositories are consolidated under `src/infrastructure/database/repositories/auto_recruitment/**`.
 - `facades/auto_recruitment/**`, `services/auto_recruitment/**`, and `services/schedule/**` use trait-based dependencies via `crate::repository`.
-- Concrete `SeaOrm*Repository` types are composed at DI/scheduler composition points (`src/di/repositories.rs`, `src/services/schedule/scheduler_manager.rs`).
+- Concrete `SeaOrm*Repository` types are composed at DI/scheduler composition points (`src/di/repositories.rs`, `src/services/schedule/task_dispatch_service.rs`).
 - Add new DB adapters only under `src/infrastructure/database/repositories/**`.
 
 ### Implementation reference paths
@@ -33,6 +33,8 @@ src/services/auto_recruitment/
 src/services/schedule/auto_recruitment_rotation_task_executor.rs
 src/services/schedule/auto_matching_task_executor.rs
 src/services/schedule/scheduler_manager.rs
+src/services/schedule/task_dispatch_service.rs
+src/facades/schedule/scheduler_task_dispatch_facade.rs
 src/events/interactions/components/auto_recruit_time_handler.rs
 src/repository/auto_recruitment/
 src/infrastructure/database/repositories/auto_recruitment/

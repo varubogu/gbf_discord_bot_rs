@@ -1,10 +1,6 @@
 use crate::events::converters::to_create_embed;
-use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
-use crate::services::recruitment::schedule::{OffsetCalculatorService, ScheduleDisplayService};
-use crate::services::unified_datetime_parser::{
-    DateTimeParseOptions, ParsedDateTime, parse_datetime,
-};
+use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
 use tracing::{error, info};
@@ -93,68 +89,6 @@ pub async fn recruitment_schedule_create(
 
     let app_state = ctx.data().app_state.clone();
 
-    // タイムゾーンを取得
-    let timezone_facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
-    let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
-
-    // クエスト開始時刻をパース（HH:MM厳格モード）
-    let quest_options = DateTimeParseOptions::strict_hhmm_only(timezone);
-    let quest_results = parse_datetime(&quest_start_time, &quest_options)?;
-    let quest_time = match &quest_results[0] {
-        ParsedDateTime::Time(t) => *t,
-        _ => {
-            return Err(crate::types::AppError::Business {
-                message: "クエスト開始時刻はHH:MM形式で指定してください".to_string(),
-            });
-        }
-    };
-
-    // 募集開始時刻をパース（相対時刻もサポート）
-    let recruit_options = DateTimeParseOptions::for_schedule_start_time(timezone, quest_time);
-    let recruit_results = parse_datetime(&recruit_start_time, &recruit_options)?;
-
-    // ParsedDateTimeからNaiveTimeを取得
-    let recruit_time = match &recruit_results[0] {
-        ParsedDateTime::Time(t) => *t,
-        ParsedDateTime::Relative {
-            days,
-            hours,
-            minutes,
-        } => {
-            // 相対時刻の場合、クエスト開始時刻から計算
-            use chrono::{Duration, NaiveDate};
-
-            // 相対時刻を合計分数に変換（マイナスにする）
-            let total_minutes = -(days * 24 * 60 + hours * 60 + minutes);
-            let duration = Duration::minutes(total_minutes as i64);
-
-            // 仮の日付を使ってDateTime演算を行い、時刻部分を取得
-            let dummy_date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
-            let base_datetime = dummy_date.and_time(quest_time);
-            let result_datetime = base_datetime + duration;
-
-            result_datetime.time()
-        }
-        ParsedDateTime::Absolute(dt) => {
-            // 絶対日時の場合、タイムゾーンに変換して時刻部分を取得
-            dt.with_timezone(&timezone).time()
-        }
-        #[allow(unreachable_patterns)]
-        _ => {
-            return Err(crate::types::AppError::Business {
-                message: "募集開始時刻は時刻または相対時刻で指定してください".to_string(),
-            });
-        }
-    };
-
-    // オフセットのデフォルト値を決定
-    let default_offset = if let Some(offset) = recruit_start_day_offset {
-        offset as i32
-    } else {
-        // オフセット指定なしの場合、時刻から自動判定
-        OffsetCalculatorService::determine_default_offset(recruit_time, quest_time)
-    };
-
     // Facade層を呼び出し
     let facade = RecruitmentScheduleFacade::new(Arc::new(app_state));
     let result = facade
@@ -167,7 +101,7 @@ pub async fn recruitment_schedule_create(
             &days,
             &recruit_start_time,
             battle_style,
-            default_offset,
+            recruit_start_day_offset.map(|offset| offset as i32),
             note,
             dismissal_times,
         )

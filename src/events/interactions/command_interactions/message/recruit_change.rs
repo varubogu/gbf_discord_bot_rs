@@ -1,3 +1,4 @@
+use crate::errors::RecruitmentError;
 use crate::events::helpers::get_message_from_context;
 use crate::events::interactions::components::recruit_change_handler;
 use crate::events::permission::resolve_bot_control;
@@ -14,9 +15,9 @@ use std::collections::HashMap;
 pub async fn recruit_change_context_menu(ctx: PoiseContext<'_>, message: Message) -> Result<()> {
     // ApplicationContextかどうかを先に確認
     let poise::Context::Application(app_ctx) = ctx else {
-        return Err(crate::types::AppError::Generic(
-            "このコマンドはコンテキストメニューからのみ使用できます".to_string(),
-        ));
+        return Err(AppError::from(RecruitmentError::Message {
+            message: "このコマンドはコンテキストメニューからのみ使用できます".to_string(),
+        }));
     };
 
     // 実行者情報を解決（events層でDiscordコンテキストから取得）

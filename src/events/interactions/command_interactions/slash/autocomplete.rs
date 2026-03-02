@@ -19,13 +19,9 @@ pub async fn quest_auto_complete(ctx: PoiseContext<'_>, partial: &str) -> Vec<Au
         }
     };
     let app_state = &ctx.data().app_state;
-    let conn = app_state.guild_db();
-    let quest_repository = app_state.repositories.quest;
 
     // facade層にはpoise依存のない値を渡す
-    let quest_list =
-        quest_list::search_quests_for_autocomplete(conn, &quest_repository, guild_id, partial)
-            .await;
+    let quest_list = quest_list::search_quests_for_autocomplete(app_state, guild_id, partial).await;
     to_autocomplete_choices(quest_list)
 }
 

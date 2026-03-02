@@ -18,3 +18,6 @@ mod facades;
 
 // メッセージキー整合性テスト（DBなし）
 mod message_consistency_test;
+
+// unwrap再混入ガード（Task13）
+mod unwrap_guard_test;

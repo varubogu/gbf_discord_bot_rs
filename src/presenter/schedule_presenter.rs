@@ -266,9 +266,15 @@ impl SchedulePresenter {
     /// "HH:MM" 形式の文字列
     pub fn format_time_with_timezone(hour: u32, minute: u32, timezone: &Tz) -> String {
         // NaiveTimeを仮の日付と組み合わせてDateTime<Utc>に変換
-        let utc_datetime = chrono::Utc
+        let utc_datetime = match chrono::Utc
             .with_ymd_and_hms(2000, 1, 1, hour, minute, 0)
-            .unwrap();
+            .single()
+        {
+            Some(datetime) => datetime,
+            None => {
+                return format!("{:02}:{:02}", hour.min(23), minute.min(59));
+            }
+        };
         let local_datetime = utc_datetime.with_timezone(timezone);
         let hour = local_datetime.hour();
         let minute = local_datetime.minute();

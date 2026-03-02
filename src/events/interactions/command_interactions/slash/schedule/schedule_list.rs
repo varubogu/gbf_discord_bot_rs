@@ -1,8 +1,8 @@
-use crate::events::helpers::get_message_or_fallback_from_context;
+use crate::events::helpers::get_message_or_key_from_context;
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::NotificationScheduleFacade;
 use crate::services::message::MessageTextId;
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;
 use tracing::info;
@@ -23,11 +23,19 @@ use tracing::info;
     )
 )]
 pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Business {
-            message: "このコマンドはサーバー内でのみ使用できます".to_string(),
-        })?;
+    let guild_id = match ctx.guild_id() {
+        Some(id) => id,
+        None => {
+            let message = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::ErrorsGuildOnly,
+                HashMap::new(),
+            )
+            .await;
+            return Err(AppError::Business { message });
+        }
+    };
 
     info!(
         guild_id = guild_id.get(),
@@ -43,22 +51,20 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
         .get_future_notifications_formatted(guild_id.get() as i64, 10)
         .await?;
 
-    let title = get_message_or_fallback_from_context(
+    let title = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::ScheduleCommandListTitle,
         HashMap::new(),
-        "📅 スケジュール一覧",
     )
     .await;
 
     if formatted.is_empty() {
-        let empty_description = get_message_or_fallback_from_context(
+        let empty_description = get_message_or_key_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
             MessageTextId::ScheduleCommandListEmptyDescription,
             HashMap::new(),
-            "登録されているスケジュールはありません。\n\n`/schedule_generate` コマンドでスケジュールを生成してください。",
         )
         .await;
 
@@ -72,12 +78,11 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
         return Ok(());
     }
 
-    let footer = get_message_or_fallback_from_context(
+    let footer = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::ScheduleCommandListFooter,
         HashMap::new(),
-        "未来のスケジュールを最大10件まで表示",
     )
     .await;
 

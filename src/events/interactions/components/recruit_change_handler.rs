@@ -1,3 +1,4 @@
+use crate::errors::RecruitmentError;
 use crate::events::helpers::resolve_guild_locale;
 use crate::events::permission::resolve_bot_control_for_interaction;
 use crate::facades::guild_settings::GuildSettingsFacade;
@@ -172,11 +173,7 @@ pub async fn build_panel_content_and_components(
     )
     .await;
 
-    let quest_pairs = quest_list::list_quests_for_select(
-        data.app_state.guild_db(),
-        data.app_state.repositories.quest,
-    )
-    .await;
+    let quest_pairs = quest_list::list_quests_for_select(&data.app_state).await;
 
     let option_quest_unchanged = get_message_or_fallback(
         data,
@@ -353,15 +350,19 @@ pub async fn set_event_date_draft(
 fn parse_target_ids(custom_id: &str, prefix: &str) -> Result<(u64, u64)> {
     let parts: Vec<&str> = custom_id.split(':').collect();
     if parts.len() != 3 || parts[0] != prefix {
-        return Err(AppError::Generic("不正なカスタムIDです".to_string()));
+        return Err(AppError::from(RecruitmentError::InvalidCustomId));
     }
 
-    let channel_id = parts[1]
-        .parse::<u64>()
-        .map_err(|_| AppError::Generic("チャンネルIDの解析に失敗しました".to_string()))?;
-    let message_id = parts[2]
-        .parse::<u64>()
-        .map_err(|_| AppError::Generic("メッセージIDの解析に失敗しました".to_string()))?;
+    let channel_id = parts[1].parse::<u64>().map_err(|_| {
+        AppError::from(RecruitmentError::ParseFailed {
+            field: "チャンネルID",
+        })
+    })?;
+    let message_id = parts[2].parse::<u64>().map_err(|_| {
+        AppError::from(RecruitmentError::ParseFailed {
+            field: "メッセージID",
+        })
+    })?;
 
     Ok((channel_id, message_id))
 }
@@ -375,13 +376,15 @@ async fn handle_quest_selection(
         parse_target_ids(&interaction.data.custom_id, ID_PREFIX_QUEST)?;
 
     let selected_value = match &interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values } => values
-            .first()
-            .ok_or_else(|| AppError::Generic("クエストが選択されていません".to_string()))?,
+        ComponentInteractionDataKind::StringSelect { values } => {
+            values.first().ok_or_else(|| {
+                AppError::from(RecruitmentError::NotSelected {
+                    field: "クエスト"
+                })
+            })?
+        }
         _ => {
-            return Err(AppError::Generic(
-                "予期しないコンポーネントタイプです".to_string(),
-            ));
+            return Err(AppError::from(RecruitmentError::UnexpectedComponentType));
         }
     };
 
@@ -399,17 +402,19 @@ async fn handle_quest_selection(
         if selected_value == QUEST_NONE_VALUE {
             draft.quest_name = None;
         } else {
-            let quest_id: i32 = selected_value
-                .parse()
-                .map_err(|_| AppError::Generic("クエストIDの解析に失敗しました".to_string()))?;
+            let quest_id: i32 = selected_value.parse().map_err(|_| {
+                AppError::from(RecruitmentError::ParseFailed {
+                    field: "クエストID",
+                })
+            })?;
 
-            let quest_name = quest_list::get_quest_name_by_id(
-                data.app_state.guild_db(),
-                data.app_state.repositories.quest,
-                quest_id,
-            )
-            .await
-            .ok_or_else(|| AppError::Generic("クエストが見つかりません".to_string()))?;
+            let quest_name = quest_list::get_quest_name_by_id(&data.app_state, quest_id)
+                .await
+                .ok_or_else(|| {
+                    AppError::from(RecruitmentError::NotFound {
+                        field: "クエスト"
+                    })
+                })?;
 
             draft.quest_name = Some(quest_name);
         }
@@ -447,13 +452,15 @@ async fn handle_battle_style_selection(
         parse_target_ids(&interaction.data.custom_id, ID_PREFIX_STYLE)?;
 
     let selected_value = match &interaction.data.kind {
-        ComponentInteractionDataKind::StringSelect { values } => values
-            .first()
-            .ok_or_else(|| AppError::Generic("攻略方法が選択されていません".to_string()))?,
+        ComponentInteractionDataKind::StringSelect { values } => {
+            values.first().ok_or_else(|| {
+                AppError::from(RecruitmentError::NotSelected {
+                    field: "攻略方法"
+                })
+            })?
+        }
         _ => {
-            return Err(AppError::Generic(
-                "予期しないコンポーネントタイプです".to_string(),
-            ));
+            return Err(AppError::from(RecruitmentError::UnexpectedComponentType));
         }
     };
 
@@ -472,9 +479,11 @@ async fn handle_battle_style_selection(
             draft.battle_style_id = None;
             draft.battle_style_name = None;
         } else {
-            let battle_style_id: i32 = selected_value
-                .parse()
-                .map_err(|_| AppError::Generic("攻略方法IDの解析に失敗しました".to_string()))?;
+            let battle_style_id: i32 = selected_value.parse().map_err(|_| {
+                AppError::from(RecruitmentError::ParseFailed {
+                    field: "攻略方法ID",
+                })
+            })?;
             let battle_style_name =
                 battle_style_list::get_battle_style_name_by_id(&data.app_state, battle_style_id)
                     .await
@@ -607,7 +616,11 @@ async fn handle_apply_changes(
     let user_id = interaction.user.id.get();
     let interaction_guild_id = interaction
         .guild_id
-        .ok_or_else(|| AppError::Generic("ギルドIDが取得できません".to_string()))?
+        .ok_or_else(|| {
+            AppError::from(RecruitmentError::MissingInput {
+                field: "ギルドID"
+            })
+        })?
         .get();
     let locale = resolve_guild_locale(&data.app_state, Some(interaction_guild_id as i64)).await;
 
@@ -661,7 +674,9 @@ async fn handle_apply_changes(
         .await
         .map_err(|e| {
             error!(error = %e, channel_id = target_channel_id, message_id = target_message_id, "メッセージの取得に失敗しました");
-            AppError::Generic("対象のメッセージが見つかりませんでした".to_string())
+            AppError::from(RecruitmentError::NotFound {
+                field: "対象メッセージ",
+            })
         })?;
 
     let target_guild_id = target_message

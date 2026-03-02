@@ -1,0 +1,40 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "refactor/**"
+  pull_request:
+
+concurrency:
+  group: rust-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: fmt / clippy / test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      RUST_TEST_THREADS: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo fmt --check
+        run: cargo fmt -- --check
+
+      - name: cargo clippy
+        run: cargo clippy -j 1
+
+      - name: cargo test
+        run: cargo test -j 1

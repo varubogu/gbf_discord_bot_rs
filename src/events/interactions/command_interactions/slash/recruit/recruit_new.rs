@@ -1,11 +1,8 @@
+use crate::errors::RecruitmentError;
 use crate::events::converters::to_create_embed;
-use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment;
 use crate::gateway::PoiseDiscordGateway;
-use crate::services::unified_datetime_parser::{
-    DateTimeParseOptions, ParsedDateTime, parse_datetime,
-};
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use crate::utils::discord_helper;
 use poise::serenity_prelude::ReactionType;
 use poise::serenity_prelude::all::MessageId;
@@ -46,27 +43,11 @@ pub async fn recruit_new(
     ctx.defer().await?;
 
     // ギルドIDを取得
-    let guild_id = ctx.guild_id().ok_or_else(|| {
-        crate::types::AppError::Generic("このコマンドはサーバー内でのみ使用できます".to_string())
-    })?;
+    let guild_id = ctx
+        .guild_id()
+        .ok_or_else(|| AppError::from(RecruitmentError::GuildOnly))?;
 
     let app_state = &ctx.data().app_state;
-
-    // タイムゾーンを取得（Facade経由）
-    let timezone_facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
-    let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
-
-    // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
-    let options = DateTimeParseOptions::for_quest_departure(timezone);
-    let results = parse_datetime(&event_date, &options)?;
-    let parsed_date = match &results[0] {
-        ParsedDateTime::Absolute(dt) => *dt,
-        _ => {
-            return Err(crate::types::AppError::Business {
-                message: "クエスト出発日時は絶対日時で指定してください".to_string(),
-            });
-        }
-    };
 
     // Gateway作成
     let gateway = PoiseDiscordGateway::new(Arc::clone(&ctx.serenity_context().http));
@@ -79,7 +60,7 @@ pub async fn recruit_new(
         ctx.channel_id().get(),
         &quest,
         battle_style,
-        Some(parsed_date),
+        Some(event_date),
         false, // リアクション版
         dismissal_times,
         ctx.author().id.get(),
@@ -117,7 +98,11 @@ pub async fn recruit_new(
         &reactions,
     )
     .await
-    .map_err(crate::types::AppError::Generic)?;
+    .map_err(|e| {
+        AppError::from(RecruitmentError::Message {
+            message: format!("リアクション追加に失敗しました: {e}"),
+        })
+    })?;
 
     Ok(())
 }

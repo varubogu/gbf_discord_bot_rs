@@ -7,7 +7,7 @@ use crate::repository::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
-use crate::services::recruitment::schedule::DaysParserService;
+use crate::services::recruitment::schedule::{DaysParserService, OffsetCalculatorService};
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::services::unified_datetime_parser::{
     DateTimeParseOptions, ParsedDateTime, parse_datetime,
@@ -105,7 +105,7 @@ where
     /// - `days`: 対象曜日文字列
     /// - `recruit_start_time`: 募集開始時刻（ローカル時刻、HH:MM形式）
     /// - `battle_style_id`: バトルスタイルID（省略可）
-    /// - `recruit_day_offset`: 募集開始日オフセット
+    /// - `recruit_day_offset`: 募集開始日オフセット（省略時は自動判定）
     /// - `note`: 備考（省略可）
     /// - `timezone`: タイムゾーン
     ///
@@ -123,7 +123,7 @@ where
         days: &str,
         recruit_start_time: &str,
         battle_style_id: Option<i32>,
-        recruit_day_offset: i32,
+        recruit_day_offset: Option<i32>,
         note: Option<String>,
         dismissal_times: Option<String>,
         timezone: Tz,
@@ -169,7 +169,10 @@ where
                 let duration = Duration::minutes(total_minutes as i64);
 
                 // 仮の日付を使ってDateTime演算を行い、時刻部分を取得
-                let dummy_date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
+                let dummy_date =
+                    NaiveDate::from_ymd_opt(2000, 1, 1).ok_or_else(|| AppError::Config {
+                        message: "スケジュール計算用の基準日生成に失敗しました".to_string(),
+                    })?;
                 let base_datetime = dummy_date.and_time(quest_start_time_local);
                 let result_datetime = base_datetime + duration;
 
@@ -181,6 +184,12 @@ where
                 });
             }
         };
+        let resolved_recruit_day_offset = recruit_day_offset.unwrap_or_else(|| {
+            OffsetCalculatorService::determine_default_offset(
+                recruit_start_time_local,
+                quest_start_time_local,
+            )
+        });
 
         let local_day_of_weeks = self.days_parser.parse_days_input(days)?;
 
@@ -188,7 +197,7 @@ where
         self.schedule_service.validate_schedule_input(
             &local_day_of_weeks,
             quest_start_time_local,
-            recruit_day_offset,
+            resolved_recruit_day_offset,
             Some(recruit_start_time_local),
         )?;
 
@@ -227,7 +236,7 @@ where
                     quest_id,
                     battle_style_id: final_battle_style_id,
                     quest_start_time: quest_start_time_utc,
-                    recruit_start_day_offset: recruit_day_offset,
+                    recruit_start_day_offset: resolved_recruit_day_offset,
                     recruit_start_time: Some(recruit_start_time_utc),
                     max_participants: None, // max_participants はクエストごとの設定を使用
                     note: note.clone(),
@@ -269,7 +278,7 @@ where
             battle_style_id: final_battle_style_id,
             days_display: self.days_parser.format_days(&local_day_of_weeks),
             quest_start_time: quest_start_time_local.format("%H:%M").to_string(),
-            recruit_start_day_offset: recruit_day_offset,
+            recruit_start_day_offset: resolved_recruit_day_offset,
             recruit_start_time: recruit_start_time_local.format("%H:%M").to_string(),
             note,
             timezone,

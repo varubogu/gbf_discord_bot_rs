@@ -61,7 +61,9 @@ pub mod test_utils {
         }
 
         // デフォルトタイムゾーンとしてAsia/Tokyoを使用
-        let timezone: Tz = "Asia/Tokyo".parse().unwrap();
+        let timezone: Tz = "Asia/Tokyo"
+            .parse()
+            .map_err(|e| format!("タイムゾーン解析に失敗しました: {e}"))?;
         let options = DateTimeParseOptions::for_quest_departure(timezone);
 
         let results = parse_datetime(trimmed_input, &options)
@@ -76,7 +78,9 @@ pub mod test_utils {
             ParsedDateTime::Absolute(dt) => {
                 // unified_datetime_parserはAsia/Tokyoでパースしたものを
                 // UTCに変換して返すため、Asia/Tokyoに戻してからLocalに変換
-                let tokyo_tz: Tz = "Asia/Tokyo".parse().unwrap();
+                let tokyo_tz: Tz = "Asia/Tokyo"
+                    .parse()
+                    .map_err(|e| format!("タイムゾーン解析に失敗しました: {e}"))?;
                 let tokyo_dt = dt.with_timezone(&tokyo_tz);
                 Ok(tokyo_dt.with_timezone(&Local))
             }

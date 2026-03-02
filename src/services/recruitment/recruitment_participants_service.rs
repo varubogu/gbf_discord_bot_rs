@@ -1,3 +1,4 @@
+use crate::models::entities::worker::recruitment_participants;
 use crate::repository::RecruitmentParticipantsRepository;
 use crate::types::{AppError, Result};
 use sea_orm::DatabaseTransaction;
@@ -191,6 +192,46 @@ impl<R: RecruitmentParticipantsRepository> RecruitmentParticipantsService<R> {
         );
 
         Ok(elements)
+    }
+
+    /// 募集IDで参加者一覧を取得（トランザクション対応）
+    pub async fn find_by_recruitment_id(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<Vec<recruitment_participants::Model>> {
+        let participants = self
+            .participants_repo
+            .find_by_recruitment_id_with_txn(txn, recruitment_id)
+            .await?;
+
+        debug!(
+            recruitment_id = recruitment_id,
+            count = participants.len(),
+            "募集参加者一覧を取得しました"
+        );
+
+        Ok(participants)
+    }
+
+    /// 募集の参加者ユーザーIDを取得（重複なし・トランザクション対応）
+    pub async fn get_all_participant_user_ids(
+        &self,
+        txn: &DatabaseTransaction,
+        recruitment_id: i32,
+    ) -> Result<Vec<u64>> {
+        let participant_user_ids = self
+            .participants_repo
+            .get_all_participant_user_ids_with_txn(txn, recruitment_id)
+            .await?;
+
+        debug!(
+            recruitment_id = recruitment_id,
+            count = participant_user_ids.len(),
+            "募集参加者ユーザーIDを取得しました"
+        );
+
+        Ok(participant_user_ids)
     }
 }
 

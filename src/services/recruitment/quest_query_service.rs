@@ -1,7 +1,7 @@
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
 use crate::types::{AppError, Result};
-use sea_orm::DatabaseConnection;
+use sea_orm::ConnectionTrait;
 use tracing::debug;
 
 /// クエスト情報クエリService
@@ -24,7 +24,7 @@ where
     /// クエスト名またはエイリアスで検索し、最初の結果のクエスト詳細を取得
     pub async fn search_and_get_quest_by_name(
         &self,
-        db: &DatabaseConnection,
+        db: &impl ConnectionTrait,
         quest_name: &str,
     ) -> Result<Quest> {
         // クエスト名で検索
@@ -59,7 +59,7 @@ where
     }
 
     /// クエストIDでクエスト詳細を取得
-    pub async fn get_quest_by_id(&self, db: &DatabaseConnection, quest_id: i32) -> Result<Quest> {
+    pub async fn get_quest_by_id(&self, db: &impl ConnectionTrait, quest_id: i32) -> Result<Quest> {
         let quest = self
             .quest_repository
             .get_by_target_id(db, quest_id)
@@ -74,7 +74,7 @@ where
     }
 
     /// すべてのクエストを取得
-    pub async fn get_all_quests(&self, db: &DatabaseConnection) -> Result<Vec<Quest>> {
+    pub async fn get_all_quests(&self, db: &impl ConnectionTrait) -> Result<Vec<Quest>> {
         let quests = self.quest_repository.get_all(db).await?;
 
         debug!(count = quests.len(), "クエスト一覧を取得しました");

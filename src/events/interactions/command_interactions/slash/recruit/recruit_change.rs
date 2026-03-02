@@ -1,14 +1,11 @@
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::resolve_bot_control;
-use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::facades::recruitment::change::{
     RecruitmentChangeContent, change_recruitment_information,
 };
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::unified_datetime_parser::{
-    DateTimeParseOptions, ParsedDateTime, parse_datetime,
-};
+use crate::services::recruitment::recruit_datetime_service::RecruitDateTimeService;
 use crate::types::discord::{DiscordGuildId, MessageData};
 use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Message;
@@ -59,35 +56,58 @@ pub async fn recruit_change(
             HashMap::new(),
         )
         .await
-        .unwrap_or_else(|_| "変更する項目を少なくとも1つ指定してください。".to_string());
+        .unwrap_or_else(|_| {
+            MessageTextId::RecruitmentCommandChangeNoChanges
+                .as_str()
+                .to_string()
+        });
 
         return Err(crate::types::AppError::Business { message });
     }
 
-    // タイムゾーンを取得（日時が指定されている場合のみ）
+    let guild_only_message = get_message_from_context(
+        &ctx,
+        ctx.data().app_state.message_service(),
+        MessageTextId::ErrorsGuildOnly,
+        HashMap::new(),
+    )
+    .await
+    .unwrap_or_else(|_| MessageTextId::ErrorsGuildOnly.as_str().to_string());
+    let guild_id_for_parse = ctx.guild_id();
+
+    // 日時文字列を共通サービスでパース（日時が指定されている場合のみ）
     let parsed_date = if let Some(date_str) = event_date {
         // ギルドIDを取得
-        let guild_id = ctx.guild_id().ok_or_else(|| {
-            crate::types::AppError::Generic(
-                "このコマンドはサーバー内でのみ使用できます".to_string(),
-            )
+        let guild_id = guild_id_for_parse.ok_or_else(|| crate::types::AppError::Business {
+            message: guild_only_message.clone(),
         })?;
-
-        // タイムゾーンを取得（Facade経由）
-        let app_state = &ctx.data().app_state;
-        let timezone_facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
-        let timezone = timezone_facade.get_timezone(guild_id.get() as i64).await?;
-
-        // 日時文字列をDateTime<Utc>に変換（サーバー設定のタイムゾーンとして解釈）
-        let options = DateTimeParseOptions::for_quest_departure(timezone);
-        let results = parse_datetime(&date_str, &options)?;
-        let parsed_date = match &results[0] {
-            ParsedDateTime::Absolute(dt) => *dt,
-            _ => {
-                return Err(crate::types::AppError::Business {
-                    message: "クエスト出発日時は絶対日時で指定してください".to_string(),
+        let date_time_service =
+            RecruitDateTimeService::new(ctx.data().app_state.repositories.guild_settings);
+        let parsed_date = match date_time_service
+            .parse_quest_departure(
+                ctx.data().app_state.guild_db(),
+                guild_id.get() as i64,
+                &date_str,
+            )
+            .await
+        {
+            Ok(datetime) => datetime,
+            Err(AppError::Business { .. }) => {
+                let message = get_message_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired,
+                    HashMap::new(),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    MessageTextId::RecruitmentCommandChangeModalAbsoluteDatetimeRequired
+                        .as_str()
+                        .to_string()
                 });
+                return Err(AppError::Business { message });
             }
+            Err(e) => return Err(e),
         };
         Some(parsed_date)
     } else {
@@ -129,7 +149,11 @@ pub async fn recruit_change(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "募集内容を更新しました。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandChangeSuccess
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(
                 poise::CreateReply::default()
@@ -149,7 +173,8 @@ pub async fn recruit_change(
             )
             .await
             .unwrap_or_else(|_| {
-                "この募集の変更は作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                MessageTextId::RecruitmentCommandChangePermissionDenied
+                    .as_str()
                     .to_string()
             });
 

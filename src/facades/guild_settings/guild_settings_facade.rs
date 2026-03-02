@@ -1,5 +1,5 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::GuildSettingsRepository;
+use crate::services::guild_settings_service::GuildSettingsService;
 use crate::services::timezone_service::{self, TimezoneService};
 use crate::types::app_state::AppState;
 use crate::types::discord::AutocompleteOption;
@@ -107,9 +107,10 @@ impl GuildSettingsFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            let settings_repo = self.app_state.repositories.guild_settings;
-            let settings = settings_repo
-                .find_by_guild_id_with_txn(&txn, guild_id)
+            let settings_service =
+                GuildSettingsService::new(self.app_state.repositories.guild_settings);
+            let settings = settings_service
+                .get_guild_settings_with_txn(&txn, guild_id)
                 .await?;
 
             info!(

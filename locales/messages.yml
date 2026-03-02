@@ -23,12 +23,93 @@ app_error.validation:
 auto_recruitment.channel_create_failed:
   en: "Failed to create channel.\nPlease check that this app has \"Manage Channels\" permission for the category."
   ja: "チャンネルの作成に失敗しました。\nカテゴリに対してこのアプリが「チャンネルの管理」権限を持っているか確認してください。"
+auto_recruitment.category_setup.matching_channel_message:
+  en: "**Matching Notification Channel**\n\nUsers who request the same quest at the same time will be notified here."
+  ja: "**マッチング通知チャンネル**\n\n同じ日時・同じクエストを希望するユーザーが見つかると、ここに通知されます。"
+auto_recruitment.category_setup.quest_channel_empty_message:
+  en: "**Quest Selection Channel**\n\nThere are currently no selectable quests."
+  ja: "**クエスト選択チャンネル**\n\n現在選択可能なクエストがありません。"
+auto_recruitment.category_setup.selection_check_button:
+  en: "\U0001F4CB Selected quests"
+  ja: "\U0001F4CB 選択済みのクエスト"
+auto_recruitment.category_setup.selection_check_message:
+  en: "**Check selection status**\nPress the button below to see which quests you selected."
+  ja: "**選択状況の確認**\n下のボタンを押すと、あなたが選択しているクエストを確認できます。"
+auto_recruitment.category_setup.time_select_message:
+  en: "**Select available time slots**\nYou can select multiple. Changes are saved automatically."
+  ja: "**参加可能な時間帯を選択してください**\n複数選択可能です。選択を変更すると自動的に更新されます。"
 auto_recruitment.quest_select_registered:
   en: "✅ Registered {{count}} quest(s)."
   ja: "✅ {{count}}個のクエストを登録しました。"
 auto_recruitment.quest_select_required:
   en: "Please select at least one quest."
   ja: "クエストを選択してください。"
+auto_recruitment.presenter.element_dark:
+  en: "Dark Element"
+  ja: "闇属性"
+auto_recruitment.presenter.element_earth:
+  en: "Earth Element"
+  ja: "土属性"
+auto_recruitment.presenter.element_fire:
+  en: "Fire Element"
+  ja: "火属性"
+auto_recruitment.presenter.element_light:
+  en: "Light Element"
+  ja: "光属性"
+auto_recruitment.presenter.element_placeholder:
+  en: "Select elements (multiple selection)"
+  ja: "属性を選択してください（複数選択可）"
+auto_recruitment.presenter.element_water:
+  en: "Water Element"
+  ja: "水属性"
+auto_recruitment.presenter.element_wind:
+  en: "Wind Element"
+  ja: "風属性"
+auto_recruitment.presenter.join_button:
+  en: "Join"
+  ja: "参加する"
+auto_recruitment.presenter.quest_select_message:
+  en: "**Quest Selection**\nSelect quests you want to join. You can choose multiple."
+  ja: "**クエスト選択**\n参加したいクエストを選択してください。複数選択可能です。"
+auto_recruitment.presenter.quest_select_placeholder:
+  en: "Select quests to join (multiple selection)"
+  ja: "参加したいクエストを選択してください（複数選択可）"
+auto_recruitment.presenter.setup_complete_description:
+  en: "Auto-recruitment setup is complete."
+  ja: "自動募集の設定が完了しました"
+auto_recruitment.presenter.setup_complete_quest_field:
+  en: "Quest"
+  ja: "クエスト"
+auto_recruitment.presenter.setup_complete_time_field:
+  en: "Time"
+  ja: "時刻"
+auto_recruitment.presenter.setup_complete_title:
+  en: "Setup Complete"
+  ja: "設定完了"
+auto_recruitment.presenter.time_select_placeholder:
+  en: "Select time"
+  ja: "時間を選択してください"
+auto_recruitment.status.header:
+  en: "**Auto Recruitment Status**"
+  ja: "**自動募集参加状況**"
+auto_recruitment.status.quest_count:
+  en: "**Selected Quests:** {{count}}"
+  ja: "**選択中のクエスト:** {{count}}個"
+auto_recruitment.status.quest_empty:
+  en: "**Selected Quests:** None"
+  ja: "**選択中のクエスト:** なし"
+auto_recruitment.status.quest_ids:
+  en: "Quest IDs: {{quest_ids}}"
+  ja: "クエストID: {{quest_ids}}"
+auto_recruitment.status.time_empty:
+  en: "**Available Times:** None"
+  ja: "**参加可能時間:** なし"
+auto_recruitment.status.time_header:
+  en: "**Available Times:**"
+  ja: "**参加可能時間:**"
+auto_recruitment.status.time_slot:
+  en: "• {{month}}/{{day}}: {{hours_str}}"
+  ja: "• {{month}}月{{day}}日: {{hours_str}}"
 auto_recruitment.time_select_placeholder:
   en: "Select available times (multiple selection)"
   ja: "参加可能な時間を選択（複数選択可）"
@@ -380,6 +461,24 @@ recruitment.list.more_count:
 recruitment.list.title:
   en: "Active Recruitment List"
   ja: "現在の募集一覧"
+quest.list.empty_disabled:
+  en: "There are no disabled quests."
+  ja: "無効なクエストはありません。"
+quest.list.empty_enabled:
+  en: "There are no enabled quests."
+  ja: "有効なクエストはありません。"
+quest.list.more_count:
+  en: "\n...and {{count}} more"
+  ja: "\n...他{{count}}件"
+quest.list.title_all:
+  en: "# Quest list"
+  ja: "# クエスト一覧"
+quest.list.title_disabled:
+  en: "# Disabled quest list"
+  ja: "# 無効なクエスト一覧"
+quest.list.title_enabled:
+  en: "# Enabled quest list"
+  ja: "# 有効なクエスト一覧"
 recruitment.notification.before_5_minutes:
   en: "5 minutes until quest departure."
   ja: "クエスト出発5分前です。"

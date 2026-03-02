@@ -206,12 +206,18 @@ where
     /// - `\{{variable}}` -> `{{variable}}` (置換されない)
     /// - `\\{{variable}}` -> `\xyz` (置換される)
     fn replace_parameters(&self, template: &str, params: &HashMap<String, String>) -> String {
-        static PARAM_REGEX: OnceLock<Regex> = OnceLock::new();
+        static PARAM_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
         let regex = PARAM_REGEX.get_or_init(|| {
             // `(?<!\\)((?:\\\\)*)\\?\{\{(\w+)\}\}` のようなパターンで
             // エスケープを考慮した置換を行う
             // 簡易実装として、まずエスケープ処理を先に行う
-            Regex::new(r"\{\{(\w+)\}\}").unwrap()
+            match Regex::new(r"\{\{(\w+)\}\}") {
+                Ok(regex) => Some(regex),
+                Err(e) => {
+                    warn!(error = %e, "パラメータ置換用正規表現の初期化に失敗しました");
+                    None
+                }
+            }
         });
 
         // エスケープシーケンス処理
@@ -230,15 +236,17 @@ where
         result = result.replace("\\}", temp_close_brace);
 
         // パラメータ置換
-        result = regex
-            .replace_all(&result, |caps: &regex::Captures| {
-                let var_name = &caps[1];
-                params
-                    .get(var_name)
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|| caps[0].to_string())
-            })
-            .to_string();
+        if let Some(regex) = regex {
+            result = regex
+                .replace_all(&result, |caps: &regex::Captures| {
+                    let var_name = &caps[1];
+                    params
+                        .get(var_name)
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| caps[0].to_string())
+                })
+                .to_string();
+        }
 
         // 一時プレースホルダーを元に戻す
         result = result.replace(temp_backslash, "\\");

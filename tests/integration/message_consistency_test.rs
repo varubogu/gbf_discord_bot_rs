@@ -3,6 +3,7 @@
 /// messages.yml のキーをベースとして、yaml_loader.rs との整合性を検証する。
 /// DBを使用しないため、#[ignore] は不要。
 use std::fs;
+use std::path::{Path, PathBuf};
 
 /// messages.yml の全キーが yaml_loader.rs のマッチアームで解決されることを検証する
 ///
@@ -59,4 +60,133 @@ fn test_all_yaml_keys_resolved_by_yaml_loader() {
          メッセージ追加手順に従い、yaml_loader.rs に以下のキーのマッチアームを追加してください:\n{}",
         unresolved_keys.join("\n")
     );
+}
+
+/// Task4対象ファイルにユーザー向け直書きフォールバックが残っていないことを検証する
+#[test]
+fn test_no_hardcoded_user_strings_in_task4_targets() {
+    let target_files = [
+        "src/events/handlers/component_interaction.rs",
+        "src/events/interactions/command_interactions/slash/recruit/recruit_cancel.rs",
+        "src/events/interactions/command_interactions/slash/recruit/recruit_change.rs",
+        "src/events/interactions/command_interactions/slash/auto_recruit/status.rs",
+        "src/presenter/auto_recruitment_presenter.rs",
+    ];
+
+    let forbidden_literals = [
+        "❌ エラー: 属性を選択してください",
+        "❌ エラー: サーバー内でのみ使用できます",
+        "募集は既にキャンセルされています。",
+        "募集メッセージが削除されています。",
+        "指定されたメッセージは募集メッセージではありません。",
+        "指定された募集が見つかりません。",
+        "開催日時を過ぎているためキャンセルできません。",
+        "募集内容を更新しました。",
+        "**自動募集参加状況**",
+        "**選択中のクエスト:**",
+        "**参加可能時間:**",
+        "属性を選択してください（複数選択可）",
+        "参加したいクエストを選択してください（複数選択可）",
+        "時間を選択してください",
+        "自動募集の設定が完了しました",
+    ];
+
+    for file in target_files {
+        let content = fs::read_to_string(file).unwrap_or_else(|e| {
+            panic!(
+                "テスト対象ファイルの読み込みに失敗しました: {} ({})",
+                file, e
+            )
+        });
+
+        for literal in &forbidden_literals {
+            assert!(
+                !content.contains(literal),
+                "Task4対象ファイルに直書き文言が残っています: file={}, literal={}",
+                file,
+                literal
+            );
+        }
+    }
+}
+
+fn contains_japanese_char(text: &str) -> bool {
+    text.chars().any(|c| {
+        ('\u{3040}'..='\u{30ff}').contains(&c)
+            || ('\u{3400}'..='\u{9fff}').contains(&c)
+            || ('\u{f900}'..='\u{faff}').contains(&c)
+    })
+}
+
+/// Task11対象のschedule系/quest_listで、旧フォールバックAPIが残っていないことを検証する
+#[test]
+fn test_no_hardcoded_fallback_api_in_task11_targets() {
+    let target_files = vec![
+        PathBuf::from(
+            "src/events/interactions/command_interactions/slash/schedule/schedule_generate.rs",
+        ),
+        PathBuf::from(
+            "src/events/interactions/command_interactions/slash/schedule/schedule_global_generate.rs",
+        ),
+        PathBuf::from(
+            "src/events/interactions/command_interactions/slash/schedule/schedule_list.rs",
+        ),
+        PathBuf::from(
+            "src/events/interactions/command_interactions/slash/recruit/recruitment_schedule_list.rs",
+        ),
+        PathBuf::from("src/events/interactions/command_interactions/slash/quest/quest_list.rs"),
+    ];
+
+    for file in target_files {
+        let content = fs::read_to_string(&file).unwrap_or_else(|e| {
+            panic!(
+                "テスト対象ファイルの読み込みに失敗しました: {} ({})",
+                file.display(),
+                e
+            )
+        });
+        assert!(
+            !content.contains("get_message_or_fallback_from_context("),
+            "Task11対象ファイルに直書きフォールバックAPIが残っています: {}",
+            file.display()
+        );
+    }
+}
+
+/// Task11対象のcategory_setup_facadeで、UI文言を直書きしていないことを検証する
+#[test]
+fn test_no_hardcoded_category_setup_ui_literals() {
+    let file = Path::new("src/facades/auto_recruitment/category_setup_facade.rs");
+    let content = fs::read_to_string(file).unwrap_or_else(|e| {
+        panic!(
+            "テスト対象ファイルの読み込みに失敗しました: {} ({})",
+            file.display(),
+            e
+        )
+    });
+    let lines: Vec<&str> = content.lines().collect();
+
+    for (index, line) in lines.iter().enumerate() {
+        if (line.contains("MessageContent::text(\"") || line.contains(".with_text(\""))
+            && contains_japanese_char(line)
+        {
+            panic!(
+                "category_setup_facade にUI文言の直書きがあります: {}:{}",
+                file.display(),
+                index + 1
+            );
+        }
+
+        if line.contains("ButtonContent::new(") {
+            let upper = usize::min(index + 6, lines.len());
+            let window = lines[index..upper].join("\n");
+            if window.contains('\"') && contains_japanese_char(&window) {
+                panic!(
+                    "category_setup_facade のButtonContent::new周辺にUI文言の直書きがあります: {}:{}",
+                    file.display(),
+                    index + 1
+                );
+            }
+        }
+    }
 }

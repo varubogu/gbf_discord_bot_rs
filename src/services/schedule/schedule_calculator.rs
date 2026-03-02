@@ -1,5 +1,5 @@
 use crate::models::entities::master::{event_schedule_details, event_schedules};
-use crate::types::Result;
+use crate::types::{AppError, Result};
 use chrono::{DateTime, Duration, FixedOffset, NaiveTime, TimeZone, Utc};
 use std::collections::HashMap;
 use tracing::{debug, error, warn};
@@ -125,7 +125,9 @@ impl ScheduleCalculator {
         let time = self.parse_time(&detail.time)?;
 
         let mut results = Vec::new();
-        let jst = FixedOffset::east_opt(9 * 3600).unwrap();
+        let jst = FixedOffset::east_opt(9 * 3600).ok_or_else(|| AppError::Config {
+            message: "JSTオフセットの生成に失敗しました".to_string(),
+        })?;
 
         // イベント期間（JSTのNaiveDateTimeをUTCに変換）
         let start_at_utc = jst

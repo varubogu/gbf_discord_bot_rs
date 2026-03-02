@@ -51,6 +51,50 @@ where
         Ok(())
     }
 
+    /// スケジュール削除の権限を確認
+    ///
+    /// 作成者本人または管理者のみ削除を許可する。
+    pub async fn assert_schedule_deletable_by(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_id: i32,
+        user_id: i64,
+        is_admin: bool,
+    ) -> Result<()> {
+        self.assert_schedule_operable_by(txn, schedule_id, user_id, is_admin, "削除")
+            .await
+    }
+
+    /// スケジュール操作の権限を確認
+    ///
+    /// 作成者本人または管理者のみを許可する。
+    pub async fn assert_schedule_operable_by(
+        &self,
+        txn: &DatabaseTransaction,
+        schedule_id: i32,
+        user_id: i64,
+        is_admin: bool,
+        operation_label: &str,
+    ) -> Result<()> {
+        let (schedule, _) = self
+            .schedule_repo
+            .find_by_id(txn, schedule_id)
+            .await?
+            .ok_or_else(|| crate::types::AppError::Business {
+                message: format!("スケジュールID {schedule_id} が見つかりません"),
+            })?;
+
+        if schedule.created_by != user_id && !is_admin {
+            return Err(crate::types::AppError::Business {
+                message: format!(
+                    "このスケジュールを{operation_label}する権限がありません。自分が作成したスケジュールのみ{operation_label}できます。"
+                ),
+            });
+        }
+
+        Ok(())
+    }
+
     /// スケジュールの現在の有効/無効状態を取得
     ///
     /// RLS設定は呼び出し元のFacade層で既に行われている前提

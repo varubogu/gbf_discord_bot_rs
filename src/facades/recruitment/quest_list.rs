@@ -1,9 +1,8 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::QuestRepository;
-use crate::services::quest::search::QuestSearchService;
-use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::quest_list::QuestListService;
+use crate::types::AppState;
 use crate::types::discord::AutocompleteOption;
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use sea_orm::TransactionTrait;
 use tracing::error;
 
 /// クエスト名の入力候補を取得するファサード
@@ -13,15 +12,16 @@ use tracing::error;
 /// guild_quest_disablesテーブルを考慮し、空文字の場合は無効化されたクエストを除外、1文字以上の場合は全件対象
 ///
 /// # 引数
-/// * `conn` - データベース接続
+/// * `app_state` - アプリケーション状態
 /// * `guild_id` - ギルドID
 /// * `partial` - 部分一致検索文字列
-pub async fn search_quests_for_autocomplete<R: QuestRepository>(
-    conn: &DatabaseConnection,
-    quest_repository: &R,
+pub async fn search_quests_for_autocomplete(
+    app_state: &AppState,
     guild_id: i64,
     partial: &str,
 ) -> Vec<AutocompleteOption> {
+    let conn = app_state.guild_db();
+
     // トランザクションを開始してguild_idを設定
     let txn = match conn.begin().await {
         Ok(t) => t,
@@ -38,8 +38,8 @@ pub async fn search_quests_for_autocomplete<R: QuestRepository>(
     }
 
     // Service層を使って検索
-    let search_service = QuestSearchService::new(quest_repository);
-    let results = search_service
+    let quest_list_service = QuestListService::new(app_state.repositories.quest);
+    let results = quest_list_service
         .search_for_autocomplete_for_guild(&txn, guild_id, partial)
         .await
         .unwrap_or_else(|e| {
@@ -58,13 +58,10 @@ pub async fn search_quests_for_autocomplete<R: QuestRepository>(
 }
 
 /// セレクトメニュー用にクエスト一覧（最大25件）を返す
-pub async fn list_quests_for_select<R: QuestRepository>(
-    db: &DatabaseConnection,
-    quest_repository: R,
-) -> Vec<(String, i32)> {
-    let service = QuestQueryService::new(quest_repository);
-    match service.get_all_quests(db).await {
-        Ok(list) => list.into_iter().take(25).map(|q| (q.name, q.id)).collect(),
+pub async fn list_quests_for_select(app_state: &AppState) -> Vec<(String, i32)> {
+    let service = QuestListService::new(app_state.repositories.quest);
+    match service.list_for_select(app_state.guild_db(), 25).await {
+        Ok(list) => list,
         Err(e) => {
             error!(error = %e, "クエスト一覧の取得に失敗しました");
             vec![]
@@ -73,14 +70,10 @@ pub async fn list_quests_for_select<R: QuestRepository>(
 }
 
 /// クエストIDから名称を取得
-pub async fn get_quest_name_by_id<R: QuestRepository>(
-    db: &DatabaseConnection,
-    quest_repository: R,
-    quest_id: i32,
-) -> Option<String> {
-    let service = QuestQueryService::new(quest_repository);
-    match service.get_quest_by_id(db, quest_id).await {
-        Ok(quest) => Some(quest.name),
-        _ => None,
-    }
+pub async fn get_quest_name_by_id(app_state: &AppState, quest_id: i32) -> Option<String> {
+    let service = QuestListService::new(app_state.repositories.quest);
+    service
+        .get_name_by_id(app_state.guild_db(), quest_id)
+        .await
+        .unwrap_or_default()
 }

@@ -6,7 +6,6 @@
 
 use gbf_discord_bot_rs::facades::recruitment::battle_style_list;
 use gbf_discord_bot_rs::facades::recruitment::quest_list;
-use gbf_discord_bot_rs::infrastructure::database::repositories::quest_repository::SeaOrmQuestRepository;
 use std::sync::Arc;
 
 use super::test_helper::create_test_app_state;
@@ -20,11 +19,9 @@ use super::test_helper::create_test_app_state;
 #[ignore] // 実際のDBが必要
 async fn test_search_quests_for_autocomplete() {
     let app_state = Arc::new(create_test_app_state().await);
-    let conn = app_state.guild_db();
 
     // 空文字で全クエスト検索
-    let quest_repo = SeaOrmQuestRepository::new();
-    let options = quest_list::search_quests_for_autocomplete(conn, &quest_repo, 0, "").await;
+    let options = quest_list::search_quests_for_autocomplete(&app_state, 0, "").await;
 
     // マスターデータの状態に依存するが、エラーにならないことを確認
     println!("取得したクエスト数: {}", options.len());
@@ -35,16 +32,10 @@ async fn test_search_quests_for_autocomplete() {
 #[ignore] // 実際のDBが必要
 async fn test_search_quests_no_match() {
     let app_state = Arc::new(create_test_app_state().await);
-    let conn = app_state.guild_db();
 
-    let quest_repo = SeaOrmQuestRepository::new();
-    let options = quest_list::search_quests_for_autocomplete(
-        conn,
-        &quest_repo,
-        0,
-        "存在しないクエスト名XXXXX",
-    )
-    .await;
+    let options =
+        quest_list::search_quests_for_autocomplete(&app_state, 0, "存在しないクエスト名XXXXX")
+            .await;
 
     assert!(options.is_empty(), "存在しないクエスト名に結果が返りました");
 }
@@ -58,9 +49,8 @@ async fn test_search_quests_no_match() {
 #[ignore] // 実際のDBが必要
 async fn test_list_quests_for_select() {
     let app_state = Arc::new(create_test_app_state().await);
-    let conn = app_state.guild_db();
 
-    let quests = quest_list::list_quests_for_select(conn, app_state.repositories.quest).await;
+    let quests = quest_list::list_quests_for_select(&app_state).await;
 
     // 25件以下であること
     assert!(quests.len() <= 25, "クエスト一覧が25件を超えています");

@@ -100,3 +100,21 @@ where
         .await
         .unwrap_or_else(|_| fallback_text.to_string())
 }
+
+/// メッセージ取得に失敗した場合、メッセージキーを返す
+///
+/// ユーザー向け文言の直書きフォールバックを避けるために使用する。
+pub async fn get_message_or_key_from_context<G, M>(
+    ctx: &PoiseContext<'_>,
+    message_service: &MessageService<G, M>,
+    message_id: MessageTextId,
+    params: HashMap<String, String>,
+) -> String
+where
+    G: GuildMessageTextRepository,
+    M: MessageTextRepository,
+{
+    get_message_from_context(ctx, message_service, message_id, params)
+        .await
+        .unwrap_or_else(|_| message_id.as_str().to_string())
+}

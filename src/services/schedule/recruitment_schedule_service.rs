@@ -217,7 +217,7 @@ impl RecruitmentScheduleService {
             time.minute() as u32,
             time.second() as u32,
         )
-        .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+        .unwrap_or(NaiveTime::MIN)
     }
 }
 

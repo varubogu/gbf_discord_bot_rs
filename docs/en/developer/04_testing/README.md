@@ -20,3 +20,4 @@ cargo test -j 1 -- --ignored
 1. [テスト全体設計](test_overview.md)
 2. [単体テスト](unit_tests.md)
 3. [結合テスト](integration_tests.md)
+4. [ignoredテスト実行戦略](ignored_test_strategy.md)

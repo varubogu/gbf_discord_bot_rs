@@ -4,18 +4,24 @@
 /// トランザクション管理を行い、複数のServiceを協調させます。
 use std::env;
 
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, Utc};
+use sea_orm::{
+    ConnectionTrait, DatabaseBackend, DatabaseConnection, DbErr, QueryResult, Statement,
+    TransactionTrait,
+};
 use tracing::{error, info, instrument, warn};
+use uuid::Uuid;
 
 use crate::errors::FacadeError;
 use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::GuildSpreadsheetConfigRepositoryTrait;
 use crate::services::spreadsheet::{
-    DataConverterService, GoogleAuthService, GoogleAuthServiceTrait, PostgresValue,
+    ColumnSchema, DataConverterService, GoogleAuthService, GoogleAuthServiceTrait,
+    GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait, PostgresType, PostgresValue,
     RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
-    SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetWriterService,
-    SpreadsheetWriterServiceTrait, TableDefinition, TableDefinitionService, TableIO,
+    SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetUrlService,
+    SpreadsheetWriterService, SpreadsheetWriterServiceTrait, TableDefinition,
+    TableDefinitionService, TableIO,
 };
 
 /// エクスポート結果
@@ -173,23 +179,36 @@ impl SpreadsheetExportFacade {
             let mut errors = Vec::new();
 
             for table_def in export_tables {
-                // target_tablesに含まれているかチェック
-                let is_target = target_tables
-                    .iter()
-                    .any(|t| t.table_name == table_def.table_name);
-
-                if !is_target {
+                let Some(table_schema) =
+                    resolve_registered_table_schema(&target_tables, &table_def.table_name)
+                else {
                     info!(
                         table_name = %table_def.table_name,
                         "{}のフィルタ条件により対象外のためスキップします",
                         config.export_type_name
                     );
                     continue;
-                }
+                };
 
-                // TODO: データベースからデータを取得する処理
-                // 現時点ではダミーデータ
-                let rows: Vec<Vec<PostgresValue>> = Vec::new();
+                let rows = match fetch_table_rows_from_database(
+                    &txn,
+                    &table_schema.table_name,
+                    &table_schema.schema,
+                )
+                .await
+                {
+                    Ok(rows) => rows,
+                    Err(e) => {
+                        error!(
+                            table_name = %table_def.table_name,
+                            error = %e,
+                            "データベースからのデータ取得に失敗しました"
+                        );
+                        failure_count += 1;
+                        errors.push(format!("テーブル「{}」: {}", table_def.table_name, e));
+                        continue;
+                    }
+                };
 
                 info!(
                     table_name = %table_def.table_name,
@@ -296,30 +315,30 @@ impl SpreadsheetExportFacade {
         let txn = self.db.begin().await?;
         set_current_guild_id(&txn, guild_id).await?;
 
-        let repository = SeaOrmGuildSpreadsheetConfigRepository::new();
-        let spreadsheet_id =
-            match GuildSpreadsheetConfigRepositoryTrait::find_export_spreadsheet_id(
-                &repository,
-                &txn,
-                guild_id,
-            )
+        let config_service = GuildSpreadsheetConfigService::new(
+            SeaOrmGuildSpreadsheetConfigRepository::new(),
+            self.google_auth_service.clone(),
+            SpreadsheetUrlService::new(),
+        );
+        let spreadsheet_id = match config_service
+            .get_export_spreadsheet_id_with_txn(&txn, guild_id)
             .await
-            {
-                Ok(Some(id)) => id,
-                Ok(None) => {
-                    txn.rollback().await?;
-                    return Err(FacadeError::BusinessRule {
-                        source: crate::errors::BusinessRuleError::InvalidState {
-                            entity: "GuildSpreadsheetConfig".to_string(),
-                            current_state: "書き込み用スプレッドシート未登録".to_string(),
-                        },
-                    });
-                }
-                Err(e) => {
-                    txn.rollback().await?;
-                    return Err(FacadeError::from(e));
-                }
-            };
+        {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                txn.rollback().await?;
+                return Err(FacadeError::BusinessRule {
+                    source: crate::errors::BusinessRuleError::InvalidState {
+                        entity: "GuildSpreadsheetConfig".to_string(),
+                        current_state: "書き込み用スプレッドシート未登録".to_string(),
+                    },
+                });
+            }
+            Err(source) => {
+                txn.rollback().await?;
+                return Err(FacadeError::BusinessRule { source });
+            }
+        };
 
         // 設定取得成功 → commit
         txn.commit().await?;
@@ -346,5 +365,172 @@ impl std::fmt::Display for ExportResult {
         }
 
         Ok(())
+    }
+}
+
+fn resolve_registered_table_schema<'a>(
+    registered_tables: &'a [RegisteredTableSchema],
+    table_name: &str,
+) -> Option<&'a RegisteredTableSchema> {
+    registered_tables.iter().find(|table| {
+        table.table_name == table_name || table.aliases.iter().any(|alias| alias == table_name)
+    })
+}
+
+fn build_select_sql(table_name: &str, schema: &[ColumnSchema]) -> Result<String, FacadeError> {
+    if schema.is_empty() {
+        return Err(FacadeError::Database {
+            source: DbErr::Custom(format!(
+                "テーブル「{table_name}」のスキーマが空のため取得できません"
+            )),
+        });
+    }
+
+    let select_columns = schema
+        .iter()
+        .map(|column| format!("\"{}\"", column.column_name))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let schema_name = crate::services::spreadsheet::get_schema_name(table_name);
+
+    Ok(format!(
+        "SELECT {select_columns} FROM \"{schema_name}\".\"{table_name}\""
+    ))
+}
+
+async fn fetch_table_rows_from_database(
+    txn: &sea_orm::DatabaseTransaction,
+    table_name: &str,
+    schema: &[ColumnSchema],
+) -> Result<Vec<Vec<PostgresValue>>, FacadeError> {
+    let sql = build_select_sql(table_name, schema)?;
+    let results = txn
+        .query_all(Statement::from_string(DatabaseBackend::Postgres, sql))
+        .await?;
+
+    results
+        .iter()
+        .map(|row| map_query_result_to_postgres_values(row, table_name, schema))
+        .collect()
+}
+
+fn map_query_result_to_postgres_values(
+    row: &QueryResult,
+    table_name: &str,
+    schema: &[ColumnSchema],
+) -> Result<Vec<PostgresValue>, FacadeError> {
+    schema
+        .iter()
+        .map(|column| map_column_value(row, table_name, column))
+        .collect()
+}
+
+fn map_column_value(
+    row: &QueryResult,
+    table_name: &str,
+    column: &ColumnSchema,
+) -> Result<PostgresValue, FacadeError> {
+    let column_name = column.column_name.as_str();
+    match column.postgres_type {
+        PostgresType::Integer => row
+            .try_get::<Option<i32>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Integer))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::BigInt => row
+            .try_get::<Option<i64>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::BigInt))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Text | PostgresType::Varchar => row
+            .try_get::<Option<String>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Text))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Boolean => row
+            .try_get::<Option<bool>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Boolean))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Timestamp => row
+            .try_get::<Option<NaiveDateTime>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Timestamp))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::TimestampTz => row
+            .try_get::<Option<DateTime<Utc>>>("", column_name)
+            .map(|v| {
+                v.map_or(PostgresValue::Null, |datetime| {
+                    PostgresValue::TimestampTz(datetime.with_timezone(&Local))
+                })
+            })
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Date => row
+            .try_get::<Option<NaiveDate>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Date))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Uuid => row
+            .try_get::<Option<Uuid>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Uuid))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::Json | PostgresType::JsonB => row
+            .try_get::<Option<serde_json::Value>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::Json))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::IntegerArray => row
+            .try_get::<Option<Vec<i32>>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::IntegerArray))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+        PostgresType::TextArray => row
+            .try_get::<Option<Vec<String>>>("", column_name)
+            .map(|v| v.map_or(PostgresValue::Null, PostgresValue::TextArray))
+            .map_err(|e| map_column_decode_error(table_name, column_name, e)),
+    }
+}
+
+fn map_column_decode_error(table_name: &str, column_name: &str, error: DbErr) -> FacadeError {
+    FacadeError::Database {
+        source: DbErr::Custom(format!(
+            "テーブル「{table_name}」のカラム「{column_name}」デコードに失敗しました: {error}"
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::spreadsheet::{ColumnSchema, PostgresType};
+
+    #[test]
+    fn resolve_registered_table_schema_matches_alias() {
+        let tables = vec![RegisteredTableSchema {
+            table_name: "message_texts".to_string(),
+            aliases: vec!["messages".to_string()],
+            schema: vec![ColumnSchema {
+                column_name: "id".to_string(),
+                postgres_type: PostgresType::Integer,
+                nullable: false,
+            }],
+        }];
+
+        let found = resolve_registered_table_schema(&tables, "messages");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().table_name, "message_texts");
+    }
+
+    #[test]
+    fn build_select_sql_contains_schema_and_columns() {
+        let schema = vec![
+            ColumnSchema {
+                column_name: "id".to_string(),
+                postgres_type: PostgresType::Integer,
+                nullable: false,
+            },
+            ColumnSchema {
+                column_name: "display_name".to_string(),
+                postgres_type: PostgresType::Text,
+                nullable: false,
+            },
+        ];
+
+        let sql = build_select_sql("battle_styles", &schema).expect("sql should be generated");
+        assert!(sql.contains("\"master\".\"battle_styles\""));
+        assert!(sql.contains("\"id\""));
+        assert!(sql.contains("\"display_name\""));
     }
 }

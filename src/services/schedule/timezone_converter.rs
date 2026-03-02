@@ -1,4 +1,4 @@
-use crate::types::Result;
+use crate::types::{AppError, Result};
 /// タイムゾーン変換ユーティリティ
 /// 定期スケジュールのローカル時刻⇔UTC変換を行う
 use chrono::{Datelike, Duration, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
@@ -18,7 +18,9 @@ pub fn convert_local_days_and_time_to_utc(
     timezone: Tz,
 ) -> Result<(Vec<i32>, TimeTime)> {
     // 基準日を使用（2025-01-06 = 月曜日）
-    let base_date = NaiveDate::from_ymd_opt(2025, 1, 6).unwrap();
+    let base_date = NaiveDate::from_ymd_opt(2025, 1, 6).ok_or_else(|| AppError::Config {
+        message: "タイムゾーン変換の基準日生成に失敗しました".to_string(),
+    })?;
 
     let mut utc_days_set = std::collections::HashSet::new();
 
@@ -94,7 +96,9 @@ pub fn convert_utc_days_and_time_to_local(
     timezone: Tz,
 ) -> Result<(Vec<i32>, NaiveTime)> {
     // 基準日を使用（2025-01-06 = 月曜日）
-    let base_date = NaiveDate::from_ymd_opt(2025, 1, 6).unwrap();
+    let base_date = NaiveDate::from_ymd_opt(2025, 1, 6).ok_or_else(|| AppError::Config {
+        message: "タイムゾーン逆変換の基準日生成に失敗しました".to_string(),
+    })?;
 
     let mut local_days_set = std::collections::HashSet::new();
 
@@ -166,13 +170,13 @@ fn time_time_to_naive_time(time: TimeTime) -> NaiveTime {
         time.minute() as u32,
         time.second() as u32,
     )
-    .unwrap_or(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+    .unwrap_or(NaiveTime::MIN)
 }
 
 /// NaiveTimeをTimeTimeに変換
 fn naive_time_to_time_time(time: NaiveTime) -> TimeTime {
     TimeTime::from_hms(time.hour() as u8, time.minute() as u8, time.second() as u8)
-        .unwrap_or_else(|_| TimeTime::from_hms(0, 0, 0).unwrap())
+        .unwrap_or(TimeTime::MIDNIGHT)
 }
 
 #[cfg(test)]

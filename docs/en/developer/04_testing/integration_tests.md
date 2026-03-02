@@ -12,6 +12,14 @@ In this project, they are written primarily **from facades**.
 
 - 実DBが必要なものは `#[ignore]` を付けて、通常のテスト実行では走らないようにする
 - 明示的に実DBテストを実行するには `cargo test -- --ignored`
+- ignored テストの分類とCI実行レーンは [ignored_test_strategy.md](ignored_test_strategy.md) を参照
+
+## CI execution lane for ignored tests
+
+- ワークフロー: `.github/workflows/ignored-db-tests.yml`
+- 代表的なFacade統合テスト:
+  - `integration::facades::spreadsheet_test`
+  - `integration::facades::guild_settings_test`
 
 ## Test data handling
 

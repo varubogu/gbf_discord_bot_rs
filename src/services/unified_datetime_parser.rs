@@ -144,11 +144,12 @@ impl DateTimeParseOptions {
     /// - 日本語: "1月2日3時4分", "午後9時半"
     /// - 数字: "1230", "10111230", "30 1230"
     pub fn for_quest_departure(timezone: Tz) -> Self {
+        let default_time = NaiveTime::from_hms_opt(21, 0, 0).unwrap_or(NaiveTime::MIN);
         Self {
             flags: DateTimeParseFlags::ALL.difference(DateTimeParseFlags::RELATIVE_TIME),
             timezone,
             relative_base: None,
-            default_time: Some(NaiveTime::from_hms_opt(21, 0, 0).unwrap()),
+            default_time: Some(default_time),
             allow_multiple: false,
             max_count: 1,
         }

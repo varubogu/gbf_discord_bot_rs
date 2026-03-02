@@ -4,11 +4,10 @@
 //! トランザクション境界とRLSセッション設定は本Facadeで管理する。
 
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::{GuildQuestDisableRepository, QuestRepository};
+use crate::services::recruitment::quest_management_service::QuestManagementService;
 use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
-use std::collections::HashSet;
-use tracing::{error, info};
+use tracing::error;
 
 /// クエスト一覧の絞り込み条件
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,39 +82,27 @@ pub async fn list_quests(
     let txn = conn.begin().await?;
     set_current_guild_id(&txn, guild_id).await?;
 
-    let quest_repo = app_state.repositories.quest;
-    let disable_repo = app_state.repositories.guild_quest_disable;
+    let service = QuestManagementService::new(
+        app_state.repositories.quest,
+        app_state.repositories.guild_quest_disable,
+    );
 
     let result = match filter {
         QuestListFilter::All => {
-            let all_quests = quest_repo.get_all(&txn).await?;
-            let disabled_ids = disable_repo.get_disabled_quest_ids(&txn, guild_id).await?;
-
-            let statuses = all_quests
+            let statuses = service
+                .list_all_with_enabled_flag(&txn, guild_id)
+                .await?
                 .into_iter()
-                .map(|quest| QuestStatusItem {
-                    is_enabled: !disabled_ids.contains(&quest.id),
-                    name: quest.name,
-                })
+                .map(|(name, is_enabled)| QuestStatusItem { name, is_enabled })
                 .collect();
             QuestListResult::All(statuses)
         }
         QuestListFilter::EnabledOnly => {
-            let quests = quest_repo
-                .search_enabled_quests(&txn, guild_id, "")
-                .await?
-                .into_iter()
-                .map(|q| q.name)
-                .collect();
+            let quests = service.list_enabled_names(&txn, guild_id).await?;
             QuestListResult::Enabled(quests)
         }
         QuestListFilter::DisabledOnly => {
-            let quests = quest_repo
-                .search_disabled_quests(&txn, guild_id, "")
-                .await?
-                .into_iter()
-                .map(|q| q.name)
-                .collect();
+            let quests = service.list_disabled_names(&txn, guild_id).await?;
             QuestListResult::Disabled(quests)
         }
     };
@@ -131,79 +118,28 @@ pub async fn change_quest_state(
     quest_names: Vec<String>,
     action: QuestStateChangeAction,
 ) -> Result<QuestStateChangeResult> {
-    let unique_quest_names: Vec<String> = quest_names
-        .into_iter()
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-
     let conn = app_state.guild_db();
     let txn = conn.begin().await?;
     set_current_guild_id(&txn, guild_id).await?;
 
-    let quest_repo = app_state.repositories.quest;
-    let disable_repo = app_state.repositories.guild_quest_disable;
-
-    let mut changed_count = 0;
-    let mut already_in_target_state = Vec::new();
-    let mut not_found = Vec::new();
-
-    for quest_name in &unique_quest_names {
-        let search_results = quest_repo.search_by_name_or_alias(&txn, quest_name).await?;
-        let quest = match search_results.into_iter().find(|q| q.name == *quest_name) {
-            Some(q) => q,
-            None => {
-                not_found.push(quest_name.clone());
-                continue;
-            }
-        };
-
-        let is_disabled = disable_repo
-            .is_disabled(&txn, guild_id, quest.quest_id)
-            .await?;
-        let needs_update = match action {
-            QuestStateChangeAction::Enable => is_disabled,
-            QuestStateChangeAction::Disable => !is_disabled,
-        };
-
-        if !needs_update {
-            already_in_target_state.push(quest_name.clone());
-            continue;
-        }
-
-        match action {
-            QuestStateChangeAction::Enable => {
-                disable_repo
-                    .enable_quest(&txn, guild_id, quest.quest_id)
-                    .await?;
-                info!(
-                    guild_id,
-                    quest_id = quest.quest_id,
-                    quest_name = %quest_name,
-                    "クエストを有効化しました"
-                );
-            }
-            QuestStateChangeAction::Disable => {
-                disable_repo
-                    .disable_quest(&txn, guild_id, quest.quest_id)
-                    .await?;
-                info!(
-                    guild_id,
-                    quest_id = quest.quest_id,
-                    quest_name = %quest_name,
-                    "クエストを無効化しました"
-                );
-            }
-        }
-
-        changed_count += 1;
-    }
-
+    let service = QuestManagementService::new(
+        app_state.repositories.quest,
+        app_state.repositories.guild_quest_disable,
+    );
+    let summary = service
+        .change_quest_state(
+            &txn,
+            guild_id,
+            quest_names,
+            matches!(action, QuestStateChangeAction::Enable),
+        )
+        .await?;
     txn.commit().await?;
+
     Ok(QuestStateChangeResult {
-        changed_count,
-        already_in_target_state,
-        not_found,
+        changed_count: summary.changed_count,
+        already_in_target_state: summary.already_in_target_state,
+        not_found: summary.not_found,
     })
 }
 
@@ -227,13 +163,15 @@ async fn search_for_autocomplete(
         return vec![];
     }
 
-    let quest_repo = app_state.repositories.quest;
+    let service = QuestManagementService::new(
+        app_state.repositories.quest,
+        app_state.repositories.guild_quest_disable,
+    );
     let results = match filter {
-        QuestListFilter::EnabledOnly => quest_repo.search_enabled_quests(&txn, guild_id, partial),
-        QuestListFilter::DisabledOnly => quest_repo.search_disabled_quests(&txn, guild_id, partial),
+        QuestListFilter::EnabledOnly => service.search_enabled(&txn, guild_id, partial).await,
+        QuestListFilter::DisabledOnly => service.search_disabled(&txn, guild_id, partial).await,
         QuestListFilter::All => unreachable!("オートコンプリートでAllは使用しません"),
     }
-    .await
     .unwrap_or_else(|e| {
         error!(error = %e, "クエスト検索に失敗しました");
         vec![]

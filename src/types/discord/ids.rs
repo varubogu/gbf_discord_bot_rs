@@ -343,6 +343,6 @@ mod tests {
     #[test]
     fn test_display_trait() {
         let channel_id = DiscordChannelId::new(12345);
-        assert_eq!(format!("{}", channel_id), "12345");
+        assert_eq!(format!("{channel_id}"), "12345");
     }
 }

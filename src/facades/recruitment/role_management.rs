@@ -1,5 +1,4 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::QuestRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::types;
@@ -218,7 +217,7 @@ pub async fn show_recruitment_notification_roles(
         let all_roles_repo = app_state.repositories.all_recruitment_notification_roles;
         let quest_roles_repo = app_state.repositories.quest_recruitment_notification_roles;
         let role_service = RoleNotificationService::new(all_roles_repo, quest_roles_repo);
-        let quest_repo = app_state.repositories.quest;
+        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
         // 全募集通知ロール取得
         let all_roles = role_service
@@ -231,7 +230,7 @@ pub async fn show_recruitment_notification_roles(
             .await?;
 
         // クエスト情報取得
-        let all_quests = quest_repo.get_all(conn).await?;
+        let all_quests = quest_query_service.get_all_quests(conn).await?;
         let quest_names: HashMap<i32, String> = all_quests
             .into_iter()
             .map(|q| (q.id, q.name.clone()))

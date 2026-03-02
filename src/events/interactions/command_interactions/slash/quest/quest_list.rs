@@ -1,6 +1,9 @@
+use crate::events::helpers::get_message_or_key_from_context;
 use crate::facades::recruitment::quest_management_facade;
-use crate::types::{PoiseContext, Result};
+use crate::services::message::MessageTextId;
+use crate::types::{AppError, PoiseContext, Result};
 use poise::ChoiceParameter;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, ChoiceParameter)]
 pub enum QuestFilterType {
@@ -35,12 +38,19 @@ pub async fn quest_list(
 ) -> Result<()> {
     ctx.defer_ephemeral().await?;
 
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Business {
-            message: "このコマンドはサーバー内でのみ使用できます。".to_string(),
-        })?
-        .get() as i64;
+    let guild_id = match ctx.guild_id() {
+        Some(id) => id.get() as i64,
+        None => {
+            let message = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::ErrorsGuildOnly,
+                HashMap::new(),
+            )
+            .await;
+            return Err(AppError::Business { message });
+        }
+    };
 
     let filter_type = filter.unwrap_or(QuestFilterType::All);
     let filter = match filter_type {
@@ -54,53 +64,143 @@ pub async fn quest_list(
     let message = match list_result {
         quest_management_facade::QuestListResult::All(all_quests) => {
             // クエスト名と有効/無効のリストを作成
-            let mut lines = vec!["# クエスト一覧".to_string(), "".to_string()];
+            let title = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::QuestListTitleAll,
+                HashMap::new(),
+            )
+            .await;
+            let status_enabled = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentScheduleListStatusEnabled,
+                HashMap::new(),
+            )
+            .await;
+            let status_disabled = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentScheduleListStatusDisabled,
+                HashMap::new(),
+            )
+            .await;
+            let mut lines = vec![title, String::new()];
 
             for quest in all_quests.iter().take(100) {
                 let status = if quest.is_enabled {
-                    "✅ 有効"
+                    status_enabled.as_str()
                 } else {
-                    "❌ 無効"
+                    status_disabled.as_str()
                 };
                 lines.push(format!("{} {}", status, quest.name));
             }
 
             if all_quests.len() > 100 {
-                lines.push(format!("\n...他{}件", all_quests.len() - 100));
+                let mut params = HashMap::new();
+                params.insert("count".to_string(), (all_quests.len() - 100).to_string());
+                let more_count = get_message_or_key_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::QuestListMoreCount,
+                    params,
+                )
+                .await;
+                lines.push(more_count);
             }
 
             lines.join("\n")
         }
         quest_management_facade::QuestListResult::Enabled(results) => {
-            let mut lines = vec!["# 有効なクエスト一覧".to_string(), "".to_string()];
+            let title = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::QuestListTitleEnabled,
+                HashMap::new(),
+            )
+            .await;
+            let status_enabled = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentScheduleListStatusEnabled,
+                HashMap::new(),
+            )
+            .await;
+            let mut lines = vec![title, String::new()];
 
             for result in results.iter().take(100) {
-                lines.push(format!("✅ {result}"));
+                lines.push(format!("{status_enabled} {result}"));
             }
 
             if results.len() > 100 {
-                lines.push(format!("\n...他{}件", results.len() - 100));
+                let mut params = HashMap::new();
+                params.insert("count".to_string(), (results.len() - 100).to_string());
+                let more_count = get_message_or_key_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::QuestListMoreCount,
+                    params,
+                )
+                .await;
+                lines.push(more_count);
             }
 
             if results.is_empty() {
-                lines.push("有効なクエストはありません。".to_string());
+                let empty_message = get_message_or_key_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::QuestListEmptyEnabled,
+                    HashMap::new(),
+                )
+                .await;
+                lines.push(empty_message);
             }
 
             lines.join("\n")
         }
         quest_management_facade::QuestListResult::Disabled(results) => {
-            let mut lines = vec!["# 無効なクエスト一覧".to_string(), "".to_string()];
+            let title = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::QuestListTitleDisabled,
+                HashMap::new(),
+            )
+            .await;
+            let status_disabled = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::RecruitmentScheduleListStatusDisabled,
+                HashMap::new(),
+            )
+            .await;
+            let mut lines = vec![title, String::new()];
 
             for result in results.iter().take(100) {
-                lines.push(format!("❌ {result}"));
+                lines.push(format!("{status_disabled} {result}"));
             }
 
             if results.len() > 100 {
-                lines.push(format!("\n...他{}件", results.len() - 100));
+                let mut params = HashMap::new();
+                params.insert("count".to_string(), (results.len() - 100).to_string());
+                let more_count = get_message_or_key_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::QuestListMoreCount,
+                    params,
+                )
+                .await;
+                lines.push(more_count);
             }
 
             if results.is_empty() {
-                lines.push("無効なクエストはありません。".to_string());
+                let empty_message = get_message_or_key_from_context(
+                    &ctx,
+                    ctx.data().app_state.message_service(),
+                    MessageTextId::QuestListEmptyDisabled,
+                    HashMap::new(),
+                )
+                .await;
+                lines.push(empty_message);
             }
 
             lines.join("\n")

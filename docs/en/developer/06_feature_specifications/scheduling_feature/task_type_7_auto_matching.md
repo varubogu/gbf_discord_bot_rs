@@ -15,16 +15,19 @@ At initial registration, pending tasks are checked and no duplicate is created i
 
 ## Scheduler integration dependency direction
 
-- `SchedulerManager` is the composition point. It composes `PeriodicMatchingService` and `AutoMatchingTaskExecutor` using repositories provided by `crate::di::Repositories`.
+- `TaskDispatchService` is the composition point. It composes `PeriodicMatchingService` and `AutoMatchingTaskExecutor` using repositories provided by `crate::di::Repositories`.
+- `SchedulerTaskDispatchFacade` owns transaction boundaries and invokes `TaskDispatchService`.
 - Concrete repository implementations are SeaORM adapters under `src/infrastructure/database/repositories/**`.
 - `PeriodicMatchingService` and `AutoMatchingTaskExecutor` depend on repository traits via `crate::repository` (auto-recruitment, schedule, recruitment, and master data ports), not on `SeaOrm*Repository` concrete types.
-- Keep the one-way flow: `scheduler_manager (composition) -> service/executor -> repository ports`.
+- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx) -> task_dispatch_service (composition) -> service/executor -> repository ports`.
 - Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 
 ```text
 src/services/schedule/scheduler_manager.rs
+src/services/schedule/task_dispatch_service.rs
+src/facades/schedule/scheduler_task_dispatch_facade.rs
 src/services/schedule/auto_matching_task_executor.rs
 src/services/auto_recruitment/matching_service.rs
 src/repository/auto_recruitment/
@@ -40,7 +43,7 @@ src/di/repositories.rs
 
 ## Execution flow
 
-`SchedulerManager` executes `AutoMatchingTaskExecutor` in the `task_type=7` branch.
+`TaskDispatchService` executes `AutoMatchingTaskExecutor` in the `task_type=7` branch.
 
 1. Re-check task existence and `pending`
 2. Execute `PeriodicMatchingService::process_matching`

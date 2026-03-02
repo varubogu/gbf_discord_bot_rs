@@ -218,7 +218,7 @@ mod tests {
     fn test_gateway_error_display() {
         let error = GatewayError::SendMessageFailed("Connection refused".to_string());
         assert_eq!(
-            format!("{}", error),
+            format!("{error}"),
             "メッセージ送信に失敗しました: Connection refused"
         );
     }

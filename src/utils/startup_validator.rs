@@ -598,11 +598,11 @@ mod tests {
     #[test]
     fn test_check_env_var_exists_and_valid() {
         unsafe {
-            std::env::set_var("TEST_DISCORD_TOKEN", "a".repeat(50));
+            std::env::set_var("TEST_DISCORD_TOKEN_VALID", "a".repeat(50));
         }
 
         let result = EnvValidator::check_env_var(
-            "TEST_DISCORD_TOKEN",
+            "TEST_DISCORD_TOKEN_VALID",
             ValidationCategory::RequiredEnvVar,
             true,
             Some(|val: &str| {
@@ -615,21 +615,21 @@ mod tests {
         );
 
         assert_eq!(result.status, ValidationStatus::Ok);
-        assert_eq!(result.item_name, "TEST_DISCORD_TOKEN");
+        assert_eq!(result.item_name, "TEST_DISCORD_TOKEN_VALID");
 
         unsafe {
-            std::env::remove_var("TEST_DISCORD_TOKEN");
+            std::env::remove_var("TEST_DISCORD_TOKEN_VALID");
         }
     }
 
     #[test]
     fn test_check_env_var_exists_but_invalid() {
         unsafe {
-            std::env::set_var("TEST_DISCORD_TOKEN", "short");
+            std::env::set_var("TEST_DISCORD_TOKEN_INVALID", "short");
         }
 
         let result = EnvValidator::check_env_var(
-            "TEST_DISCORD_TOKEN",
+            "TEST_DISCORD_TOKEN_INVALID",
             ValidationCategory::RequiredEnvVar,
             true,
             Some(|val: &str| {
@@ -646,7 +646,7 @@ mod tests {
         assert!(result.message.unwrap().contains("トークンが短すぎます"));
 
         unsafe {
-            std::env::remove_var("TEST_DISCORD_TOKEN");
+            std::env::remove_var("TEST_DISCORD_TOKEN_INVALID");
         }
     }
 

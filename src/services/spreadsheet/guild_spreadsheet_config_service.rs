@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use google_sheets4::Sheets;
 use google_sheets4::hyper::client::HttpConnector;
 use google_sheets4::hyper_rustls::HttpsConnector;
-use sea_orm::{DatabaseConnection, DatabaseTransaction};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction};
 
 #[async_trait]
 pub trait GuildSpreadsheetConfigServiceTrait: Send + Sync {
@@ -36,10 +36,24 @@ pub trait GuildSpreadsheetConfigServiceTrait: Send + Sync {
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError>;
 
+    /// 読み込み用スプレッドシートIDを取得（トランザクション）
+    async fn get_import_spreadsheet_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError>;
+
     /// 書き込み用スプレッドシートIDを取得
     async fn get_export_spreadsheet_id(
         &self,
         db: &DatabaseConnection,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError>;
+
+    /// 書き込み用スプレッドシートIDを取得（トランザクション）
+    async fn get_export_spreadsheet_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError>;
 }
@@ -103,6 +117,40 @@ where
             }
         }
     }
+
+    async fn resolve_import_spreadsheet_id<C>(
+        &self,
+        db: &C,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError>
+    where
+        C: ConnectionTrait,
+    {
+        self.repository
+            .find_import_spreadsheet_id(db, guild_id)
+            .await
+            .map_err(|e| BusinessRuleError::InvalidState {
+                entity: "guild_spreadsheet_imports".to_string(),
+                current_state: format!("取得失敗: {e}"),
+            })
+    }
+
+    async fn resolve_export_spreadsheet_id<C>(
+        &self,
+        db: &C,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError>
+    where
+        C: ConnectionTrait,
+    {
+        self.repository
+            .find_export_spreadsheet_id(db, guild_id)
+            .await
+            .map_err(|e| BusinessRuleError::InvalidState {
+                entity: "guild_spreadsheet_exports".to_string(),
+                current_state: format!("取得失敗: {e}"),
+            })
+    }
 }
 
 #[async_trait]
@@ -156,13 +204,15 @@ where
         db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
-        self.repository
-            .find_import_spreadsheet_id(db, guild_id)
-            .await
-            .map_err(|e| BusinessRuleError::InvalidState {
-                entity: "guild_spreadsheet_imports".to_string(),
-                current_state: format!("取得失敗: {e}"),
-            })
+        self.resolve_import_spreadsheet_id(db, guild_id).await
+    }
+
+    async fn get_import_spreadsheet_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError> {
+        self.resolve_import_spreadsheet_id(txn, guild_id).await
     }
 
     async fn get_export_spreadsheet_id(
@@ -170,13 +220,15 @@ where
         db: &DatabaseConnection,
         guild_id: i64,
     ) -> Result<Option<String>, BusinessRuleError> {
-        self.repository
-            .find_export_spreadsheet_id(db, guild_id)
-            .await
-            .map_err(|e| BusinessRuleError::InvalidState {
-                entity: "guild_spreadsheet_exports".to_string(),
-                current_state: format!("取得失敗: {e}"),
-            })
+        self.resolve_export_spreadsheet_id(db, guild_id).await
+    }
+
+    async fn get_export_spreadsheet_id_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<Option<String>, BusinessRuleError> {
+        self.resolve_export_spreadsheet_id(txn, guild_id).await
     }
 }
 

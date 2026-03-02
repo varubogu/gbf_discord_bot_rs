@@ -176,6 +176,16 @@ pub mod keys {
         "auto_recruitment.time_select_placeholder";
     pub const AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR: &str =
         "auto_recruitment.unregister_in_category_error";
+    pub const AUTO_RECRUITMENT_CATEGORY_SETUP_TIME_SELECT_MESSAGE: &str =
+        "auto_recruitment.category_setup.time_select_message";
+    pub const AUTO_RECRUITMENT_CATEGORY_SETUP_MATCHING_CHANNEL_MESSAGE: &str =
+        "auto_recruitment.category_setup.matching_channel_message";
+    pub const AUTO_RECRUITMENT_CATEGORY_SETUP_QUEST_CHANNEL_EMPTY_MESSAGE: &str =
+        "auto_recruitment.category_setup.quest_channel_empty_message";
+    pub const AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_BUTTON: &str =
+        "auto_recruitment.category_setup.selection_check_button";
+    pub const AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_MESSAGE: &str =
+        "auto_recruitment.category_setup.selection_check_message";
 
     // App error messages
     pub const APP_ERROR_DATABASE: &str = "app_error.database";
@@ -254,6 +264,14 @@ pub mod keys {
     pub const RECRUITMENT_LIST_MORE_COUNT: &str = "recruitment.list.more_count";
     pub const RECRUITMENT_LIST_FOOTER: &str = "recruitment.list.footer";
 
+    // Quest list command messages
+    pub const QUEST_LIST_TITLE_ALL: &str = "quest.list.title_all";
+    pub const QUEST_LIST_TITLE_ENABLED: &str = "quest.list.title_enabled";
+    pub const QUEST_LIST_TITLE_DISABLED: &str = "quest.list.title_disabled";
+    pub const QUEST_LIST_MORE_COUNT: &str = "quest.list.more_count";
+    pub const QUEST_LIST_EMPTY_ENABLED: &str = "quest.list.empty_enabled";
+    pub const QUEST_LIST_EMPTY_DISABLED: &str = "quest.list.empty_disabled";
+
     pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE: &str =
         "recruitment.schedule.toggle.success_title";
     pub const RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_DESCRIPTION: &str =
@@ -313,6 +331,43 @@ pub mod keys {
     pub const AUTO_RECRUITMENT_TIME_SELECT_REQUIRED: &str = "auto_recruitment.time_select_required";
     pub const AUTO_RECRUITMENT_TIME_SELECT_REGISTERED: &str =
         "auto_recruitment.time_select_registered";
+    pub const AUTO_RECRUITMENT_STATUS_HEADER: &str = "auto_recruitment.status.header";
+    pub const AUTO_RECRUITMENT_STATUS_QUEST_EMPTY: &str = "auto_recruitment.status.quest_empty";
+    pub const AUTO_RECRUITMENT_STATUS_QUEST_COUNT: &str = "auto_recruitment.status.quest_count";
+    pub const AUTO_RECRUITMENT_STATUS_QUEST_IDS: &str = "auto_recruitment.status.quest_ids";
+    pub const AUTO_RECRUITMENT_STATUS_TIME_EMPTY: &str = "auto_recruitment.status.time_empty";
+    pub const AUTO_RECRUITMENT_STATUS_TIME_HEADER: &str = "auto_recruitment.status.time_header";
+    pub const AUTO_RECRUITMENT_STATUS_TIME_SLOT: &str = "auto_recruitment.status.time_slot";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_FIRE: &str =
+        "auto_recruitment.presenter.element_fire";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_WATER: &str =
+        "auto_recruitment.presenter.element_water";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_EARTH: &str =
+        "auto_recruitment.presenter.element_earth";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_WIND: &str =
+        "auto_recruitment.presenter.element_wind";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_LIGHT: &str =
+        "auto_recruitment.presenter.element_light";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_DARK: &str =
+        "auto_recruitment.presenter.element_dark";
+    pub const AUTO_RECRUITMENT_PRESENTER_JOIN_BUTTON: &str =
+        "auto_recruitment.presenter.join_button";
+    pub const AUTO_RECRUITMENT_PRESENTER_ELEMENT_PLACEHOLDER: &str =
+        "auto_recruitment.presenter.element_placeholder";
+    pub const AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_PLACEHOLDER: &str =
+        "auto_recruitment.presenter.quest_select_placeholder";
+    pub const AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_MESSAGE: &str =
+        "auto_recruitment.presenter.quest_select_message";
+    pub const AUTO_RECRUITMENT_PRESENTER_TIME_SELECT_PLACEHOLDER: &str =
+        "auto_recruitment.presenter.time_select_placeholder";
+    pub const AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TITLE: &str =
+        "auto_recruitment.presenter.setup_complete_title";
+    pub const AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_DESCRIPTION: &str =
+        "auto_recruitment.presenter.setup_complete_description";
+    pub const AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_QUEST_FIELD: &str =
+        "auto_recruitment.presenter.setup_complete_quest_field";
+    pub const AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TIME_FIELD: &str =
+        "auto_recruitment.presenter.setup_complete_time_field";
 
     // Help embed messages
     pub const HELP_EMBED_TITLE: &str = "help.embed.title";
@@ -484,6 +539,11 @@ pub enum MessageTextId {
     AutoRecruitmentChannelCreateFailed,
     AutoRecruitmentTimeSelectPlaceholder,
     AutoRecruitmentUnregisterInCategoryError,
+    AutoRecruitmentCategorySetupTimeSelectMessage,
+    AutoRecruitmentCategorySetupMatchingChannelMessage,
+    AutoRecruitmentCategorySetupQuestChannelEmptyMessage,
+    AutoRecruitmentCategorySetupSelectionCheckButton,
+    AutoRecruitmentCategorySetupSelectionCheckMessage,
 
     // App error messages
     AppErrorDatabase,
@@ -541,6 +601,14 @@ pub enum MessageTextId {
     RecruitmentListMoreCount,
     RecruitmentListFooter,
 
+    // Quest list command messages
+    QuestListTitleAll,
+    QuestListTitleEnabled,
+    QuestListTitleDisabled,
+    QuestListMoreCount,
+    QuestListEmptyEnabled,
+    QuestListEmptyDisabled,
+
     RecruitmentScheduleToggleSuccessTitle,
     RecruitmentScheduleToggleSuccessDescription,
     RecruitmentScheduleDeleteSuccessTitle,
@@ -580,6 +648,28 @@ pub enum MessageTextId {
     AutoRecruitmentQuestSelectRegistered,
     AutoRecruitmentTimeSelectRequired,
     AutoRecruitmentTimeSelectRegistered,
+    AutoRecruitmentStatusHeader,
+    AutoRecruitmentStatusQuestEmpty,
+    AutoRecruitmentStatusQuestCount,
+    AutoRecruitmentStatusQuestIds,
+    AutoRecruitmentStatusTimeEmpty,
+    AutoRecruitmentStatusTimeHeader,
+    AutoRecruitmentStatusTimeSlot,
+    AutoRecruitmentPresenterElementFire,
+    AutoRecruitmentPresenterElementWater,
+    AutoRecruitmentPresenterElementEarth,
+    AutoRecruitmentPresenterElementWind,
+    AutoRecruitmentPresenterElementLight,
+    AutoRecruitmentPresenterElementDark,
+    AutoRecruitmentPresenterJoinButton,
+    AutoRecruitmentPresenterElementPlaceholder,
+    AutoRecruitmentPresenterQuestSelectPlaceholder,
+    AutoRecruitmentPresenterQuestSelectMessage,
+    AutoRecruitmentPresenterTimeSelectPlaceholder,
+    AutoRecruitmentPresenterSetupCompleteTitle,
+    AutoRecruitmentPresenterSetupCompleteDescription,
+    AutoRecruitmentPresenterSetupCompleteQuestField,
+    AutoRecruitmentPresenterSetupCompleteTimeField,
 
     // Help embed messages
     HelpEmbedTitle,
@@ -834,6 +924,21 @@ impl MessageTextId {
             MessageTextId::AutoRecruitmentUnregisterInCategoryError => {
                 keys::AUTO_RECRUITMENT_UNREGISTER_IN_CATEGORY_ERROR
             }
+            MessageTextId::AutoRecruitmentCategorySetupTimeSelectMessage => {
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_TIME_SELECT_MESSAGE
+            }
+            MessageTextId::AutoRecruitmentCategorySetupMatchingChannelMessage => {
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_MATCHING_CHANNEL_MESSAGE
+            }
+            MessageTextId::AutoRecruitmentCategorySetupQuestChannelEmptyMessage => {
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_QUEST_CHANNEL_EMPTY_MESSAGE
+            }
+            MessageTextId::AutoRecruitmentCategorySetupSelectionCheckButton => {
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_BUTTON
+            }
+            MessageTextId::AutoRecruitmentCategorySetupSelectionCheckMessage => {
+                keys::AUTO_RECRUITMENT_CATEGORY_SETUP_SELECTION_CHECK_MESSAGE
+            }
 
             // App error
             MessageTextId::AppErrorDatabase => keys::APP_ERROR_DATABASE,
@@ -948,6 +1053,12 @@ impl MessageTextId {
             MessageTextId::RecruitmentListLinkText => keys::RECRUITMENT_LIST_LINK_TEXT,
             MessageTextId::RecruitmentListMoreCount => keys::RECRUITMENT_LIST_MORE_COUNT,
             MessageTextId::RecruitmentListFooter => keys::RECRUITMENT_LIST_FOOTER,
+            MessageTextId::QuestListTitleAll => keys::QUEST_LIST_TITLE_ALL,
+            MessageTextId::QuestListTitleEnabled => keys::QUEST_LIST_TITLE_ENABLED,
+            MessageTextId::QuestListTitleDisabled => keys::QUEST_LIST_TITLE_DISABLED,
+            MessageTextId::QuestListMoreCount => keys::QUEST_LIST_MORE_COUNT,
+            MessageTextId::QuestListEmptyEnabled => keys::QUEST_LIST_EMPTY_ENABLED,
+            MessageTextId::QuestListEmptyDisabled => keys::QUEST_LIST_EMPTY_DISABLED,
             MessageTextId::RecruitmentScheduleToggleSuccessTitle => {
                 keys::RECRUITMENT_SCHEDULE_TOGGLE_SUCCESS_TITLE
             }
@@ -1035,6 +1146,66 @@ impl MessageTextId {
             }
             MessageTextId::AutoRecruitmentTimeSelectRegistered => {
                 keys::AUTO_RECRUITMENT_TIME_SELECT_REGISTERED
+            }
+            MessageTextId::AutoRecruitmentStatusHeader => keys::AUTO_RECRUITMENT_STATUS_HEADER,
+            MessageTextId::AutoRecruitmentStatusQuestEmpty => {
+                keys::AUTO_RECRUITMENT_STATUS_QUEST_EMPTY
+            }
+            MessageTextId::AutoRecruitmentStatusQuestCount => {
+                keys::AUTO_RECRUITMENT_STATUS_QUEST_COUNT
+            }
+            MessageTextId::AutoRecruitmentStatusQuestIds => keys::AUTO_RECRUITMENT_STATUS_QUEST_IDS,
+            MessageTextId::AutoRecruitmentStatusTimeEmpty => {
+                keys::AUTO_RECRUITMENT_STATUS_TIME_EMPTY
+            }
+            MessageTextId::AutoRecruitmentStatusTimeHeader => {
+                keys::AUTO_RECRUITMENT_STATUS_TIME_HEADER
+            }
+            MessageTextId::AutoRecruitmentStatusTimeSlot => keys::AUTO_RECRUITMENT_STATUS_TIME_SLOT,
+            MessageTextId::AutoRecruitmentPresenterElementFire => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_FIRE
+            }
+            MessageTextId::AutoRecruitmentPresenterElementWater => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WATER
+            }
+            MessageTextId::AutoRecruitmentPresenterElementEarth => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_EARTH
+            }
+            MessageTextId::AutoRecruitmentPresenterElementWind => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_WIND
+            }
+            MessageTextId::AutoRecruitmentPresenterElementLight => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_LIGHT
+            }
+            MessageTextId::AutoRecruitmentPresenterElementDark => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_DARK
+            }
+            MessageTextId::AutoRecruitmentPresenterJoinButton => {
+                keys::AUTO_RECRUITMENT_PRESENTER_JOIN_BUTTON
+            }
+            MessageTextId::AutoRecruitmentPresenterElementPlaceholder => {
+                keys::AUTO_RECRUITMENT_PRESENTER_ELEMENT_PLACEHOLDER
+            }
+            MessageTextId::AutoRecruitmentPresenterQuestSelectPlaceholder => {
+                keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_PLACEHOLDER
+            }
+            MessageTextId::AutoRecruitmentPresenterQuestSelectMessage => {
+                keys::AUTO_RECRUITMENT_PRESENTER_QUEST_SELECT_MESSAGE
+            }
+            MessageTextId::AutoRecruitmentPresenterTimeSelectPlaceholder => {
+                keys::AUTO_RECRUITMENT_PRESENTER_TIME_SELECT_PLACEHOLDER
+            }
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteTitle => {
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TITLE
+            }
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteDescription => {
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_DESCRIPTION
+            }
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteQuestField => {
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_QUEST_FIELD
+            }
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteTimeField => {
+                keys::AUTO_RECRUITMENT_PRESENTER_SETUP_COMPLETE_TIME_FIELD
             }
             // Help embed
             MessageTextId::HelpEmbedTitle => keys::HELP_EMBED_TITLE,
@@ -1426,6 +1597,33 @@ mod tests {
             MessageTextId::AutoRecruitmentChannelCreateFailed,
             MessageTextId::AutoRecruitmentTimeSelectPlaceholder,
             MessageTextId::AutoRecruitmentUnregisterInCategoryError,
+            MessageTextId::AutoRecruitmentCategorySetupTimeSelectMessage,
+            MessageTextId::AutoRecruitmentCategorySetupMatchingChannelMessage,
+            MessageTextId::AutoRecruitmentCategorySetupQuestChannelEmptyMessage,
+            MessageTextId::AutoRecruitmentCategorySetupSelectionCheckButton,
+            MessageTextId::AutoRecruitmentCategorySetupSelectionCheckMessage,
+            MessageTextId::AutoRecruitmentStatusHeader,
+            MessageTextId::AutoRecruitmentStatusQuestEmpty,
+            MessageTextId::AutoRecruitmentStatusQuestCount,
+            MessageTextId::AutoRecruitmentStatusQuestIds,
+            MessageTextId::AutoRecruitmentStatusTimeEmpty,
+            MessageTextId::AutoRecruitmentStatusTimeHeader,
+            MessageTextId::AutoRecruitmentStatusTimeSlot,
+            MessageTextId::AutoRecruitmentPresenterElementFire,
+            MessageTextId::AutoRecruitmentPresenterElementWater,
+            MessageTextId::AutoRecruitmentPresenterElementEarth,
+            MessageTextId::AutoRecruitmentPresenterElementWind,
+            MessageTextId::AutoRecruitmentPresenterElementLight,
+            MessageTextId::AutoRecruitmentPresenterElementDark,
+            MessageTextId::AutoRecruitmentPresenterJoinButton,
+            MessageTextId::AutoRecruitmentPresenterElementPlaceholder,
+            MessageTextId::AutoRecruitmentPresenterQuestSelectPlaceholder,
+            MessageTextId::AutoRecruitmentPresenterQuestSelectMessage,
+            MessageTextId::AutoRecruitmentPresenterTimeSelectPlaceholder,
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteTitle,
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteDescription,
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteQuestField,
+            MessageTextId::AutoRecruitmentPresenterSetupCompleteTimeField,
             MessageTextId::AppErrorDatabase,
             MessageTextId::AppErrorDiscord,
             MessageTextId::AppErrorConfig,
@@ -1474,6 +1672,12 @@ mod tests {
             MessageTextId::RecruitmentListLinkText,
             MessageTextId::RecruitmentListMoreCount,
             MessageTextId::RecruitmentListFooter,
+            MessageTextId::QuestListTitleAll,
+            MessageTextId::QuestListTitleEnabled,
+            MessageTextId::QuestListTitleDisabled,
+            MessageTextId::QuestListMoreCount,
+            MessageTextId::QuestListEmptyEnabled,
+            MessageTextId::QuestListEmptyDisabled,
             MessageTextId::RecruitmentScheduleToggleSuccessTitle,
             MessageTextId::RecruitmentScheduleToggleSuccessDescription,
             MessageTextId::RecruitmentScheduleDeleteSuccessTitle,
@@ -1520,8 +1724,7 @@ mod tests {
         for message_id in &all_message_ids {
             assert!(
                 unique_message_ids.insert(*message_id),
-                "all_message_ids に重複があります: {:?}",
-                message_id
+                "all_message_ids に重複があります: {message_id:?}"
             );
         }
 

@@ -12,11 +12,11 @@ use crate::facades::scheduler::SchedulerFacade;
 use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
-use crate::repository::GuildSpreadsheetConfigRepositoryTrait;
 use crate::services::spreadsheet::{
     DataConverterService, GeneratedUuidInfo, GoogleAuthService, GoogleAuthServiceTrait,
-    RegisteredTableSchema, SchemaExtractorService, SchemaExtractorServiceTrait,
-    SpreadsheetPersistenceService, SpreadsheetReaderService, SpreadsheetReaderServiceTrait,
+    GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait, RegisteredTableSchema,
+    SchemaExtractorService, SchemaExtractorServiceTrait, SpreadsheetPersistenceService,
+    SpreadsheetReaderService, SpreadsheetReaderServiceTrait, SpreadsheetUrlService,
     SpreadsheetWriterService, SpreadsheetWriterServiceTrait, TableDefinition,
     TableDefinitionService, TableIO,
 };
@@ -590,13 +590,15 @@ impl SpreadsheetImportFacade {
             })?;
 
         let result = async {
-            let repository = SeaOrmGuildSpreadsheetConfigRepository::new();
-            let spreadsheet_id = GuildSpreadsheetConfigRepositoryTrait::find_import_spreadsheet_id(
-                &repository,
-                &txn,
-                guild_id,
-            )
-            .await?;
+            let config_service = GuildSpreadsheetConfigService::new(
+                SeaOrmGuildSpreadsheetConfigRepository::new(),
+                self.google_auth_service.clone(),
+                SpreadsheetUrlService::new(),
+            );
+            let spreadsheet_id = config_service
+                .get_import_spreadsheet_id_with_txn(&txn, guild_id)
+                .await
+                .map_err(|source| FacadeError::BusinessRule { source })?;
 
             Ok::<_, FacadeError>(spreadsheet_id)
         }

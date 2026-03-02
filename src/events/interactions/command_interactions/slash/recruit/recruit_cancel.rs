@@ -40,7 +40,7 @@ pub async fn recruit_cancel(
             .map(|id| id.get())
             .or_else(|| message.guild_id.map(|id| id.get()))
             .ok_or_else(|| types::AppError::Business {
-                message: "ギルド情報を取得できませんでした".to_string(),
+                message: MessageTextId::ErrorsGuildOnly.as_str().to_string(),
             })?,
     );
     let channel_id = DiscordChannelId::new(message.channel_id.get());
@@ -74,7 +74,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "募集は既にキャンセルされています。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelAlreadyCancelled
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -88,7 +92,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "募集メッセージが削除されています。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelMessageDeleted
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -102,7 +110,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "指定されたメッセージは募集メッセージではありません。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelInvalidMessage
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -116,7 +128,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "指定された募集が見つかりません。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelNotFound
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -130,7 +146,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "開催日時を過ぎているためキャンセルできません。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelEventDatePassed
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -145,7 +165,8 @@ pub async fn recruit_cancel(
             )
             .await
             .unwrap_or_else(|_| {
-                "この募集のキャンセルは作成者本人または gbf_bot_control ロールを持つ管理者のみ可能です。"
+                MessageTextId::RecruitmentCommandCancelPermissionDenied
+                    .as_str()
                     .to_string()
             });
 
@@ -163,7 +184,11 @@ pub async fn recruit_cancel(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "エラーが発生しました。再度コマンドを実行してください。改善しない場合、開発者までお問い合わせください。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelError
+                    .as_str()
+                    .to_string()
+            });
 
             ctx.send(poise::CreateReply::default().content(msg).ephemeral(true))
                 .await?;
@@ -185,7 +210,7 @@ async fn execute_cancel_with_confirmation(
         HashMap::new(),
     )
     .await
-    .unwrap_or_else(|_| "はい".to_string());
+    .unwrap_or_else(|_| MessageTextId::CommonYes.as_str().to_string());
     let no_label = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
@@ -193,7 +218,7 @@ async fn execute_cancel_with_confirmation(
         HashMap::new(),
     )
     .await
-    .unwrap_or_else(|_| "いいえ".to_string());
+    .unwrap_or_else(|_| MessageTextId::CommonNo.as_str().to_string());
     let confirm_prompt = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
@@ -201,7 +226,11 @@ async fn execute_cancel_with_confirmation(
         HashMap::new(),
     )
     .await
-    .unwrap_or_else(|_| "この募集をキャンセルしますか？".to_string());
+    .unwrap_or_else(|_| {
+        MessageTextId::RecruitmentCommandCancelConfirmPrompt
+            .as_str()
+            .to_string()
+    });
 
     // 確認ボタンを表示
     let confirm_button = CreateButton::new("confirm_cancel")
@@ -246,7 +275,11 @@ async fn execute_cancel_with_confirmation(
                         HashMap::new(),
                     )
                     .await
-                    .unwrap_or_else(|_| "キャンセル中...".to_string());
+                    .unwrap_or_else(|_| {
+                        MessageTextId::RecruitmentCommandCancellingProgress
+                            .as_str()
+                            .to_string()
+                    });
                     reply
                         .edit(
                             ctx,
@@ -259,7 +292,7 @@ async fn execute_cancel_with_confirmation(
                     let guild_id = ctx
                         .guild_id()
                         .ok_or_else(|| types::AppError::Business {
-                            message: "ギルド情報を取得できませんでした".to_string(),
+                            message: MessageTextId::ErrorsGuildOnly.as_str().to_string(),
                         })?
                         .get();
 
@@ -292,7 +325,11 @@ async fn execute_cancel_with_confirmation(
                                 HashMap::new(),
                             )
                             .await
-                            .unwrap_or_else(|_| "募集がキャンセルされました。".to_string());
+                            .unwrap_or_else(|_| {
+                                MessageTextId::RecruitmentCommandCancelNotificationNoParticipants
+                                    .as_str()
+                                    .to_string()
+                            });
                             reply
                                 .edit(
                                     ctx,
@@ -309,7 +346,9 @@ async fn execute_cancel_with_confirmation(
                             error!("キャンセル処理エラー: {:?}", e);
                             let error_msg = match &e {
                                 types::AppError::Business { message } => message.clone(),
-                                _ => "キャンセル処理中にエラーが発生しました。".to_string(),
+                                _ => MessageTextId::RecruitmentCommandCancelError
+                                    .as_str()
+                                    .to_string(),
                             };
 
                             reply
@@ -333,7 +372,11 @@ async fn execute_cancel_with_confirmation(
                         HashMap::new(),
                     )
                     .await
-                    .unwrap_or_else(|_| "キャンセルを取りやめました。".to_string());
+                    .unwrap_or_else(|_| {
+                        MessageTextId::RecruitmentCommandCancelAborted
+                            .as_str()
+                            .to_string()
+                    });
                     reply
                         .edit(
                             ctx,
@@ -353,7 +396,11 @@ async fn execute_cancel_with_confirmation(
                         HashMap::new(),
                     )
                     .await
-                    .unwrap_or_else(|_| "不明な選択です。".to_string());
+                    .unwrap_or_else(|_| {
+                        MessageTextId::RecruitmentCommandCancelUnknownSelection
+                            .as_str()
+                            .to_string()
+                    });
                     reply
                         .edit(
                             ctx,
@@ -375,7 +422,11 @@ async fn execute_cancel_with_confirmation(
                 HashMap::new(),
             )
             .await
-            .unwrap_or_else(|_| "操作がタイムアウトしました。".to_string());
+            .unwrap_or_else(|_| {
+                MessageTextId::RecruitmentCommandCancelTimeout
+                    .as_str()
+                    .to_string()
+            });
             reply
                 .edit(
                     ctx,

@@ -1,6 +1,6 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::BattleRecruitmentsRepository;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::recruit_list::RecruitListService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::Result;
 use crate::types::{AppError, AppState};
@@ -74,10 +74,9 @@ pub async fn list_active_recruitments(
     };
 
     // 募集中バトル一覧取得
-    let recruitments = match app_state
-        .repositories
-        .battle_recruitments
-        .get_active_by_guild_with_txn(&txn, guild_id)
+    let recruit_list_service = RecruitListService::new(app_state.repositories.battle_recruitments);
+    let recruitments = match recruit_list_service
+        .get_active_recruitments(&txn, guild_id)
         .await
     {
         Ok(list) => list,

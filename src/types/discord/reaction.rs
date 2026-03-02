@@ -91,7 +91,7 @@ mod tests {
         assert!(emoji.is_unicode());
         assert!(!emoji.is_custom());
         assert_eq!(emoji.to_api_string(), "👍");
-        assert_eq!(format!("{}", emoji), "👍");
+        assert_eq!(format!("{emoji}"), "👍");
     }
 
     #[test]
@@ -101,13 +101,13 @@ mod tests {
         assert!(!emoji.is_unicode());
         assert!(emoji.is_custom());
         assert_eq!(emoji.to_api_string(), "myemoji:123456");
-        assert_eq!(format!("{}", emoji), "<:myemoji:123456>");
+        assert_eq!(format!("{emoji}"), "<:myemoji:123456>");
     }
 
     #[test]
     fn test_animated_custom_emoji() {
         let emoji = ReactionEmoji::custom_animated(DiscordEmojiId::new(789012), "animated");
 
-        assert_eq!(format!("{}", emoji), "<a:animated:789012>");
+        assert_eq!(format!("{emoji}"), "<a:animated:789012>");
     }
 }

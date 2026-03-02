@@ -3,8 +3,8 @@
 //! ユーザーのクエスト選択を処理する
 
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::auto_recruitment::{AutoRecruitmentRepository, UserDesiredQuestRepository};
-use crate::types::{AppError, AppState, Result};
+use crate::services::auto_recruitment::quest_selection_service::QuestSelectionService;
+use crate::types::{AppState, Result};
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -43,29 +43,20 @@ pub async fn handle_quest_selection(
     set_current_guild_id(&txn, guild_id as i64).await?;
 
     let result = async {
-        let auto_recruitment_repo = app_state.repositories.auto_recruitment;
-        let quest_repo = app_state.repositories.user_desired_quest;
+        let quest_selection_service = QuestSelectionService::new(
+            app_state.repositories.auto_recruitment,
+            app_state.repositories.user_desired_quest,
+        );
 
         // 自動募集設定を確認
-        let _auto_recruitment = auto_recruitment_repo
-            .find_by_guild_id(&txn, guild_id as i64)
-            .await?
-            .ok_or_else(|| AppError::Business {
-                message: "このギルドには自動募集が登録されていません".to_string(),
-            })?;
-
-        // 既存のクエスト選択を削除して新しく登録
-        quest_repo
-            .delete_all_by_user(&txn, guild_id as i64, user_id as i64)
+        quest_selection_service
+            .ensure_auto_recruitment_exists(&txn, guild_id as i64)
             .await?;
 
-        // 属性指定なしクエストとしてbattle_style_id=0で登録
-        // 6属性クエストは別途UIから属性を指定して登録する
-        for quest_id in &quest_ids {
-            quest_repo
-                .create(&txn, guild_id as i64, user_id as i64, *quest_id, 0)
-                .await?;
-        }
+        // 既存のクエスト選択を削除して新しく登録
+        quest_selection_service
+            .replace_user_desired_quests(&txn, guild_id as i64, user_id as i64, &quest_ids)
+            .await?;
 
         info!(
             guild_id,

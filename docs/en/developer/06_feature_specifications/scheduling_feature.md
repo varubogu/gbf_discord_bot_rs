@@ -54,7 +54,7 @@ Policy:
 
 - Events: scheduler trigger, logging, exception boundary
 - Facade: transaction boundary, coordination of executor calls
-- Services: SchedulerManager / business logic in each TaskExecutor
+- Services: SchedulerManager (trigger only), TaskDispatchService, and business logic in each TaskExecutor
 - Repository: persistence for `scheduled_tasks` and related tables
 
 ### Repository/implementation mapping
@@ -68,6 +68,12 @@ Rules:
 - `services` and `facades` depend on `crate::repository::schedule::*` traits only.
 - `Facade` starts, commits, and rolls back transactions; services receive `DatabaseTransaction` from facades.
 - Non-DI layers must not instantiate `SeaOrm*Repository` directly.
+
+Current scheduler execution entry points:
+
+- `SchedulerManager`: periodic trigger and startup hook only
+- `SchedulerTaskDispatchFacade`: transaction boundary for scheduler runtime execution
+- `TaskDispatchService`: `task_type` dispatch and executor composition
 
 ## Execution cycle (every 10 seconds)
 

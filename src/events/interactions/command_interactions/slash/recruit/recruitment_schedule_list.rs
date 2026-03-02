@@ -1,8 +1,8 @@
-use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
+use crate::events::helpers::get_message_or_key_from_context;
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
 use crate::services::message::MessageTextId;
 use crate::services::schedule::schedule_query_service::ScheduleListItem;
-use crate::types::{PoiseContext, Result};
+use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;
 use tracing::info;
@@ -25,11 +25,19 @@ pub async fn recruitment_schedule_list(
     #[description_localized("ja", "このサーバーの全員のスケジュールを表示（デフォルト: true）")]
     show_all: Option<bool>,
 ) -> Result<()> {
-    let guild_id = ctx
-        .guild_id()
-        .ok_or_else(|| crate::types::AppError::Business {
-            message: "このコマンドはサーバー内でのみ使用できます".to_string(),
-        })?;
+    let guild_id = match ctx.guild_id() {
+        Some(id) => id,
+        None => {
+            let message = get_message_or_key_from_context(
+                &ctx,
+                ctx.data().app_state.message_service(),
+                MessageTextId::ErrorsGuildOnly,
+                HashMap::new(),
+            )
+            .await;
+            return Err(AppError::Business { message });
+        }
+    };
 
     let user_id = ctx.author().id;
     let show_all = show_all.unwrap_or(true);
@@ -49,7 +57,7 @@ pub async fn recruitment_schedule_list(
     let schedules: Vec<ScheduleListItem> = facade
         .list_recruitment_schedules(guild_id.get() as i64, user_id.get() as i64, show_all)
         .await?;
-    let title = get_message_or_fallback_from_context(
+    let title = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         if show_all {
@@ -58,11 +66,6 @@ pub async fn recruitment_schedule_list(
             MessageTextId::RecruitmentScheduleListTitleSelf
         },
         HashMap::new(),
-        if show_all {
-            "📅 定期募集スケジュール一覧（全員）"
-        } else {
-            "📅 定期募集スケジュール一覧（自分のみ）"
-        },
     )
     .await;
 
@@ -72,16 +75,11 @@ pub async fn recruitment_schedule_list(
         } else {
             MessageTextId::RecruitmentScheduleListEmptySelf
         };
-        let empty_description = get_message_or_fallback_from_context(
+        let empty_description = get_message_or_key_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
             message_id,
             HashMap::new(),
-            if show_all {
-                "登録されているスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
-            } else {
-                "あなたが作成したスケジュールはありません。\n\n`/recruitment-schedule-create` コマンドでスケジュールを作成してください。"
-            },
         )
         .await;
 
@@ -99,20 +97,18 @@ pub async fn recruitment_schedule_list(
     let display_count = schedules.len().min(10);
     let total_count = schedules.len();
 
-    let status_enabled = get_message_or_fallback_from_context(
+    let status_enabled = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::RecruitmentScheduleListStatusEnabled,
         HashMap::new(),
-        "✅ 有効",
     )
     .await;
-    let status_disabled = get_message_or_fallback_from_context(
+    let status_disabled = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::RecruitmentScheduleListStatusDisabled,
         HashMap::new(),
-        "❌ 無効",
     )
     .await;
 
@@ -124,17 +120,16 @@ pub async fn recruitment_schedule_list(
             status_disabled.as_str()
         };
 
-        let dismissal_display = if let Some(d) = &item.dismissal_times {
+        let dismissal_display = if let Some(dismissal) = &item.dismissal_times {
             let mut params = HashMap::new();
-            params.insert("dismissal".to_string(), d.to_string());
-            get_message_from_context(
+            params.insert("dismissal".to_string(), dismissal.to_string());
+            get_message_or_key_from_context(
                 &ctx,
                 ctx.data().app_state.message_service(),
                 MessageTextId::RecruitmentScheduleListDismissalPrefix,
                 params,
             )
             .await
-            .unwrap_or_else(|_| format!("\n                解散: {d}"))
         } else {
             String::new()
         };
@@ -168,33 +163,26 @@ pub async fn recruitment_schedule_list(
             "count".to_string(),
             (total_count - display_count).to_string(),
         );
-        let more_count = get_message_from_context(
+        let more_count = get_message_or_key_from_context(
             &ctx,
             ctx.data().app_state.message_service(),
             MessageTextId::RecruitmentScheduleListMoreCount,
             params,
         )
-        .await
-        .unwrap_or_else(|_| {
-            format!(
-                "\n*...他 {} 件のスケジュールがあります*",
-                total_count - display_count
-            )
-        });
+        .await;
         description.push_str(&more_count);
     }
 
     let mut footer_params = HashMap::new();
     footer_params.insert("total_count".to_string(), total_count.to_string());
     footer_params.insert("display_count".to_string(), display_count.to_string());
-    let footer = get_message_from_context(
+    let footer = get_message_or_key_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
         MessageTextId::RecruitmentScheduleListFooter,
         footer_params,
     )
-    .await
-    .unwrap_or_else(|_| format!("全 {total_count} 件のスケジュール（{display_count}件表示）"));
+    .await;
 
     let embed = CreateEmbed::default()
         .title(title)

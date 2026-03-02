@@ -181,7 +181,7 @@ pub async fn on_component_interaction(
                     Some(&locale),
                 )
                 .await
-                .unwrap_or_else(|_| "❌ エラー: 属性を選択してください".to_string());
+                .unwrap_or_else(|_| MessageTextId::ErrorsInvalidInput.as_str().to_string());
             // エラーメッセージを返す
             if let Err(e) = interaction
                 .edit_response(
@@ -216,7 +216,7 @@ pub async fn on_component_interaction(
                         Some(&locale),
                     )
                     .await
-                    .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());
+                    .unwrap_or_else(|_| MessageTextId::ErrorsGuildOnly.as_str().to_string());
                 if let Err(e) = interaction
                     .edit_response(
                         &ctx.http,
@@ -308,7 +308,7 @@ pub async fn on_component_interaction(
                         Some(&locale),
                     )
                     .await
-                    .unwrap_or_else(|_| "❌ エラー: サーバー内でのみ使用できます".to_string());
+                    .unwrap_or_else(|_| MessageTextId::ErrorsGuildOnly.as_str().to_string());
                 if let Err(e) = interaction
                     .edit_response(
                         &ctx.http,

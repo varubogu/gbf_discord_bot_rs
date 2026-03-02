@@ -1,5 +1,4 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::schedule::BattleRecruitmentScheduleRepository;
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
 };
@@ -35,7 +34,7 @@ impl RecruitmentScheduleFacade {
     /// - `days`: 対象曜日文字列
     /// - `recruit_start_time`: 募集開始時刻（ローカル時刻、HH:MM形式）
     /// - `battle_style_id`: バトルスタイルID（省略可）
-    /// - `recruit_day_offset`: 募集開始日オフセット
+    /// - `recruit_day_offset`: 募集開始日オフセット（省略時は自動判定）
     /// - `note`: 備考（省略可）
     ///
     /// # 戻り値
@@ -54,7 +53,7 @@ impl RecruitmentScheduleFacade {
         days: &str,
         recruit_start_time: &str,
         battle_style_id: Option<i32>,
-        recruit_day_offset: i32,
+        recruit_day_offset: Option<i32>,
         note: Option<String>,
         dismissal_times: Option<String>,
     ) -> Result<ScheduleCreationResult> {
@@ -215,27 +214,14 @@ impl RecruitmentScheduleFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            // 権限チェック：スケジュールの作成者を確認
-            let schedule_repo = &self.app_state.repositories.battle_recruitment_schedule;
-            let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
-
-            let schedule = schedule_opt.ok_or_else(|| AppError::Business {
-                message: format!("スケジュールID {schedule_id} が見つかりません"),
-            })?;
-
-            // 作成者本人でも管理者でもない場合はエラー
-            if schedule.0.created_by != user_id && !is_admin {
-                return Err(AppError::Business {
-                    message: "このスケジュールを削除する権限がありません。自分が作成したスケジュールのみ削除できます。".to_string(),
-                });
-            }
-
-            // Service層に委譲
             let service = ScheduleCommandService::new(
                 self.app_state.repositories.battle_recruitment_schedule,
                 self.app_state.repositories.scheduled_task,
                 self.app_state.repositories.scheduled_task_recurring,
             );
+            service
+                .assert_schedule_deletable_by(&txn, schedule_id, user_id, is_admin)
+                .await?;
             service.delete_schedule(&txn, schedule_id).await?;
             Ok::<_, AppError>(())
         }
@@ -282,26 +268,14 @@ impl RecruitmentScheduleFacade {
         set_current_guild_id(&txn, guild_id).await?;
 
         let result = async {
-            // 権限チェック：スケジュールの作成者を確認
-            let schedule_repo = &self.app_state.repositories.battle_recruitment_schedule;
-            let schedule_opt = schedule_repo.find_by_id(&txn, schedule_id).await?;
-
-            let schedule = schedule_opt.ok_or_else(|| AppError::Business {
-                message: format!("スケジュールID {schedule_id} が見つかりません"),
-            })?;
-
-            // 作成者本人でも管理者でもない場合はエラー
-            if schedule.0.created_by != user_id && !is_admin {
-                return Err(AppError::Business {
-                    message: "このスケジュールを切り替える権限がありません。自分が作成したスケジュールのみ切り替えできます。".to_string(),
-                });
-            }
-
             let service = ScheduleCommandService::new(
                 self.app_state.repositories.battle_recruitment_schedule,
                 self.app_state.repositories.scheduled_task,
                 self.app_state.repositories.scheduled_task_recurring,
             );
+            service
+                .assert_schedule_operable_by(&txn, schedule_id, user_id, is_admin, "切り替え")
+                .await?;
 
             // 現在の状態を取得
             let is_enabled = service

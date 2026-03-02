@@ -14,15 +14,18 @@ At initial registration, pending tasks are checked and no duplicate is created i
 
 ## Scheduler integration dependency direction
 
-- `SchedulerManager` is the composition point. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
+- `TaskDispatchService` is the composition point for executor wiring. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
+- `SchedulerTaskDispatchFacade` owns transaction boundaries and invokes `TaskDispatchService`.
 - `AutoRecruitmentRotationTaskExecutor` depends on repository traits via `crate::repository` (`ScheduledTaskRepository`, `AutoRecruitmentChannelRepository`, `AutoRecruitmentRepository`), not on concrete SeaORM types.
-- Keep the one-way flow: `scheduler_manager (composition) -> executor -> repository ports`.
+- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx) -> task_dispatch_service (composition) -> executor -> repository ports`.
 - Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 
 ```text
 src/services/schedule/scheduler_manager.rs
+src/services/schedule/task_dispatch_service.rs
+src/facades/schedule/scheduler_task_dispatch_facade.rs
 src/services/schedule/auto_recruitment_rotation_task_executor.rs
 src/repository/auto_recruitment/auto_recruitment_channel_repository.rs
 src/repository/auto_recruitment/auto_recruitment_repository.rs
@@ -35,7 +38,7 @@ src/di/repositories.rs
 
 ## Execution flow
 
-`SchedulerManager` executes `AutoRecruitmentRotationTaskExecutor` in the `task_type=6` branch.
+`TaskDispatchService` executes `AutoRecruitmentRotationTaskExecutor` in the `task_type=6` branch.
 
 1. Re-check task existence and `pending`
 2. Read all `auto_recruitment_channels`
@@ -49,7 +52,7 @@ src/di/repositories.rs
 
 ## Startup repair flow
 
-`SchedulerManager::start` runs `repair_on_startup` once during startup.
+`SchedulerManager::start` triggers startup repair once, and `SchedulerTaskDispatchFacade` executes it within a transaction.
 
 1. Load all rows from `auto_recruitments`
 2. For each guild, if date channels are fewer than `days_range`, create missing channels

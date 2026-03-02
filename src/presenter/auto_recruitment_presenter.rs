@@ -3,10 +3,12 @@
 //! 自動募集関連のUI（クエスト選択、属性選択等）の作成を担当する。
 //! Service層からUIビルダー依存を除去するために使用する。
 
+use crate::services::message::MessageTextId;
 use crate::types::discord::{
     ActionRowContent, ButtonContent, ButtonStyleType, MessageContent, SelectMenuContent,
     SelectMenuOptionContent,
 };
+use rust_i18n::t;
 
 /// 6属性の数
 const SIX_ELEMENT_COUNT: usize = 6;
@@ -27,32 +29,56 @@ pub fn get_six_elements() -> Vec<ElementInfo> {
     vec![
         ElementInfo {
             id: 1,
-            name: "火属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementFire.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "🔥",
         },
         ElementInfo {
             id: 2,
-            name: "水属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementWater.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "💧",
         },
         ElementInfo {
             id: 3,
-            name: "土属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementEarth.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "🌍",
         },
         ElementInfo {
             id: 4,
-            name: "風属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementWind.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "💨",
         },
         ElementInfo {
             id: 5,
-            name: "光属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementLight.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "✨",
         },
         ElementInfo {
             id: 6,
-            name: "闇属性".to_string(),
+            name: t!(
+                MessageTextId::AutoRecruitmentPresenterElementDark.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
             emoji: "🌑",
         },
     ]
@@ -110,8 +136,13 @@ impl AutoRecruitmentPresenter {
     /// ActionRowContent
     pub fn create_participation_button(guild_id: u64, quest_id: i32) -> ActionRowContent {
         let custom_id = format!("auto_quest_join:{guild_id}:{quest_id}");
+        let label = t!(
+            MessageTextId::AutoRecruitmentPresenterJoinButton.as_str(),
+            locale = "ja"
+        )
+        .to_string();
 
-        let button = ButtonContent::new(custom_id, "参加する").with_style(ButtonStyleType::Primary);
+        let button = ButtonContent::new(custom_id, label).with_style(ButtonStyleType::Primary);
 
         ActionRowContent::buttons(vec![button])
     }
@@ -139,7 +170,13 @@ impl AutoRecruitmentPresenter {
             .collect();
 
         let select_menu = SelectMenuContent::string_select(custom_id, options)
-            .with_placeholder("属性を選択してください（複数選択可）")
+            .with_placeholder(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterElementPlaceholder.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+            )
             .with_min_values(0)
             .with_max_values(SIX_ELEMENT_COUNT as u8);
 
@@ -183,7 +220,13 @@ impl AutoRecruitmentPresenter {
             };
 
             let select_menu = SelectMenuContent::string_select(custom_id, options)
-                .with_placeholder("参加したいクエストを選択してください（複数選択可）")
+                .with_placeholder(
+                    t!(
+                        MessageTextId::AutoRecruitmentPresenterQuestSelectPlaceholder.as_str(),
+                        locale = "ja"
+                    )
+                    .to_string(),
+                )
                 .with_min_values(1)
                 .with_max_values(effective_max);
 
@@ -212,7 +255,11 @@ impl AutoRecruitmentPresenter {
         let action_rows = Self::create_quest_select_menus(guild_id, quests, max_values);
 
         let mut message = MessageContent::new().with_text(
-            "**クエスト選択**\n参加したいクエストを選択してください。複数選択可能です。",
+            t!(
+                MessageTextId::AutoRecruitmentPresenterQuestSelectMessage.as_str(),
+                locale = "ja"
+            )
+            .to_string(),
         );
 
         for action_row in action_rows {
@@ -244,7 +291,13 @@ impl AutoRecruitmentPresenter {
             .collect();
 
         let select_menu = SelectMenuContent::string_select(custom_id, options)
-            .with_placeholder("時間を選択してください")
+            .with_placeholder(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterTimeSelectPlaceholder.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+            )
             .with_min_values(1)
             .with_max_values(1);
 
@@ -265,11 +318,39 @@ impl AutoRecruitmentPresenter {
         use crate::types::discord::EmbedContent;
 
         let embed = EmbedContent::new()
-            .with_title("設定完了")
-            .with_description("自動募集の設定が完了しました")
+            .with_title(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterSetupCompleteTitle.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+            )
+            .with_description(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterSetupCompleteDescription.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+            )
             .with_color(0x00ff00)
-            .with_field("クエスト", quest_name, true)
-            .with_field("時刻", time_display, true);
+            .with_field(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterSetupCompleteQuestField.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+                quest_name,
+                true,
+            )
+            .with_field(
+                t!(
+                    MessageTextId::AutoRecruitmentPresenterSetupCompleteTimeField.as_str(),
+                    locale = "ja"
+                )
+                .to_string(),
+                time_display,
+                true,
+            );
 
         MessageContent::new().with_embed(embed)
     }
@@ -334,7 +415,7 @@ mod tests {
     #[test]
     fn test_create_quest_select_menus_multiple() {
         // 30件のクエストを作成
-        let quests: Vec<(i32, String)> = (1..=30).map(|i| (i, format!("テスト{}", i))).collect();
+        let quests: Vec<(i32, String)> = (1..=30).map(|i| (i, format!("テスト{i}"))).collect();
 
         let action_rows = AutoRecruitmentPresenter::create_quest_select_menus(12345, &quests, 25);
         // 30件なので2つのセレクトメニューに分割

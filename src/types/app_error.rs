@@ -1,34 +1,34 @@
 /// アプリケーション全体のエラー型（thiserror使用）
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    #[error("Database error: {0}")]
+    #[error("データベースエラー: {0}")]
     Database(#[from] sea_orm::DbErr),
 
-    #[error("Discord API error: {0}")]
+    #[error("Discord APIエラー: {0}")]
     Discord(Box<poise::serenity_prelude::Error>),
 
-    #[error("Business logic error: {message}")]
+    #[error("業務エラー: {message}")]
     Business { message: String },
 
-    #[error("Configuration error: {message}")]
+    #[error("設定エラー: {message}")]
     Config { message: String },
 
-    #[error("Validation error: {field} is invalid")]
+    #[error("入力検証エラー: {field}")]
     Validation { field: String },
 
-    #[error("Generic error: {0}")]
+    #[error("汎用エラー: {0}")]
     Generic(String),
 
-    #[error("Not found: {0}")]
+    #[error("未検出エラー: {0}")]
     NotFound(String),
 
-    #[error("Discord operation error: {0}")]
+    #[error("Discord操作エラー: {0}")]
     DiscordOperation(Box<crate::types::DiscordOperationError>),
 
-    #[error("Channel creation failed")]
+    #[error("チャンネルの作成に失敗しました")]
     ChannelCreationFailed,
 
-    #[error("Command executed in category channel")]
+    #[error("このコマンドはカテゴリチャンネル内で実行できません")]
     InCategoryChannelError,
 }
 
@@ -75,7 +75,23 @@ impl From<crate::errors::ServiceError> for AppError {
 
 impl From<crate::errors::GatewayError> for AppError {
     fn from(err: crate::errors::GatewayError) -> Self {
-        AppError::Generic(format!("Gateway error: {err}"))
+        AppError::Generic(format!("ゲートウェイエラー: {err}"))
+    }
+}
+
+impl From<crate::errors::RecruitmentError> for AppError {
+    fn from(err: crate::errors::RecruitmentError) -> Self {
+        AppError::Business {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<crate::errors::ScheduleError> for AppError {
+    fn from(err: crate::errors::ScheduleError) -> Self {
+        AppError::Business {
+            message: err.to_string(),
+        }
     }
 }
 
@@ -113,3 +129,37 @@ impl AppError {
 
 // TODO: Result -> AppResultへリネーム
 pub type Result<T> = std::result::Result<T, AppError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::errors::{RecruitmentError, ScheduleError};
+
+    #[test]
+    fn recruitment_errorからapp_errorへ変換できる() {
+        let err = AppError::from(RecruitmentError::InvalidCustomId);
+        match err {
+            AppError::Business { message } => {
+                assert!(message.contains("不正なカスタムID"));
+            }
+            other => panic!("想定外のエラー型です: {other}"),
+        }
+    }
+
+    #[test]
+    fn schedule_errorからapp_errorへ変換できる() {
+        let err = AppError::from(ScheduleError::DispatchFailed);
+        match err {
+            AppError::Business { message } => {
+                assert!(message.contains("スケジュールディスパッチ"));
+            }
+            other => panic!("想定外のエラー型です: {other}"),
+        }
+    }
+
+    #[test]
+    fn app_error表示文言は日本語である() {
+        let err = AppError::Database(sea_orm::DbErr::Custom("接続失敗".to_string()));
+        assert!(err.to_string().contains("データベースエラー"));
+    }
+}
