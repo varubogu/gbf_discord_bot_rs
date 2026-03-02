@@ -3,9 +3,10 @@
 //! PoiseContextを使用する処理を集約。servicesレイヤーに依存しつつ、
 //! poise依存をeventsレイヤーに閉じ込める。
 
-use crate::repository::{GuildMessageTextRepository, MessageTextRepository};
 use crate::services::locale_service::{DEFAULT_LOCALE, LocaleService};
-use crate::services::message::{MessageService, MessageTextId};
+use crate::services::message::{
+    GuildMessageTextRepository, MessageService, MessageTextId, MessageTextRepository,
+};
 use crate::types::PoiseContext;
 use std::collections::HashMap;
 use tracing::warn;

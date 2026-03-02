@@ -2,12 +2,10 @@
 //!
 //! 6属性クエストの属性セレクトメニュー操作を処理する
 
-use crate::infrastructure::database::session::set_current_guild_id;
+use crate::facades::auto_recruitment;
 use crate::presenter::auto_recruitment_presenter::get_six_elements;
-use crate::repository::auto_recruitment::UserDesiredQuestRepository;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{ComponentInteraction, ComponentInteractionDataKind, Context};
-use sea_orm::TransactionTrait;
 use tracing::{error, info};
 
 /// 属性選択インタラクションを処理
@@ -52,43 +50,18 @@ pub async fn handle_element_selection(
         "属性選択を処理します"
     );
 
-    let app_state = &data.app_state;
-    let conn = app_state.guild_db();
-    let txn = conn.begin().await?;
-
-    // RLSポリシーのためにセッション変数を設定
-    set_current_guild_id(&txn, guild_id).await?;
-
-    let result: Result<Vec<i32>> = async {
-        let quest_repo = app_state.repositories.user_desired_quest;
-
-        // 既存の登録を全て削除
-        quest_repo
-            .delete_all_styles(&txn, guild_id, user_id, quest_id)
-            .await?;
-
-        // 選択された属性を登録
-        for battle_style_id in &selected_battle_style_ids {
-            quest_repo
-                .create(&txn, guild_id, user_id, quest_id, *battle_style_id)
-                .await?;
-        }
-
-        info!(
-            guild_id,
-            user_id,
-            quest_id,
-            count = selected_battle_style_ids.len(),
-            "属性を登録しました"
-        );
-
-        Ok(selected_battle_style_ids.clone())
-    }
+    let result = auto_recruitment::register_selected_elements(
+        &data.app_state,
+        guild_id,
+        user_id,
+        quest_id,
+        selected_battle_style_ids,
+    )
     .await;
 
     match result {
-        Ok(selected_ids) => {
-            txn.commit().await?;
+        Ok(selected) => {
+            let selected_ids = selected.selected_battle_style_ids;
 
             // エフェメラル応答でユーザーに結果を通知
             let message = if selected_ids.is_empty() {
@@ -115,7 +88,6 @@ pub async fn handle_element_selection(
                 .await?;
         }
         Err(e) => {
-            txn.rollback().await?;
             error!(error = %e, guild_id, user_id, quest_id, "属性選択処理に失敗しました");
             interaction
                 .edit_response(
@@ -146,4 +118,21 @@ fn extract_params(custom_id: &str) -> Result<(i64, i32)> {
         .map_err(|_| AppError::Generic("Quest IDの解析に失敗しました".to_string()))?;
 
     Ok((guild_id, quest_id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_params_正常系() {
+        let result = extract_params("auto_quest_element:12345:99").unwrap();
+        assert_eq!(result, (12345, 99));
+    }
+
+    #[test]
+    fn extract_params_不正フォーマットで失敗() {
+        let result = extract_params("auto_quest_element:12345");
+        assert!(result.is_err());
+    }
 }

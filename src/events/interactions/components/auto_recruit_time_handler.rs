@@ -4,14 +4,11 @@
 
 use crate::events::helpers::resolve_guild_locale;
 use crate::facades::auto_recruitment;
-use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::auto_recruitment::auto_recruitment_channel_repository::AutoRecruitmentChannelRepository;
 use crate::services::message::MessageTextId;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
-use sea_orm::TransactionTrait;
 use std::collections::HashMap;
 use tracing::{error, info};
 
@@ -62,20 +59,11 @@ pub async fn handle_time_selection_interaction(
     // DBからチャンネル情報を取得してmonth、dayを取得
     let app_state = &data.app_state;
     let locale = resolve_guild_locale(app_state, Some(guild_id as i64)).await;
-    let conn = app_state.guild_db();
-    let txn = conn.begin().await?;
-    set_current_guild_id(&txn, guild_id as i64).await?;
-
-    let channel_repo = app_state.repositories.auto_recruitment_channel;
-    let channel_info = channel_repo
-        .find_by_channel_id(&txn, guild_id as i64, channel_id as i64)
-        .await?
-        .ok_or_else(|| AppError::Generic("チャンネル情報が見つかりません".to_string()))?;
-
-    let month = channel_info.month;
-    let day = channel_info.day;
-
-    txn.commit().await?;
+    let channel_date =
+        auto_recruitment::get_time_channel_date(app_state, guild_id as i64, channel_id as i64)
+            .await?;
+    let month = channel_date.month;
+    let day = channel_date.day;
 
     // 選択された値を取得
     let selected_hours = match &interaction.data.kind {
@@ -201,4 +189,21 @@ fn extract_channel_id(custom_id: &str) -> Result<u64> {
         .nth(1)
         .and_then(|s| s.parse::<u64>().ok())
         .ok_or_else(|| AppError::Generic("チャンネルIDの抽出に失敗しました".to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_channel_id_正常系() {
+        let channel_id = extract_channel_id("auto_time_select:987654321").unwrap();
+        assert_eq!(channel_id, 987654321);
+    }
+
+    #[test]
+    fn extract_channel_id_不正フォーマットで失敗() {
+        let result = extract_channel_id("auto_time_select");
+        assert!(result.is_err());
+    }
 }

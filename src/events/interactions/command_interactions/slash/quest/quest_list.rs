@@ -1,9 +1,6 @@
-use crate::infrastructure::database::session::set_current_guild_id;
-use crate::repository::GuildQuestDisableRepository;
-use crate::repository::QuestRepository;
+use crate::facades::recruitment::quest_management_facade;
 use crate::types::{PoiseContext, Result};
 use poise::ChoiceParameter;
-use sea_orm::TransactionTrait;
 
 #[derive(Debug, Clone, Copy, ChoiceParameter)]
 pub enum QuestFilterType {
@@ -45,35 +42,25 @@ pub async fn quest_list(
         })?
         .get() as i64;
 
-    let app_state = &ctx.data().app_state;
-    let db_conn = app_state.guild_db();
-    let quest_repository = app_state.repositories.quest;
-    let disable_repository = app_state.repositories.guild_quest_disable;
-
-    // トランザクション開始
-    let txn = db_conn.begin().await?;
-
-    // RLSポリシー用にセッション変数を設定
-    set_current_guild_id(&txn, guild_id).await?;
-
     let filter_type = filter.unwrap_or(QuestFilterType::All);
+    let filter = match filter_type {
+        QuestFilterType::All => quest_management_facade::QuestListFilter::All,
+        QuestFilterType::EnabledOnly => quest_management_facade::QuestListFilter::EnabledOnly,
+        QuestFilterType::DisabledOnly => quest_management_facade::QuestListFilter::DisabledOnly,
+    };
+    let list_result =
+        quest_management_facade::list_quests(&ctx.data().app_state, guild_id, filter).await?;
 
-    let message = match filter_type {
-        QuestFilterType::All => {
-            // 全クエストを取得
-            let all_quests = quest_repository.get_all(&txn).await?;
-            let disabled_ids = disable_repository
-                .get_disabled_quest_ids(&txn, guild_id)
-                .await?;
-
+    let message = match list_result {
+        quest_management_facade::QuestListResult::All(all_quests) => {
             // クエスト名と有効/無効のリストを作成
             let mut lines = vec!["# クエスト一覧".to_string(), "".to_string()];
 
             for quest in all_quests.iter().take(100) {
-                let status = if disabled_ids.contains(&quest.id) {
-                    "❌ 無効"
-                } else {
+                let status = if quest.is_enabled {
                     "✅ 有効"
+                } else {
+                    "❌ 無効"
                 };
                 lines.push(format!("{} {}", status, quest.name));
             }
@@ -84,16 +71,11 @@ pub async fn quest_list(
 
             lines.join("\n")
         }
-        QuestFilterType::EnabledOnly => {
-            // 有効なクエストのみ取得
-            let results = quest_repository
-                .search_enabled_quests(&txn, guild_id, "")
-                .await?;
-
+        quest_management_facade::QuestListResult::Enabled(results) => {
             let mut lines = vec!["# 有効なクエスト一覧".to_string(), "".to_string()];
 
             for result in results.iter().take(100) {
-                lines.push(format!("✅ {}", result.name));
+                lines.push(format!("✅ {result}"));
             }
 
             if results.len() > 100 {
@@ -106,16 +88,11 @@ pub async fn quest_list(
 
             lines.join("\n")
         }
-        QuestFilterType::DisabledOnly => {
-            // 無効なクエストのみ取得
-            let results = quest_repository
-                .search_disabled_quests(&txn, guild_id, "")
-                .await?;
-
+        quest_management_facade::QuestListResult::Disabled(results) => {
             let mut lines = vec!["# 無効なクエスト一覧".to_string(), "".to_string()];
 
             for result in results.iter().take(100) {
-                lines.push(format!("❌ {}", result.name));
+                lines.push(format!("❌ {result}"));
             }
 
             if results.len() > 100 {
@@ -129,8 +106,6 @@ pub async fn quest_list(
             lines.join("\n")
         }
     };
-
-    txn.rollback().await?;
 
     ctx.say(message).await?;
 
