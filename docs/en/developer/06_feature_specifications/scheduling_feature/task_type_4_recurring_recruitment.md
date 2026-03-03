@@ -31,13 +31,16 @@ At registration, update these two tables together.
 2. Get target schedule ID from `scheduled_task_recurring_recruitments`
 3. Read schedule body (including weekdays)
 4. If schedule is missing/disabled, finish with `succeeded_with_warning`
-5. Create recruitment by `RecruitmentCreationService::create_recruitment_from_schedule`
-6. Calculate/register the next execution task (search up to 365 days ahead)
-7. Set current task to `succeeded`
+5. Reconstruct `CalculatedRecruitmentTime` for the current execution from `task.schedule_datetime`
+6. If `quest_start_at <= now`, skip recruitment creation, register only the next execution task, and mark the current task as `succeeded_with_warning`
+7. Only when departure is still in the future, create recruitment by `RecruitmentCreationService::create_recruitment_from_schedule`
+8. Calculate/register the next execution task (search up to 365 days ahead)
+9. Set current task to `succeeded` when recruitment was created
 
 ## Implementation notes
 
-- Current `RecurringRecruitmentTaskExecutor` sets `CalculatedRecruitmentTime.quest_start_at` and `recruit_start_at` to `Utc::now()` when creating recruitments.
+- Recruitment time is reconstructed from `CalculatedRecruitmentTime` resolved by `task.schedule_datetime`; `Utc::now()` is no longer directly assigned.
+- When execution is delayed (for example bot downtime) and `quest_start_at <= now`, recruitment creation is skipped.
 - Next execution datetime is searched in 7-day steps, and only the first future datetime found is registered.
 
 ## Execution status and error control

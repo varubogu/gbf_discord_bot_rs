@@ -46,31 +46,34 @@ Per-guild schedules are stored in `guild_master.battle_recruitment_schedules` an
 
 ## Flow
 
-1. スケジュール登録時に入力を検証し保存
-2. SchedulerManager が対象時刻で `RecurringRecruitment` タスクを実行
-3. 募集メッセージを自動作成
-4. 次回実行日時を計算し、次のタスクを再登録
-5. `is_enabled = false` なら実行せずスキップ
+1. Validate and persist schedule inputs
+2. SchedulerManager executes `RecurringRecruitment` at due time
+3. Reconstruct the current occurrence `quest_start_at` from `task.schedule_datetime`
+4. If `quest_start_at <= now`, skip recruitment creation and only register the next task with `succeeded_with_warning`
+5. If departure is still in the future, create recruitment message automatically
+6. Calculate next execution datetime and register the next task
+7. If `is_enabled = false`, skip execution
 
 ## Validation
 
-- 当日募集（offset=0）の場合、`recruit_start_time < quest_start_time` を要求
-- 曜日未指定は禁止
-- 存在しない `quest_id` / `battle_style_id` はエラー
-- 募集チャンネル未設定時は作成を拒否
+- For same-day recruitment (`offset=0`), require `recruit_start_time < quest_start_time`
+- Reject empty weekdays
+- Return error for unknown `quest_id` / `battle_style_id`
+- Reject creation when recruitment channel is not configured
 
 ## Error handling
 
-- 募集作成失敗時は当該実行を失敗として記録し、次回タスクとの整合性を維持
-- Discord送信失敗時は再試行可能なログを残す
-- スケジュール削除済みの孤立タスクは実行時再確認でスキップ
+- When recruitment creation fails, mark the execution as failed and keep next-task consistency
+- Keep retryable logs for Discord send failures
+- Skip orphan tasks whose schedule has already been deleted
+- For delayed executions where departure already passed, skip recruitment creation and complete as `succeeded_with_warning`
 
 ## Testing notes
 
-- オフセット自動判定ロジック
-- 週次実行日時の計算（年跨ぎ含む）
-- 無効化スケジュールのスキップ
-- 次回タスク再登録の整合性
+- Offset auto-detection logic
+- Weekly datetime calculation (including year boundary)
+- Skip behavior for disabled schedules
+- Consistency of next-task re-registration
 
 ## Operational notes
 

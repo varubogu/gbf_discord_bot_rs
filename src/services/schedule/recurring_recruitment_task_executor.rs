@@ -5,7 +5,7 @@ use crate::repository::schedule::{
     ScheduledTaskRepository,
 };
 use crate::services::recruitment::recruitment_creation_service::RecruitmentCreationService;
-use crate::services::schedule::{CalculatedRecruitmentTime, RecruitmentScheduleService};
+use crate::services::schedule::RecruitmentScheduleService;
 use crate::types::{AppError, Result};
 use chrono::{Duration, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
@@ -57,6 +57,8 @@ type SharedRecruitmentCreationService<
 pub enum RecurringRecruitmentExecutionResult {
     /// 実行成功（マルチ募集を作成した）
     Success { next_task_id: i32 },
+    /// 出発時刻が過去のため募集作成をスキップし、次回実行のみ登録した
+    SkippedPastDeparture { schedule_id: i32, next_task_id: i32 },
     /// スケジュールが見つからない（削除済み）
     ScheduleNotFound { schedule_id: i32 },
     /// スケジュールが無効化されている
@@ -68,7 +70,7 @@ pub enum RecurringRecruitmentExecutionResult {
 /// 定期募集タスク実行サービス
 ///
 /// 設計: scheduled_task_recurring_recruitmentsからスケジュール情報を取得し、
-/// マルチ募集を作成して、次回実行タスクをscheduled_tasksに登録する
+/// マルチ募集を作成（または必要に応じてスキップ）して、次回実行タスクをscheduled_tasksに登録する
 pub struct RecurringRecruitmentTaskExecutor<
     ST,
     RR,
@@ -242,7 +244,7 @@ where
         info!(task_id, "定期募集タスク実行開始");
 
         // タスクが削除されていないか、既に実行済みでないかを確認
-        let _task = match self.task_repo.find_by_id(txn, task_id).await? {
+        let task = match self.task_repo.find_by_id(txn, task_id).await? {
             Some(task) if task.execution_status.is_pending() => task,
             Some(_) => {
                 warn!(task_id, "タスクは既に実行済みです");
@@ -302,26 +304,52 @@ where
             return Ok(RecurringRecruitmentExecutionResult::ScheduleDisabled { schedule_id });
         }
 
-        // マルチ募集を作成（CalculatedRecruitmentTimeを構築）
+        // task.schedule_datetime に対応する実行回の日時情報を復元
+        let calculated_time = self
+            .schedule_service
+            .resolve_recruitment_time_by_recruit_start_at(&schedule, &days, task.schedule_datetime)?
+            .ok_or_else(|| AppError::Business {
+                message: format!(
+                    "task.schedule_datetime({}) に対応する定期募集時刻を解決できませんでした",
+                    task.schedule_datetime
+                ),
+            })?;
+
+        // 出発時刻を過ぎている場合は募集作成をスキップし、次回タスクのみ登録する
+        let now = Utc::now();
+        if should_skip_recruitment_creation(calculated_time.quest_start_at, now) {
+            let next_task_id = self
+                .create_next_scheduled_task(txn, &schedule, &days)
+                .await?;
+
+            self.task_repo
+                .mark_as_succeeded_with_warning(txn, task_id)
+                .await?;
+
+            warn!(
+                task_id,
+                schedule_id,
+                quest_start_at = %calculated_time.quest_start_at,
+                now = %now,
+                next_task_id,
+                "出発時刻に到達済みのため募集作成をスキップし、次回実行タスクのみ登録しました"
+            );
+
+            return Ok(RecurringRecruitmentExecutionResult::SkippedPastDeparture {
+                schedule_id,
+                next_task_id,
+            });
+        }
+
+        // マルチ募集を作成
         info!(
             task_id,
             schedule_id,
             quest_id = schedule.quest_id,
+            quest_start_at = %calculated_time.quest_start_at,
+            recruit_start_at = %calculated_time.recruit_start_at,
             "マルチ募集を作成します"
         );
-
-        // CalculatedRecruitmentTimeを作成
-        let calculated_time = CalculatedRecruitmentTime {
-            schedule_id: schedule.id,
-            guild_id: schedule.guild_id,
-            channel_id: schedule.channel_id,
-            quest_id: schedule.quest_id,
-            battle_style_id: schedule.battle_style_id,
-            quest_start_at: chrono::Utc::now(), // 実行時点で即座に開始（実際の開始時刻はscheduleから取得されるべきだが、既存実装に合わせる）
-            recruit_start_at: chrono::Utc::now(),
-            max_participants: schedule.max_participants,
-            note: schedule.note.clone(),
-        };
 
         self.recruitment_creation_service
             .create_recruitment_from_schedule(txn, db_conn, gateway, &calculated_time)
@@ -426,7 +454,35 @@ where
     }
 }
 
+fn should_skip_recruitment_creation(
+    quest_start_at: chrono::DateTime<Utc>,
+    now: chrono::DateTime<Utc>,
+) -> bool {
+    quest_start_at <= now
+}
+
 #[cfg(test)]
 mod tests {
-    // TODO: モックを使ったテスト実装
+    use super::should_skip_recruitment_creation;
+    use chrono::{Duration, TimeZone, Utc};
+
+    #[test]
+    fn test_should_skip_recruitment_creation_when_quest_start_equals_now() {
+        let now = Utc.with_ymd_and_hms(2026, 3, 3, 12, 0, 0).single().unwrap();
+        assert!(should_skip_recruitment_creation(now, now));
+    }
+
+    #[test]
+    fn test_should_skip_recruitment_creation_when_quest_start_is_past() {
+        let now = Utc.with_ymd_and_hms(2026, 3, 3, 12, 0, 0).single().unwrap();
+        let quest_start_at = now - Duration::seconds(1);
+        assert!(should_skip_recruitment_creation(quest_start_at, now));
+    }
+
+    #[test]
+    fn test_should_not_skip_recruitment_creation_when_quest_start_is_future() {
+        let now = Utc.with_ymd_and_hms(2026, 3, 3, 12, 0, 0).single().unwrap();
+        let quest_start_at = now + Duration::seconds(1);
+        assert!(!should_skip_recruitment_creation(quest_start_at, now));
+    }
 }

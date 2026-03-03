@@ -130,6 +130,36 @@ impl RecruitmentScheduleService {
         Ok(result)
     }
 
+    /// 指定した募集開始日時に一致する実行回の募集日時情報を解決
+    ///
+    /// `task.schedule_datetime` のような既存タスク時刻から、
+    /// 当該実行回の `CalculatedRecruitmentTime` を復元するために使用する。
+    pub fn resolve_recruitment_time_by_recruit_start_at(
+        &self,
+        schedule: &battle_recruitment_schedules::Model,
+        days: &[battle_recruitment_schedule_days::Model],
+        recruit_start_at: DateTime<Utc>,
+    ) -> Result<Option<CalculatedRecruitmentTime>> {
+        // recruit_start_day_offset が最大7日であるため、前後8日を探索範囲にする
+        let search_from = recruit_start_at - Duration::days(8);
+        let search_to = recruit_start_at + Duration::days(8);
+
+        debug!(
+            schedule_id = schedule.id,
+            recruit_start_at = %recruit_start_at,
+            search_from = %search_from,
+            search_to = %search_to,
+            "募集開始日時から実行回を解決します"
+        );
+
+        let next_times =
+            self.calculate_next_recruitment_times(schedule, days, search_from, search_to)?;
+
+        Ok(next_times
+            .into_iter()
+            .find(|time| time.recruit_start_at == recruit_start_at))
+    }
+
     /// 入力値のバリデーション
     pub fn validate_schedule_input(
         &self,
@@ -224,6 +254,44 @@ impl RecruitmentScheduleService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
+    use sea_orm::prelude::TimeTime;
+
+    fn test_schedule(
+        recruit_start_day_offset: i32,
+        quest_start_time: TimeTime,
+        recruit_start_time: Option<TimeTime>,
+    ) -> battle_recruitment_schedules::Model {
+        let now = Utc::now();
+        battle_recruitment_schedules::Model {
+            id: 1,
+            name: "test_schedule".to_string(),
+            guild_id: 100,
+            channel_id: 200,
+            quest_id: 300,
+            battle_style_id: 400,
+            quest_start_time,
+            recruit_start_day_offset,
+            recruit_start_time,
+            max_participants: Some(6),
+            note: Some("test".to_string()),
+            is_enabled: true,
+            created_by: 999,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    fn test_day(day_of_week: i32) -> battle_recruitment_schedule_days::Model {
+        let now = Utc::now();
+        battle_recruitment_schedule_days::Model {
+            id: 1,
+            schedule_id: 1,
+            day_of_week,
+            created_at: now,
+            updated_at: now,
+        }
+    }
 
     #[test]
     fn test_weekday_to_number() {
@@ -295,5 +363,51 @@ mod tests {
             Some(NaiveTime::from_hms_opt(22, 0, 0).unwrap()), // 募集開始時刻とクエスト開始時刻が同じ
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_resolve_recruitment_time_by_recruit_start_at_found() {
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            1,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)]; // 毎日
+
+        let recruit_start_at = Utc.with_ymd_and_hms(2026, 3, 2, 20, 0, 0).single().unwrap();
+        let resolved = service
+            .resolve_recruitment_time_by_recruit_start_at(&schedule, &days, recruit_start_at)
+            .unwrap()
+            .unwrap();
+
+        let expected_quest_start_at = Utc.with_ymd_and_hms(2026, 3, 3, 21, 0, 0).single().unwrap();
+        assert_eq!(resolved.recruit_start_at, recruit_start_at);
+        assert_eq!(resolved.quest_start_at, expected_quest_start_at);
+    }
+
+    #[test]
+    fn test_resolve_recruitment_time_by_recruit_start_at_not_found() {
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)]; // 毎日
+
+        let unmatched_recruit_start_at = Utc
+            .with_ymd_and_hms(2026, 3, 2, 20, 30, 0)
+            .single()
+            .unwrap();
+        let resolved = service
+            .resolve_recruitment_time_by_recruit_start_at(
+                &schedule,
+                &days,
+                unmatched_recruit_start_at,
+            )
+            .unwrap();
+
+        assert!(resolved.is_none());
     }
 }
