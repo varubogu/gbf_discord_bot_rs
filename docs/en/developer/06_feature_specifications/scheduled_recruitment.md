@@ -49,10 +49,12 @@ Per-guild schedules are stored in `guild_master.battle_recruitment_schedules` an
 1. Validate and persist schedule inputs
 2. SchedulerManager executes `RecurringRecruitment` at due time
 3. Reconstruct the current occurrence `quest_start_at` from `task.schedule_datetime`
-4. If `quest_start_at <= now`, skip recruitment creation and only register the next task with `succeeded_with_warning`
-5. If departure is still in the future, create recruitment message automatically
-6. Calculate next execution datetime and register the next task
-7. If `is_enabled = false`, skip execution
+4. If `quest_start_at <= now`, try to resolve a currently executable occurrence (`recruit_start_at <= now < quest_start_at`)
+5. If found, create that occurrence immediately and complete the skipped past task as `succeeded_with_warning`
+6. If not found, skip recruitment creation and only register the next task with `succeeded_with_warning`
+7. If departure is still in the future, create recruitment message automatically
+8. Calculate next execution datetime and register the next task
+9. If `is_enabled = false`, skip execution
 
 ## Validation
 
@@ -66,7 +68,7 @@ Per-guild schedules are stored in `guild_master.battle_recruitment_schedules` an
 - When recruitment creation fails, mark the execution as failed and keep next-task consistency
 - Keep retryable logs for Discord send failures
 - Skip orphan tasks whose schedule has already been deleted
-- For delayed executions where departure already passed, skip recruitment creation and complete as `succeeded_with_warning`
+- For delayed executions where departure already passed, optionally recover by creating the current recruitment window occurrence; complete the past task itself as `succeeded_with_warning`
 
 ## Testing notes
 

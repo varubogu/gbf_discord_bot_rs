@@ -57,6 +57,8 @@ type SharedRecruitmentCreationService<
 pub enum RecurringRecruitmentExecutionResult {
     /// 実行成功（マルチ募集を作成した）
     Success { next_task_id: i32 },
+    /// 過去タスクをスキップ後、現在募集可能な回を即時実行した
+    RecoveredCurrentWindow { schedule_id: i32, next_task_id: i32 },
     /// 出発時刻が過去のため募集作成をスキップし、次回実行のみ登録した
     SkippedPastDeparture { schedule_id: i32, next_task_id: i32 },
     /// スケジュールが見つからない（削除済み）
@@ -318,6 +320,49 @@ where
         // 出発時刻を過ぎている場合は募集作成をスキップし、次回タスクのみ登録する
         let now = Utc::now();
         if should_skip_recruitment_creation(calculated_time.quest_start_at, now) {
+            // 過去タスクをスキップする前に、現在募集可能な回（募集開始済みかつ出発前）を探索
+            if let Some(recoverable_time) = self
+                .schedule_service
+                .resolve_executable_recruitment_time_at_now(&schedule, &days, now)?
+            {
+                info!(
+                    task_id,
+                    schedule_id,
+                    skipped_recruit_start_at = %calculated_time.recruit_start_at,
+                    recover_recruit_start_at = %recoverable_time.recruit_start_at,
+                    recover_quest_start_at = %recoverable_time.quest_start_at,
+                    "過去タスクをスキップし、現在募集可能な回を即時実行します"
+                );
+
+                self.recruitment_creation_service
+                    .create_recruitment_from_schedule(txn, db_conn, gateway, &recoverable_time)
+                    .await?;
+
+                let next_task_id = self
+                    .create_next_scheduled_task(txn, &schedule, &days)
+                    .await?;
+
+                self.task_repo
+                    .mark_as_succeeded_with_warning(txn, task_id)
+                    .await?;
+
+                warn!(
+                    task_id,
+                    schedule_id,
+                    skipped_quest_start_at = %calculated_time.quest_start_at,
+                    now = %now,
+                    next_task_id,
+                    "過去タスクは警告付き完了とし、現在募集可能な回を即時実行しました"
+                );
+
+                return Ok(
+                    RecurringRecruitmentExecutionResult::RecoveredCurrentWindow {
+                        schedule_id,
+                        next_task_id,
+                    },
+                );
+            }
+
             let next_task_id = self
                 .create_next_scheduled_task(txn, &schedule, &days)
                 .await?;

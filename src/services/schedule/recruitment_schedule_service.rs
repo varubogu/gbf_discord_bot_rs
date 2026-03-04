@@ -160,6 +160,37 @@ impl RecruitmentScheduleService {
             .find(|time| time.recruit_start_at == recruit_start_at))
     }
 
+    /// 現在時刻時点で「募集開始済みかつ出発前」の実行回を解決
+    ///
+    /// Bot停止復旧時など、過去タスクをスキップした後に
+    /// 現在募集可能な回が存在する場合の即時募集判定に使用する。
+    pub fn resolve_executable_recruitment_time_at_now(
+        &self,
+        schedule: &battle_recruitment_schedules::Model,
+        days: &[battle_recruitment_schedule_days::Model],
+        now: DateTime<Utc>,
+    ) -> Result<Option<CalculatedRecruitmentTime>> {
+        // recruit_start_day_offset が最大7日のため、前後8日で十分に探索できる
+        let search_from = now - Duration::days(8);
+        let search_to = now + Duration::days(8);
+
+        debug!(
+            schedule_id = schedule.id,
+            now = %now,
+            search_from = %search_from,
+            search_to = %search_to,
+            "現在時刻で実行可能な募集日時を解決します"
+        );
+
+        let next_times =
+            self.calculate_next_recruitment_times(schedule, days, search_from, search_to)?;
+
+        Ok(next_times
+            .into_iter()
+            .filter(|time| time.recruit_start_at <= now && now < time.quest_start_at)
+            .max_by_key(|time| time.recruit_start_at))
+    }
+
     /// 入力値のバリデーション
     pub fn validate_schedule_input(
         &self,
@@ -409,5 +440,158 @@ mod tests {
             .unwrap();
 
         assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn test_resolve_executable_recruitment_time_at_now_between_recruit_and_departure() {
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)];
+        let now = Utc
+            .with_ymd_and_hms(2026, 3, 2, 20, 30, 0)
+            .single()
+            .unwrap();
+
+        let resolved = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, now)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(
+            resolved.recruit_start_at,
+            Utc.with_ymd_and_hms(2026, 3, 2, 20, 0, 0).single().unwrap()
+        );
+        assert_eq!(
+            resolved.quest_start_at,
+            Utc.with_ymd_and_hms(2026, 3, 2, 21, 0, 0).single().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_resolve_executable_recruitment_time_at_now_before_recruit_start_returns_none() {
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)];
+        let now = Utc.with_ymd_and_hms(2026, 3, 2, 19, 0, 0).single().unwrap();
+
+        let resolved = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, now)
+            .unwrap();
+
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn test_resolve_executable_recruitment_time_at_now_after_departure_returns_none() {
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)];
+        let now = Utc.with_ymd_and_hms(2026, 3, 2, 21, 1, 0).single().unwrap();
+
+        let resolved = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, now)
+            .unwrap();
+
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn test_resolve_executable_recruitment_time_at_now_pattern_b_c_window() {
+        // A: 03/01 20:00-21:00, B: 03/02 20:00-21:00, C: 03/03 20:00-21:00 を想定
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)];
+
+        // B出発後〜C募集開始前は即時実行対象なし
+        let before_c_recruit = Utc.with_ymd_and_hms(2026, 3, 3, 12, 0, 0).single().unwrap();
+        let resolved_before_c = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, before_c_recruit)
+            .unwrap();
+        assert!(resolved_before_c.is_none());
+
+        // C募集開始後〜C出発前はCが即時実行対象
+        let during_c = Utc
+            .with_ymd_and_hms(2026, 3, 3, 20, 30, 0)
+            .single()
+            .unwrap();
+        let resolved_during_c = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, during_c)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved_during_c.recruit_start_at,
+            Utc.with_ymd_and_hms(2026, 3, 3, 20, 0, 0).single().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_resolve_executable_recruitment_time_at_now_startup_timing_patterns() {
+        // 日次スケジュール（毎日 20:00募集開始 / 21:00出発）
+        // A: 03/01, B: 03/02, C: 03/03
+        let service = RecruitmentScheduleService::new();
+        let schedule = test_schedule(
+            0,
+            TimeTime::from_hms(21, 0, 0).unwrap(),
+            Some(TimeTime::from_hms(20, 0, 0).unwrap()),
+        );
+        let days = vec![test_day(0)];
+
+        // 1) A出発時間〜B募集開始時間: 即時実行対象なし
+        let pattern_1_now = Utc.with_ymd_and_hms(2026, 3, 2, 12, 0, 0).single().unwrap();
+        let p1 = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, pattern_1_now)
+            .unwrap();
+        assert!(p1.is_none());
+
+        // 2) B募集開始時間〜B出発時間: Bが即時実行対象
+        let pattern_2_now = Utc
+            .with_ymd_and_hms(2026, 3, 2, 20, 30, 0)
+            .single()
+            .unwrap();
+        let p2 = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, pattern_2_now)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            p2.recruit_start_at,
+            Utc.with_ymd_and_hms(2026, 3, 2, 20, 0, 0).single().unwrap()
+        );
+
+        // 3) B出発時間〜C募集開始時間: 即時実行対象なし
+        let pattern_3_now = Utc.with_ymd_and_hms(2026, 3, 3, 12, 0, 0).single().unwrap();
+        let p3 = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, pattern_3_now)
+            .unwrap();
+        assert!(p3.is_none());
+
+        // 4) C募集開始時間〜C出発時間: Cが即時実行対象
+        let pattern_4_now = Utc
+            .with_ymd_and_hms(2026, 3, 3, 20, 30, 0)
+            .single()
+            .unwrap();
+        let p4 = service
+            .resolve_executable_recruitment_time_at_now(&schedule, &days, pattern_4_now)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            p4.recruit_start_at,
+            Utc.with_ymd_and_hms(2026, 3, 3, 20, 0, 0).single().unwrap()
+        );
     }
 }
