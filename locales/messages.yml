@@ -302,6 +302,48 @@ messages.init_guide:
 messages.welcome:
   en: "Welcome to the GBF Discord Bot!"
   ja: "GBF Discord Botへようこそ！"
+notification.presenter.departure.five_minute.description:
+  en: "5 minutes until departure for \"{{quest_name}}\"!\nAre you ready?"
+  ja: "「{{quest_name}}」の出発まであと5分です！\n準備はできていますか？"
+notification.presenter.departure.five_minute.title:
+  en: "⏰ Departure soon!"
+  ja: "⏰ まもなく出発！"
+notification.presenter.departure.now.description:
+  en: "It is now departure time for \"{{quest_name}}\"!\nGood luck!"
+  ja: "「{{quest_name}}」の出発時刻になりました！\nよい狩りを！"
+notification.presenter.departure.now.title:
+  en: "🚀 It's departure time!"
+  ja: "🚀 出発時刻です！"
+notification.presenter.dissolution.description:
+  en: "It is now dismissal time for \"{{quest_name}}\".\nThanks for playing!"
+  ja: "「{{quest_name}}」の解散時刻になりました。\nお疲れ様でした！"
+notification.presenter.dissolution.title:
+  en: "📢 Dismissal time"
+  ja: "📢 解散時刻です"
+notification.presenter.match.description:
+  en: "**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\n**Participants**: {{participants_str}}\n\nPlease choose from the quest candidates below."
+  ja: "**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n**参加者**: {{participants_str}}\n\n以下のクエスト候補から選択してください。"
+notification.presenter.match.title:
+  en: "🎮 Match found!"
+  ja: "🎮 マッチング成功！"
+notification.presenter.quest_decided.description:
+  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\nCreating the recruitment..."
+  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n募集を作成しています..."
+notification.presenter.quest_decided.title:
+  en: "✅ Quest decided!"
+  ja: "✅ クエストが決定しました！"
+notification.presenter.revote.description:
+  en: "The vote was tied. Please select again from the quests below.\n\n{{participants_str}}"
+  ja: "同数投票のため、以下のクエストから再度選択してください。\n\n{{participants_str}}"
+notification.presenter.revote.title:
+  en: "🔄 Revote required"
+  ja: "🔄 再投票が必要です"
+notification.presenter.vote.option_any:
+  en: "Any quest"
+  ja: "何でも良い"
+notification.presenter.vote.placeholder:
+  en: "Please select a quest"
+  ja: "クエストを選択してください"
 omikuji.hakyoku:
   en: "Got hit by Paradise Lost!"
   ja: "破局を受けたポメ！"
@@ -497,6 +539,45 @@ recruitment.notification.member_full:
 recruitment.notification.start:
   en: "It's quest departure time."
   ja: "クエスト出発時刻です。"
+recruitment.presenter.cancel_confirm.button_abort:
+  en: "Abort"
+  ja: "やめる"
+recruitment.presenter.cancel_confirm.button_confirm:
+  en: "Cancel recruitment"
+  ja: "キャンセルする"
+recruitment.presenter.cancel_confirm.description:
+  en: "Cancel the recruitment for \"{{quest_name}}\"?\nThis action cannot be undone."
+  ja: "「{{quest_name}}」の募集をキャンセルしますか？\nこの操作は取り消せません。"
+recruitment.presenter.cancel_confirm.title:
+  en: "Cancel confirmation"
+  ja: "キャンセル確認"
+recruitment.presenter.element_select.placeholder:
+  en: "Select multiple elements"
+  ja: "複数の属性を選択する"
+recruitment.presenter.end.description:
+  en: "The recruitment for \"{{quest_name}}\" has ended: {{reason}}."
+  ja: "「{{quest_name}}」の募集は{{reason}}しました"
+recruitment.presenter.end.title:
+  en: "Recruitment {{reason}}"
+  ja: "募集{{reason}}"
+recruitment.presenter.end_reason.cancel:
+  en: "Cancelled"
+  ja: "キャンセル"
+recruitment.presenter.end_reason.departure:
+  en: "Departed"
+  ja: "出発"
+recruitment.presenter.end_reason.dismissal:
+  en: "Dismissed"
+  ja: "解散"
+recruitment.presenter.participants.footer_count:
+  en: "Participants: {{count}}"
+  ja: "参加者数: {{count}}人"
+recruitment.presenter.participants.join_label:
+  en: "Join"
+  ja: "参加"
+recruitment.presenter.participants.title:
+  en: "Participant list"
+  ja: "参加者一覧"
 recruitment.role.add_success:
   en: "{{count}} role(s) registered as recruitment notification roles."
   ja: "{{count}}個のロールを募集通知ロールとして登録しました。"
@@ -668,6 +749,66 @@ schedule.command.stats.other_types:
 schedule.command.stats.title_with_days:
   en: "\U0001F4CA Notification Stats (Past {{days}} days)"
   ja: "\U0001F4CA 通知統計（過去{{days}}日間）"
+schedule.presenter.creation.description:
+  en: "**Schedule Name**: {{schedule_name}}\n**Schedule ID**: {{schedule_id}}\n**Quest**: {{quest_name}} (ID: {{quest_id}})\n**Battle Style**: {{battle_style_name}}\n**Target Days**: {{days_display}} ({{timezone}} timezone)\n**Quest Start Time**: {{quest_start_time}}\n**Recruitment Start**: {{recruit_start_day_offset}} day(s) before at {{recruit_start_time}}\n**Dismissal Times**: {{dismissal_display}}\n**Note**: {{note_display}}\n**Created By**: <@{{user_id}}>\n\nRecruitments will be posted automatically based on this schedule.\nParticipant limits follow each quest setting."
+  ja: "**スケジュール名**: {{schedule_name}}\n**スケジュールID**: {{schedule_id}}\n**クエスト**: {{quest_name}} (ID: {{quest_id}})\n**マルチ攻略方法**: {{battle_style_name}}\n**対象曜日**: {{days_display}} ({{timezone}}タイムゾーン)\n**クエスト開始時刻**: {{quest_start_time}}\n**募集開始**: {{recruit_start_day_offset}}日前の{{recruit_start_time}}\n**解散時刻**: {{dismissal_display}}\n**備考**: {{note_display}}\n**作成者**: <@{{user_id}}>\n\nこのスケジュールに基づいて、自動的に募集が投稿されます。\n参加人数はクエストごとの設定を使用します。"
+schedule.presenter.creation.footer:
+  en: "Schedule registered successfully"
+  ja: "スケジュールが正常に登録されました"
+schedule.presenter.creation.title:
+  en: "✅ Recurring recruitment schedule created"
+  ja: "✅ 定期募集スケジュールを作成しました"
+schedule.presenter.days.everyday:
+  en: "Every day"
+  ja: "毎日"
+schedule.presenter.days.friday:
+  en: "Fri"
+  ja: "金"
+schedule.presenter.days.monday:
+  en: "Mon"
+  ja: "月"
+schedule.presenter.days.saturday:
+  en: "Sat"
+  ja: "土"
+schedule.presenter.days.sunday:
+  en: "Sun"
+  ja: "日"
+schedule.presenter.days.thursday:
+  en: "Thu"
+  ja: "木"
+schedule.presenter.days.tuesday:
+  en: "Tue"
+  ja: "火"
+schedule.presenter.days.wednesday:
+  en: "Wed"
+  ja: "水"
+schedule.presenter.deletion.description:
+  en: "Deleted \"{{schedule_name}}\"."
+  ja: "「{{schedule_name}}」を削除しました"
+schedule.presenter.deletion.title:
+  en: "🗑️ Schedule deleted"
+  ja: "🗑️ スケジュールを削除しました"
+schedule.presenter.list.empty_description:
+  en: "No recurring recruitment schedules are registered."
+  ja: "登録されているスケジュールはありません"
+schedule.presenter.list.field_value:
+  en: "Quest: {{quest_name}}\nDays: {{days_display}} / Time: {{time_display}}"
+  ja: "クエスト: {{quest_name}}\n曜日: {{days_display}} / 時刻: {{time_display}}"
+schedule.presenter.list.title:
+  en: "📅 Recurring Recruitment Schedules"
+  ja: "📅 定期募集スケジュール一覧"
+schedule.presenter.toggle.description:
+  en: "\"{{schedule_name}}\" is now {{status}}."
+  ja: "「{{schedule_name}}」が{{status}}になりました"
+schedule.presenter.toggle.status_disabled:
+  en: "Disabled"
+  ja: "無効"
+schedule.presenter.toggle.status_enabled:
+  en: "Enabled"
+  ja: "有効"
+schedule.presenter.toggle.title:
+  en: "🔄 Schedule set to {{status}}"
+  ja: "🔄 スケジュールを{{status}}にしました"
 spreadsheet.global_load_failed:
   en: "❌ Global spreadsheet load failed\n\n{{error_msg}}"
   ja: "❌ グローバルスプレッドシート読み込み失敗\n\n{{error_msg}}"

@@ -3,9 +3,11 @@
 //! 定期募集スケジュールの表示（一覧、詳細、オートコンプリート等）を担当する。
 //! Service層からUIビルダー依存を除去するために使用する。
 
+use crate::services::message::MessageTextId;
 use crate::types::discord::{AutocompleteOption, EmbedContent};
 use chrono::{TimeZone, Timelike};
 use chrono_tz::Tz;
+use rust_i18n::t;
 
 /// スケジュール表示情報
 #[derive(Debug, Clone)]
@@ -59,6 +61,18 @@ pub struct ScheduleCreationDisplayInfo {
 /// poise/serenity型は使用せず、ドメインモデルを返す。
 pub struct SchedulePresenter;
 
+fn localized_ja(message_id: MessageTextId) -> String {
+    t!(message_id.as_str(), locale = "ja").to_string()
+}
+
+fn localized_ja_with_params(message_id: MessageTextId, params: &[(&str, String)]) -> String {
+    let mut text = localized_ja(message_id);
+    for (key, value) in params {
+        text = text.replace(&format!("{{{{{key}}}}}"), value);
+    }
+    text
+}
+
 impl SchedulePresenter {
     /// 曜日リストを表示用にフォーマットする
     ///
@@ -71,12 +85,12 @@ impl SchedulePresenter {
     /// 曜日表示文字列（"月火水" や "毎日" 等）
     pub fn format_days(day_numbers: &[i32]) -> String {
         if day_numbers.is_empty() {
-            return "なし".to_string();
+            return localized_ja(MessageTextId::RecruitmentDisplayNoParticipants);
         }
 
         // 毎日かチェック（0: 毎日）
         if day_numbers.contains(&0) {
-            return "毎日".to_string();
+            return localized_ja(MessageTextId::SchedulePresenterDaysEveryday);
         }
 
         // 曜日をソート
@@ -84,17 +98,17 @@ impl SchedulePresenter {
         sorted_days.sort();
 
         // 曜日を文字列に変換
-        let day_strs: Vec<&str> = sorted_days
+        let day_strs: Vec<String> = sorted_days
             .iter()
             .map(|&day| match day {
-                1 => "月",
-                2 => "火",
-                3 => "水",
-                4 => "木",
-                5 => "金",
-                6 => "土",
-                7 => "日",
-                _ => "?",
+                1 => localized_ja(MessageTextId::SchedulePresenterDaysMonday),
+                2 => localized_ja(MessageTextId::SchedulePresenterDaysTuesday),
+                3 => localized_ja(MessageTextId::SchedulePresenterDaysWednesday),
+                4 => localized_ja(MessageTextId::SchedulePresenterDaysThursday),
+                5 => localized_ja(MessageTextId::SchedulePresenterDaysFriday),
+                6 => localized_ja(MessageTextId::SchedulePresenterDaysSaturday),
+                7 => localized_ja(MessageTextId::SchedulePresenterDaysSunday),
+                _ => localized_ja(MessageTextId::CommonUnknown),
             })
             .collect();
 
@@ -112,18 +126,24 @@ impl SchedulePresenter {
     /// EmbedContent
     pub fn create_schedule_list_embed(schedules: &[ScheduleDisplayInfo]) -> EmbedContent {
         let mut embed = EmbedContent::new()
-            .with_title("📅 定期募集スケジュール一覧")
+            .with_title(localized_ja(MessageTextId::SchedulePresenterListTitle))
             .with_color(0x3498db);
 
         if schedules.is_empty() {
-            embed = embed.with_description("登録されているスケジュールはありません");
+            embed = embed.with_description(localized_ja(
+                MessageTextId::SchedulePresenterListEmptyDescription,
+            ));
         } else {
             for schedule in schedules {
                 let status = if schedule.is_enabled { "⭕" } else { "❌" };
                 let field_name = format!("{} {} (ID:{})", status, schedule.name, schedule.id);
-                let field_value = format!(
-                    "クエスト: {}\n曜日: {} / 時刻: {}",
-                    schedule.quest_name, schedule.days_display, schedule.time_display
+                let field_value = localized_ja_with_params(
+                    MessageTextId::SchedulePresenterListFieldValue,
+                    &[
+                        ("quest_name", schedule.quest_name.clone()),
+                        ("days_display", schedule.days_display.clone()),
+                        ("time_display", schedule.time_display.clone()),
+                    ],
                 );
                 embed = embed.with_field(field_name, field_value, false);
             }
@@ -178,40 +198,33 @@ impl SchedulePresenter {
     ) -> EmbedContent {
         let dismissal_display = info.dismissal_times.as_deref().unwrap_or("-");
         let note_display = info.note.as_deref().unwrap_or("-");
-
-        let description = format!(
-            "**スケジュール名**: {}\n\
-             **スケジュールID**: {}\n\
-             **クエスト**: {} (ID: {})\n\
-             **マルチ攻略方法**: {}\n\
-             **対象曜日**: {} ({}タイムゾーン)\n\
-             **クエスト開始時刻**: {}\n\
-             **募集開始**: {}日前の{}\n\
-             **解散時刻**: {}\n\
-             **備考**: {}\n\
-             **作成者**: <@{}>\n\n\
-             このスケジュールに基づいて、自動的に募集が投稿されます。\n\
-             参加人数はクエストごとの設定を使用します。",
-            info.schedule_name,
-            info.schedule_id,
-            info.quest_name,
-            info.quest_id,
-            info.battle_style_name,
-            info.days_display,
-            info.timezone,
-            info.quest_start_time,
-            info.recruit_start_day_offset,
-            info.recruit_start_time,
-            dismissal_display,
-            note_display,
-            user_id
+        let description = localized_ja_with_params(
+            MessageTextId::SchedulePresenterCreationDescription,
+            &[
+                ("schedule_name", info.schedule_name.clone()),
+                ("schedule_id", info.schedule_id.to_string()),
+                ("quest_name", info.quest_name.clone()),
+                ("quest_id", info.quest_id.to_string()),
+                ("battle_style_name", info.battle_style_name.clone()),
+                ("days_display", info.days_display.clone()),
+                ("timezone", info.timezone.clone()),
+                ("quest_start_time", info.quest_start_time.clone()),
+                (
+                    "recruit_start_day_offset",
+                    info.recruit_start_day_offset.to_string(),
+                ),
+                ("recruit_start_time", info.recruit_start_time.clone()),
+                ("dismissal_display", dismissal_display.to_string()),
+                ("note_display", note_display.to_string()),
+                ("user_id", user_id.to_string()),
+            ],
         );
 
         EmbedContent::new()
-            .with_title("✅ 定期募集スケジュールを作成しました")
+            .with_title(localized_ja(MessageTextId::SchedulePresenterCreationTitle))
             .with_description(description)
             .with_color(0x00ff00)
-            .with_footer("スケジュールが正常に登録されました")
+            .with_footer(localized_ja(MessageTextId::SchedulePresenterCreationFooter))
     }
 
     /// スケジュール削除成功Embedを生成する
@@ -225,8 +238,11 @@ impl SchedulePresenter {
     /// EmbedContent
     pub fn create_schedule_deletion_embed(schedule_name: &str) -> EmbedContent {
         EmbedContent::new()
-            .with_title("🗑️ スケジュールを削除しました")
-            .with_description(format!("「{schedule_name}」を削除しました"))
+            .with_title(localized_ja(MessageTextId::SchedulePresenterDeletionTitle))
+            .with_description(localized_ja_with_params(
+                MessageTextId::SchedulePresenterDeletionDescription,
+                &[("schedule_name", schedule_name.to_string())],
+            ))
             .with_color(0x00ff00)
     }
 
@@ -242,14 +258,29 @@ impl SchedulePresenter {
     /// EmbedContent
     pub fn create_schedule_toggle_embed(schedule_name: &str, is_enabled: bool) -> EmbedContent {
         let (status, color) = if is_enabled {
-            ("有効", 0x00ff00)
+            (
+                localized_ja(MessageTextId::SchedulePresenterToggleStatusEnabled),
+                0x00ff00,
+            )
         } else {
-            ("無効", 0xff0000)
+            (
+                localized_ja(MessageTextId::SchedulePresenterToggleStatusDisabled),
+                0xff0000,
+            )
         };
 
         EmbedContent::new()
-            .with_title(format!("🔄 スケジュールを{status}にしました"))
-            .with_description(format!("「{schedule_name}」が{status}になりました"))
+            .with_title(localized_ja_with_params(
+                MessageTextId::SchedulePresenterToggleTitle,
+                &[("status", status.clone())],
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::SchedulePresenterToggleDescription,
+                &[
+                    ("schedule_name", schedule_name.to_string()),
+                    ("status", status),
+                ],
+            ))
             .with_color(color)
     }
 

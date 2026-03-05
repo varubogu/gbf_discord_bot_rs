@@ -3,15 +3,29 @@
 //! 各種通知メッセージ（マッチング成功、出発通知、解散通知等）の作成を担当する。
 //! Service層からUIビルダー依存を除去するために使用する。
 
+use crate::services::message::MessageTextId;
 use crate::types::discord::{
     ActionRowContent, EmbedContent, MessageContent, SelectMenuContent, SelectMenuOptionContent,
 };
+use rust_i18n::t;
 
 /// 通知表示を担当するPresenter
 ///
 /// マッチング成功通知、出発通知、解散通知等を生成する。
 /// poise/serenity型は使用せず、ドメインモデルを返す。
 pub struct NotificationPresenter;
+
+fn localized_ja(message_id: MessageTextId) -> String {
+    t!(message_id.as_str(), locale = "ja").to_string()
+}
+
+fn localized_ja_with_params(message_id: MessageTextId, params: &[(&str, String)]) -> String {
+    let mut text = localized_ja(message_id);
+    for (key, value) in params {
+        text = text.replace(&format!("{{{{{key}}}}}"), value);
+    }
+    text
+}
 
 impl NotificationPresenter {
     /// マッチング成功通知メッセージを生成する
@@ -43,9 +57,15 @@ impl NotificationPresenter {
         // Embed作成
         let participants_str = participant_mentions.join(", ");
         let embed = EmbedContent::new()
-            .with_title("🎮 マッチング成功！")
-            .with_description(format!(
-                "**日時**: {month}月{day}日 {hour}:00\n\n**参加者**: {participants_str}\n\n以下のクエスト候補から選択してください。"
+            .with_title(localized_ja(MessageTextId::NotificationPresenterMatchTitle))
+            .with_description(localized_ja_with_params(
+                MessageTextId::NotificationPresenterMatchDescription,
+                &[
+                    ("month", month.to_string()),
+                    ("day", day.to_string()),
+                    ("hour", hour.to_string()),
+                    ("participants_str", participants_str),
+                ],
             ))
             .with_color(0x00ff00);
 
@@ -81,9 +101,12 @@ impl NotificationPresenter {
         // Embed作成
         let participants_str = participant_mentions.join(" ");
         let embed = EmbedContent::new()
-            .with_title("🔄 再投票が必要です")
-            .with_description(format!(
-                "同数投票のため、以下のクエストから再度選択してください。\n\n{participants_str}"
+            .with_title(localized_ja(
+                MessageTextId::NotificationPresenterRevoteTitle,
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::NotificationPresenterRevoteDescription,
+                &[("participants_str", participants_str)],
             ))
             .with_color(0xffaa00);
 
@@ -121,9 +144,17 @@ impl NotificationPresenter {
             participants.iter().map(|id| format!("<@{id}>")).collect();
 
         let embed = EmbedContent::new()
-            .with_title("✅ クエストが決定しました！")
-            .with_description(format!(
-                "**クエスト**: {quest_name}\n**日時**: {month}月{day}日 {hour}:00\n\n募集を作成しています..."
+            .with_title(localized_ja(
+                MessageTextId::NotificationPresenterQuestDecidedTitle,
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::NotificationPresenterQuestDecidedDescription,
+                &[
+                    ("quest_name", quest_name.to_string()),
+                    ("month", month.to_string()),
+                    ("day", day.to_string()),
+                    ("hour", hour.to_string()),
+                ],
             ))
             .with_color(0x00aaff);
 
@@ -154,12 +185,16 @@ impl NotificationPresenter {
             .collect();
 
         if include_any {
-            options.push(SelectMenuOptionContent::new("何でも良い", "any"));
+            options.push(SelectMenuOptionContent::new(
+                localized_ja(MessageTextId::NotificationPresenterVoteOptionAny),
+                "any",
+            ));
         }
 
         let custom_id = format!("auto_vote:{matched_id}");
-        let select_menu = SelectMenuContent::string_select(custom_id, options)
-            .with_placeholder("クエストを選択してください");
+        let select_menu = SelectMenuContent::string_select(custom_id, options).with_placeholder(
+            localized_ja(MessageTextId::NotificationPresenterVotePlaceholder),
+        );
 
         ActionRowContent::select_menu(select_menu)
     }
@@ -185,14 +220,20 @@ impl NotificationPresenter {
 
         let (title, description, color) = if is_five_minute_warning {
             (
-                "⏰ まもなく出発！",
-                format!("「{quest_name}」の出発まであと5分です！\n準備はできていますか？"),
+                localized_ja(MessageTextId::NotificationPresenterDepartureFiveMinuteTitle),
+                localized_ja_with_params(
+                    MessageTextId::NotificationPresenterDepartureFiveMinuteDescription,
+                    &[("quest_name", quest_name.to_string())],
+                ),
                 0xffaa00,
             )
         } else {
             (
-                "🚀 出発時刻です！",
-                format!("「{quest_name}」の出発時刻になりました！\nよい狩りを！"),
+                localized_ja(MessageTextId::NotificationPresenterDepartureNowTitle),
+                localized_ja_with_params(
+                    MessageTextId::NotificationPresenterDepartureNowDescription,
+                    &[("quest_name", quest_name.to_string())],
+                ),
                 0x00ff00,
             )
         };
@@ -225,9 +266,12 @@ impl NotificationPresenter {
             participants.iter().map(|id| format!("<@{id}>")).collect();
 
         let embed = EmbedContent::new()
-            .with_title("📢 解散時刻です")
-            .with_description(format!(
-                "「{quest_name}」の解散時刻になりました。\nお疲れ様でした！"
+            .with_title(localized_ja(
+                MessageTextId::NotificationPresenterDissolutionTitle,
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::NotificationPresenterDissolutionDescription,
+                &[("quest_name", quest_name.to_string())],
             ))
             .with_color(0x808080);
 

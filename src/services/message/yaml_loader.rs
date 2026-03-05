@@ -298,6 +298,183 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             .to_string(),
         ),
 
+        // Recruitment presenter messages
+        keys::RECRUITMENT_PRESENTER_PARTICIPANTS_TITLE => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_PARTICIPANTS_FOOTER_COUNT => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_FOOTER_COUNT,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_PARTICIPANTS_JOIN_LABEL => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_JOIN_LABEL,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_ELEMENT_SELECT_PLACEHOLDER => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_ELEMENT_SELECT_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_TITLE => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_DESCRIPTION => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_CONFIRM => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_CONFIRM,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_ABORT => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_ABORT,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_END_REASON_CANCEL => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_END_REASON_CANCEL,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_END_REASON_DEPARTURE => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_END_REASON_DEPARTURE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_END_REASON_DISMISSAL => Some(
+            t!(
+                keys::RECRUITMENT_PRESENTER_END_REASON_DISMISSAL,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::RECRUITMENT_PRESENTER_END_TITLE => {
+            Some(t!(keys::RECRUITMENT_PRESENTER_END_TITLE, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_PRESENTER_END_DESCRIPTION => {
+            Some(t!(keys::RECRUITMENT_PRESENTER_END_DESCRIPTION, locale = locale).to_string())
+        }
+
+        // Notification presenter messages
+        keys::NOTIFICATION_PRESENTER_MATCH_TITLE => {
+            Some(t!(keys::NOTIFICATION_PRESENTER_MATCH_TITLE, locale = locale).to_string())
+        }
+        keys::NOTIFICATION_PRESENTER_MATCH_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_MATCH_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_REVOTE_TITLE => {
+            Some(t!(keys::NOTIFICATION_PRESENTER_REVOTE_TITLE, locale = locale).to_string())
+        }
+        keys::NOTIFICATION_PRESENTER_REVOTE_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_REVOTE_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_VOTE_OPTION_ANY => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_VOTE_OPTION_ANY,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_VOTE_PLACEHOLDER => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_VOTE_PLACEHOLDER,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DISSOLUTION_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DISSOLUTION_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_DISSOLUTION_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_DISSOLUTION_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+
         // Timezone messages
         keys::TIMEZONE_SET_SUCCESS => {
             Some(t!(keys::TIMEZONE_SET_SUCCESS, locale = locale).to_string())
@@ -790,6 +967,88 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         ),
         keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES => {
             Some(t!(keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES, locale = locale).to_string())
+        }
+
+        // Schedule presenter messages
+        keys::SCHEDULE_PRESENTER_DAYS_EVERYDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_EVERYDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_MONDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_MONDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_TUESDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_TUESDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_WEDNESDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_WEDNESDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_THURSDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_THURSDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_FRIDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_FRIDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_SATURDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_SATURDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DAYS_SUNDAY => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DAYS_SUNDAY, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_LIST_TITLE => {
+            Some(t!(keys::SCHEDULE_PRESENTER_LIST_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_LIST_EMPTY_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_PRESENTER_LIST_EMPTY_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_PRESENTER_LIST_FIELD_VALUE => {
+            Some(t!(keys::SCHEDULE_PRESENTER_LIST_FIELD_VALUE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_CREATION_TITLE => {
+            Some(t!(keys::SCHEDULE_PRESENTER_CREATION_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_CREATION_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_PRESENTER_CREATION_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_PRESENTER_CREATION_FOOTER => {
+            Some(t!(keys::SCHEDULE_PRESENTER_CREATION_FOOTER, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DELETION_TITLE => {
+            Some(t!(keys::SCHEDULE_PRESENTER_DELETION_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_DELETION_DESCRIPTION => Some(
+            t!(
+                keys::SCHEDULE_PRESENTER_DELETION_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_ENABLED => Some(
+            t!(
+                keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_ENABLED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_DISABLED => Some(
+            t!(
+                keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_DISABLED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::SCHEDULE_PRESENTER_TOGGLE_TITLE => {
+            Some(t!(keys::SCHEDULE_PRESENTER_TOGGLE_TITLE, locale = locale).to_string())
+        }
+        keys::SCHEDULE_PRESENTER_TOGGLE_DESCRIPTION => {
+            Some(t!(keys::SCHEDULE_PRESENTER_TOGGLE_DESCRIPTION, locale = locale).to_string())
         }
 
         // Recruitment schedule command messages

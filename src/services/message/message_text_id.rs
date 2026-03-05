@@ -120,6 +120,60 @@ pub mod keys {
     pub const RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS: &str =
         "recruitment.notification.dismissal_with_participants";
 
+    // Recruitment presenter messages
+    pub const RECRUITMENT_PRESENTER_PARTICIPANTS_TITLE: &str =
+        "recruitment.presenter.participants.title";
+    pub const RECRUITMENT_PRESENTER_PARTICIPANTS_FOOTER_COUNT: &str =
+        "recruitment.presenter.participants.footer_count";
+    pub const RECRUITMENT_PRESENTER_PARTICIPANTS_JOIN_LABEL: &str =
+        "recruitment.presenter.participants.join_label";
+    pub const RECRUITMENT_PRESENTER_ELEMENT_SELECT_PLACEHOLDER: &str =
+        "recruitment.presenter.element_select.placeholder";
+    pub const RECRUITMENT_PRESENTER_CANCEL_CONFIRM_TITLE: &str =
+        "recruitment.presenter.cancel_confirm.title";
+    pub const RECRUITMENT_PRESENTER_CANCEL_CONFIRM_DESCRIPTION: &str =
+        "recruitment.presenter.cancel_confirm.description";
+    pub const RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_CONFIRM: &str =
+        "recruitment.presenter.cancel_confirm.button_confirm";
+    pub const RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_ABORT: &str =
+        "recruitment.presenter.cancel_confirm.button_abort";
+    pub const RECRUITMENT_PRESENTER_END_REASON_CANCEL: &str =
+        "recruitment.presenter.end_reason.cancel";
+    pub const RECRUITMENT_PRESENTER_END_REASON_DEPARTURE: &str =
+        "recruitment.presenter.end_reason.departure";
+    pub const RECRUITMENT_PRESENTER_END_REASON_DISMISSAL: &str =
+        "recruitment.presenter.end_reason.dismissal";
+    pub const RECRUITMENT_PRESENTER_END_TITLE: &str = "recruitment.presenter.end.title";
+    pub const RECRUITMENT_PRESENTER_END_DESCRIPTION: &str = "recruitment.presenter.end.description";
+
+    // Notification presenter messages
+    pub const NOTIFICATION_PRESENTER_MATCH_TITLE: &str = "notification.presenter.match.title";
+    pub const NOTIFICATION_PRESENTER_MATCH_DESCRIPTION: &str =
+        "notification.presenter.match.description";
+    pub const NOTIFICATION_PRESENTER_REVOTE_TITLE: &str = "notification.presenter.revote.title";
+    pub const NOTIFICATION_PRESENTER_REVOTE_DESCRIPTION: &str =
+        "notification.presenter.revote.description";
+    pub const NOTIFICATION_PRESENTER_QUEST_DECIDED_TITLE: &str =
+        "notification.presenter.quest_decided.title";
+    pub const NOTIFICATION_PRESENTER_QUEST_DECIDED_DESCRIPTION: &str =
+        "notification.presenter.quest_decided.description";
+    pub const NOTIFICATION_PRESENTER_VOTE_OPTION_ANY: &str =
+        "notification.presenter.vote.option_any";
+    pub const NOTIFICATION_PRESENTER_VOTE_PLACEHOLDER: &str =
+        "notification.presenter.vote.placeholder";
+    pub const NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_TITLE: &str =
+        "notification.presenter.departure.five_minute.title";
+    pub const NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_DESCRIPTION: &str =
+        "notification.presenter.departure.five_minute.description";
+    pub const NOTIFICATION_PRESENTER_DEPARTURE_NOW_TITLE: &str =
+        "notification.presenter.departure.now.title";
+    pub const NOTIFICATION_PRESENTER_DEPARTURE_NOW_DESCRIPTION: &str =
+        "notification.presenter.departure.now.description";
+    pub const NOTIFICATION_PRESENTER_DISSOLUTION_TITLE: &str =
+        "notification.presenter.dissolution.title";
+    pub const NOTIFICATION_PRESENTER_DISSOLUTION_DESCRIPTION: &str =
+        "notification.presenter.dissolution.description";
+
     // Timezone messages (deprecated - use GuildSettings instead)
     pub const TIMEZONE_SET_SUCCESS: &str = "timezone.set_success";
     pub const TIMEZONE_SHOW_CURRENT: &str = "timezone.show_current";
@@ -243,6 +297,33 @@ pub mod keys {
     pub const SCHEDULE_COMMAND_STATS_MESSAGE_TYPE_HEADER: &str =
         "schedule.command.stats.message_type_header";
     pub const SCHEDULE_COMMAND_STATS_OTHER_TYPES: &str = "schedule.command.stats.other_types";
+
+    // Schedule presenter messages
+    pub const SCHEDULE_PRESENTER_DAYS_EVERYDAY: &str = "schedule.presenter.days.everyday";
+    pub const SCHEDULE_PRESENTER_DAYS_MONDAY: &str = "schedule.presenter.days.monday";
+    pub const SCHEDULE_PRESENTER_DAYS_TUESDAY: &str = "schedule.presenter.days.tuesday";
+    pub const SCHEDULE_PRESENTER_DAYS_WEDNESDAY: &str = "schedule.presenter.days.wednesday";
+    pub const SCHEDULE_PRESENTER_DAYS_THURSDAY: &str = "schedule.presenter.days.thursday";
+    pub const SCHEDULE_PRESENTER_DAYS_FRIDAY: &str = "schedule.presenter.days.friday";
+    pub const SCHEDULE_PRESENTER_DAYS_SATURDAY: &str = "schedule.presenter.days.saturday";
+    pub const SCHEDULE_PRESENTER_DAYS_SUNDAY: &str = "schedule.presenter.days.sunday";
+    pub const SCHEDULE_PRESENTER_LIST_TITLE: &str = "schedule.presenter.list.title";
+    pub const SCHEDULE_PRESENTER_LIST_EMPTY_DESCRIPTION: &str =
+        "schedule.presenter.list.empty_description";
+    pub const SCHEDULE_PRESENTER_LIST_FIELD_VALUE: &str = "schedule.presenter.list.field_value";
+    pub const SCHEDULE_PRESENTER_CREATION_TITLE: &str = "schedule.presenter.creation.title";
+    pub const SCHEDULE_PRESENTER_CREATION_DESCRIPTION: &str =
+        "schedule.presenter.creation.description";
+    pub const SCHEDULE_PRESENTER_CREATION_FOOTER: &str = "schedule.presenter.creation.footer";
+    pub const SCHEDULE_PRESENTER_DELETION_TITLE: &str = "schedule.presenter.deletion.title";
+    pub const SCHEDULE_PRESENTER_DELETION_DESCRIPTION: &str =
+        "schedule.presenter.deletion.description";
+    pub const SCHEDULE_PRESENTER_TOGGLE_STATUS_ENABLED: &str =
+        "schedule.presenter.toggle.status_enabled";
+    pub const SCHEDULE_PRESENTER_TOGGLE_STATUS_DISABLED: &str =
+        "schedule.presenter.toggle.status_disabled";
+    pub const SCHEDULE_PRESENTER_TOGGLE_TITLE: &str = "schedule.presenter.toggle.title";
+    pub const SCHEDULE_PRESENTER_TOGGLE_DESCRIPTION: &str = "schedule.presenter.toggle.description";
 
     // Recruitment schedule command messages
     pub const RECRUITMENT_SCHEDULE_LIST_EMPTY_ALL: &str = "recruitment.schedule.list.empty_all";
@@ -499,6 +580,37 @@ pub enum MessageTextId {
     RecruitmentNotificationDismissal,
     RecruitmentNotificationDismissalWithParticipants,
 
+    // Recruitment presenter messages
+    RecruitmentPresenterParticipantsTitle,
+    RecruitmentPresenterParticipantsFooterCount,
+    RecruitmentPresenterParticipantsJoinLabel,
+    RecruitmentPresenterElementSelectPlaceholder,
+    RecruitmentPresenterCancelConfirmTitle,
+    RecruitmentPresenterCancelConfirmDescription,
+    RecruitmentPresenterCancelConfirmButtonConfirm,
+    RecruitmentPresenterCancelConfirmButtonAbort,
+    RecruitmentPresenterEndReasonCancel,
+    RecruitmentPresenterEndReasonDeparture,
+    RecruitmentPresenterEndReasonDismissal,
+    RecruitmentPresenterEndTitle,
+    RecruitmentPresenterEndDescription,
+
+    // Notification presenter messages
+    NotificationPresenterMatchTitle,
+    NotificationPresenterMatchDescription,
+    NotificationPresenterRevoteTitle,
+    NotificationPresenterRevoteDescription,
+    NotificationPresenterQuestDecidedTitle,
+    NotificationPresenterQuestDecidedDescription,
+    NotificationPresenterVoteOptionAny,
+    NotificationPresenterVotePlaceholder,
+    NotificationPresenterDepartureFiveMinuteTitle,
+    NotificationPresenterDepartureFiveMinuteDescription,
+    NotificationPresenterDepartureNowTitle,
+    NotificationPresenterDepartureNowDescription,
+    NotificationPresenterDissolutionTitle,
+    NotificationPresenterDissolutionDescription,
+
     // Timezone messages (deprecated - use GuildSettings instead)
     TimezoneSetSuccess,
     TimezoneShowCurrent,
@@ -584,6 +696,28 @@ pub enum MessageTextId {
     ScheduleCommandStatsDescriptionHeader,
     ScheduleCommandStatsMessageTypeHeader,
     ScheduleCommandStatsOtherTypes,
+
+    // Schedule presenter messages
+    SchedulePresenterDaysEveryday,
+    SchedulePresenterDaysMonday,
+    SchedulePresenterDaysTuesday,
+    SchedulePresenterDaysWednesday,
+    SchedulePresenterDaysThursday,
+    SchedulePresenterDaysFriday,
+    SchedulePresenterDaysSaturday,
+    SchedulePresenterDaysSunday,
+    SchedulePresenterListTitle,
+    SchedulePresenterListEmptyDescription,
+    SchedulePresenterListFieldValue,
+    SchedulePresenterCreationTitle,
+    SchedulePresenterCreationDescription,
+    SchedulePresenterCreationFooter,
+    SchedulePresenterDeletionTitle,
+    SchedulePresenterDeletionDescription,
+    SchedulePresenterToggleStatusEnabled,
+    SchedulePresenterToggleStatusDisabled,
+    SchedulePresenterToggleTitle,
+    SchedulePresenterToggleDescription,
 
     // Recruitment schedule command messages
     RecruitmentScheduleListEmptyAll,
@@ -845,6 +979,89 @@ impl MessageTextId {
                 keys::RECRUITMENT_NOTIFICATION_DISMISSAL_WITH_PARTICIPANTS
             }
 
+            // Recruitment presenter
+            MessageTextId::RecruitmentPresenterParticipantsTitle => {
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_TITLE
+            }
+            MessageTextId::RecruitmentPresenterParticipantsFooterCount => {
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_FOOTER_COUNT
+            }
+            MessageTextId::RecruitmentPresenterParticipantsJoinLabel => {
+                keys::RECRUITMENT_PRESENTER_PARTICIPANTS_JOIN_LABEL
+            }
+            MessageTextId::RecruitmentPresenterElementSelectPlaceholder => {
+                keys::RECRUITMENT_PRESENTER_ELEMENT_SELECT_PLACEHOLDER
+            }
+            MessageTextId::RecruitmentPresenterCancelConfirmTitle => {
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_TITLE
+            }
+            MessageTextId::RecruitmentPresenterCancelConfirmDescription => {
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_DESCRIPTION
+            }
+            MessageTextId::RecruitmentPresenterCancelConfirmButtonConfirm => {
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_CONFIRM
+            }
+            MessageTextId::RecruitmentPresenterCancelConfirmButtonAbort => {
+                keys::RECRUITMENT_PRESENTER_CANCEL_CONFIRM_BUTTON_ABORT
+            }
+            MessageTextId::RecruitmentPresenterEndReasonCancel => {
+                keys::RECRUITMENT_PRESENTER_END_REASON_CANCEL
+            }
+            MessageTextId::RecruitmentPresenterEndReasonDeparture => {
+                keys::RECRUITMENT_PRESENTER_END_REASON_DEPARTURE
+            }
+            MessageTextId::RecruitmentPresenterEndReasonDismissal => {
+                keys::RECRUITMENT_PRESENTER_END_REASON_DISMISSAL
+            }
+            MessageTextId::RecruitmentPresenterEndTitle => keys::RECRUITMENT_PRESENTER_END_TITLE,
+            MessageTextId::RecruitmentPresenterEndDescription => {
+                keys::RECRUITMENT_PRESENTER_END_DESCRIPTION
+            }
+
+            // Notification presenter
+            MessageTextId::NotificationPresenterMatchTitle => {
+                keys::NOTIFICATION_PRESENTER_MATCH_TITLE
+            }
+            MessageTextId::NotificationPresenterMatchDescription => {
+                keys::NOTIFICATION_PRESENTER_MATCH_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterRevoteTitle => {
+                keys::NOTIFICATION_PRESENTER_REVOTE_TITLE
+            }
+            MessageTextId::NotificationPresenterRevoteDescription => {
+                keys::NOTIFICATION_PRESENTER_REVOTE_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterQuestDecidedTitle => {
+                keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_TITLE
+            }
+            MessageTextId::NotificationPresenterQuestDecidedDescription => {
+                keys::NOTIFICATION_PRESENTER_QUEST_DECIDED_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterVoteOptionAny => {
+                keys::NOTIFICATION_PRESENTER_VOTE_OPTION_ANY
+            }
+            MessageTextId::NotificationPresenterVotePlaceholder => {
+                keys::NOTIFICATION_PRESENTER_VOTE_PLACEHOLDER
+            }
+            MessageTextId::NotificationPresenterDepartureFiveMinuteTitle => {
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_TITLE
+            }
+            MessageTextId::NotificationPresenterDepartureFiveMinuteDescription => {
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_FIVE_MINUTE_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterDepartureNowTitle => {
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_TITLE
+            }
+            MessageTextId::NotificationPresenterDepartureNowDescription => {
+                keys::NOTIFICATION_PRESENTER_DEPARTURE_NOW_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterDissolutionTitle => {
+                keys::NOTIFICATION_PRESENTER_DISSOLUTION_TITLE
+            }
+            MessageTextId::NotificationPresenterDissolutionDescription => {
+                keys::NOTIFICATION_PRESENTER_DISSOLUTION_DESCRIPTION
+            }
+
             // Timezone
             MessageTextId::TimezoneSetSuccess => keys::TIMEZONE_SET_SUCCESS,
             MessageTextId::TimezoneShowCurrent => keys::TIMEZONE_SHOW_CURRENT,
@@ -1023,6 +1240,50 @@ impl MessageTextId {
             }
             MessageTextId::ScheduleCommandStatsOtherTypes => {
                 keys::SCHEDULE_COMMAND_STATS_OTHER_TYPES
+            }
+
+            // Schedule presenter
+            MessageTextId::SchedulePresenterDaysEveryday => keys::SCHEDULE_PRESENTER_DAYS_EVERYDAY,
+            MessageTextId::SchedulePresenterDaysMonday => keys::SCHEDULE_PRESENTER_DAYS_MONDAY,
+            MessageTextId::SchedulePresenterDaysTuesday => keys::SCHEDULE_PRESENTER_DAYS_TUESDAY,
+            MessageTextId::SchedulePresenterDaysWednesday => {
+                keys::SCHEDULE_PRESENTER_DAYS_WEDNESDAY
+            }
+            MessageTextId::SchedulePresenterDaysThursday => keys::SCHEDULE_PRESENTER_DAYS_THURSDAY,
+            MessageTextId::SchedulePresenterDaysFriday => keys::SCHEDULE_PRESENTER_DAYS_FRIDAY,
+            MessageTextId::SchedulePresenterDaysSaturday => keys::SCHEDULE_PRESENTER_DAYS_SATURDAY,
+            MessageTextId::SchedulePresenterDaysSunday => keys::SCHEDULE_PRESENTER_DAYS_SUNDAY,
+            MessageTextId::SchedulePresenterListTitle => keys::SCHEDULE_PRESENTER_LIST_TITLE,
+            MessageTextId::SchedulePresenterListEmptyDescription => {
+                keys::SCHEDULE_PRESENTER_LIST_EMPTY_DESCRIPTION
+            }
+            MessageTextId::SchedulePresenterListFieldValue => {
+                keys::SCHEDULE_PRESENTER_LIST_FIELD_VALUE
+            }
+            MessageTextId::SchedulePresenterCreationTitle => {
+                keys::SCHEDULE_PRESENTER_CREATION_TITLE
+            }
+            MessageTextId::SchedulePresenterCreationDescription => {
+                keys::SCHEDULE_PRESENTER_CREATION_DESCRIPTION
+            }
+            MessageTextId::SchedulePresenterCreationFooter => {
+                keys::SCHEDULE_PRESENTER_CREATION_FOOTER
+            }
+            MessageTextId::SchedulePresenterDeletionTitle => {
+                keys::SCHEDULE_PRESENTER_DELETION_TITLE
+            }
+            MessageTextId::SchedulePresenterDeletionDescription => {
+                keys::SCHEDULE_PRESENTER_DELETION_DESCRIPTION
+            }
+            MessageTextId::SchedulePresenterToggleStatusEnabled => {
+                keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_ENABLED
+            }
+            MessageTextId::SchedulePresenterToggleStatusDisabled => {
+                keys::SCHEDULE_PRESENTER_TOGGLE_STATUS_DISABLED
+            }
+            MessageTextId::SchedulePresenterToggleTitle => keys::SCHEDULE_PRESENTER_TOGGLE_TITLE,
+            MessageTextId::SchedulePresenterToggleDescription => {
+                keys::SCHEDULE_PRESENTER_TOGGLE_DESCRIPTION
             }
 
             // Recruitment schedule command
@@ -1570,6 +1831,33 @@ mod tests {
             MessageTextId::RecruitmentNotificationStart,
             MessageTextId::RecruitmentNotificationDismissal,
             MessageTextId::RecruitmentNotificationDismissalWithParticipants,
+            MessageTextId::RecruitmentPresenterParticipantsTitle,
+            MessageTextId::RecruitmentPresenterParticipantsFooterCount,
+            MessageTextId::RecruitmentPresenterParticipantsJoinLabel,
+            MessageTextId::RecruitmentPresenterElementSelectPlaceholder,
+            MessageTextId::RecruitmentPresenterCancelConfirmTitle,
+            MessageTextId::RecruitmentPresenterCancelConfirmDescription,
+            MessageTextId::RecruitmentPresenterCancelConfirmButtonConfirm,
+            MessageTextId::RecruitmentPresenterCancelConfirmButtonAbort,
+            MessageTextId::RecruitmentPresenterEndReasonCancel,
+            MessageTextId::RecruitmentPresenterEndReasonDeparture,
+            MessageTextId::RecruitmentPresenterEndReasonDismissal,
+            MessageTextId::RecruitmentPresenterEndTitle,
+            MessageTextId::RecruitmentPresenterEndDescription,
+            MessageTextId::NotificationPresenterMatchTitle,
+            MessageTextId::NotificationPresenterMatchDescription,
+            MessageTextId::NotificationPresenterRevoteTitle,
+            MessageTextId::NotificationPresenterRevoteDescription,
+            MessageTextId::NotificationPresenterQuestDecidedTitle,
+            MessageTextId::NotificationPresenterQuestDecidedDescription,
+            MessageTextId::NotificationPresenterVoteOptionAny,
+            MessageTextId::NotificationPresenterVotePlaceholder,
+            MessageTextId::NotificationPresenterDepartureFiveMinuteTitle,
+            MessageTextId::NotificationPresenterDepartureFiveMinuteDescription,
+            MessageTextId::NotificationPresenterDepartureNowTitle,
+            MessageTextId::NotificationPresenterDepartureNowDescription,
+            MessageTextId::NotificationPresenterDissolutionTitle,
+            MessageTextId::NotificationPresenterDissolutionDescription,
             MessageTextId::TimezoneSetSuccess,
             MessageTextId::TimezoneShowCurrent,
             MessageTextId::GuildSettingsSetSuccess,
@@ -1662,6 +1950,26 @@ mod tests {
             MessageTextId::ScheduleCommandStatsDescriptionHeader,
             MessageTextId::ScheduleCommandStatsMessageTypeHeader,
             MessageTextId::ScheduleCommandStatsOtherTypes,
+            MessageTextId::SchedulePresenterDaysEveryday,
+            MessageTextId::SchedulePresenterDaysMonday,
+            MessageTextId::SchedulePresenterDaysTuesday,
+            MessageTextId::SchedulePresenterDaysWednesday,
+            MessageTextId::SchedulePresenterDaysThursday,
+            MessageTextId::SchedulePresenterDaysFriday,
+            MessageTextId::SchedulePresenterDaysSaturday,
+            MessageTextId::SchedulePresenterDaysSunday,
+            MessageTextId::SchedulePresenterListTitle,
+            MessageTextId::SchedulePresenterListEmptyDescription,
+            MessageTextId::SchedulePresenterListFieldValue,
+            MessageTextId::SchedulePresenterCreationTitle,
+            MessageTextId::SchedulePresenterCreationDescription,
+            MessageTextId::SchedulePresenterCreationFooter,
+            MessageTextId::SchedulePresenterDeletionTitle,
+            MessageTextId::SchedulePresenterDeletionDescription,
+            MessageTextId::SchedulePresenterToggleStatusEnabled,
+            MessageTextId::SchedulePresenterToggleStatusDisabled,
+            MessageTextId::SchedulePresenterToggleTitle,
+            MessageTextId::SchedulePresenterToggleDescription,
             MessageTextId::RecruitmentScheduleListEmptyAll,
             MessageTextId::RecruitmentScheduleListEmptySelf,
             MessageTextId::RecruitmentScheduleListTitleAll,

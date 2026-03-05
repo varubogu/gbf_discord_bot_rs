@@ -4,17 +4,31 @@
 //! Service層からUIビルダー依存を除去するために使用する。
 
 use crate::services::guild_environment_service::ElementEmojis;
+use crate::services::message::MessageTextId;
 use crate::types::discord::{
     ActionRowContent, ButtonContent, ButtonStyleType, EmbedContent, SelectMenuContent,
     SelectMenuOptionContent,
 };
 use crate::types::{ALL_ELEMENTS_EMOJI, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
+use rust_i18n::t;
 
 /// 募集表示を担当するPresenter
 ///
 /// 募集関連のEmbed、ボタン、セレクトメニューを生成する。
 /// poise/serenity型は使用せず、ドメインモデルを返す。
 pub struct RecruitmentPresenter;
+
+fn localized_ja(message_id: MessageTextId) -> String {
+    t!(message_id.as_str(), locale = "ja").to_string()
+}
+
+fn localized_ja_with_params(message_id: MessageTextId, params: &[(&str, String)]) -> String {
+    let mut text = localized_ja(message_id);
+    for (key, value) in params {
+        text = text.replace(&format!("{{{{{key}}}}}"), value);
+    }
+    text
+}
 
 impl RecruitmentPresenter {
     /// 参加者一覧Embedを生成する
@@ -32,12 +46,18 @@ impl RecruitmentPresenter {
         participant_count: Option<usize>,
     ) -> EmbedContent {
         let mut embed = EmbedContent::new()
-            .with_title("参加者一覧")
+            .with_title(localized_ja(
+                MessageTextId::RecruitmentPresenterParticipantsTitle,
+            ))
             .with_description(participants_text)
             .with_color(0x0099ff);
 
         if let Some(count) = participant_count {
-            embed = embed.with_footer(format!("参加者数: {count}人"));
+            let footer = localized_ja_with_params(
+                MessageTextId::RecruitmentPresenterParticipantsFooterCount,
+                &[("count", count.to_string())],
+            );
+            embed = embed.with_footer(footer);
         }
 
         embed
@@ -59,16 +79,22 @@ impl RecruitmentPresenter {
         battle_style_name: &str,
         element_emojis: &ElementEmojis,
     ) -> String {
+        let no_participants = localized_ja(MessageTextId::RecruitmentDisplayNoParticipants);
+        let all_elements = localized_ja(MessageTextId::RecruitmentDisplayAllElements);
+        let join_label = localized_ja(MessageTextId::RecruitmentPresenterParticipantsJoinLabel);
+
         if battle_style_name == "6属性" {
             let mut text = String::new();
             let emojis_array = element_emojis.as_array();
             for (emoji, name) in emojis_array.iter().zip(ELEMENT_NAMES.iter()) {
-                text.push_str(&format!("{emoji} {name}: なし\n"));
+                text.push_str(&format!("{emoji} {name}: {no_participants}\n"));
             }
-            text.push_str(&format!("{ALL_ELEMENTS_EMOJI} 全属性可能: なし\n"));
+            text.push_str(&format!(
+                "{ALL_ELEMENTS_EMOJI} {all_elements}: {no_participants}\n"
+            ));
             text
         } else {
-            format!("{SIMPLE_JOIN_EMOJI} 参加: なし\n")
+            format!("{SIMPLE_JOIN_EMOJI} {join_label}: {no_participants}\n")
         }
     }
 
@@ -107,13 +133,19 @@ impl RecruitmentPresenter {
         }
 
         // 全属性可能ボタン
-        let all_elements_button =
-            ButtonContent::new("recruit_join_0", format!("{ALL_ELEMENTS_EMOJI} 全属性可能"))
-                .with_style(ButtonStyleType::Success);
+        let all_elements = localized_ja(MessageTextId::RecruitmentDisplayAllElements);
+        let all_elements_button = ButtonContent::new(
+            "recruit_join_0",
+            format!("{ALL_ELEMENTS_EMOJI} {all_elements}"),
+        )
+        .with_style(ButtonStyleType::Success);
 
         // 全て取り消しボタン
-        let leave_all_button = ButtonContent::new("recruit_leave_all", "❌ 全て取り消し")
-            .with_style(ButtonStyleType::Danger);
+        let leave_all_button = ButtonContent::new(
+            "recruit_leave_all",
+            localized_ja(MessageTextId::RecruitmentDisplayLeaveAllButton),
+        )
+        .with_style(ButtonStyleType::Danger);
 
         // 行1: 属性1-3
         let row1 = ActionRowContent::buttons(element_buttons[0..3].to_vec());
@@ -127,11 +159,16 @@ impl RecruitmentPresenter {
 
     /// シンプル参加用ボタンを生成する
     fn create_simple_buttons() -> Vec<ActionRowContent> {
-        let join_button = ButtonContent::new("recruit_join", format!("{SIMPLE_JOIN_EMOJI} 参加"))
-            .with_style(ButtonStyleType::Success);
+        let join_label = localized_ja(MessageTextId::RecruitmentPresenterParticipantsJoinLabel);
+        let join_button =
+            ButtonContent::new("recruit_join", format!("{SIMPLE_JOIN_EMOJI} {join_label}"))
+                .with_style(ButtonStyleType::Success);
 
-        let leave_all_button = ButtonContent::new("recruit_leave_all", "❌ 全て取り消し")
-            .with_style(ButtonStyleType::Danger);
+        let leave_all_button = ButtonContent::new(
+            "recruit_leave_all",
+            localized_ja(MessageTextId::RecruitmentDisplayLeaveAllButton),
+        )
+        .with_style(ButtonStyleType::Danger);
 
         let row = ActionRowContent::buttons(vec![join_button, leave_all_button]);
         vec![row]
@@ -159,7 +196,9 @@ impl RecruitmentPresenter {
         }
 
         let menu = SelectMenuContent::string_select("recruit_select_elements", options)
-            .with_placeholder("複数の属性を選択する")
+            .with_placeholder(localized_ja(
+                MessageTextId::RecruitmentPresenterElementSelectPlaceholder,
+            ))
             .with_min_values(1)
             .with_max_values(6);
 
@@ -208,9 +247,12 @@ impl RecruitmentPresenter {
     /// EmbedContent
     pub fn create_cancel_confirmation_embed(quest_name: &str) -> EmbedContent {
         EmbedContent::new()
-            .with_title("キャンセル確認")
-            .with_description(format!(
-                "「{quest_name}」の募集をキャンセルしますか？\nこの操作は取り消せません。"
+            .with_title(localized_ja(
+                MessageTextId::RecruitmentPresenterCancelConfirmTitle,
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::RecruitmentPresenterCancelConfirmDescription,
+                &[("quest_name", quest_name.to_string())],
             ))
             .with_color(0xff0000)
     }
@@ -225,12 +267,17 @@ impl RecruitmentPresenter {
     ///
     /// ActionRowContent
     pub fn create_cancel_confirmation_buttons(recruitment_id: i64) -> ActionRowContent {
-        let confirm_button =
-            ButtonContent::new(format!("confirm_cancel_{recruitment_id}"), "キャンセルする")
-                .with_style(ButtonStyleType::Danger);
+        let confirm_button = ButtonContent::new(
+            format!("confirm_cancel_{recruitment_id}"),
+            localized_ja(MessageTextId::RecruitmentPresenterCancelConfirmButtonConfirm),
+        )
+        .with_style(ButtonStyleType::Danger);
 
-        let abort_button = ButtonContent::new(format!("abort_cancel_{recruitment_id}"), "やめる")
-            .with_style(ButtonStyleType::Secondary);
+        let abort_button = ButtonContent::new(
+            format!("abort_cancel_{recruitment_id}"),
+            localized_ja(MessageTextId::RecruitmentPresenterCancelConfirmButtonAbort),
+        )
+        .with_style(ButtonStyleType::Secondary);
 
         ActionRowContent::buttons(vec![confirm_button, abort_button])
     }
@@ -246,16 +293,40 @@ impl RecruitmentPresenter {
     ///
     /// EmbedContent
     pub fn create_recruitment_ended_embed(quest_name: &str, reason: &str) -> EmbedContent {
-        let color = match reason {
-            "キャンセル" => 0xff0000,
-            "出発" => 0x00ff00,
-            "解散" => 0x808080,
-            _ => 0x808080,
+        let cancel_reason = localized_ja(MessageTextId::RecruitmentPresenterEndReasonCancel);
+        let departure_reason = localized_ja(MessageTextId::RecruitmentPresenterEndReasonDeparture);
+        let dismissal_reason = localized_ja(MessageTextId::RecruitmentPresenterEndReasonDismissal);
+
+        let normalized_reason = if reason == cancel_reason {
+            cancel_reason.clone()
+        } else if reason == departure_reason {
+            departure_reason.clone()
+        } else if reason == dismissal_reason {
+            dismissal_reason.clone()
+        } else {
+            reason.to_string()
+        };
+
+        let color = if normalized_reason == cancel_reason {
+            0xff0000
+        } else if normalized_reason == departure_reason {
+            0x00ff00
+        } else {
+            0x808080
         };
 
         EmbedContent::new()
-            .with_title(format!("募集{reason}"))
-            .with_description(format!("「{quest_name}」の募集は{reason}しました"))
+            .with_title(localized_ja_with_params(
+                MessageTextId::RecruitmentPresenterEndTitle,
+                &[("reason", normalized_reason.clone())],
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::RecruitmentPresenterEndDescription,
+                &[
+                    ("quest_name", quest_name.to_string()),
+                    ("reason", normalized_reason),
+                ],
+            ))
             .with_color(color)
     }
 }
