@@ -211,6 +211,14 @@ impl EnvValidator {
             }),
         ));
 
+        // GUILD_SPREADSHEET_TEMPLATE_URL
+        results.push(Self::check_env_var(
+            "GUILD_SPREADSHEET_TEMPLATE_URL",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            Some(Self::validate_google_spreadsheet_template_url),
+        ));
+
         results
     }
 
@@ -241,6 +249,24 @@ impl EnvValidator {
         ));
 
         results
+    }
+
+    /// ギルドスプレッドシートテンプレートURLの妥当性を検証
+    fn validate_google_spreadsheet_template_url(value: &str) -> Result<(), String> {
+        let trimmed = value.trim();
+
+        if !trimmed.starts_with("https://docs.google.com/spreadsheets/") {
+            return Err("有効なGoogleスプレッドシートURLを指定してください".to_string());
+        }
+
+        if !trimmed.contains("/d/") {
+            return Err(
+                "GoogleスプレッドシートURLは /spreadsheets/d/{id} 形式で指定してください"
+                    .to_string(),
+            );
+        }
+
+        Ok(())
     }
 
     /// ファイル存在・内容をチェック
@@ -685,6 +711,54 @@ mod tests {
         assert_eq!(result.status, ValidationStatus::Warning);
         assert_eq!(result.item_name, "TEST_OPTIONAL_VAR");
         assert!(result.message.is_some());
+    }
+
+    #[test]
+    fn test_validate_google_spreadsheet_template_url_valid() {
+        let result = EnvValidator::validate_google_spreadsheet_template_url(
+            "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_google_spreadsheet_template_url_invalid_domain() {
+        let result = EnvValidator::validate_google_spreadsheet_template_url(
+            "https://example.com/spreadsheets/d/abc/copy",
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_google_spreadsheet_template_url_missing_id_segment() {
+        let result = EnvValidator::validate_google_spreadsheet_template_url(
+            "https://docs.google.com/spreadsheets/u/0/",
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_check_required_vars_includes_guild_spreadsheet_template_url() {
+        let required_results = EnvValidator::check_required_vars();
+        let template_url_result = required_results
+            .iter()
+            .find(|result| result.item_name == "GUILD_SPREADSHEET_TEMPLATE_URL");
+
+        assert!(template_url_result.is_some());
+        assert_eq!(
+            template_url_result.unwrap().category,
+            ValidationCategory::RequiredEnvVar
+        );
+    }
+
+    #[test]
+    fn test_check_optional_vars_excludes_guild_spreadsheet_template_url() {
+        let optional_results = EnvValidator::check_optional_vars();
+        let template_url_result = optional_results
+            .iter()
+            .find(|result| result.item_name == "GUILD_SPREADSHEET_TEMPLATE_URL");
+
+        assert!(template_url_result.is_none());
     }
 
     #[tokio::test]

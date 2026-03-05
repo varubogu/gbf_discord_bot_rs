@@ -31,6 +31,7 @@ pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::recruit::recruitment_schedule_delete::recruitment_schedule_delete(),
         slash::recruit::recruitment_schedule_toggle::recruitment_schedule_toggle(),
         slash::util::help::help(),
+        slash::util::init_message::init_message(),
         slash::util::environ_load::environ_load(),
         slash::gspread::gspread_load::gspread_load(),
         slash::gspread::gspread_push::gspread_push(),

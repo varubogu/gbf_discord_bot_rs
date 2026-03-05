@@ -296,6 +296,9 @@ kosenjo.team_ability_2:
 messages.help:
   en: "Use `/help` to see available commands"
   ja: "`/help`を使用して利用可能なコマンドを確認してください"
+messages.init_guide:
+  en: "🛠️ **Bot Initial Setup Guide**\n\n1. Copy the guild spreadsheet template\n  - Template URL: <{{template_url}}>\n  - Open the URL above and create a copy for your guild.\n\n2. Grant edit permission to the bot service account\n  - Share target: `{{service_account_email}}`\n  - Set permission to **Editor**.\n\n3. Register the guild spreadsheet\n  - Run `/gspread_register load_spreadsheet_url:<copied_url> push_spreadsheet_url:<copied_url>`\n\n4. Load spreadsheet data\n  - Run `/gspread_load`\n\n5. Configure notification channels\n  - Register required channels with `/channel_register`\n  - Check current settings with `/channel_show`\n\nYou can show this guide again with `/init_message`."
+  ja: "🛠️ **Bot初期設定ガイド**\n\n1. ギルド用スプレッドシートをコピー\n  - テンプレートURL: <{{template_url}}>\n  - 上記URLを開き、ギルド用にコピーしてください。\n\n2. Botサービスアカウントへ編集権限を付与\n  - 共有先: `{{service_account_email}}`\n  - 権限は「編集者」にしてください。\n\n3. スプレッドシートを登録\n  - `/gspread_register load_spreadsheet_url:<コピーしたURL> push_spreadsheet_url:<コピーしたURL>` を実行\n\n4. スプレッドシートを読み込み\n  - `/gspread_load` を実行\n\n5. 通知先チャンネルを設定\n  - `/channel_register` で必要な通知先を登録\n  - 現在の設定は `/channel_show` で確認\n\nこの案内は `/init_message` で再表示できます。"
 messages.welcome:
   en: "Welcome to the GBF Discord Bot!"
   ja: "GBF Discord Botへようこそ！"

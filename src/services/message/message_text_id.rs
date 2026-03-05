@@ -168,6 +168,7 @@ pub mod keys {
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
     pub const MESSAGES_HELP: &str = "messages.help";
+    pub const MESSAGES_INIT_GUIDE: &str = "messages.init_guide";
 
     // Auto recruitment messages
     pub const AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED: &str =
@@ -534,6 +535,7 @@ pub enum MessageTextId {
     // General messages
     MessagesWelcome,
     MessagesHelp,
+    MessagesInitGuide,
 
     // Auto recruitment messages
     AutoRecruitmentChannelCreateFailed,
@@ -913,6 +915,7 @@ impl MessageTextId {
             // Messages
             MessageTextId::MessagesWelcome => keys::MESSAGES_WELCOME,
             MessageTextId::MessagesHelp => keys::MESSAGES_HELP,
+            MessageTextId::MessagesInitGuide => keys::MESSAGES_INIT_GUIDE,
 
             // Auto recruitment
             MessageTextId::AutoRecruitmentChannelCreateFailed => {
@@ -1594,6 +1597,7 @@ mod tests {
             MessageTextId::RecruitmentCommandChangePermissionDenied,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
+            MessageTextId::MessagesInitGuide,
             MessageTextId::AutoRecruitmentChannelCreateFailed,
             MessageTextId::AutoRecruitmentTimeSelectPlaceholder,
             MessageTextId::AutoRecruitmentUnregisterInCategoryError,

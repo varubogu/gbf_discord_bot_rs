@@ -432,6 +432,9 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
         // General messages
         keys::MESSAGES_WELCOME => Some(t!(keys::MESSAGES_WELCOME, locale = locale).to_string()),
         keys::MESSAGES_HELP => Some(t!(keys::MESSAGES_HELP, locale = locale).to_string()),
+        keys::MESSAGES_INIT_GUIDE => {
+            Some(t!(keys::MESSAGES_INIT_GUIDE, locale = locale).to_string())
+        }
 
         // Auto recruitment messages
         keys::AUTO_RECRUITMENT_CHANNEL_CREATE_FAILED => Some(
