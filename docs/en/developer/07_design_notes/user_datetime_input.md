@@ -69,6 +69,8 @@ In the unified parser, input patterns are enabled/disabled per use case.
 - Allowed: absolute datetime + relative time
 - Multiple values: comma-separated with an upper limit
 - Reference time: departure datetime
+- Relative expressions are limited to "before departure" (`後` / `later` / `after` are rejected)
+- The allowed range from departure is restricted by `DISMISSAL_MAX_DAYS` (default `7` when unset)
 
 ### Scheduled recruitment start time
 
@@ -122,8 +124,8 @@ This separation allows scheduled recruitments, dismissals, and one-off recruitme
 - 年なし: `12/11 14:00`, `12-11 14:00`
 - 日付のみ: `11/15`, `11-15`
 - 時刻: `21:00`, `9:30`
-- 日本語: `1月2日3時4分`, `午後9時半`
-- 数字: `1230`, `10111230`, `30 1230`
+- 日本語: `1月2日3時4分`, `午後9時半`, `2026年3月16日21時`
+- 数字: `1230`, `10111230`, `30 1230`, `202603162100`, `3/16 2100`, `0316 2100`, `03162100`
 
 ### Relative patterns
 

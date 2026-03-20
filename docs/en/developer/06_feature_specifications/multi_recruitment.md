@@ -690,7 +690,7 @@ error!(error = %e, "募集作成に失敗しました");
 - Parameter name: `dismissal_times`
 - Input format: comma-separated string (with an upper bound)
 - Absolute: time-only / datetime
-- Relative: “n days/hours/minutes before departure” and equivalent English expressions
+- Relative: “n days/hours/minutes before departure” and equivalent English expressions (`後` / `later` / `after` are rejected)
 
 ### Validation
 
@@ -698,13 +698,14 @@ error!(error = %e, "募集作成に失敗しました");
 - Error if exceeding the upper bound
 - Error if any item cannot be parsed
 - Error if the specified time exceeds the allowed range relative to the departure time
-- Max range is controlled by env var `DISMISSAL_MAX_DAYS`
+- Max range is controlled by env var `DISMISSAL_MAX_DAYS` (default `7` when unset)
 
 ### Time interpretation rules
 
 - If only time is specified, decide same-day/previous-day based on relative ordering to the departure time
 - If only date is specified, treat it as end-of-day for that date
 - If datetime is specified, use it as-is
+- For recurring recruitment dismissal input, absolute values with a date are rejected (time-only is allowed)
 
 ### Runtime processing
 

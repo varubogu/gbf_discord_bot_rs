@@ -7,6 +7,7 @@ use crate::repository::schedule::{
     BattleRecruitmentScheduleDismissalRepository, BattleRecruitmentScheduleRepository,
     ScheduledTaskRecurringRecruitmentRepository, ScheduledTaskRepository,
 };
+use crate::services::number_normalizer::normalize_numbers;
 use crate::services::recruitment::schedule::{DaysParserService, OffsetCalculatorService};
 use crate::services::schedule::{RecruitmentScheduleService, convert_local_days_and_time_to_utc};
 use crate::services::unified_datetime_parser::{
@@ -15,6 +16,8 @@ use crate::services::unified_datetime_parser::{
 use crate::types::{AppError, Result};
 use chrono::{Duration, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
+use lazy_static::lazy_static;
+use regex::Regex;
 use sea_orm::DatabaseTransaction;
 use sea_orm::entity::prelude::TimeTime;
 use tracing::{debug, info};
@@ -474,17 +477,24 @@ where
             .with_timezone(&Utc);
 
         // 解散時刻をパース（統一パーサーを使用）
-        let options = DateTimeParseOptions::for_dismissal_time(timezone, departure_time);
-        let parsed_dismissal_times = parse_datetime(dismissal_times_str, &options)?;
-
-        // データベースに保存
-        // 元の入力値を分割（トリムして空文字除去）
         let input_values: Vec<&str> = dismissal_times_str
             .split(',')
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .collect();
+        for input_value in &input_values {
+            if !is_relative_like_input(input_value) && !is_time_only_input(input_value) {
+                return Err(AppError::Business {
+                    message: "定期募集の解散時刻は時刻のみ、または相対時刻で指定してください"
+                        .to_string(),
+                });
+            }
+        }
 
+        let options = DateTimeParseOptions::for_dismissal_time(timezone, departure_time);
+        let parsed_dismissal_times = parse_datetime(dismissal_times_str, &options)?;
+
+        // データベースに保存
         for (idx, dismissal_time) in parsed_dismissal_times.iter().enumerate() {
             let input_value = input_values.get(idx).unwrap_or(&"").to_string();
 
@@ -528,5 +538,57 @@ where
         );
 
         Ok(())
+    }
+}
+
+/// 相対時刻入力かを判定
+fn is_relative_like_input(input: &str) -> bool {
+    lazy_static! {
+        static ref RE_RELATIVE: Regex =
+            Regex::new(r"(?i)^\d+\s*(日|days?|時間|hours?|h|分|minutes?|mins?|m)")
+                .expect("相対時刻判定Regexパターンが無効です");
+    }
+
+    let normalized = normalize_numbers(input);
+    RE_RELATIVE.is_match(normalized.trim())
+}
+
+/// 時刻のみ入力かを判定
+fn is_time_only_input(input: &str) -> bool {
+    lazy_static! {
+        static ref RE_COLON_TIME: Regex = Regex::new(r"^(?:[01]?\d|2[0-3]):[0-5]\d$")
+            .expect("コロン時刻判定Regexパターンが無効です");
+        static ref RE_FOUR_DIGIT: Regex =
+            Regex::new(r"^\d{4}$").expect("4桁時刻判定Regexパターンが無効です");
+        static ref RE_JP_TIME: Regex = Regex::new(r"^(午前|午後)?\d{1,2}時(半|\d{1,2}分)?$")
+            .expect("日本語時刻判定Regexパターンが無効です");
+        static ref RE_AMPM: Regex = Regex::new(r"(?i)^([1-9]|1[0-2])(?::([0-5]\d))?\s*(am|pm)$")
+            .expect("AM/PM時刻判定Regexパターンが無効です");
+    }
+
+    let normalized = normalize_numbers(input);
+    let trimmed = normalized.trim();
+
+    RE_COLON_TIME.is_match(trimmed)
+        || RE_FOUR_DIGIT.is_match(trimmed)
+        || RE_JP_TIME.is_match(trimmed)
+        || RE_AMPM.is_match(trimmed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_relative_like_input, is_time_only_input};
+
+    #[test]
+    fn 定期募集解散入力_日付付き絶対指定は時刻のみ判定に含まれない() {
+        assert!(!is_time_only_input("3/16 21:00"));
+        assert!(!is_time_only_input("2026/03/16 21:00"));
+        assert!(!is_time_only_input("明日21時"));
+    }
+
+    #[test]
+    fn 定期募集解散入力_日付付き絶対指定は相対時刻判定に含まれない() {
+        assert!(!is_relative_like_input("3/16 21:00"));
+        assert!(!is_relative_like_input("2026/03/16 21:00"));
     }
 }
