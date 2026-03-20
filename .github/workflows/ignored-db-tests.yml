@@ -11,6 +11,9 @@ on:
     # - コスト優先にする場合は push(main/develop) へ寄せる運用も検討可能
     - cron: "0 2 * * *"
 
+permissions:
+  contents: read
+
 concurrency:
   group: ignored-db-tests-${{ github.ref }}
   cancel-in-progress: true
