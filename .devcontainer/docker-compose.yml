@@ -31,10 +31,12 @@ services:
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+    # environment:
+    #   POSTGRES_USER: postgres
+    #   POSTGRES_PASSWORD: postgres
+    #   POSTGRES_DB: postgres
+    env_file:
+      - ../.env.db.example
     ports:
       - "127.0.0.1:5432:5432"
     networks:
