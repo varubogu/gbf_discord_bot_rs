@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   schedule:
     # 毎日 02:00 UTC に DB必須 ignored テストを実行
+    # 補足:
+    # - push 時実行だけでも「コード変更起因の不具合」は検知できる
+    # - 一方で定期実行を残すと、依存更新や runner/image 変更など
+    #   「コード変更なしで起きる退行」も検知できる
+    # - コスト優先にする場合は push(main/develop) へ寄せる運用も検討可能
     - cron: "0 2 * * *"
 
 concurrency:
@@ -91,7 +96,7 @@ jobs:
             -f db/sql/init.sql
 
       - name: Run database migrations
-        run: cargo run -j 1 -- migrate-only
+        run: cargo run -j 1 --bin=gbf_discord_bot_rs -- migrate-only
 
       - name: Run ignored facade tests (spreadsheet)
         run: cargo test -j 1 --test mod integration::facades::spreadsheet_test -- --ignored
