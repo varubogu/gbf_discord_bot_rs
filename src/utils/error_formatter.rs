@@ -35,14 +35,12 @@ impl ErrorFormatter {
         format!(
             "\n❌ {}\n\
             \n\
-            Database Connection: {}\n\
             Error Details: {}\n\
             \n\
             Possible Causes:\n{}\n\
             \n\
             💡 Troubleshooting:\n{}\n",
             error_type,
-            db_url_masked,
             error_details,
             possible_causes
                 .iter()
