@@ -7,6 +7,7 @@ This section summarizes each major feature's purpose, requirements, data model, 
 - [Spreadsheet integration](spreadsheet_integration.md)
 - [Co-op recruitment](multi_recruitment.md)
 - [Scheduled recruitment](scheduled_recruitment.md)
+- [Help command](help_command.md)
 - [Recruitment notifications](recruitment_notifications.md)
 - [Auto recruitment](auto_recruitment.md)
 - [Scheduling feature (common)](scheduling_feature.md)
