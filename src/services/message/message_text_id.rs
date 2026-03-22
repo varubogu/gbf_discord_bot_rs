@@ -462,6 +462,38 @@ pub mod keys {
     pub const HELP_EMBED_GSPREAD_PUSH_FIELD_VALUE: &str = "help.embed.gspread_push_field_value";
     pub const HELP_EMBED_HELP_FIELD_VALUE: &str = "help.embed.help_field_value";
     pub const HELP_EMBED_FOOTER: &str = "help.embed.footer";
+
+    // Help navigator messages
+    pub const HELP_NAVIGATOR_INDEX_TITLE: &str = "help.navigator.index.title";
+    pub const HELP_NAVIGATOR_INDEX_DESCRIPTION: &str = "help.navigator.index.description";
+    pub const HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_TITLE: &str =
+        "help.navigator.page.multi_recruitment.title";
+    pub const HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_DESCRIPTION: &str =
+        "help.navigator.page.multi_recruitment.description";
+    pub const HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_TITLE: &str =
+        "help.navigator.page.scheduled_recruitment.title";
+    pub const HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_DESCRIPTION: &str =
+        "help.navigator.page.scheduled_recruitment.description";
+    pub const HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_TITLE: &str =
+        "help.navigator.page.auto_recruitment.title";
+    pub const HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_DESCRIPTION: &str =
+        "help.navigator.page.auto_recruitment.description";
+    pub const HELP_NAVIGATOR_PAGE_UTILITY_TITLE: &str = "help.navigator.page.utility.title";
+    pub const HELP_NAVIGATOR_PAGE_UTILITY_DESCRIPTION: &str =
+        "help.navigator.page.utility.description";
+    pub const HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_TITLE: &str =
+        "help.navigator.page.admin_management.title";
+    pub const HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_DESCRIPTION: &str =
+        "help.navigator.page.admin_management.description";
+    pub const HELP_NAVIGATOR_PAGE_ADMIN_SERVER_TITLE: &str =
+        "help.navigator.page.admin_server.title";
+    pub const HELP_NAVIGATOR_PAGE_ADMIN_SERVER_DESCRIPTION: &str =
+        "help.navigator.page.admin_server.description";
+    pub const HELP_NAVIGATOR_BUTTON_PREV: &str = "help.navigator.button.prev";
+    pub const HELP_NAVIGATOR_BUTTON_NEXT: &str = "help.navigator.button.next";
+    pub const HELP_NAVIGATOR_BUTTON_TO_INDEX: &str = "help.navigator.button.to_index";
+    pub const HELP_NAVIGATOR_JUMP_PLACEHOLDER: &str = "help.navigator.jump.placeholder";
+    pub const HELP_NAVIGATOR_FOOTER: &str = "help.navigator.footer";
 }
 
 /// メッセージID定義
@@ -818,6 +850,25 @@ pub enum MessageTextId {
     HelpEmbedGspreadPushFieldValue,
     HelpEmbedHelpFieldValue,
     HelpEmbedFooter,
+    HelpNavigatorIndexTitle,
+    HelpNavigatorIndexDescription,
+    HelpNavigatorPageMultiRecruitmentTitle,
+    HelpNavigatorPageMultiRecruitmentDescription,
+    HelpNavigatorPageScheduledRecruitmentTitle,
+    HelpNavigatorPageScheduledRecruitmentDescription,
+    HelpNavigatorPageAutoRecruitmentTitle,
+    HelpNavigatorPageAutoRecruitmentDescription,
+    HelpNavigatorPageUtilityTitle,
+    HelpNavigatorPageUtilityDescription,
+    HelpNavigatorPageAdminManagementTitle,
+    HelpNavigatorPageAdminManagementDescription,
+    HelpNavigatorPageAdminServerTitle,
+    HelpNavigatorPageAdminServerDescription,
+    HelpNavigatorButtonPrev,
+    HelpNavigatorButtonNext,
+    HelpNavigatorButtonToIndex,
+    HelpNavigatorJumpPlaceholder,
+    HelpNavigatorFooter,
 }
 
 impl MessageTextId {
@@ -1488,6 +1539,47 @@ impl MessageTextId {
             }
             MessageTextId::HelpEmbedHelpFieldValue => keys::HELP_EMBED_HELP_FIELD_VALUE,
             MessageTextId::HelpEmbedFooter => keys::HELP_EMBED_FOOTER,
+            MessageTextId::HelpNavigatorIndexTitle => keys::HELP_NAVIGATOR_INDEX_TITLE,
+            MessageTextId::HelpNavigatorIndexDescription => keys::HELP_NAVIGATOR_INDEX_DESCRIPTION,
+            MessageTextId::HelpNavigatorPageMultiRecruitmentTitle => {
+                keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_TITLE
+            }
+            MessageTextId::HelpNavigatorPageMultiRecruitmentDescription => {
+                keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorPageScheduledRecruitmentTitle => {
+                keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_TITLE
+            }
+            MessageTextId::HelpNavigatorPageScheduledRecruitmentDescription => {
+                keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorPageAutoRecruitmentTitle => {
+                keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_TITLE
+            }
+            MessageTextId::HelpNavigatorPageAutoRecruitmentDescription => {
+                keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorPageUtilityTitle => keys::HELP_NAVIGATOR_PAGE_UTILITY_TITLE,
+            MessageTextId::HelpNavigatorPageUtilityDescription => {
+                keys::HELP_NAVIGATOR_PAGE_UTILITY_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorPageAdminManagementTitle => {
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_TITLE
+            }
+            MessageTextId::HelpNavigatorPageAdminManagementDescription => {
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorPageAdminServerTitle => {
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_TITLE
+            }
+            MessageTextId::HelpNavigatorPageAdminServerDescription => {
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_DESCRIPTION
+            }
+            MessageTextId::HelpNavigatorButtonPrev => keys::HELP_NAVIGATOR_BUTTON_PREV,
+            MessageTextId::HelpNavigatorButtonNext => keys::HELP_NAVIGATOR_BUTTON_NEXT,
+            MessageTextId::HelpNavigatorButtonToIndex => keys::HELP_NAVIGATOR_BUTTON_TO_INDEX,
+            MessageTextId::HelpNavigatorJumpPlaceholder => keys::HELP_NAVIGATOR_JUMP_PLACEHOLDER,
+            MessageTextId::HelpNavigatorFooter => keys::HELP_NAVIGATOR_FOOTER,
         }
     }
 }
@@ -2030,6 +2122,25 @@ mod tests {
             MessageTextId::HelpEmbedGspreadPushFieldValue,
             MessageTextId::HelpEmbedHelpFieldValue,
             MessageTextId::HelpEmbedFooter,
+            MessageTextId::HelpNavigatorIndexTitle,
+            MessageTextId::HelpNavigatorIndexDescription,
+            MessageTextId::HelpNavigatorPageMultiRecruitmentTitle,
+            MessageTextId::HelpNavigatorPageMultiRecruitmentDescription,
+            MessageTextId::HelpNavigatorPageScheduledRecruitmentTitle,
+            MessageTextId::HelpNavigatorPageScheduledRecruitmentDescription,
+            MessageTextId::HelpNavigatorPageAutoRecruitmentTitle,
+            MessageTextId::HelpNavigatorPageAutoRecruitmentDescription,
+            MessageTextId::HelpNavigatorPageUtilityTitle,
+            MessageTextId::HelpNavigatorPageUtilityDescription,
+            MessageTextId::HelpNavigatorPageAdminManagementTitle,
+            MessageTextId::HelpNavigatorPageAdminManagementDescription,
+            MessageTextId::HelpNavigatorPageAdminServerTitle,
+            MessageTextId::HelpNavigatorPageAdminServerDescription,
+            MessageTextId::HelpNavigatorButtonPrev,
+            MessageTextId::HelpNavigatorButtonNext,
+            MessageTextId::HelpNavigatorButtonToIndex,
+            MessageTextId::HelpNavigatorJumpPlaceholder,
+            MessageTextId::HelpNavigatorFooter,
         ];
 
         let mut unique_message_ids = HashSet::new();

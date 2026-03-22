@@ -41,6 +41,21 @@ pub async fn on_component_interaction(
             }
         }
     }
+    // ヘルプ画面のページ遷移ボタンを処理
+    else if custom_id.starts_with("help_nav:") {
+        use crate::events::interactions::components::help_navigator_handler;
+
+        info!(custom_id = %custom_id, "ヘルプ画面の遷移ボタンを検出");
+
+        match help_navigator_handler::handle_help_navigation(ctx, interaction, data).await {
+            Ok(_) => {
+                info!("ヘルプ画面の遷移処理が正常に完了しました");
+            }
+            Err(e) => {
+                error!(error = %e, "ヘルプ画面の遷移処理中にエラーが発生しました");
+            }
+        }
+    }
     // 自動募集クエスト参加ボタンの処理（1クエスト1メッセージ形式）
     else if custom_id.starts_with("auto_quest_join:") {
         use crate::events::interactions::components::auto_recruit_quest_join_handler;

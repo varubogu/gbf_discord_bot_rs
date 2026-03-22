@@ -254,6 +254,63 @@ help.embed.recruit_field_value:
 help.embed.title:
   en: "GBF Discord Bot Help"
   ja: "GBF Discord Bot ヘルプ"
+help.navigator.index.title:
+  en: "GBF Discord Bot Help Index"
+  ja: "GBF Discord Bot ヘルプ（目次）"
+help.navigator.index.description:
+  en: "This is the table of contents.\nUse the selector to jump directly to a page, or use Next/Back.\nThe pages you can view are listed below."
+  ja: "ここは目次ページです。\nセレクタでページへ直接移動するか、進む/戻るボタンで切り替えてください。\n以下に、現在表示可能なページを一覧表示します。"
+help.navigator.page.multi_recruitment.title:
+  en: "Multi Recruitment"
+  ja: "マルチ募集"
+help.navigator.page.multi_recruitment.description:
+  en: "Main commands:\n`/recruit_new`\n`/recruit_new_v2`\n`/recruit_change`\n`/recruit_cancel`\n`/recruit-list`\n\nUse this feature to create and manage co-op recruitment posts."
+  ja: "主なコマンド:\n日本語名: `/マルチバトル募集` / 英語名: `/recruit_new`\n日本語名: `/マルチバトル募集2` / 英語名: `/recruit_new_v2`\n日本語名: `/マルチバトル募集内容変更` / 英語名: `/recruit_change`\n日本語名: `/募集キャンセル` / 英語名: `/recruit_cancel`\n日本語名: `/募集一覧` / 英語名: `/recruit-list`\n\nマルチ募集の作成・変更・キャンセル・一覧確認を行います。"
+help.navigator.page.scheduled_recruitment.title:
+  en: "Scheduled Recruitment"
+  ja: "定期募集"
+help.navigator.page.scheduled_recruitment.description:
+  en: "Main commands:\n`/recruitment-schedule-create`\n`/recruitment-schedule-list`\n`/recruitment-schedule-delete`\n`/recruitment-schedule-toggle`\n\nUse this feature to automate recurring recruitment posts."
+  ja: "主なコマンド:\n日本語名: `/定期募集作成` / 英語名: `/recruitment-schedule-create`\n日本語名: `/定期募集一覧` / 英語名: `/recruitment-schedule-list`\n日本語名: `/定期募集削除` / 英語名: `/recruitment-schedule-delete`\n日本語名: `/定期募集切り替え` / 英語名: `/recruitment-schedule-toggle`\n\n指定した曜日・時刻で募集を自動投稿します。"
+help.navigator.page.auto_recruitment.title:
+  en: "Auto Recruitment"
+  ja: "自動募集"
+help.navigator.page.auto_recruitment.description:
+  en: "Main command:\n`/auto_recruit_status`\n\nUse this page to check your own auto-recruitment participation status."
+  ja: "主なコマンド:\n日本語名: `/自動募集参加状況` / 英語名: `/auto_recruit_status`\n\n自分の自動募集参加状況を確認します。"
+help.navigator.page.utility.title:
+  en: "Utility / Reference"
+  ja: "参照系 / ユーティリティ"
+help.navigator.page.utility.description:
+  en: "Main commands:\n`/channel_show`\n`/guild_settings_show`\n`/quest_list`\n`/environ_load`\n`/help`\n\nUse these commands to check current settings and references."
+  ja: "主なコマンド:\n日本語名: `/チャンネル設定表示` / 英語名: `/channel_show`\n日本語名: `/サーバー設定確認` / 英語名: `/guild_settings_show`\n日本語名: `/クエスト一覧` / 英語名: `/quest_list`\n日本語名: `/設定値リロード` / 英語名: `/environ_load`\n日本語名: `/ヘルプ` / 英語名: `/help`\n\n現在設定の確認や参照に使うコマンドです。"
+help.navigator.page.admin_management.title:
+  en: "Admin Management (`gbf_bot_control`)"
+  ja: "管理者向け設定 (`gbf_bot_control`)"
+help.navigator.page.admin_management.description:
+  en: "Main commands:\n`/channel_register`\n`/channel_unregister`\n`/guild_settings_set`\n`/quest_enable`\n`/quest_disable`\n`/recruit_role_add`\n`/recruit_role_remove`\n`/recruit_role_show`\n`/auto_recruit_category_register`\n`/auto_recruit_category_unregister`\n`/auto_recruit_days_change`\n`/gspread_register`\n`/gspread_load`\n`/gspread_push`\n`/init_message`\n`/schedule_generate`\n`/schedule_list`\n`/schedule_history`\n`/schedule_stats`"
+  ja: "主なコマンド:\n日本語名: `/チャンネル登録` / 英語名: `/channel_register`\n日本語名: `/チャンネル登録解除` / 英語名: `/channel_unregister`\n日本語名: `/サーバー設定` / 英語名: `/guild_settings_set`\n日本語名: `/クエスト有効化` / 英語名: `/quest_enable`\n日本語名: `/クエスト無効化` / 英語名: `/quest_disable`\n日本語名: `/募集ロール追加` / 英語名: `/recruit_role_add`\n日本語名: `/募集ロール削除` / 英語名: `/recruit_role_remove`\n日本語名: `/募集ロール確認` / 英語名: `/recruit_role_show`\n日本語名: `/自動募集カテゴリ登録` / 英語名: `/auto_recruit_category_register`\n日本語名: `/自動募集カテゴリ解除` / 英語名: `/auto_recruit_category_unregister`\n日本語名: `/自動募集日数変更` / 英語名: `/auto_recruit_days_change`\n日本語名: `/スプレッドシート登録` / 英語名: `/gspread_register`\n日本語名: `/スプレッドシート読み込み` / 英語名: `/gspread_load`\n日本語名: `/スプレッドシート書き込み` / 英語名: `/gspread_push`\n日本語名: `/初期設定メッセージ` / 英語名: `/init_message`\n日本語名: `/スケジュール生成` / 英語名: `/schedule_generate`\n日本語名: `/スケジュール一覧` / 英語名: `/schedule_list`\n日本語名: `/スケジュール履歴` / 英語名: `/schedule_history`\n日本語名: `/スケジュール統計` / 英語名: `/schedule_stats`"
+help.navigator.page.admin_server.title:
+  en: "Bot Admin Server Only"
+  ja: "管理サーバー専用"
+help.navigator.page.admin_server.description:
+  en: "Available only when executed in the Bot admin server (`BOT_ADMIN_SERVER_ID`):\n`/gspread_global_load`\n`/gspread_global_push`\n`/schedule_global_generate`"
+  ja: "Bot管理者専用サーバー（`BOT_ADMIN_SERVER_ID`）でのみ利用可能:\n日本語名: `/グローバルスプレッドシート読み込み` / 英語名: `/gspread_global_load`\n日本語名: `/グローバルスプレッドシート書き込み` / 英語名: `/gspread_global_push`\n日本語名: `/全体スケジュール生成` / 英語名: `/schedule_global_generate`"
+help.navigator.button.prev:
+  en: "Back"
+  ja: "戻る"
+help.navigator.button.next:
+  en: "Next"
+  ja: "進む"
+help.navigator.button.to_index:
+  en: "Back to Index"
+  ja: "目次へ戻る"
+help.navigator.jump.placeholder:
+  en: "Jump to a page"
+  ja: "ページへ移動"
+help.navigator.footer:
+  en: "Page {{current}} / {{total}}"
+  ja: "ページ {{current}} / {{total}}"
 kosenjo.before_1_day:
   en: "The Guild War will begin tomorrow.\nPlease review your Assault Time settings."
   ja: "明日、古戦場が始まります。\n各自個人のアサルトタイムを見直しましょう。"

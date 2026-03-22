@@ -1334,6 +1334,107 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             Some(t!(keys::HELP_EMBED_HELP_FIELD_VALUE, locale = locale).to_string())
         }
         keys::HELP_EMBED_FOOTER => Some(t!(keys::HELP_EMBED_FOOTER, locale = locale).to_string()),
+        keys::HELP_NAVIGATOR_INDEX_TITLE => {
+            Some(t!(keys::HELP_NAVIGATOR_INDEX_TITLE, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_INDEX_DESCRIPTION => {
+            Some(t!(keys::HELP_NAVIGATOR_INDEX_DESCRIPTION, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_TITLE => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_MULTI_RECRUITMENT_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_TITLE => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_SCHEDULED_RECRUITMENT_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_TITLE => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_AUTO_RECRUITMENT_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_UTILITY_TITLE => {
+            Some(t!(keys::HELP_NAVIGATOR_PAGE_UTILITY_TITLE, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_PAGE_UTILITY_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_UTILITY_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_TITLE => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_MANAGEMENT_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_TITLE => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_DESCRIPTION => Some(
+            t!(
+                keys::HELP_NAVIGATOR_PAGE_ADMIN_SERVER_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::HELP_NAVIGATOR_BUTTON_PREV => {
+            Some(t!(keys::HELP_NAVIGATOR_BUTTON_PREV, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_BUTTON_NEXT => {
+            Some(t!(keys::HELP_NAVIGATOR_BUTTON_NEXT, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_BUTTON_TO_INDEX => {
+            Some(t!(keys::HELP_NAVIGATOR_BUTTON_TO_INDEX, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_JUMP_PLACEHOLDER => {
+            Some(t!(keys::HELP_NAVIGATOR_JUMP_PLACEHOLDER, locale = locale).to_string())
+        }
+        keys::HELP_NAVIGATOR_FOOTER => {
+            Some(t!(keys::HELP_NAVIGATOR_FOOTER, locale = locale).to_string())
+        }
 
         // 未知のメッセージID
         _ => None,
