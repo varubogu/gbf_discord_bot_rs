@@ -114,7 +114,12 @@ fn load_runtime_config() -> Result<AppConfig> {
 
 /// migrate-onlyオプションが指定されているか確認
 fn is_migrate_only() -> bool {
-    env::args().any(|arg| arg == "migrate-only")
+    env::args().any(|arg| is_migrate_only_arg(&arg))
+}
+
+/// 引数文字列がmigrate-onlyを示すか判定する
+fn is_migrate_only_arg(arg: &str) -> bool {
+    arg.trim() == "migrate-only"
 }
 
 /// 環境変数から指定ロールのDB接続URLを構築する
@@ -475,5 +480,30 @@ async fn error_handler(error: poise::FrameworkError<'_, PoiseData, AppError>) {
         }
         // その他のエラー
         other => error!("Poise framework error: {:?}", other),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_migrate_only_arg;
+
+    #[test]
+    fn test_is_migrate_only_arg_exact() {
+        assert!(is_migrate_only_arg("migrate-only"));
+    }
+
+    #[test]
+    fn test_is_migrate_only_arg_with_cr() {
+        assert!(is_migrate_only_arg("migrate-only\r"));
+    }
+
+    #[test]
+    fn test_is_migrate_only_arg_with_lf() {
+        assert!(is_migrate_only_arg("migrate-only\n"));
+    }
+
+    #[test]
+    fn test_is_migrate_only_arg_other_value() {
+        assert!(!is_migrate_only_arg("--test-mode"));
     }
 }
