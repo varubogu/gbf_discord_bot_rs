@@ -9,7 +9,7 @@ use gbf_discord_bot_rs::services::message::MessageTextId;
 use gbf_discord_bot_rs::services::schedule::{SchedulerManager, TaskDispatchService};
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
-use gbf_discord_bot_rs::utils::startup_validator::StartupValidator;
+use gbf_discord_bot_rs::utils::startup_validator::{StartupValidationMode, StartupValidator};
 use migration::{Migrator, MigratorTrait};
 use poise::serenity_prelude::{self as serenity, GatewayIntents};
 use sea_orm::{ConnectOptions, Database};
@@ -29,15 +29,22 @@ async fn main() -> Result<()> {
     info!("Starting Granblue Fantasy Discord Bot...");
 
     load_environment();
-    let config = load_and_validate_config().await?;
+    let validation_mode = if is_migrate_only() {
+        StartupValidationMode::MigrationOnly
+    } else {
+        StartupValidationMode::NormalStartup
+    };
+    run_startup_validation(validation_mode).await?;
 
-    run_migrations(&config).await?;
+    let admin_url = build_database_url_from_env(DbRole::Admin)?;
+    run_migrations(&admin_url).await?;
 
-    if is_migrate_only() {
+    if validation_mode == StartupValidationMode::MigrationOnly {
         info!("Migration completed successfully, exiting");
         return Ok(());
     }
 
+    let config = load_runtime_config()?;
     let app_state = create_app_state(config).await?;
 
     // タイムゾーンキャッシュを初期化
@@ -80,10 +87,10 @@ fn load_environment() {
     dotenv::from_path(dotenv_path).ok();
 }
 
-/// スタートアップ時の環境変数・ファイル検証を実行し、設定を読み込む
-async fn load_and_validate_config() -> Result<AppConfig> {
+/// スタートアップ時の環境変数・ファイル検証を実行する
+async fn run_startup_validation(mode: StartupValidationMode) -> Result<()> {
     info!("Running startup validation...");
-    match StartupValidator::validate_all().await {
+    match StartupValidator::validate_for_mode(mode).await {
         Ok(validator) => {
             validator.display_results();
             info!("✅ All startup validations passed");
@@ -95,6 +102,11 @@ async fn load_and_validate_config() -> Result<AppConfig> {
         }
     }
 
+    Ok(())
+}
+
+/// 通常起動で利用する設定を環境変数から読み込む
+fn load_runtime_config() -> Result<AppConfig> {
     let config = AppConfig::from_env()?;
     info!("Configuration loaded successfully");
     Ok(config)
@@ -105,18 +117,42 @@ fn is_migrate_only() -> bool {
     env::args().any(|arg| arg == "migrate-only")
 }
 
-/// マイグレーションを実行する
-async fn run_migrations(config: &AppConfig) -> Result<()> {
-    info!("Running database migrations with Admin role...");
-    let admin_url = config.database_url(DbRole::Admin).map_err(|e| {
-        error!("Admin DB接続設定の取得に失敗: {}", e);
-        e
+/// 環境変数から指定ロールのDB接続URLを構築する
+fn build_database_url_from_env(role: DbRole) -> Result<String> {
+    let db_host = env::var("DB_HOST").map_err(|_| AppError::Config {
+        message: "DB_HOST が設定されていません".to_string(),
     })?;
+
+    let db_port = env::var("DB_PORT")
+        .map_err(|_| AppError::Config {
+            message: "DB_PORT が設定されていません".to_string(),
+        })?
+        .parse::<u16>()
+        .map_err(|_| AppError::Config {
+            message: "DB_PORT は有効なポート番号である必要があります".to_string(),
+        })?;
+
+    let db_name = env::var("DB_NAME").map_err(|_| AppError::Config {
+        message: "DB_NAME が設定されていません".to_string(),
+    })?;
+
+    let username = role.username()?;
+    let password = role.password()?;
+
+    Ok(format!(
+        "postgresql://{}:{}@{}:{}/{}",
+        username, password, db_host, db_port, db_name
+    ))
+}
+
+/// マイグレーションを実行する
+async fn run_migrations(admin_url: &str) -> Result<()> {
+    info!("Running database migrations with Admin role...");
     info!("Admin role: {}", DbRole::Admin.description());
 
-    let admin_db = create_database_connection(&admin_url).await.map_err(|e| {
+    let admin_db = create_database_connection(admin_url).await.map_err(|e| {
         if let AppError::Database(ref db_err) = e {
-            let masked_url = ErrorFormatter::mask_database_url(&admin_url);
+            let masked_url = ErrorFormatter::mask_database_url(admin_url);
             eprintln!("{}", ErrorFormatter::format_db_error(db_err, &masked_url));
         }
         e

@@ -19,20 +19,27 @@ At application startup (before DB connection), check the following:
 
 #### Check items
 
-**Required environment variables**:
-- `DISCORD_TOKEN` - Discord bot token
-- `BOT_ADMIN_SERVER_ID` - Admin-only server ID for bot operators
+**Required environment variables (shared)**:
 - `DB_HOST` - DB host
 - `DB_PORT` - DB port
 - `DB_NAME` - DB name
+
+**Required environment variables (normal bot startup only)**:
+- `DISCORD_TOKEN` - Discord bot token
+- `BOT_ADMIN_SERVER_ID` - Admin-only server ID for bot operators
 - `GUILD_DB_USER` - Guild role username
 - `GUILD_DB_PASSWORD` - Guild role password
 - `SYSTEM_DB_USER` - System role username
 - `SYSTEM_DB_PASSWORD` - System role password
 - `GLOBAL_DB_USER` - Global role username
 - `GLOBAL_DB_PASSWORD` - Global role password
-- `ADMIN_DB_USER` - Admin role username (for migrations)
-- `ADMIN_DB_PASSWORD` - Admin role password (for migrations)
+- `GUILD_SPREADSHEET_TEMPLATE_URL` - Template spreadsheet URL shown in guild init messages
+
+**Required environment variables (migration execution)**:
+- `ADMIN_DB_USER` - Admin role username
+- `ADMIN_DB_PASSWORD` - Admin role password
+
+> Note: normal startup runs migrations in the startup sequence, so normal startup validates all three groups (`shared + normal bot startup + migration execution`). `migrate-only` validates only `shared + migration execution`.
 
 **Optional environment variables**:
 - `GLOBAL_SPREADSHEET_ID` - Global spreadsheet ID (required only when spreadsheet features are used)
@@ -206,8 +213,8 @@ pub struct StartupValidator {
 impl StartupValidator {
     pub fn new() -> Self;
 
-    /// 全チェックを実行
-    pub async fn validate_all() -> Result<(), StartupError>;
+    /// モードに応じたチェックを実行
+    pub async fn validate_for_mode(mode: StartupValidationMode) -> Result<Self, StartupError>;
 
     /// 結果を表示
     pub fn display_results(&self);
@@ -250,8 +257,14 @@ pub enum ValidationStatus {
 pub struct EnvValidator;
 
 impl EnvValidator {
-    /// 必須環境変数をチェック
-    pub fn check_required_vars() -> Vec<ValidationResult>;
+    /// 共通で必須の環境変数をチェック
+    pub fn check_common_required_vars() -> Vec<ValidationResult>;
+
+    /// 通常起動のみ必須の環境変数をチェック
+    pub fn check_bot_startup_required_vars() -> Vec<ValidationResult>;
+
+    /// マイグレーション実行時に必須の環境変数をチェック
+    pub fn check_migration_required_vars() -> Vec<ValidationResult>;
 
     /// 任意環境変数をチェック
     pub fn check_optional_vars() -> Vec<ValidationResult>;
@@ -312,33 +325,25 @@ pub enum StartupError {
 ```
 1. main()
    ↓
-2. StartupValidator::validate_all()
+2. StartupValidator::validate_for_mode(mode)
    ↓
-3. EnvValidator::check_required_vars()
-   ├─ DISCORD_TOKEN
-   ├─ BOT_ADMIN_SERVER_ID
+3. EnvValidator::check_common_required_vars()
    ├─ DB_HOST
    ├─ DB_PORT
    ├─ DB_NAME
-   ├─ GUILD_DB_USER
-   ├─ GUILD_DB_PASSWORD
-   ├─ SYSTEM_DB_USER
-   ├─ SYSTEM_DB_PASSWORD
-   ├─ GLOBAL_DB_USER
-   ├─ GLOBAL_DB_PASSWORD
-   ├─ ADMIN_DB_USER
-   └─ ADMIN_DB_PASSWORD
    ↓
-4. EnvValidator::check_optional_vars()
-   ├─ GLOBAL_SPREADSHEET_ID
-   └─ GOOGLE_SERVICE_ACCOUNT_KEY_FILE
+4. Mode branch
+   ├─ NormalStartup
+   │  ├─ EnvValidator::check_bot_startup_required_vars()
+   │  ├─ EnvValidator::check_migration_required_vars()
+   │  ├─ EnvValidator::check_optional_vars()
+   │  └─ EnvValidator::check_files()
+   └─ MigrationOnly
+      └─ EnvValidator::check_migration_required_vars()
    ↓
-5. EnvValidator::check_files()
-   └─ Service Account Key JSON
+5. StartupValidator::display_results()
    ↓
-6. StartupValidator::display_results()
-   ↓
-7. StartupValidator::is_valid() ?
+6. StartupValidator::is_valid() ?
    ├─ Yes → Continue to database initialization
    └─ No → Exit with code 1
 ```
@@ -359,21 +364,32 @@ Exit with appropriate code
 
 ## Configuration reference
 
-### Required environment variables
+### Required environment variables (shared)
+
+| Variable | Description | Example | Validation |
+|-------|------|-------|------------|
+| `DB_HOST` | DB host | `localhost` | Non-empty string |
+| `DB_PORT` | DB port | `5432` | Numeric; 1–65535 |
+| `DB_NAME` | DB name | `gbf_bot_db` | Non-empty string |
+
+### Required environment variables (normal bot startup only)
 
 | Variable | Description | Example | Validation |
 |-------|------|-------|------------|
 | `DISCORD_TOKEN` | Discord bot token | `MTIzNDU2Nzg5...` | Non-empty; 30+ chars |
 | `BOT_ADMIN_SERVER_ID` | Admin server ID | `123456789012345678` | Numeric; 18–20 digits |
-| `DB_HOST` | DB host | `localhost` | Non-empty string |
-| `DB_PORT` | DB port | `5432` | Numeric; 1–65535 |
-| `DB_NAME` | DB name | `gbf_bot_db` | Non-empty string |
 | `GUILD_DB_USER` | Guild role username | `guild_user` | Non-empty string |
 | `GUILD_DB_PASSWORD` | Guild role password | `********` | Non-empty string |
 | `SYSTEM_DB_USER` | System role username | `system_user` | Non-empty string |
 | `SYSTEM_DB_PASSWORD` | System role password | `********` | Non-empty string |
 | `GLOBAL_DB_USER` | Global role username | `global_user` | Non-empty string |
 | `GLOBAL_DB_PASSWORD` | Global role password | `********` | Non-empty string |
+| `GUILD_SPREADSHEET_TEMPLATE_URL` | Guild init message template spreadsheet URL | `https://docs.google.com/spreadsheets/d/{id}/copy` | Google spreadsheet URL format |
+
+### Required environment variables (migration execution)
+
+| Variable | Description | Example | Validation |
+|-------|------|-------|------------|
 | `ADMIN_DB_USER` | Admin role username | `admin_user` | Non-empty string |
 | `ADMIN_DB_PASSWORD` | Admin role password | `********` | Non-empty string |
 
@@ -408,7 +424,7 @@ Exit with appropriate code
 
 ### Unit tests
 
-- `EnvValidator::check_required_vars()` - presence checks
+- `EnvValidator::check_common_required_vars()` / `check_bot_startup_required_vars()` / `check_migration_required_vars()` - presence checks
 - `EnvValidator::validate_json_file()` - JSON validation
 - `ErrorFormatter::format_*_error()` - message formatting
 

@@ -89,27 +89,22 @@ pub enum StartupError {
     MultipleErrors { errors: Vec<String> },
 }
 
+/// 起動時バリデーションモード
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartupValidationMode {
+    /// 通常起動（マイグレーション + Bot起動）
+    NormalStartup,
+    /// マイグレーションのみ実行
+    MigrationOnly,
+}
+
 /// 環境変数バリデーター
 pub struct EnvValidator;
 
 impl EnvValidator {
-    /// 必須環境変数をチェック
-    pub fn check_required_vars() -> Vec<ValidationResult> {
+    /// 共通で必須の環境変数をチェック
+    pub fn check_common_required_vars() -> Vec<ValidationResult> {
         let mut results = Vec::new();
-
-        // DISCORD_TOKEN
-        results.push(Self::check_env_var(
-            "DISCORD_TOKEN",
-            ValidationCategory::RequiredEnvVar,
-            true,
-            Some(|val: &str| {
-                if val.len() < 30 {
-                    Err("トークンが短すぎます（30文字以上必要）".to_string())
-                } else {
-                    Ok(())
-                }
-            }),
-        ));
 
         // DB_HOST
         results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
@@ -137,6 +132,27 @@ impl EnvValidator {
             ValidationCategory::RequiredEnvVar,
             true,
             None,
+        ));
+
+        results
+    }
+
+    /// 通常起動でのみ必須の環境変数をチェック
+    pub fn check_bot_startup_required_vars() -> Vec<ValidationResult> {
+        let mut results = Vec::new();
+
+        // DISCORD_TOKEN
+        results.push(Self::check_env_var(
+            "DISCORD_TOKEN",
+            ValidationCategory::RequiredEnvVar,
+            true,
+            Some(|val: &str| {
+                if val.len() < 30 {
+                    Err("トークンが短すぎます（30文字以上必要）".to_string())
+                } else {
+                    Ok(())
+                }
+            }),
         ));
 
         // システムロール用（必須）
@@ -181,20 +197,6 @@ impl EnvValidator {
             None,
         ));
 
-        // 管理者ロール用（必須）
-        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
-            "ADMIN_DB_USER",
-            ValidationCategory::RequiredEnvVar,
-            true,
-            None,
-        ));
-        results.push(Self::check_env_var::<fn(&str) -> Result<(), String>>(
-            "ADMIN_DB_PASSWORD",
-            ValidationCategory::RequiredEnvVar,
-            true,
-            None,
-        ));
-
         // BOT_ADMIN_SERVER_ID
         results.push(Self::check_env_var(
             "BOT_ADMIN_SERVER_ID",
@@ -220,6 +222,25 @@ impl EnvValidator {
         ));
 
         results
+    }
+
+    /// マイグレーション実行時に必須の環境変数をチェック
+    pub fn check_migration_required_vars() -> Vec<ValidationResult> {
+        vec![
+            // 管理者ロール用（必須）
+            Self::check_env_var::<fn(&str) -> Result<(), String>>(
+                "ADMIN_DB_USER",
+                ValidationCategory::RequiredEnvVar,
+                true,
+                None,
+            ),
+            Self::check_env_var::<fn(&str) -> Result<(), String>>(
+                "ADMIN_DB_PASSWORD",
+                ValidationCategory::RequiredEnvVar,
+                true,
+                None,
+            ),
+        ]
     }
 
     /// 任意環境変数をチェック
@@ -419,22 +440,42 @@ impl StartupValidator {
         }
     }
 
-    /// 全チェックを実行
-    pub async fn validate_all() -> Result<Self, StartupError> {
+    /// モードに応じたチェックを実行
+    pub async fn validate_for_mode(mode: StartupValidationMode) -> Result<Self, StartupError> {
         let mut validator = Self::new();
 
-        // 必須環境変数チェック
+        // 共通必須環境変数チェック
         validator
             .results
-            .extend(EnvValidator::check_required_vars());
+            .extend(EnvValidator::check_common_required_vars());
 
-        // 任意環境変数チェック
-        validator
-            .results
-            .extend(EnvValidator::check_optional_vars());
+        match mode {
+            StartupValidationMode::NormalStartup => {
+                // 通常起動のみ必須
+                validator
+                    .results
+                    .extend(EnvValidator::check_bot_startup_required_vars());
 
-        // ファイルチェック
-        validator.results.extend(EnvValidator::check_files().await);
+                // 通常起動でもマイグレーションは実行するため必須
+                validator
+                    .results
+                    .extend(EnvValidator::check_migration_required_vars());
+
+                // 任意環境変数チェック
+                validator
+                    .results
+                    .extend(EnvValidator::check_optional_vars());
+
+                // ファイルチェック
+                validator.results.extend(EnvValidator::check_files().await);
+            }
+            StartupValidationMode::MigrationOnly => {
+                // migrate-only はマイグレーションに必要な項目のみチェック
+                validator
+                    .results
+                    .extend(EnvValidator::check_migration_required_vars());
+            }
+        }
 
         // エラーがある場合は失敗
         if !validator.is_valid() {
@@ -455,6 +496,11 @@ impl StartupValidator {
         }
 
         Ok(validator)
+    }
+
+    /// 通常起動向けの全チェックを実行
+    pub async fn validate_all() -> Result<Self, StartupError> {
+        Self::validate_for_mode(StartupValidationMode::NormalStartup).await
     }
 
     /// バリデーション成功か
@@ -738,9 +784,9 @@ mod tests {
     }
 
     #[test]
-    fn test_check_required_vars_includes_guild_spreadsheet_template_url() {
-        let required_results = EnvValidator::check_required_vars();
-        let template_url_result = required_results
+    fn test_check_bot_startup_required_vars_includes_guild_spreadsheet_template_url() {
+        let bot_required_results = EnvValidator::check_bot_startup_required_vars();
+        let template_url_result = bot_required_results
             .iter()
             .find(|result| result.item_name == "GUILD_SPREADSHEET_TEMPLATE_URL");
 
@@ -752,13 +798,37 @@ mod tests {
     }
 
     #[test]
-    fn test_check_optional_vars_excludes_guild_spreadsheet_template_url() {
-        let optional_results = EnvValidator::check_optional_vars();
-        let template_url_result = optional_results
+    fn test_check_migration_required_vars_excludes_guild_spreadsheet_template_url() {
+        let migration_required_results = EnvValidator::check_migration_required_vars();
+        let template_url_result = migration_required_results
             .iter()
             .find(|result| result.item_name == "GUILD_SPREADSHEET_TEMPLATE_URL");
 
         assert!(template_url_result.is_none());
+    }
+
+    #[test]
+    fn test_check_common_required_vars_excludes_discord_token() {
+        let common_required_results = EnvValidator::check_common_required_vars();
+        let discord_token_result = common_required_results
+            .iter()
+            .find(|result| result.item_name == "DISCORD_TOKEN");
+
+        assert!(discord_token_result.is_none());
+    }
+
+    #[test]
+    fn test_check_migration_required_vars_includes_admin_db_user() {
+        let migration_required_results = EnvValidator::check_migration_required_vars();
+        let admin_user_result = migration_required_results
+            .iter()
+            .find(|result| result.item_name == "ADMIN_DB_USER");
+
+        assert!(admin_user_result.is_some());
+        assert_eq!(
+            admin_user_result.unwrap().category,
+            ValidationCategory::RequiredEnvVar
+        );
     }
 
     #[tokio::test]
