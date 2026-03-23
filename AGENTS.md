@@ -24,7 +24,7 @@ It consolidates rules from `CLAUDE.md`, `.cursor/rules/rules.mdc`, and `docs/en/
 ### Development Commands
 ```bash
 cargo build                    # Build (dev only)
-cargo run                      # Run bot (.env required)
+cargo run                      # Run bot (.env.app required)
 cargo test                     # Run tests
 cargo test test_name           # Run specific test
 cargo test -- --nocapture      # Run tests with logging

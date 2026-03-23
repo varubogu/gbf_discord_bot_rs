@@ -150,17 +150,20 @@ esac
 
 # dev up の処理
 dev_up() {
-    # .envファイルの存在確認
-    if [ ! -f ".env" ]; then
-        echo -e "${RED}❌ Warning: .env file not found!${NC}"
-        echo -e "${YELLOW}Please create .env file based on .env.example${NC}"
+    # .env.dbファイルの存在確認
+    if [ ! -f ".env.db" ]; then
+        echo -e "${RED}❌ Warning: .env.db file not found!${NC}"
+        echo -e "${YELLOW}Please create .env.db file based on .env.db.example${NC}"
         exit 1
     fi
 
     # 環境変数の読み込み
     set -a
-    source .env
+    source .env.db
     set +a
+
+    # 開発環境はlocalhost経由で接続する想定
+    DB_HOST=${DB_HOST:-localhost}
 
     # コンテナが存在するか確認
     if [ ! "$(docker ps -q -f name=dev-db)" ]; then

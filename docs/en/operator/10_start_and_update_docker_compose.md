@@ -49,5 +49,5 @@ docker compose run --rm maintenance
 ## Common pitfalls
 
 - `GITHUB_REPOSITORY` is not set, so the pull source is not what you intended
-- Missing `.env` files or empty values (especially tokens and DB passwords)
+- Missing `.env.app` / `.env.db` / `.env.maintenance` files or empty values (especially tokens and DB passwords)
 - `.local/` does not exist, or the key JSON is not present

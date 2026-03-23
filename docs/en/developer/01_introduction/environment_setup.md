@@ -10,7 +10,7 @@
 
 ## Shortest path (DevContainer)
 
-1. Copy `.env` templates and fill in values
+1. Copy per-container env templates and fill in values
    - `.env.app.example` → `.env.app`
    - `.env.db.example` → `.env.db`
 2. Place the service account key JSON under `.local/`, then update `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` in `.env.app`
@@ -19,5 +19,5 @@
 
 ## Notes for local runs
 
-- `.env` files contain secrets. Never commit them (they are already in `.gitignore`).
+- `.env.app`, `.env.db`, and `.env.maintenance` contain secrets. Never commit them (they are already in `.gitignore`).
 - If you see errors, first check logs and DB connectivity (`DATABASE_URL`).

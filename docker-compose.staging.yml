@@ -47,7 +47,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
     env_file:
-      - .env.db  # .envから環境変数を読み込み
+      - .env.db
     networks:
       - app_network
     healthcheck:

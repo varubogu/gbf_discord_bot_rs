@@ -59,7 +59,7 @@ impl Environment {
         let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
         let dotenv_path = Path::new(&config_folder).join(".env.app");
 
-        // Load .env file
+        // .env.appファイルを読み込む
         match dotenv::from_path(&dotenv_path) {
             Ok(_) => {
                 info!("Loaded environment from {}", dotenv_path.display());
@@ -73,9 +73,9 @@ impl Environment {
                 Ok(())
             }
             Err(e) => {
-                error!("Failed to load .env file: {}", e);
+                error!(".env.appファイルの読み込みに失敗しました: {}", e);
                 Err(Box::new(EnvironmentError {
-                    message: format!("Failed to load .env file: {e}"),
+                    message: format!(".env.appファイルの読み込みに失敗しました: {e}"),
                 }))
             }
         }

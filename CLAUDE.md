@@ -12,7 +12,7 @@ Built with Rust + poise + PostgreSQL + SeaORM, following clean architecture.
 ### Development
 ```bash
 cargo build                    # Build project
-cargo run                      # Run bot (requires .env)
+cargo run                      # Run bot (requires .env.app)
 cargo test                     # Run tests
 cargo test test_name           # Run specific test
 cargo test -- --nocapture      # Run with logging

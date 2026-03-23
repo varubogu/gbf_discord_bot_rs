@@ -49,5 +49,5 @@ docker compose run --rm maintenance
 ## よくあるつまずき
 
 - `GITHUB_REPOSITORY` が未設定で、pull先が意図したものにならない
-- `.env` ファイルの不足/空欄（特にトークン、DBパスワード）
+- `.env.app` / `.env.db` / `.env.maintenance` の不足/空欄（特にトークン、DBパスワード）
 - `.local/` が存在しない、または鍵JSONが入っていない

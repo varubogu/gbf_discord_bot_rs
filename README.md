@@ -21,7 +21,9 @@ For more details, please refer to [docs/user](User Manual) *Japanese only*
 ## Setup
 
 1. Clone the repository
-2. Copy `.env.example` to create a `.env` file and configure environment variables
+2. Copy per-container env examples and configure environment variables
+   - `.env.app.example` -> `.env.app`
+   - `.env.db.example` -> `.env.db`
 3. Run `cargo build --release`
 4. Run `./target/release/gbf_discord_bot_rs`
 
@@ -59,7 +61,7 @@ cargo build
 # Build for release
 cargo build --release
 
-# Run the bot (requires .env configuration)
+# Run the bot (requires .env.app configuration)
 cargo run
 
 # Run tests

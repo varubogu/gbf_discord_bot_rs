@@ -10,7 +10,7 @@ lazy_static::lazy_static! {
 
 // Initialize the environment
 pub async fn init_environment(db: Option<Arc<Database>>) -> Result<(), Box<dyn std::error::Error>> {
-    // Load from .env file
+    // .env.appから環境変数を読み込む
     ENV.load_from_env_file().await?;
 
     // If database is provided, set it and load from database

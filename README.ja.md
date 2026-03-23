@@ -118,7 +118,7 @@ cargo build
 # リリースビルド
 cargo build --release
 
-# Botを実行（.envの設定が必要）
+# Botを実行（.env.appの設定が必要）
 cargo run
 
 # テストを実行

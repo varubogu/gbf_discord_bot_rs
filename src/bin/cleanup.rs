@@ -12,7 +12,7 @@ use tracing::{error, info};
 /// 毎日深夜3時にcronで自動実行される。
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // .envファイルを読み込み（開発環境用）
+    // .env.maintenanceファイルを読み込み（開発環境用）
     // 本番環境では環境変数が直接設定されるため、エラーは無視
     let config_folder = env::var("CONFIG_FOLDER").unwrap_or_else(|_| ".".to_string());
     let dotenv_path = Path::new(&config_folder).join(".env.maintenance");

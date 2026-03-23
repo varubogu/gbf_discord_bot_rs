@@ -58,28 +58,28 @@ function Show-Help
 
 function Start-DevDatabase
 {
-    # .envファイルの存在確認
-    if (-not (Test-Path ".env"))
+    # .env.dbファイルの存在確認
+    if (-not (Test-Path ".env.db"))
     {
-        Write-Host "❌ Warning: .env file not found!" -ForegroundColor Red
-        Write-Host "Please create .env file based on .env.example" -ForegroundColor Yellow
+        Write-Host "❌ Warning: .env.db file not found!" -ForegroundColor Red
+        Write-Host "Please create .env.db file based on .env.db.example" -ForegroundColor Yellow
         exit 1
     }
 
     # 環境変数ファイルの読み込み
-    Get-Content ".env" | ForEach-Object {
+    Get-Content ".env.db" | ForEach-Object {
         if ($_ -match "^([^=]+)=(.*)$")
         {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
         }
     }
 
-    # 環境変数を取得
-    $DBUSER = $env:DB_USER
-    $DBPASSWORD = $env:DB_PASSWORD
-    $DBDATABASE = $env:DB_NAME
-    $DBHOST = $env:DB_HOST
-    $DBPORT = $env:DB_PORT
+    # 環境変数を取得（未設定時はデフォルト値を使用）
+    $DBUSER = if ([string]::IsNullOrEmpty($env:POSTGRES_USER)) { "postgres" } else { $env:POSTGRES_USER }
+    $DBPASSWORD = if ([string]::IsNullOrEmpty($env:POSTGRES_PASSWORD)) { "postgres" } else { $env:POSTGRES_PASSWORD }
+    $DBDATABASE = if ([string]::IsNullOrEmpty($env:POSTGRES_DB)) { "postgres" } else { $env:POSTGRES_DB }
+    $DBHOST = if ([string]::IsNullOrEmpty($env:DB_HOST)) { "localhost" } else { $env:DB_HOST }
+    $DBPORT = if ([string]::IsNullOrEmpty($env:DB_PORT)) { "5432" } else { $env:DB_PORT }
 
     # コンテナが存在するか確認
     $runningContainer = docker ps -q -f name=dev-db

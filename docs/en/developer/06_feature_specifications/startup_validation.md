@@ -76,7 +76,7 @@ Validation Result: ❌ FAILED (1 error, 0 warnings)
   - GLOBAL_SPREADSHEET_ID is not set but required for spreadsheet features
 
 💡 Next Steps:
-  1. Set GLOBAL_SPREADSHEET_ID in your .env file
+  1. Set GLOBAL_SPREADSHEET_ID in your .env.app file
   2. Restart the application
 
 Exiting...
@@ -402,7 +402,7 @@ Exit with appropriate code
 
 - Add optional DB connectivity tests
 - Add optional Discord API connectivity tests
-- Validate configuration files (e.g., `.env` syntax checks)
+- Validate configuration files (e.g., `.env.app` / `.env.db` syntax checks)
 
 ## Test strategy
 

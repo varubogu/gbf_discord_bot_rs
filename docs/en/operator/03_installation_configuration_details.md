@@ -6,7 +6,7 @@ If this is difficult, start by copying the template files (example) and filling 
 ## Common terms
 
 - **Environment variable**: A mechanism to provide app configuration values (passwords, etc.) separately from code.
-- **.env file**: A way to write environment variables into a file and load them together.
+- **Per-container env files** (`.env.app` / `.env.db` / `.env.maintenance`): A way to write environment variables into files and load them together.
 
 ## Typical settings
 
