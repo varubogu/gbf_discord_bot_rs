@@ -20,7 +20,7 @@ No special permissions are required. Users can use bot features but cannot chang
 
 They can change server-level settings. In practice, we check the following role:
 
-- `gbf_bot_control`: Bot設定（チャンネル登録、スプレッドシート登録/読み込み等）の権限
+- `gbf_bot_control`: permission to manage bot settings (channel registration, spreadsheet register/load, etc.)
 
 ### Bot operators (admins)
 
@@ -36,4 +36,4 @@ They administer the entire bot.
 
 ## Related (operator docs)
 
-- [Discordサーバー管理者向け](../../operator/09_for_discord_server_admins.md)
+- [For Discord server administrators](../../operator/09_for_discord_server_admins.md)

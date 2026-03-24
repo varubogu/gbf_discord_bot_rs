@@ -10,7 +10,7 @@ It covers server-level configuration (roles, channels, spreadsheets).
 
 ## Start here
 
-1. [はじめに](01_introduction.md)
+1. [Introduction](01_introduction.md)
 2. [Quick start (shortest path)](02_quick_start.md)
 3. [Spreadsheet operations](03_spreadsheet_operations.md)
 4. [Troubleshooting](04_troubleshooting.md)

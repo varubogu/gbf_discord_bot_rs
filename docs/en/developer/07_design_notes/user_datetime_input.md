@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This design note describes how to parse user input (e.g., `今日21時`, `2200`, `2時間前`) using consistent rules and safely convert it into the date/time types required by each feature.
+This design note describes how to parse user input (e.g., `today 21:00`, `2200`, `2h before`) using consistent rules and safely convert it into the date/time types required by each feature.
 
 ## Background
 
@@ -40,28 +40,26 @@ In the unified parser, input patterns are enabled/disabled per use case.
 
 - ISO-like formats such as `2024-12-31 21:00`
 - No-year formats such as `12/31 21:00`
-- Japanese formats such as `12月31日 21時半`
-- Relative day words + time such as `today 21:00` / `tomorrow 2200` / `明日22時半`
-  - Both spaced and unspaced forms are allowed between the keyword and time (e.g., `明日 21時`, `明日21時`)
+- Natural-language formats such as `Dec 31 9:30 PM`
+- Relative day words + time such as `today 21:00` / `tomorrow 2200`
+  - Both spaced and unspaced forms are allowed between the keyword and time (e.g., `tomorrow 21:00`, `tomorrow21:00`)
 
 ### Time only
 
 - `21:00` format
 - 4-digit numbers (e.g., `2200`)
-- Japanese time expressions (`21時`, `21時半`, `午後3時`)
 - English time expressions (`9 PM`, `9:30 PM`)
 
 ### Relative time
 
-- Japanese: `2時間前`, `30分後`, `1日後`
-- English: `2 hours ago`, `30 minutes later`, `1day`
+- Examples: `2 hours ago`, `30 minutes later`, `1day`, `2h before`
 - Units: day / hour / minute
 
 ## Constraints by use case
 
 ### Quest departure datetime
 
-- Allowed: absolute datetime, no-year date, date-only, time-only, Japanese expressions, numeric patterns
+- Allowed: absolute datetime, no-year date, date-only, time-only, locale expressions, numeric patterns
 - Disallowed: relative time (depending on feature requirements)
 
 ### Dismissal time(s)
@@ -69,7 +67,7 @@ In the unified parser, input patterns are enabled/disabled per use case.
 - Allowed: absolute datetime + relative time
 - Multiple values: comma-separated with an upper limit
 - Reference time: departure datetime
-- Relative expressions are limited to "before departure" (`後` / `later` / `after` are rejected)
+- Relative expressions are limited to "before departure" (`later` / `after` are rejected)
 - The allowed range from departure is restricted by `DISMISSAL_MAX_DAYS` (default `7` when unset)
 
 ### Scheduled recruitment start time
@@ -105,8 +103,8 @@ This separation allows scheduled recruitments, dismissals, and one-off recruitme
 
 ## Direction rules for relative time
 
-- `前` / `ago` / `before` means before the reference time
-- `後` / `later` / `after` means after the reference time
+- `ago` / `before` means before the reference time
+- `later` / `after` means after the reference time
 - If direction is omitted, follow the target feature’s backward-compatibility policy
 
 ## Multiple values
@@ -120,17 +118,16 @@ This separation allows scheduled recruitments, dismissals, and one-off recruitme
 
 ### Absolute patterns
 
-- 完全日時: `2025/11/15 21:00`, `2025-11-15 21:00`
-- 年なし: `12/11 14:00`, `12-11 14:00`
-- 日付のみ: `11/15`, `11-15`
-- 時刻: `21:00`, `9:30`
-- 日本語: `1月2日3時4分`, `午後9時半`, `2026年3月16日21時`
-- 数字: `1230`, `10111230`, `30 1230`, `202603162100`, `3/16 2100`, `0316 2100`, `03162100`
+- Full datetime: `2025/11/15 21:00`, `2025-11-15 21:00`
+- No-year datetime: `12/11 14:00`, `12-11 14:00`
+- Date only: `11/15`, `11-15`
+- Time only: `21:00`, `9:30`
+- Locale-friendly forms: `Jan 2 3:04`, `9:30 PM`, `March 16, 2026 21:00`
+- Numeric: `1230`, `10111230`, `30 1230`, `202603162100`, `3/16 2100`, `0316 2100`, `03162100`
 
 ### Relative patterns
 
-- 日本語: `1日前`, `2時間前`, `90分後`
-- 英語: `1day`, `2hours`, `90minutes`, `1h`, `90m`
+- Relative forms: `1day`, `2hours`, `90minutes`, `1h`, `90m`
 
 ## Error handling policy
 

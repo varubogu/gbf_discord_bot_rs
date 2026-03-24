@@ -13,36 +13,36 @@ Per-guild schedules are stored in `guild_master.battle_recruitment_schedules` an
 
 ## Main commands
 
-- `/定期募集作成`
-- `/定期募集削除`
-- `/定期募集一覧`
+- `/recruitment-schedule-create`
+- `/recruitment-schedule-delete`
+- `/recruitment-schedule-list`
 
-実行権限は `gbf_bot_control` ロール保持者を前提とします。
+Execution is restricted to users with the `gbf_bot_control` role.
 
 ## Data model
 
 ### `guild_master.battle_recruitment_schedules`
 
-- スケジュール本体（クエスト、戦術、時刻、有効フラグ）
-- `recruit_start_day_offset` で募集開始日のオフセットを管理
-- `is_enabled = false` で一時停止可能
+- Core schedule body (quest, strategy, time, enabled flag)
+- `recruit_start_day_offset` controls the offset day for recruitment post start
+- Can be paused with `is_enabled = false`
 
 ### `guild_master.battle_recruitment_schedule_days`
 
-- 実行曜日を管理（1スケジュールに複数曜日）
+- Manages execution weekdays (multiple weekdays per schedule)
 
 ### `worker.scheduled_task_recurring_recruitments`
 
-- 実行タスクとスケジュールの関連を保持
+- Stores the relationship between execution tasks and schedules
 
 ## Offset behavior
 
-`recruit_start_day_offset` の省略時は、時刻比較で自動決定します。
+When `recruit_start_day_offset` is omitted, it is determined automatically by time comparison.
 
 - If `recruit_start_time < quest_start_time`: `0` (same-day recruitment)
 - If `recruit_start_time >= quest_start_time`: `1` (previous-day recruitment)
 
-手動指定時は入力値を優先します（実装上のバリデーション範囲に従う）。
+When manually specified, the input value is prioritized (within implementation validation bounds).
 
 ## Flow
 
@@ -79,6 +79,6 @@ Per-guild schedules are stored in `guild_master.battle_recruitment_schedules` an
 
 ## Operational notes
 
-- 有効スケジュール件数の監視
-- 実行失敗率の監視
-- 定期的な不要スケジュール棚卸し
+- Monitor the number of enabled schedules
+- Monitor execution failure rates
+- Periodically review and remove unnecessary schedules

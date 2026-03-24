@@ -102,7 +102,7 @@ Channels inside the category are ordered as follows:
 
 ### Date channels
 - Any number of channels in the category (position 1..n)
-- Channel name format: `M月d日` (e.g., `1月21日`)
+- Channel name format: `M-d` (e.g., `1-21`)
 - Sorted by date ascending
 - Shows a select menu with 24 hourly options (supports selecting up to 24 at once)
 - Selection is toggle-based (selecting again unregisters)
@@ -138,7 +138,7 @@ Use the messages above to change your selections.
 - In GBF, the “day” changes at 5:00 AM. For example, the `1/21` channel covers `1/21 05:00` through `1/22 04:00`.
 - Display hourly options in descending order (night hours first).
 - Show in the order: next-day 04:00, 03:00, 02:00, 01:00, 00:00, then same-day 23:00 ... down to 05:00.
-- For next-day hours (00:00–04:00), label as `翌0:00`, `翌1:00`, ... `翌4:00`.
+- For next-day hours (00:00–04:00), label as `Next 0:00`, `Next 1:00`, ... `Next 4:00`.
 
 ### Shared channel rules
 - Users cannot post or edit (bot-only)

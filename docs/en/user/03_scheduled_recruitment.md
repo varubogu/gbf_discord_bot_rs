@@ -14,15 +14,15 @@ This feature automatically posts recruitments on a schedule (e.g., “every week
 
 ## Commands
 
-### 1) Create: `/定期募集作成`
+### 1) Create: `/recruitment-schedule-create`
 
 | Field | Required | Description |
 |---|---:|---|
-| Schedule name | ✅ | A readable name (e.g., `天元21時`) |
+| Schedule name | ✅ | A readable name (e.g., `Ultimate-Baha 21:00`) |
 | Quest | ✅ | The quest to recruit for |
 | Quest start time | ✅ | `HH:MM` (e.g., `21:00`) |
-| Target weekdays | ✅ | e.g., `月,水,金` / `月火水` / `毎日` |
-| Post start time | ✅ | e.g., `19:00` / `2時間前` |
+| Target weekdays | ✅ | e.g., `Mon,Wed,Fri` / `MonTueWed` / `Daily` |
+| Post start time | ✅ | e.g., `19:00` / `2h before` |
 | Strategy | Optional | Override the quest’s default strategy |
 | Start date offset | Optional | 0=today, 1=previous day, 2=two days before (auto if omitted) |
 | Notes | Optional | Memo |
@@ -33,15 +33,15 @@ Note: Quest, quest start time, strategy, and dismissal time(s) use the same inpu
 - [Co-op recruitment: what to enter](./02_multi_recruitment.md#what-should-i-enter)
 - [Co-op recruitment: quest date/time input tips](./02_multi_recruitment.md#quest-datetime-input)
 
-### 2) List: `/定期募集一覧`
+### 2) List: `/recruitment-schedule-list`
 
 - Shows the scheduled recruitments currently registered
 
-### 3) Delete: `/定期募集削除`
+### 3) Delete: `/recruitment-schedule-delete`
 
 - Use this when you want to delete it permanently (assumed irreversible)
 
-### 4) Pause/resume: `/定期募集切り替え`
+### 4) Pause/resume: `/recruitment-schedule-toggle`
 
 If you only want to stop it temporarily, pausing is recommended instead of deleting.
 You can resume it later.

@@ -205,7 +205,7 @@ EnvValidator (new)
 #### StartupValidator
 
 ```rust
-/// 起動時バリデーター
+/// Startup validator
 pub struct StartupValidator {
     results: Vec<ValidationResult>,
 }
@@ -213,13 +213,13 @@ pub struct StartupValidator {
 impl StartupValidator {
     pub fn new() -> Self;
 
-    /// モードに応じたチェックを実行
+    /// Run validation checks for the startup mode
     pub async fn validate_for_mode(mode: StartupValidationMode) -> Result<Self, StartupError>;
 
-    /// 結果を表示
+    /// Display validation results
     pub fn display_results(&self);
 
-    /// バリデーション成功か
+    /// Whether validation succeeded
     pub fn is_valid(&self) -> bool;
 }
 ```
@@ -227,7 +227,7 @@ impl StartupValidator {
 #### ValidationResult
 
 ```rust
-/// バリデーション結果
+/// Validation result
 pub struct ValidationResult {
     pub category: ValidationCategory,
     pub item_name: String,
@@ -253,26 +253,26 @@ pub enum ValidationStatus {
 #### EnvValidator
 
 ```rust
-/// 環境変数バリデーター
+/// Environment variable validator
 pub struct EnvValidator;
 
 impl EnvValidator {
-    /// 共通で必須の環境変数をチェック
+    /// Check required environment variables common to all modes
     pub fn check_common_required_vars() -> Vec<ValidationResult>;
 
-    /// 通常起動のみ必須の環境変数をチェック
+    /// Check required environment variables for normal bot startup
     pub fn check_bot_startup_required_vars() -> Vec<ValidationResult>;
 
-    /// マイグレーション実行時に必須の環境変数をチェック
+    /// Check required environment variables for migration mode
     pub fn check_migration_required_vars() -> Vec<ValidationResult>;
 
-    /// 任意環境変数をチェック
+    /// Check optional environment variables
     pub fn check_optional_vars() -> Vec<ValidationResult>;
 
-    /// ファイル存在・内容をチェック
+    /// Validate file existence and contents
     pub async fn check_files() -> Vec<ValidationResult>;
 
-    /// JSON ファイルをバリデート
+    /// Validate a JSON file
     pub async fn validate_json_file(path: &str) -> Result<(), String>;
 }
 ```
@@ -280,17 +280,17 @@ impl EnvValidator {
 #### ErrorFormatter (new)
 
 ```rust
-/// エラーフォーマッター
+/// Error formatter
 pub struct ErrorFormatter;
 
 impl ErrorFormatter {
-    /// データベースエラーをフォーマット
+    /// Format a database error
     pub fn format_db_error(err: &DbErr, db_url: &str) -> String;
 
-    /// JSON パースエラーをフォーマット
+    /// Format a JSON parse error
     pub fn format_json_error(err: &serde_json::Error, file_path: &str) -> String;
 
-    /// 一般的なエラーをフォーマット
+    /// Format a generic error
     pub fn format_generic_error(err: &dyn std::error::Error, context: &str) -> String;
 }
 ```
@@ -298,7 +298,7 @@ impl ErrorFormatter {
 ### Error type
 
 ```rust
-/// 起動時エラー
+/// Startup validation error
 #[derive(Error, Debug)]
 pub enum StartupError {
     #[error("Required environment variable not set: {var_name}")]

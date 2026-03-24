@@ -11,7 +11,7 @@ Discord server-side configuration (roles, channels, spreadsheets) is documented 
 
 ## Start here
 
-1. [全体像](01_introduction.md)
+1. [Overview](01_introduction.md)
 2. [Installation](02_installation_overview.md)
 3. [Configuration (environment variables)](03_installation_configuration_details.md)
 4. [Start and update (Docker Compose)](10_start_and_update_docker_compose.md)

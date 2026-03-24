@@ -7,7 +7,7 @@ This feature configures timezone and locale (language setting) per Discord serve
 ## Requirements
 
 ### Core features
-- Configure timezone and locale via the slash command `/サーバー設定`
+- Configure timezone and locale via the slash command `/guild_settings_set`
 - Specify timezone names compliant with the IANA Time Zone Database (e.g. `Asia/Tokyo`, `America/New_York`)
 - Configure locale (e.g. `ja`, `en`)
 - Defaults:
@@ -19,8 +19,8 @@ This feature configures timezone and locale (language setting) per Discord serve
 
 #### Affected
 1. **Interpretation of user input**
-   - datetime input for `/マルチバトル募集`
-   - datetime input for `/マルチバトル募集内容変更`
+   - datetime input for `/recruit_new`
+   - datetime input for `/recruit_change`
    - datetime interpretation when loading from spreadsheets
 
 2. **Display**
@@ -49,7 +49,7 @@ src/events/interactions/command_interactions/slash/guild_settings/guild_settings
 src/events/interactions/command_interactions/slash/guild_settings/guild_settings_show.rs
 ```
 - Implement Discord API operations
-- Define `/サーバー設定`
+- Define `/guild_settings_set`
 - Authorization (`gbf_bot_control` role)
 - Error handling
 - Display the “settings updated” message
@@ -112,7 +112,7 @@ pub struct Model {
 
 ## Command spec
 
-### `/サーバー設定`
+### `/guild_settings_set`
 
 #### Parameters
 | Parameter | Type | Required | Description | Examples |
@@ -125,11 +125,11 @@ At least one of `timezone` or `locale` is required.
 #### Autocomplete
 - Show major timezone candidates while typing
 - Display format: `timezone_name - description [UTC offset]`
-  - Example: `Asia/Tokyo - 日本標準時 (JST) [UTC+9]`
-  - Example: `America/New_York - 米国東部標準時 (EST) [UTC-5]`
+  - Example: `Asia/Tokyo - Japan Standard Time (JST) [UTC+9]`
+  - Example: `America/New_York - Eastern Standard Time (EST) [UTC-5]`
 - Supports narrowing by substring
   - Timezone name (e.g. `tokyo`, `new_york`)
-  - Description text (e.g. `日本`, `米国`)
+  - Description text (e.g. `japan`, `us`)
 - Up to 25 items (Discord limit)
 - Data source: an in-program array (~50 major timezones)
 
@@ -156,7 +156,7 @@ Updated server settings.
 
 ## Check current settings
 
-Current server settings can be checked by executing `/サーバー設定` with no parameters (or by implementing a dedicated “view settings” command).
+Current server settings can be checked by executing `/guild_settings_show` (or by implementing an equivalent dedicated “view settings” command).
 
 #### Flow
 1. Get current guild settings
@@ -184,8 +184,8 @@ pub struct TimezoneService {
 }
 
 impl TimezoneService {
-    /// ギルドのタイムゾーンを取得
-    /// 未設定の場合はデフォルト（Asia/Tokyo）を返す
+    /// Get the guild timezone
+    /// Return default (Asia/Tokyo) when not configured
     pub async fn get_guild_timezone(&self, guild_id: GuildId) -> Result<Tz> {
         match self.repository.find_by_guild_id(guild_id).await? {
             Some(settings) => {
@@ -198,35 +198,35 @@ impl TimezoneService {
         }
     }
 
-    /// ギルドのタイムゾーンを設定
+    /// Set the guild timezone
     pub async fn set_guild_timezone(
         &self,
         guild_id: GuildId,
         timezone: Tz,
     ) -> Result<()> {
-        // バリデーション済みのTz型を受け取るため、そのまま保存
+        // Accept a validated Tz and persist directly
         self.repository.upsert(guild_id, timezone.name()).await
     }
 
-    /// タイムゾーン名のバリデーション
+    /// Validate timezone name
     pub fn validate_timezone(timezone_str: &str) -> Result<Tz> {
         timezone_str.parse::<Tz>()
             .map_err(|_| Error::InvalidTimezone)
     }
 
-    /// オートコンプリート用のタイムゾーンリストを取得
-    /// 部分文字列でフィルタリングし、UTC+9:00形式のオフセット付きで表示
-    /// キャッシュを使用してパフォーマンスを最適化
+    /// Get timezone list for autocomplete
+    /// Filter by substring and show offset in UTC+9:00-style format
+    /// Use cache for performance
     pub fn get_timezones_for_autocomplete(partial: &str) -> Vec<AutocompleteChoice> {
-        // lazy_staticでキャッシュされた全候補から部分一致検索
-        // 表示形式: "Asia/Tokyo - 日本標準時 (JST) [UTC+9]"
-        // 最大25件まで返す
+        // Partial match from all cached candidates in lazy_static
+        // Display format: "Asia/Tokyo - Japan Standard Time (JST) [UTC+9]"
+        // Return up to 25 items
     }
 
-    /// タイムゾーンキャッシュを初期化する
-    /// プログラム起動時に呼び出すことで、事前に計算を完了させる
+    /// Initialize timezone cache
+    /// Call at startup to precompute values
     pub fn initialize_timezone_cache() {
-        // lazy_staticの初期化を強制
+        // Force lazy_static initialization
     }
 }
 ```
@@ -234,21 +234,21 @@ impl TimezoneService {
 ### Major timezone list definition
 
 ```rust
-/// 主要なタイムゾーンのリスト（名前、説明）
-/// プログラム内で配列として定義（約50のタイムゾーン）
+/// List of major timezones (name, description)
+/// Defined in-program as an array (~50 timezones)
 const COMMON_TIMEZONES: &[(&str, &str)] = &[
-    // アジア
-    ("Asia/Tokyo", "日本標準時 (JST)"),
-    ("Asia/Seoul", "韓国標準時 (KST)"),
-    ("Asia/Shanghai", "中国標準時 (CST)"),
-    // ... 他のタイムゾーン
+    // Asia
+    ("Asia/Tokyo", "Japan Standard Time (JST)"),
+    ("Asia/Seoul", "Korea Standard Time (KST)"),
+    ("Asia/Shanghai", "China Standard Time (CST)"),
+    // ... other timezones
 ];
 
-/// オートコンプリート用のタイムゾーン候補リスト（キャッシュ）
-/// プログラム起動時に計算され、以後は静的に保持される
+/// Cached timezone candidate list for autocomplete
+/// Computed at startup and kept statically afterward
 lazy_static! {
     static ref TIMEZONE_CHOICES: Vec<AutocompleteChoice> = {
-        // 全タイムゾーンのUTCオフセットを計算
+        // Compute UTC offsets for all timezones
     };
 }
 ```
@@ -274,7 +274,7 @@ pub struct GuildTimezoneRepository {
 }
 
 impl GuildTimezoneRepository {
-    /// ギルドIDでタイムゾーン設定を検索
+    /// Find timezone setting by guild ID
     pub async fn find_by_guild_id(
         &self,
         guild_id: GuildId,
@@ -285,7 +285,7 @@ impl GuildTimezoneRepository {
             .map_err(Into::into)
     }
 
-    /// タイムゾーン設定を保存（UPSERT）
+    /// Save timezone setting (UPSERT)
     pub async fn upsert(
         &self,
         guild_id: GuildId,
@@ -321,13 +321,13 @@ impl GuildTimezoneRepository {
 ```rust
 #[derive(Debug, thiserror::Error)]
 pub enum TimezoneError {
-    #[error("無効なタイムゾーン名です")]
+    #[error("Invalid timezone name")]
     InvalidTimezone,
 
-    #[error("権限がありません")]
+    #[error("Permission denied")]
     PermissionDenied,
 
-    #[error("データベースエラー: {0}")]
+    #[error("Database error: {0}")]
     DatabaseError(#[from] DbErr),
 }
 ```
@@ -350,11 +350,11 @@ pub enum TimezoneError {
 
 ### Integration tests
 
-- [ ] Execute `/タイムゾーン設定` successfully
-- [ ] Invalid timezone input in `/タイムゾーン設定`
-- [ ] Permission failure in `/タイムゾーン設定`
-- [ ] Execute `/タイムゾーン確認` (default state)
-- [ ] Execute `/タイムゾーン確認` (configured state)
+- [ ] Execute `/guild_settings_set` successfully
+- [ ] Invalid timezone input in `/guild_settings_set`
+- [ ] Permission failure in `/guild_settings_set`
+- [ ] Execute `/guild_settings_show` (default state)
+- [ ] Execute `/guild_settings_show` (configured state)
 - [ ] Verify datetime interpretation in recruitment commands after setting the timezone
 
 ## Migration
@@ -460,8 +460,8 @@ Implementation phase:
 - [ ] Implement repository
 - [ ] Implement service
 - [ ] Implement facade
-- [ ] Implement command (`/タイムゾーン設定`)
-- [ ] Implement command (`/タイムゾーン確認`)
+- [ ] Implement command (`/guild_settings_set`)
+- [ ] Implement command (`/guild_settings_show`)
 - [ ] Update `datetime_parser` service
 - [ ] Update display logic
 - [ ] Update spreadsheet loading

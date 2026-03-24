@@ -6,13 +6,13 @@
 
 ```bash
 # まずは対象だけ（名前で絞る）
-cargo test test_name
+cargo test -j 1 test_name
 
 # 全体
-cargo test
+cargo test -j 1
 
 # ignore付き（実DBが必要なもの等）も実行する
-cargo test -- --ignored
+cargo test -j 1 -- --ignored
 ```
 
 ## 最初に読む

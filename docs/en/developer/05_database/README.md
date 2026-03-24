@@ -17,6 +17,6 @@ cargo run -j 1 --bin schema_lint
 
 ## Start here
 
-1. [概要](overview.md)
-2. [接続とトランザクション](connections_and_transactions.md)
-3. [マイグレーション](migrations.md)
+1. [Overview](overview.md)
+2. [Connections and transactions](connections_and_transactions.md)
+3. [Migrations](migrations.md)

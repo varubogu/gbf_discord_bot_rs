@@ -19,5 +19,5 @@ sea-orm-cli migrate generate migration_name
 
 ## Notes
 
-- 既存データがある前提で、安全に適用できる変更にする
-- マイグレーションには「DB権限（ロール）」が絡むことがあるため、変更の影響範囲を確認する
+- Design changes to be safely applicable with existing production data in place
+- Migration changes can affect DB permissions (roles), so verify the impact scope before applying

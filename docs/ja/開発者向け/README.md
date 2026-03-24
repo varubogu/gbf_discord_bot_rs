@@ -13,9 +13,9 @@
 ## よく使うコマンド（開発時）
 
 ```bash
-cargo build
-cargo test
-cargo clippy
+cargo build -j 1
+cargo test -j 1
+cargo clippy -j 1
 cargo fmt
 ```
 

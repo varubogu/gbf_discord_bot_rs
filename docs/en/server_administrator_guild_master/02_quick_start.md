@@ -4,11 +4,11 @@ This page summarizes the minimum setup to “make the bot usable in your Discord
 
 ## Steps
 
-1. `gbf_bot_control` ロールを作る（Bot設定を触れる人にだけ付ける）
-2. サーバー用スプレッドシートを用意し、サービスアカウントに共有する
-3. スプレッドシートを登録する
-4. チャンネルを登録する
-5. スプレッドシートを読み込む（反映）
+1. Create the `gbf_bot_control` role (assign it only to users who should manage bot settings)
+2. Prepare the server spreadsheet and share it with the service account
+3. Register the spreadsheet
+4. Register channels
+5. Load the spreadsheet (apply changes)
 
 ## 1) Create the `gbf_bot_control` role
 

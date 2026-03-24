@@ -6,13 +6,13 @@
 
 ```bash
 # 通常起動（マイグレーションも行う）
-cargo run
+cargo run -j 1
 
 # マイグレーションのみ実行
-cargo run -- migrate
+cargo run -j 1 -- migrate
 
 # スキーマ整合性チェック
-cargo run --bin schema_lint
+cargo run -j 1 --bin schema_lint
 ```
 
 ## 最初に読む

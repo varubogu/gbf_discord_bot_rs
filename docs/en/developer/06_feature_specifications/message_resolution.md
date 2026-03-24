@@ -72,7 +72,7 @@ Add the new key with `ja` and `en` text.
 
 ```yaml
 your.new.key:
-  ja: "日本語テキスト"
+  ja: "Japanese text"
   en: "English text"
 ```
 

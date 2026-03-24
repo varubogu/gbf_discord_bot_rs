@@ -22,11 +22,11 @@
 
 | id | name | memo |
 | --- | --- | --- |
-| 1 | イベントスケジュール通知 | イベントスケジュール通知の送信先チャンネル |
-| 2 | マルチ募集 | マルチ募集メッセージの送信先チャンネル |
-| 3 | 団連絡用 | 団連絡の通知先（団員のみ閲覧可能なチャンネルの場合、Botにも権限を与えてください） |
-| 4 | マルチ募集チャンネル（他サーバー共用） | 外部のguildで募集した時用の通知先。通常のマルチ募集チャンネルと同じでも良いし、未定義も可能 |
-| 5 | 管理者通知 | bot実行中のエラーや設定不足を管理者（gbf_bot_controlロール保持者）に通知するチャンネル |
+| 1 | Event schedule notification | Destination channel for event schedule notifications |
+| 2 | Co-op recruitment | Destination channel for co-op recruitment messages |
+| 3 | Guild contact | Destination channel for guild notices (if members-only, also grant bot access) |
+| 4 | Shared co-op recruitment (cross-server) | Destination used when recruiting from an external guild; may reuse the normal co-op channel or remain undefined |
+| 5 | Admin notification | Channel used to notify administrators (users with `gbf_bot_control`) about runtime errors and missing settings |
 
 ## Rust enum
 

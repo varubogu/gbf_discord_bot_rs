@@ -2,7 +2,7 @@
 
 This `docs/` directory reorganizes the repository documentation by the reader’s role.
 
-> Note: `docs/en` is currently a work in progress. Some pages may still be in Japanese.
+> Note: `docs/en` is maintained as the English counterpart of `docs/ja`. Keep both sides synchronized when updating specs.
 
 ## Choose your role
 

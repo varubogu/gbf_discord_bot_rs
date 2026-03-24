@@ -11,11 +11,11 @@ This section is where you “return to the rules when you’re unsure”.
 
 ## Index
 
-- [ワークフロー](workflow.md)
-- [コーディング規約](coding_standards.md)
-- [エラーハンドリング](error_handling.md)
-- [ロギング](logging.md)
-- [セキュリティ](security.md)
-- [パフォーマンス](performance.md)
-- [タイムゾーン](time_zones.md)
-- [アンチパターン](anti_patterns.md)
+- [Workflow](workflow.md)
+- [Coding standards](coding_standards.md)
+- [Error handling](error_handling.md)
+- [Logging](logging.md)
+- [Security](security.md)
+- [Performance](performance.md)
+- [Time zones](time_zones.md)
+- [Anti-patterns](anti_patterns.md)

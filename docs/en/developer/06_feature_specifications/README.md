@@ -5,6 +5,7 @@ This section summarizes each major feature's purpose, requirements, data model, 
 ## Index
 
 - [Spreadsheet integration](spreadsheet_integration.md)
+- [Initial setup message](initial_setup_message.md)
 - [Co-op recruitment](multi_recruitment.md)
 - [Scheduled recruitment](scheduled_recruitment.md)
 - [Help command](help_command.md)
@@ -13,6 +14,7 @@ This section summarizes each major feature's purpose, requirements, data model, 
 - [Scheduling feature (common)](scheduling_feature.md)
 - [Scheduling feature (by task type)](scheduling_feature/README.md)
 - [Message resolution](message_resolution.md)
+- [Message ID migration (2026-02-19)](message_id_migration_2026-02-19.md)
 - [Time zone settings](time_zone_settings.md)
 - [Startup validation](startup_validation.md)
 - [Admin notification](admin_notification.md)

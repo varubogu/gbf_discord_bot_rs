@@ -102,9 +102,9 @@ This integration provides two variants:
 
 ## Spreadsheet structure
 
-### “テーブル名” sheet (metadata)
+### `table_names` sheet (metadata)
 
-Every spreadsheet has a special sheet named “テーブル名”, which defines which tables are synchronized.
+Every spreadsheet has a special metadata sheet named `table_names`, which defines which tables are synchronized.
 
 | Row/Col | Content | Notes |
 |--------:|---------|-------|
@@ -138,9 +138,9 @@ Column order does not matter; the program maps by the column names in row 1. Und
 
 | target_id | recruit_count | quest_name | use_battle_type | default_battle_type |
 |-----------|--------------|-----------|----------------|-------------------|
-| クエストID | 募集人数 | クエスト名 | 使用可能戦術 | デフォルト戦術 |
-| 1 | 30 | プロトバハムートHL | 1,2,3 | 1 |
-| 2 | 18 | アルティメットバハムートHL | 1,2 | 2 |
+| Quest ID | Recruit Count | Quest Name | Available Strategies | Default Strategy |
+| 1 | 30 | Proto Bahamut HL | 1,2,3 | 1 |
+| 2 | 18 | Ultimate Bahamut HL | 1,2 | 2 |
 
 ## Data lookup priority
 

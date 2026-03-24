@@ -21,9 +21,9 @@ This feature recruits participants for multi battles within a Discord server. Us
 - **Auto-cancel on message deletion**: if the recruitment message is deleted, the recruitment is automatically marked canceled
 
 ### Recurring recruitment
-- Create schedules via `/定期募集作成`
-- Delete schedules via `/定期募集削除`
-- List schedules via `/定期募集一覧`
+- Create schedules via `/recruitment-schedule-create`
+- Delete schedules via `/recruitment-schedule-delete`
+- List schedules via `/recruitment-schedule-list`
 - Automatically create recruitment messages on specific weekdays/times
 - Configure “recruit start time” and “departure time” separately
 - Enable/disable schedules
@@ -59,7 +59,7 @@ src/events/interactions/command_interactions/slash/recruit_role_remove.rs
 src/events/interactions/command_interactions/slash/recurring_recruitment_create.rs
 src/events/interactions/command_interactions/slash/recurring_recruitment_delete.rs
 src/events/interactions/command_interactions/slash/recurring_recruitment_list.rs
-src/events/message_delete.rs  # メッセージ削除イベントのハンドリング
+src/events/message_delete.rs  # Handles message deletion events
 ```
 - Implement Discord API operations
 - Define slash commands
@@ -177,30 +177,30 @@ pub enum BattleType {
 }
 
 impl BattleType {
-    /// バトル種類に応じたリアクションを取得
+    /// Get reactions by battle type
     pub fn get_reactions(&self) -> Vec<ReactionType> {
         match self {
             BattleType::Default => vec![ReactionType::Unicode("✋️".to_string())],
             BattleType::AllElement => vec![
-                ReactionType::Unicode("🔴".to_string()), // 火
-                ReactionType::Unicode("🔵".to_string()), // 水
-                ReactionType::Unicode("🟤".to_string()), // 土
-                ReactionType::Unicode("🟢".to_string()), // 風
-                ReactionType::Unicode("🟡".to_string()), // 光
-                ReactionType::Unicode("🟣".to_string()), // 闇
-                ReactionType::Unicode("⚪️".to_string()), // 全属性対応
+                ReactionType::Unicode("🔴".to_string()), // Fire
+                ReactionType::Unicode("🔵".to_string()), // Water
+                ReactionType::Unicode("🟤".to_string()), // Earth
+                ReactionType::Unicode("🟢".to_string()), // Wind
+                ReactionType::Unicode("🟡".to_string()), // Light
+                ReactionType::Unicode("🟣".to_string()), // Dark
+                ReactionType::Unicode("⚪️".to_string()), // Any element
             ],
             BattleType::System => vec![ReactionType::Unicode("✋️".to_string())],
             BattleType::RelicBuster => vec![ReactionType::Unicode("✋️".to_string())],
             BattleType::SuperUltimateBahamut => vec![
-                ReactionType::Unicode("🔴".to_string()), // 火
-                ReactionType::Unicode("🔵".to_string()), // 水
-                ReactionType::Unicode("🟤".to_string()), // 土
-                ReactionType::Unicode("🟢".to_string()), // 風
-                ReactionType::Unicode("🟡".to_string()), // 光
-                ReactionType::Unicode("🟣".to_string()), // 闇
-                ReactionType::Unicode("⚪️".to_string()), // 全属性対応
-                ReactionType::Unicode("🔟".to_string()), // 10%担当
+                ReactionType::Unicode("🔴".to_string()), // Fire
+                ReactionType::Unicode("🔵".to_string()), // Water
+                ReactionType::Unicode("🟤".to_string()), // Earth
+                ReactionType::Unicode("🟢".to_string()), // Wind
+                ReactionType::Unicode("🟡".to_string()), // Light
+                ReactionType::Unicode("🟣".to_string()), // Dark
+                ReactionType::Unicode("⚪️".to_string()), // Any element
+                ReactionType::Unicode("🔟".to_string()), // 10% role
             ],
         }
     }
@@ -265,13 +265,13 @@ For detailed specs, technical implementation, and error handling, see:
 
 ### `/recruit_role_add` (add notification roles)
 - Input:
-  - quest (required; autocomplete; add an “すべて” item at the top)
+  - quest (required; autocomplete; add an “all” item at the top)
   - role 1 (required)
   - role 2–6 (optional)
 - Actor: only admins with the `gbf_bot_control` role
 - Summary:
   1. Facade verifies the actor has the `gbf_bot_control` role
-  2. If quest is “すべて” (internally `quest_id = 0`), insert into the all-recruitment notification role table
+  2. If quest is “all” (internally `quest_id = 0`), insert into the all-recruitment notification role table
   3. If quest is a quest name, resolve quest ID and insert into the per-quest notification role table
   4. Validate roles exist on Discord (missing role → error)
   5. Skip roles already registered (treat as success)
@@ -281,13 +281,13 @@ For detailed specs, technical implementation, and error handling, see:
 
 ### `/recruit_role_remove` (remove notification roles)
 - Input:
-  - quest (required; autocomplete; add an “すべて” item at the top)
+  - quest (required; autocomplete; add an “all” item at the top)
   - role 1 (required)
   - role 2–6 (optional)
 - Actor: only admins with the `gbf_bot_control` role
 - Summary:
   1. Facade verifies the actor has the `gbf_bot_control` role
-  2. If quest is “すべて” (internally `quest_id = 0`), delete from the all-recruitment notification role table
+  2. If quest is “all” (internally `quest_id = 0`), delete from the all-recruitment notification role table
   3. If quest is a quest name, resolve quest ID and delete from the per-quest notification role table
   4. Deleting non-existent roles is skipped (treated as success)
   5. Bulk delete roles within a transaction
@@ -394,20 +394,20 @@ sequenceDiagram
 ```rust
 #[poise::command(
     slash_command,
-    name_localized("ja", "募集"),
-    description_localized("ja", "バトル募集を作成します")
+    name_localized("ja", "Recruit"),
+    description_localized("ja", "Create a battle recruitment")
 )]
 pub async fn recruit(
     ctx: PoiseContext<'_>,
     #[description = "quest name or alias"]
-    #[description_localized("ja", "クエスト名またはクエスト別名")]
+    #[description_localized("ja", "Quest name or alias")]
     #[autocomplete = "quest_auto_complete"]
     quest: String,
     #[description = "Quest start date and time"]
-    #[description_localized("ja", "クエスト開始日時")]
+    #[description_localized("ja", "Quest start datetime")]
     start_datetime: String,
 ) -> Result<()> {
-    // 実装
+    // Implementation
 }
 ```
 
@@ -421,18 +421,18 @@ pub async fn create_recruitment_data(
     guild_id: u64,
     start_datetime: Option<DateTime<Local>>,
 ) -> types::Result<RecruitmentData> {
-    // クエスト情報取得
+    // Fetch quest data
     let quest = get_quest_by_alias(quest_alias).await?;
 
-    // 開始日時計算（サーバーごとのデフォルト日時を使用）
+    // Compute start datetime (use server default when omitted)
     let start_time = start_datetime
         .map(|d| d.with_timezone(&chrono::Utc))
         .unwrap_or_else(|| get_default_start_datetime(guild_id));
 
-    // メッセージ内容生成
+    // Build message content
     let message_content = create_message_content(&quest, &battle_type, &start_time);
 
-    // Embed作成
+    // Build embed
     let embed = create_participants_embed();
 
     Ok(RecruitmentData {
@@ -495,7 +495,7 @@ pub async fn handle_recruitment_select_menu(
     let mut joined_elements = Vec::new();
     let mut left_elements = Vec::new();
 
-    // 選択された全ての属性で参加処理（トグル動作）
+    // Toggle participation for all selected elements
     for element_id in element_ids {
         let action = service.toggle_participation(
             &txn,
@@ -510,23 +510,23 @@ pub async fn handle_recruitment_select_menu(
         }
     }
 
-    // 参加と取り消しの両方のメッセージを生成
+    // Create response for both join and leave operations
     let response_message = format_response_messages(joined_elements, left_elements);
 
-    // メッセージを更新して参加者一覧を反映
+    // Update recruitment message with the latest participant list
     update_recruitment_message(ctx, &txn, &recruitment, message_id, channel_id).await?;
 
     Ok(())
 }
 
-/// 全てのリアクションから参加者を取得
+/// Get participants from all reactions
 pub async fn get_participants_from_all_reactions(
     recruitment: &BattleRecruitments,
 ) -> types::Result<Vec<Participant>> {
     let message = get_message(recruitment.message_id).await?;
     let mut participants = Vec::new();
 
-    // 全てのリアクションを取得
+    // Collect users from all reactions
     for reaction in &message.reactions {
         for user in &reaction.users {
             if user.id != BOT_USER_ID {
@@ -566,19 +566,19 @@ pub async fn get_participants_from_all_reactions(
 ```rust
 match error {
     ValidationError::QuestNotFound => {
-        ctx.say("指定されたクエストが見つかりません").await?;
+        ctx.say("The specified quest was not found").await?;
     }
     ValidationError::InvalidStartDateTime => {
-        ctx.say("クエスト開始日時の形式が正しくありません").await?;
+        ctx.say("The quest start datetime format is invalid").await?;
     }
     DatabaseError::ConnectionFailed => {
-        ctx.say("データベース接続エラーが発生しました").await?;
+        ctx.say("A database connection error occurred").await?;
     }
     DiscordError::ReactionFetchFailed => {
-        ctx.say("リアクション情報の取得に失敗しました").await?;
+        ctx.say("Failed to fetch reaction data").await?;
     }
     _ => {
-        ctx.say("不明なエラーが発生しました").await?;
+        ctx.say("An unknown error occurred").await?;
     }
 }
 ```
@@ -635,9 +635,9 @@ match error {
 
 ### Logging
 ```rust
-info!(quest_name = %quest_name, "募集作成を開始しました");
-warn!(recruitment_id = %id, "募集が満員のため参加を拒否しました");
-error!(error = %e, "募集作成に失敗しました");
+info!(quest_name = %quest_name, "Recruitment creation started");
+warn!(recruitment_id = %id, "Join request rejected because recruitment is full");
+error!(error = %e, "Failed to create recruitment");
 ```
 
 ### Monitoring
@@ -690,7 +690,7 @@ error!(error = %e, "募集作成に失敗しました");
 - Parameter name: `dismissal_times`
 - Input format: comma-separated string (with an upper bound)
 - Absolute: time-only / datetime
-- Relative: “n days/hours/minutes before departure” and equivalent English expressions (`後` / `later` / `after` are rejected)
+- Relative: “n days/hours/minutes before departure” (`later` / `after` are rejected)
 
 ### Validation
 

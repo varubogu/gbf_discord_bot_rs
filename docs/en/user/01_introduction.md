@@ -8,19 +8,19 @@ Type `/` in the chat box to open a menu of commands you can run for the bot.
 
 1. Type `/` in the chat box
 
-![スラッシュコマンド開始](image.png)
+![Slash command opened](image.png)
 
 2. Select a bot command
 
-![コマンド選択](image-1.png)
+![Command selected](image-1.png)
 
 3. Fill in the required fields as guided
 
-![コマンドパラメータ入力](image-2.png)
+![Command parameters entered](image-2.png)
 
 4. Press Enter to send (run the command)
 
-![コマンド実行結果](image-3.png)
+![Command execution result](image-3.png)
 
 ## Read next
 
