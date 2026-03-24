@@ -1,5 +1,4 @@
 use chrono::{Duration, Utc};
-use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
 use gbf_discord_bot_rs::infrastructure::database::repositories::recruitment::SeaOrmBattleRecruitmentsRepository;
 use gbf_discord_bot_rs::infrastructure::database::repositories::schedule::{
     SeaOrmNotificationRepository, SeaOrmScheduledTaskRepository,
@@ -11,20 +10,20 @@ use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
+use gbf_discord_bot_rs::types::DbRole;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
 
-/// テストデータベース接続を取得
-async fn get_test_db() -> sea_orm::DatabaseConnection {
-    let manager = DatabaseConnectionManager::new()
+/// テスト用のAdminロール接続を取得
+async fn get_test_admin_db() -> sea_orm::DatabaseConnection {
+    gbf_discord_bot_rs::test_utils::connect_database_for_role(DbRole::Admin)
         .await
-        .expect("データベース接続に失敗しました");
-    manager.connection().clone()
+        .expect("テスト用Adminロールのデータベース接続に失敗しました")
 }
 
 #[tokio::test]
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_integration() {
-    let db = get_test_db().await;
+    let db = get_test_admin_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -136,7 +135,7 @@ async fn test_data_cleanup_integration() {
 #[tokio::test]
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_active_recruitment() {
-    let db = get_test_db().await;
+    let db = get_test_admin_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -187,7 +186,7 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
 #[tokio::test]
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_unsent_notification() {
-    let db = get_test_db().await;
+    let db = get_test_admin_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -232,7 +231,7 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
 #[tokio::test]
 #[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
-    let db = get_test_db().await;
+    let db = get_test_admin_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();

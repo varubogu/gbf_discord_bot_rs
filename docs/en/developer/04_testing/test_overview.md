@@ -2,28 +2,28 @@
 
 ## Goals
 
-- 変更が壊していないことを素早く確認する
-- バグを「再現手順ごと」固定化して、再発を防ぐ
-- レイヤー責務（特にトランザクション境界）を崩さない
+- Quickly confirm that a change did not break existing behavior
+- Preserve bugs as reproducible cases so they do not reoccur
+- Protect layer responsibilities, especially transaction boundaries
 
 ## Test types
 
 ### Unit tests
 
-- 速い、失敗箇所が分かりやすい
-- 外部I/O（Discord/DB/スプレッドシート）は原則モック化する
+- Fast and easy to localize when they fail
+- External I/O such as Discord, the DB, and spreadsheets should generally be mocked
 
 ### Integration tests
 
-- Facade起点で、複数レイヤーの整合性を確認する
-- 外部I/O（Discord/DB/スプレッドシート）は本番と同様のものをテスト環境として作成し、そのまま利用する
+- Start from facades and verify consistency across multiple layers
+- Use test environments that are close to production for external I/O such as Discord, the DB, and spreadsheets
 
 ### System/E2E tests
 
-- 自動テストの対象外とする（Discordは操作の自動化が規約上難しいため）
+- Excluded from automated coverage for now because Discord interaction automation is difficult under platform constraints
 
 ## Common rules
 
-- AAA（Arrange–Act–Assert）の順で書く
-- テスト間で状態を共有しない（順序に依存しない）
-- 「業務上意味のある結果」を確認する（実装の詳細に寄せすぎない）
+- Write tests in AAA order: Arrange, Act, Assert
+- Do not share state between tests or depend on execution order
+- Assert business-meaningful outcomes rather than implementation details

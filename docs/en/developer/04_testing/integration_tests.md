@@ -5,31 +5,32 @@ In this project, they are written primarily **from facades**.
 
 ## Location
 
-- `tests/integration/` 配下
-- 例: `tests/integration/facades/`（Facade起点）
+- Under `tests/integration/`
+- Example: `tests/integration/facades/` (facade entry point)
 
 ## Tests requiring a real DB
 
-- 実DBが必要なものは `#[ignore]` を付けて、通常のテスト実行では走らないようにする
-- 明示的に実DBテストを実行するには `cargo test -- --ignored`
-- ignored テストの分類とCI実行レーンは [ignored_test_strategy.md](ignored_test_strategy.md) を参照
+- Mark tests that require a real DB with `#[ignore]` so they do not run in the default test suite
+- To run real-DB ignored tests explicitly, use `cargo test -- --ignored`
+- For ignored test classification and CI lanes, see [ignored_test_strategy.md](ignored_test_strategy.md)
+- Test DB connections must use role-specific environment variables (`SYSTEM_DB_*`, `GUILD_DB_*`, `GLOBAL_DB_*`, `ADMIN_DB_*`) instead of the default `DB_USER` / `DB_PASSWORD`
 
 ## CI execution lane for ignored tests
 
-- ワークフロー: `.github/workflows/ignored-db-tests.yml`
-- 代表的なFacade統合テスト:
+- Workflow: `.github/workflows/ignored-db-tests.yml`
+- Representative facade integration tests:
   - `integration::facades::spreadsheet_test`
   - `integration::facades::guild_settings_test`
 
 ## Test data handling
 
-- テスト専用の `guild_id` / `user_id` を使い、他テストと衝突しないようにする
-- 前処理で対象データを明示的に削除し、後処理でも削除する（再実行可能にする）
+- Use dedicated test `guild_id` / `user_id` values so tests do not collide with each other
+- Delete target data explicitly before each test and after each test so reruns stay safe
 
 ## Design notes
 
-- 1テスト = 1目的（巨大化させない）
-- 失敗時に「何が壊れたか」が分かるアサーションにする
+- One test should have one purpose
+- Write assertions so a failure clearly shows what broke
 
 ## Per-feature design docs (recommended)
 

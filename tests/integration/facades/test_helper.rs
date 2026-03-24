@@ -6,7 +6,6 @@ use gbf_discord_bot_rs::gateway::{
     DiscordChannelGateway, DiscordGuildGateway, DiscordInteractionGateway, DiscordMessageGateway,
     DiscordReactionGateway,
 };
-use gbf_discord_bot_rs::infrastructure::database::connection::sea_orm_connection::DatabaseConnectionManager;
 use gbf_discord_bot_rs::types::DbRole;
 use gbf_discord_bot_rs::types::discord::{
     ChannelCreateParams, ChannelData, ChannelEditParams, DiscordChannelId, DiscordGuildId,
@@ -170,19 +169,34 @@ mock! {
 
 /// テスト用のデータベース接続を取得
 ///
-/// 環境変数からDB接続情報を取得し、DatabaseConnectionを返す。
-/// DB接続に失敗した場合はpanicする。
-pub async fn get_test_db() -> DatabaseConnection {
-    let manager = DatabaseConnectionManager::new()
+/// 指定ロールの環境変数からDB接続情報を取得し、DatabaseConnectionを返す。
+/// テストでは既定のDB_USER/DB_PASSWORDにはフォールバックしない。
+pub async fn get_test_db_for_role(role: DbRole) -> DatabaseConnection {
+    gbf_discord_bot_rs::test_utils::connect_database_for_role(role)
         .await
-        .expect("テスト用データベース接続に失敗しました");
-    manager.connection().clone()
+        .unwrap_or_else(|error| {
+            panic!(
+                "テスト用{}データベース接続に失敗しました: {}",
+                role.description(),
+                error
+            )
+        })
+}
+
+/// テスト用のGuildロール接続を取得
+pub async fn get_test_guild_db() -> DatabaseConnection {
+    get_test_db_for_role(DbRole::Guild).await
+}
+
+/// テスト用のAdminロール接続を取得
+pub async fn get_test_admin_db() -> DatabaseConnection {
+    get_test_db_for_role(DbRole::Admin).await
 }
 
 /// テスト用のAppStateを作成
 ///
-/// 3つのDBロール（Guild/System/Global）すべてに対してテスト用DB接続を使用する。
-/// 簡略化のため、ロール別接続を取得するか、同一接続を共有する。
+/// 3つのDBロール（Guild/System/Global）を本番同様に個別接続で初期化する。
+/// テストでも既定のDB_USER/DB_PASSWORDには依存しない。
 pub async fn create_test_app_state() -> AppState {
     let config = AppConfig {
         discord_token: "test_token".to_string(),
@@ -195,27 +209,11 @@ pub async fn create_test_app_state() -> AppState {
         max_schedule_days_outside_event: 365,
     };
 
-    // ロール別DB接続を取得（環境変数がある場合）
-    let guild_db = create_role_db_connection(&config, DbRole::Guild).await;
-    let system_db = create_role_db_connection(&config, DbRole::System).await;
-    let global_db = create_role_db_connection(&config, DbRole::Global).await;
+    let guild_db = get_test_db_for_role(DbRole::Guild).await;
+    let system_db = get_test_db_for_role(DbRole::System).await;
+    let global_db = get_test_db_for_role(DbRole::Global).await;
 
     AppState::new(guild_db, system_db, global_db, config)
-}
-
-/// 指定ロールのDB接続を作成
-///
-/// ロール別環境変数がない場合はデフォルトのDB_USER/DB_PASSWORDを使用する。
-async fn create_role_db_connection(config: &AppConfig, role: DbRole) -> DatabaseConnection {
-    // まずロール別URLを試行
-    if let Ok(url) = config.database_url(role)
-        && let Ok(conn) = sea_orm::Database::connect(&url).await
-    {
-        return conn;
-    }
-
-    // フォールバック：デフォルトのDB接続を使用
-    get_test_db().await
 }
 
 /// テスト用のMessageDataを作成

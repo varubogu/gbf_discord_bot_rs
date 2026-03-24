@@ -4,7 +4,7 @@ use gbf_discord_bot_rs::facades::spreadsheet::GuildSpreadsheetRegistrationFacade
 use gbf_discord_bot_rs::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
 use sea_orm::EntityTrait;
 
-use super::test_helper::{TEST_GUILD_ID, get_test_db};
+use super::test_helper::{TEST_GUILD_ID, get_test_admin_db, get_test_guild_db};
 
 /// 1-1: 異常系：必須環境変数なし
 ///
@@ -17,7 +17,7 @@ async fn test_new_missing_env_var() {
         std::env::remove_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE");
     }
 
-    let db = get_test_db().await;
+    let db = get_test_guild_db().await;
     let result = GuildSpreadsheetRegistrationFacade::new(db);
 
     // 初期化エラーが返る
@@ -44,21 +44,22 @@ async fn test_register_invalid_url() {
         std::env::set_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE", "/tmp/dummy.json");
     }
 
-    let db = get_test_db().await;
+    let guild_db = get_test_guild_db().await;
+    let admin_db = get_test_admin_db().await;
 
     // テスト前のクリーンアップ
     use gbf_discord_bot_rs::models::entities::guild_master::{
         guild_spreadsheet_exports, guild_spreadsheet_imports,
     };
     let _ = guild_spreadsheet_imports::Entity::delete_many()
-        .exec(&db)
+        .exec(&admin_db)
         .await;
     let _ = guild_spreadsheet_exports::Entity::delete_many()
-        .exec(&db)
+        .exec(&admin_db)
         .await;
 
-    let facade =
-        GuildSpreadsheetRegistrationFacade::new(db.clone()).expect("Facadeの初期化に失敗しました");
+    let facade = GuildSpreadsheetRegistrationFacade::new(guild_db.clone())
+        .expect("Facadeの初期化に失敗しました");
 
     // 不正なURL
     let invalid_url = "https://invalid-url.com/";
@@ -75,7 +76,7 @@ async fn test_register_invalid_url() {
     use gbf_discord_bot_rs::repository::GuildSpreadsheetConfigRepositoryTrait;
     let repo = SeaOrmGuildSpreadsheetConfigRepository::new();
     let config = repo
-        .find_import_spreadsheet_id(&db, TEST_GUILD_ID)
+        .find_import_spreadsheet_id(&admin_db, TEST_GUILD_ID)
         .await
         .ok();
     assert!(
@@ -96,21 +97,22 @@ async fn test_register_one_invalid_url() {
         std::env::set_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE", "/tmp/dummy.json");
     }
 
-    let db = get_test_db().await;
+    let guild_db = get_test_guild_db().await;
+    let admin_db = get_test_admin_db().await;
 
     // テスト前のクリーンアップ
     use gbf_discord_bot_rs::models::entities::guild_master::{
         guild_spreadsheet_exports, guild_spreadsheet_imports,
     };
     let _ = guild_spreadsheet_imports::Entity::delete_many()
-        .exec(&db)
+        .exec(&admin_db)
         .await;
     let _ = guild_spreadsheet_exports::Entity::delete_many()
-        .exec(&db)
+        .exec(&admin_db)
         .await;
 
-    let facade =
-        GuildSpreadsheetRegistrationFacade::new(db.clone()).expect("Facadeの初期化に失敗しました");
+    let facade = GuildSpreadsheetRegistrationFacade::new(guild_db.clone())
+        .expect("Facadeの初期化に失敗しました");
 
     // load_urlは正常、push_urlが不正
     let valid_url = "https://docs.google.com/spreadsheets/d/ABC123/edit";
@@ -127,7 +129,7 @@ async fn test_register_one_invalid_url() {
     use gbf_discord_bot_rs::repository::GuildSpreadsheetConfigRepositoryTrait;
     let repo = SeaOrmGuildSpreadsheetConfigRepository::new();
     let config = repo
-        .find_import_spreadsheet_id(&db, TEST_GUILD_ID)
+        .find_import_spreadsheet_id(&admin_db, TEST_GUILD_ID)
         .await
         .ok();
     assert!(

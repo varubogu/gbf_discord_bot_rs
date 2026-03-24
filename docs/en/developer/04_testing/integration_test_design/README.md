@@ -4,8 +4,8 @@ This folder contains per-feature integration test designs (prerequisite data, ca
 
 ## Why keep these docs
 
-- テストコードだけだと「前提」「期待結果」「片付け方」が読み取りづらくなる
-- 実DBテストは失敗時の復旧が面倒になりやすいので、設計書で手順を固定する
+- Test code alone can make it hard to understand prerequisites, expected results, and cleanup steps
+- Real-DB tests can be tedious to recover from when they fail, so design docs help standardize the procedure
 
 ## Template (example)
 

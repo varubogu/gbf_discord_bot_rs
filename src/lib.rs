@@ -20,16 +20,87 @@ rust_i18n::i18n!("locales");
 
 // Test utilities for integration tests
 pub mod test_utils {
-    use crate::infrastructure::database::connection::connection_manager::is_database_available;
     use crate::services::unified_datetime_parser::{
         DateTimeParseOptions, ParsedDateTime, parse_datetime,
     };
+    use crate::types::DbRole;
     use chrono::{DateTime, Local, Timelike};
     use chrono_tz::Tz;
+    use sea_orm::{Database, DatabaseConnection, DbErr};
+    use std::env;
 
     /// Test utility to check database availability
     pub fn check_database_availability() -> (bool, Vec<String>) {
-        is_database_available()
+        check_database_availability_for_roles(&[
+            DbRole::System,
+            DbRole::Guild,
+            DbRole::Global,
+            DbRole::Admin,
+        ])
+    }
+
+    /// テストで必要なロール別DB環境変数の利用可否を確認する
+    pub fn check_database_availability_for_roles(roles: &[DbRole]) -> (bool, Vec<String>) {
+        let mut required_vars = vec!["DB_HOST", "DB_PORT", "DB_NAME"];
+
+        for role in roles {
+            let (user_var, password_var) = role_credential_env_names(*role);
+            required_vars.push(user_var);
+            required_vars.push(password_var);
+        }
+
+        required_vars.sort_unstable();
+        required_vars.dedup();
+
+        let missing = required_vars
+            .into_iter()
+            .filter(|var_name| env::var(var_name).is_err())
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+
+        (missing.is_empty(), missing)
+    }
+
+    /// テスト用に指定ロールのDBへ接続する
+    pub async fn connect_database_for_role(role: DbRole) -> Result<DatabaseConnection, DbErr> {
+        let database_url = build_database_url_for_role(role).map_err(DbErr::Custom)?;
+        Database::connect(&database_url).await
+    }
+
+    /// ロール別認証情報の環境変数名を取得する
+    fn role_credential_env_names(role: DbRole) -> (&'static str, &'static str) {
+        match role {
+            DbRole::System => ("SYSTEM_DB_USER", "SYSTEM_DB_PASSWORD"),
+            DbRole::Guild => ("GUILD_DB_USER", "GUILD_DB_PASSWORD"),
+            DbRole::Global => ("GLOBAL_DB_USER", "GLOBAL_DB_PASSWORD"),
+            DbRole::Admin => ("ADMIN_DB_USER", "ADMIN_DB_PASSWORD"),
+        }
+    }
+
+    /// テスト用に指定ロールのDB接続URLを構築する
+    fn build_database_url_for_role(role: DbRole) -> Result<String, String> {
+        let (available, missing) = check_database_availability_for_roles(&[role]);
+        if !available {
+            return Err(format!(
+                "テスト用DB接続情報が不足しています: {}",
+                missing.join(", ")
+            ));
+        }
+
+        let host = env::var("DB_HOST").map_err(|_| "DB_HOST が設定されていません".to_string())?;
+        let port = env::var("DB_PORT").map_err(|_| "DB_PORT が設定されていません".to_string())?;
+        let database =
+            env::var("DB_NAME").map_err(|_| "DB_NAME が設定されていません".to_string())?;
+
+        let (user_var, password_var) = role_credential_env_names(role);
+        let user = env::var(user_var).map_err(|_| format!("{user_var} が設定されていません"))?;
+        let password =
+            env::var(password_var).map_err(|_| format!("{password_var} が設定されていません"))?;
+
+        Ok(format!(
+            "postgresql://{}:{}@{}:{}/{}",
+            user, password, host, port, database
+        ))
     }
 
     /// Test utility to get default expiry date (今日21:00)

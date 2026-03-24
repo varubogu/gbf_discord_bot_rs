@@ -2,19 +2,19 @@
 
 ## Scope
 
-- 1つの関数/サービス/変換処理など、「その場で完結できる」ロジック
-- 例: 入力検証、日時解釈、メッセージ生成、条件分岐
+- Logic that can be completed locally within a single function, service, or transformation
+- Examples: input validation, date/time parsing, message generation, and conditional branching
 
 ## How to write
 
-- AAA（Arrange–Act–Assert）
-- 成功/失敗の両方を最低限入れる（境界値や例外系）
+- Use AAA: Arrange, Act, Assert
+- Cover both success and failure paths at minimum, including boundary values and error cases
 
 ## External I/O
 
-- Discord/DB/スプレッドシートなどの外部I/Oはモック化する
-- 依存はTraitで抽象化し、`mockall` を使って差し替える
+- Mock external I/O such as Discord, the DB, and spreadsheets
+- Abstract dependencies behind traits and replace them with `mockall`
 
 ## Location
 
-- 原則は対象実装ファイル内の `#[cfg(test)] mod tests { ... }`
+- In principle, place tests in `#[cfg(test)] mod tests { ... }` within the target implementation file

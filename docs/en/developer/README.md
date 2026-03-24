@@ -5,8 +5,8 @@ The project assumes **Rust + poise + SeaORM + PostgreSQL**.
 
 ## Start here (if you’re unsure)
 
-1. [環境構築](01_introduction/environment_setup.md)
-2. [アーキテクチャ概要](02_architecture/layered_architecture.md)
+1. [Environment Setup](01_introduction/environment_setup.md)
+2. [Architecture Overview](02_architecture/layered_architecture.md)
 3. [Development rules (must-read)](03_development_rules/README.md)
 4. [Testing approach](04_testing/README.md)
 
@@ -23,10 +23,10 @@ cargo fmt
 
 ## Table of contents
 
-- [はじめに](01_introduction/README.md)
-- [アーキテクチャ](02_architecture/README.md)
-- [開発ルール](03_development_rules/README.md)
-- [テスト](04_testing/README.md)
-- [データベース](05_database/README.md)
-- [機能仕様](06_feature_specifications/README.md)
-- [設計メモ（詳細）](07_design_notes/README.md)
+- [Introduction](01_introduction/README.md)
+- [Architecture](02_architecture/README.md)
+- [Development Rules](03_development_rules/README.md)
+- [Testing](04_testing/README.md)
+- [Database](05_database/README.md)
+- [Feature Specifications](06_feature_specifications/README.md)
+- [Design Notes](07_design_notes/README.md)
