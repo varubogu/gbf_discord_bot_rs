@@ -1,6 +1,6 @@
 ---
 name: architecture-lint
-description: Detect clean architecture layer violations and check dependency rule violations. Verify dependency direction of events→facades→services→repository.
+description: Detect clean architecture layer violations and check dependency rule violations. Use when reviewing code for dependency shortcuts, transaction-boundary mistakes, or violations of events→facades→services→repository.
 ---
 
 # Architecture Lint Skill

@@ -1,9 +1,15 @@
 ---
 name: documentation
-description: Documentation creation and modification rules (docs/en/developer/ design documents, abstraction principles, structure). Use when creating documentation, updating design documents, writing architecture docs, asking about documentation structure, design principles, or working with files in docs/en/developer/ (fallback: docs/ja/).
+description: "Documentation creation and modification rules (docs/en/developer/ design documents, abstraction principles, structure, docs-first workflow). Use when creating documentation, updating design documents, writing architecture docs, checking which docs must change for a code change, asking about documentation structure/design principles, or working with files in docs/en/developer/ (fallback: docs/ja/)."
 ---
 
 # Documentation Guide
+
+## Workflow Integration
+
+- Check `docs/en/developer/` first, then fall back to `docs/ja/` when the English path is missing or incomplete
+- When a behavior or design changes, update the relevant design or feature document before changing code
+- Review whether the change also requires updates to `locales/`, migrations, or user-facing documentation
 
 ## Structure
 

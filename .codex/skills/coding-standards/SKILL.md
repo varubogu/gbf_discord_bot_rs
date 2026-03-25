@@ -1,6 +1,6 @@
 ---
 name: coding-standards
-description: Rust coding standards (Japanese comments required, error handling, logging, naming conventions). Use when writing new code, adding error handling, logging, fixing errors, asking about coding style, thiserror, tracing, naming conventions, or code review.
+description: Rust coding standards (Japanese comments required, localization for user-facing strings, error handling, logging, security, naming conventions). Use when writing new code, adding user-facing text, validating input, handling permissions, adding error handling, logging, fixing errors, asking about coding style, thiserror, tracing, naming conventions, or code review.
 ---
 
 # Coding Standards
@@ -42,6 +42,32 @@ struct user_data { }
 const maxRetries: u32 = 3;
 fn CreateUser() { }
 ```
+
+## User-Facing Text
+
+### Localization Rule
+
+**All user-facing strings must be defined in `locales/messages.yml`**
+
+- Message content, embeds, button/select/modal labels, placeholders, and interaction responses must use localized message keys
+- Access text through `MessageTextId` / `MessageService`
+- **Prohibited**: Hardcoding user-facing text in Rust source files
+
+```rust
+// ✅ Correct
+message_service
+    .get(MessageTextId::ErrorsInvalidInput, locale)
+    .await?;
+
+// ❌ Wrong
+ctx.say("入力が不正です").await?;
+```
+
+When adding or changing user-facing text:
+
+1. Update `locales/messages.yml`
+2. Add or update the corresponding `MessageTextId`
+3. Check related feature docs when message behavior is part of the specification
 
 ## Error Handling
 
@@ -137,6 +163,29 @@ let s = format!("{user_name}");
 | WARN | Business exceptions, retryable errors | Validation errors, permission denied |
 | INFO | Important business operations start/end | Recruitment creation, user registration |
 | DEBUG | Debug information | Parameter details, internal state |
+
+### Security Logging Rules
+
+- **Prohibited**: Logging secrets, tokens, credentials, or raw sensitive payloads
+- Use `warn` for business exceptions
+- Use `error` for system failures and unexpected exceptions
+
+## Security
+
+### Input Validation
+
+- Validate inputs in the presentation layer
+- Prefer regex, whitelists, and type-based checks before passing data downstream
+
+### Permission Checks
+
+- Check Discord permissions before executing privileged operations
+- Check app-level authorization rules in addition to Discord-side permissions
+
+### Output Safety
+
+- Sanitize Discord output when untrusted input may be rendered
+- Avoid reflecting raw user input into messages unless it is validated or escaped
 
 ## Performance
 
