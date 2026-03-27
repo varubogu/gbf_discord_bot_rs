@@ -394,6 +394,48 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_DESCRIPTION => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_DESCRIPTION,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATING => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATING,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATED => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATED,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_RECRUITMENT_FIELD_TITLE => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_RECRUITMENT_FIELD_TITLE,
+                locale = locale
+            )
+            .to_string(),
+        ),
+        keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_ELEMENT_HEADER => Some(
+            t!(
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_ELEMENT_HEADER,
+                locale = locale
+            )
+            .to_string(),
+        ),
         keys::NOTIFICATION_PRESENTER_REVOTE_TITLE => {
             Some(t!(keys::NOTIFICATION_PRESENTER_REVOTE_TITLE, locale = locale).to_string())
         }

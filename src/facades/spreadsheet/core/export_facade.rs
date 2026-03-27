@@ -65,8 +65,10 @@ impl ExportConfig {
     /// テーブルをフィルタするか判定
     fn should_include_table(&self, table: &RegisteredTableSchema) -> bool {
         match self.guild_id {
-            // ギルド版: guild_で始まるテーブルのみ
-            Some(_) => table.table_name.starts_with("guild_"),
+            // ギルド版: guild_master スキーマの登録テーブルのみ
+            Some(_) => {
+                crate::services::spreadsheet::get_schema_name(&table.table_name) == "guild_master"
+            }
             // グローバル版: 全テーブル
             None => true,
         }

@@ -31,6 +31,7 @@ This integration provides two variants:
 **Use**: manage custom data per guild
 
 - **Target data**: `guild_messages`, `guild_event_schedules`, etc. (guild-specific data) + spreadsheet configuration tables (`guild_spreadsheet_imports` / `guild_spreadsheet_exports`)
+- **Additional auto-recruitment setting data**: `auto_recruitment_match_rules`, `auto_recruitment_match_rule_quotas`
 - **Who can run**: users with the `gbf_bot_control` role
 - **Impact scope**: only the guild where the command is executed
 - **Commands**:
@@ -100,6 +101,15 @@ This integration provides two variants:
 - Spreadsheet IDs and database IDs always match
 - Zero risk of primary key duplication
 
+### Use case 7: Configure guild-specific auto-recruitment matching
+
+**Scenario**: one guild wants different matching requirements for the same quest without restarting the bot
+
+1. A guild administrator edits `auto_recruitment_match_rules` and, when needed, `auto_recruitment_match_rule_quotas`
+2. The guild administrator executes `/gspread_load`
+3. The bot validates preset names, quest IDs, element compatibility, and quota totals inside the import transaction
+4. The next periodic auto-matching run uses the updated rule immediately
+
 ## Spreadsheet structure
 
 ### `table_names` sheet (metadata)
@@ -141,6 +151,22 @@ Column order does not matter; the program maps by the column names in row 1. Und
 | Quest ID | Recruit Count | Quest Name | Available Strategies | Default Strategy |
 | 1 | 30 | Proto Bahamut HL | 1,2,3 | 1 |
 | 2 | 18 | Ultimate Bahamut HL | 1,2 | 2 |
+
+**Example: `auto_recruitment_match_rules` sheet**
+
+| guild_id | quest_id | preset_type | min_match_count | required_battle_style_id | required_battle_style_count |
+|----------|----------|-------------|-----------------|--------------------------|-----------------------------|
+| Guild ID | Quest ID | Preset Type | Minimum Match Count | Required Element | Required Element Count |
+| 12345 | 10 | min_members_only | 4 |  |  |
+| 12345 | 20 | specific_element_n_plus_any | 4 | 1 | 2 |
+
+**Example: `auto_recruitment_match_rule_quotas` sheet**
+
+| guild_id | quest_id | battle_style_id | required_count | sort_order |
+|----------|----------|-----------------|----------------|------------|
+| Guild ID | Quest ID | Element ID | Required Count | Sort Order |
+| 12345 | 30 | 1 | 1 | 10 |
+| 12345 | 30 | 2 | 1 | 20 |
 
 ## Data lookup priority
 
@@ -232,6 +258,16 @@ This command registers the spreadsheet IDs (import/export) for a guild into dedi
 - `/gspread_load` requires `guild_spreadsheet_imports`; if missing, it prompts users to run `/gspread_regist`
 - `/gspread_push` requires `guild_spreadsheet_exports`; if missing, it returns an error guiding users to register
 - In the future, add a view command so admins can check the registered values in both tables
+
+### Auto-recruitment rule validation on `/gspread_load`
+
+- `preset_type` must be one of `min_members_only`, `one_each_element`, `specific_element_n_plus_any`, `fixed_element_quota`
+- `quest_id` must resolve to an existing quest
+- `min_match_count` must be at least `2`
+- Attribute-based presets are allowed only for six-element quests
+- `specific_element_n_plus_any` requires both `required_battle_style_id` and `required_battle_style_count`
+- `fixed_element_quota` requires at least one quota row and the sum of `required_count` must match `min_match_count`
+- Validation runs inside the import transaction, so invalid rules roll back the entire `/gspread_load`
 
 ## Authentication
 

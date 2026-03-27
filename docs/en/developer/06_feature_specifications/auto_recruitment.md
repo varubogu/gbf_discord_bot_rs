@@ -4,7 +4,7 @@
 
 
 
-Users pre-register desired quests and available time slots. When multiple users match on the same date/time and quest, the bot automatically forms a match and creates a recruitment post.
+Users pre-register desired quests and available time slots. When users satisfy the configured matching condition for the same date/time and quest, the bot automatically forms a match and creates a recruitment post.
 This feature uses a Discord category: “date channels” manage time availability per day, and a “quest channel” manages desired quests.
 
 ## High-level flow
@@ -14,7 +14,7 @@ This feature uses a Discord category: “date channels” manage time availabili
 3. The bot creates the required channels (matching / date channels / quest channel) if it has permission.
 4. Optionally, an operator adjusts the recruitment day range with a “days range” command.
 5. Users register desired quests in the quest channel and their available times in date channels (order does not matter).
-6. A periodic matching job (every 10 seconds) detects cases where 2+ users want the same date/time and quest.
+6. A periodic matching job (every 10 seconds) evaluates the guild-specific matching preset for the same date/time and quest.
 7. On success, the bot posts to the matching channel and immediately creates a recruitment post in the same format as co-op recruitment v2.
 
 ## Layer dependency rules and implementation references
@@ -167,7 +167,8 @@ Use the messages above to change your selections.
 - Search for match candidates based on the newly registered content
   - If a quest is changed: search using newly added quest(s)
   - If time availability is changed: search using newly added hour(s)
-- If 2+ users exist for the same date/time and quest, a match succeeds
+- Match success is determined by the configured rule for `(guild_id, quest_id)`
+- If no rule is configured for the quest, keep the legacy behavior: 2+ users for the same date/time and quest
 
 ## Periodic matching process
 
@@ -179,13 +180,25 @@ Use the messages above to change your selections.
 ### Match detection
 - Join `auto_recruitment_participants` and `user_desired_quests`
 - Group by the same `(guild_id, quest_id, month, day, hour)`
-- Extract groups with 2+ users
+- Resolve the configured rule from `auto_recruitment_match_rules`
 - Target only users not already registered in `quest_matchings`
 
-### Grouping for 6-element quests
-- If selected elements/styles overlap, split into separate groups
-- If group size exceeds the participant cap (`recruit_count`), split into separate groups
-- Place users with fewer selected elements first (prioritize assignment)
+### Matching presets
+- `min_members_only`: succeeds when `min_match_count` users are available
+- `one_each_element`: succeeds when one user can be assigned to each of the six elements
+- `specific_element_n_plus_any`: succeeds when `required_battle_style_id` can be assigned `required_battle_style_count` times and total users reach `min_match_count`
+- `fixed_element_quota`: succeeds when all element quotas in `auto_recruitment_match_rule_quotas` are satisfied
+
+### Matching algorithm
+- Compile the configured preset into required slots (specific element slots plus optional free slots)
+- Sort users deterministically by fewer assignable choices first, then `user_id`
+- For attribute-based presets, use DFS/backtracking to assign users to required slots
+- Once the smallest successful group is found, remove those users and retry with the remaining users
+
+### Legacy fallback
+- If no rule is configured for the quest, keep the current behavior
+- Legacy behavior means “2+ users for the same `(guild_id, quest_id, month, day, hour)`”
+- For six-element quests under fallback, still split groups to avoid duplicate assigned elements
 
 ## On match success
 
@@ -194,9 +207,11 @@ Use the messages above to change your selections.
 - Show date/time, quest, and participants
 - Mention all participants
 - For 6-element quests, also show assigned elements/styles
+- Send the match-complete post first, then edit that same post after recruitment creation to append a jump link to the recruitment post
 
 ### Recruitment creation
 - Immediately create a recruitment post in co-op recruitment v2 format
+- Use the same participant embed, buttons, and element select menu layout as `/recruit_new_v2`
 - Mention the quest-specific notification role (if any) and the matched participants
 
 ### Cancel
@@ -232,6 +247,25 @@ Use the messages above to change your selections.
 - guild_id (PK)
 - quest_id (PK)
 - message_id (message ID)
+- created_at
+- updated_at
+
+### Guild auto-recruitment match rules (`guild_master.auto_recruitment_match_rules`)
+- guild_id (PK)
+- quest_id (PK)
+- preset_type (`min_members_only` / `one_each_element` / `specific_element_n_plus_any` / `fixed_element_quota`)
+- min_match_count (minimum users required for a successful match)
+- required_battle_style_id (used only by `specific_element_n_plus_any`)
+- required_battle_style_count (used only by `specific_element_n_plus_any`)
+- created_at
+- updated_at
+
+### Guild auto-recruitment match rule quotas (`guild_master.auto_recruitment_match_rule_quotas`)
+- guild_id (PK)
+- quest_id (PK)
+- battle_style_id (PK)
+- required_count
+- sort_order
 - created_at
 - updated_at
 

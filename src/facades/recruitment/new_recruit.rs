@@ -1,6 +1,5 @@
 use crate::gateway::DiscordGuildGateway;
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::presenter::RecruitmentPresenter;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::recruit_datetime_service::parse_quest_departure_datetime;
@@ -261,22 +260,10 @@ where
 
         // 3. 表示用データを準備
         let (embed_content, components) = if use_buttons {
-            // ボタン版用のEmbed・コンポーネントを作成
-            let components = if recruitment_data.battle_style_name == "6属性" {
-                RecruitmentPresenter::create_six_element_full_components(&recruitment_data.element_emojis)
-            } else {
-                RecruitmentPresenter::create_recruitment_buttons(
-                    &recruitment_data.battle_style_name,
-                    &recruitment_data.element_emojis,
-                )
-            };
-
-            let initial_text = RecruitmentPresenter::create_initial_participants_text(
+            new::create_v2_recruitment_embed_and_components(
                 &recruitment_data.battle_style_name,
                 &recruitment_data.element_emojis,
-            );
-            let embed = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
-            (embed, components)
+            )
         } else {
             // リアクション版用のEmbed（コンポーネントなし）
             (recruitment_data.embed_content.clone(), vec![])

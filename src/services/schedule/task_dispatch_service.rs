@@ -400,6 +400,8 @@ where
                         self.repos.quest_matching,
                         self.repos.quest_matching_user,
                         self.repos.quest,
+                        self.repos.auto_recruitment_match_rule,
+                        self.repos.auto_recruitment_match_rule_quota,
                     );
 
                     let executor = AutoMatchingTaskExecutor::new(

@@ -78,6 +78,58 @@ impl NotificationPresenter {
             .with_component(action_row)
     }
 
+    /// 自動マッチング完了通知メッセージを生成する
+    pub fn create_auto_matching_notification(
+        quest_name: &str,
+        month: i32,
+        day: i32,
+        hour: i32,
+        users: &[(u64, Option<i32>)],
+        recruitment_url: Option<&str>,
+    ) -> MessageContent {
+        let participant_mentions: Vec<String> = users
+            .iter()
+            .map(|(user_id, _)| format!("<@{user_id}>"))
+            .collect();
+        let participants_str = participant_mentions.join("\n");
+        let element_info = Self::create_auto_matching_element_info(users);
+        let status_message = if recruitment_url.is_some() {
+            localized_ja(MessageTextId::NotificationPresenterAutoMatchingStatusCreated)
+        } else {
+            localized_ja(MessageTextId::NotificationPresenterAutoMatchingStatusCreating)
+        };
+
+        let mut embed = EmbedContent::new()
+            .with_title(localized_ja(
+                MessageTextId::NotificationPresenterAutoMatchingTitle,
+            ))
+            .with_description(localized_ja_with_params(
+                MessageTextId::NotificationPresenterAutoMatchingDescription,
+                &[
+                    ("quest_name", quest_name.to_string()),
+                    ("month", month.to_string()),
+                    ("day", day.to_string()),
+                    ("hour", hour.to_string()),
+                    ("participants_str", participants_str),
+                    ("element_info", element_info),
+                    ("status_text", status_message),
+                ],
+            ))
+            .with_color(0x00ff00);
+
+        if let Some(url) = recruitment_url {
+            embed = embed.with_field(
+                localized_ja(MessageTextId::NotificationPresenterAutoMatchingRecruitmentFieldTitle),
+                url,
+                false,
+            );
+        }
+
+        MessageContent::new()
+            .with_text(participant_mentions.join(" "))
+            .with_embed(embed)
+    }
+
     /// 再投票通知メッセージを生成する
     ///
     /// # Arguments
@@ -197,6 +249,52 @@ impl NotificationPresenter {
         );
 
         ActionRowContent::select_menu(select_menu)
+    }
+
+    /// 自動マッチング通知用の属性表示を生成する
+    fn create_auto_matching_element_info(users: &[(u64, Option<i32>)]) -> String {
+        let has_elements = users
+            .iter()
+            .any(|(_, style)| style.is_some() && *style != Some(0));
+
+        if !has_elements {
+            return String::new();
+        }
+
+        let element_names = [
+            (1, "火"),
+            (2, "水"),
+            (3, "土"),
+            (4, "風"),
+            (5, "光"),
+            (6, "闇"),
+        ];
+
+        let elements: Vec<String> = users
+            .iter()
+            .filter_map(|(user_id, style)| {
+                style.and_then(|battle_style_id| {
+                    if battle_style_id > 0 {
+                        element_names
+                            .iter()
+                            .find(|(id, _)| *id == battle_style_id)
+                            .map(|(_, name)| format!("<@{user_id}>: {name}"))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
+
+        if elements.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "\n\n**{}**:\n{}",
+                localized_ja(MessageTextId::NotificationPresenterAutoMatchingElementHeader),
+                elements.join("\n"),
+            )
+        }
     }
 
     /// 出発通知Embedを生成する
@@ -374,6 +472,52 @@ mod tests {
                 .unwrap()
                 .contains("決定クエスト")
         );
+    }
+
+    #[test]
+    fn test_create_auto_matching_notification_without_link() {
+        let message = NotificationPresenter::create_auto_matching_notification(
+            "テストクエスト",
+            1,
+            15,
+            21,
+            &[(123456789, Some(1)), (987654321, None)],
+            None,
+        );
+
+        assert_eq!(message.embeds.len(), 1);
+        assert!(
+            message.embeds[0]
+                .description
+                .as_ref()
+                .unwrap()
+                .contains("募集を作成しています")
+        );
+        assert_eq!(message.embeds[0].fields.len(), 0);
+    }
+
+    #[test]
+    fn test_create_auto_matching_notification_with_link() {
+        let recruitment_url = "https://discord.com/channels/1/2/3";
+        let message = NotificationPresenter::create_auto_matching_notification(
+            "テストクエスト",
+            1,
+            15,
+            21,
+            &[(123456789, Some(1)), (987654321, Some(2))],
+            Some(recruitment_url),
+        );
+
+        assert_eq!(message.embeds.len(), 1);
+        assert!(
+            message.embeds[0]
+                .description
+                .as_ref()
+                .unwrap()
+                .contains("募集を作成しました")
+        );
+        assert_eq!(message.embeds[0].fields.len(), 1);
+        assert_eq!(message.embeds[0].fields[0].value, recruitment_url);
     }
 
     #[test]

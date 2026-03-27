@@ -7,6 +7,8 @@ use sea_orm::{ColumnTrait, ColumnType, EntityTrait, Iden, Iterable};
 
 use crate::services::spreadsheet::{ColumnSchema, PostgresType};
 
+mod auto_recruitment_match_rule_quotas;
+mod auto_recruitment_match_rules;
 mod battle_styles;
 mod channel_types;
 mod elements;
@@ -23,6 +25,8 @@ mod message_texts;
 mod quest_aliases;
 mod quests;
 
+pub use auto_recruitment_match_rule_quotas::AutoRecruitmentMatchRuleQuotasTable;
+pub use auto_recruitment_match_rules::AutoRecruitmentMatchRulesTable;
 pub use battle_styles::BattleStylesTable;
 pub use channel_types::ChannelTypesTable;
 pub use elements::ElementsTable;
@@ -60,6 +64,8 @@ impl TableRegistration {
 /// 全テーブルの登録情報を取得
 pub fn table_registrations() -> Vec<TableRegistration> {
     vec![
+        TableRegistration::new::<AutoRecruitmentMatchRuleQuotasTable>(),
+        TableRegistration::new::<AutoRecruitmentMatchRulesTable>(),
         TableRegistration::new::<BattleStylesTable>(),
         TableRegistration::new::<ChannelTypesTable>(),
         TableRegistration::new::<EnvironmentsTable>(),
@@ -212,6 +218,8 @@ mod tests {
 
         // 登録した全テーブルが含まれているか確認
         assert!(schemas.contains_key("battle_styles"));
+        assert!(schemas.contains_key("auto_recruitment_match_rules"));
+        assert!(schemas.contains_key("auto_recruitment_match_rule_quotas"));
         assert!(schemas.contains_key("environments"));
         assert!(schemas.contains_key("event_schedules"));
         assert!(schemas.contains_key("event_schedule_details"));

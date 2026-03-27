@@ -372,6 +372,26 @@ pub fn create_initial_participants_text_for_buttons(
     RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis)
 }
 
+/// ボタン版募集v2用のEmbedとコンポーネントを生成する
+///
+/// `/マルチバトル募集2` と同じ構成を返す。
+pub fn create_v2_recruitment_embed_and_components(
+    battle_style_name: &str,
+    element_emojis: &ElementEmojis,
+) -> (EmbedContent, Vec<ActionRowContent>) {
+    let initial_text =
+        RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis);
+
+    let components = if battle_style_name == "6属性" {
+        RecruitmentPresenter::create_six_element_full_components(element_emojis)
+    } else {
+        RecruitmentPresenter::create_recruitment_buttons(battle_style_name, element_emojis)
+    };
+
+    let embed = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
+    (embed, components)
+}
+
 /// 募集用ボタンを作成する（ドメイン型版）
 ///
 /// # 引数
@@ -407,4 +427,43 @@ pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowCo
 /// ActionRowContentのVec（ドメインモデル）
 pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
     RecruitmentPresenter::create_six_element_full_components(element_emojis)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::guild_environment_service::ElementEmojis;
+
+    fn build_element_emojis() -> ElementEmojis {
+        ElementEmojis {
+            fire: "fire".to_string(),
+            water: "water".to_string(),
+            earth: "earth".to_string(),
+            wind: "wind".to_string(),
+            light: "light".to_string(),
+            dark: "dark".to_string(),
+        }
+    }
+
+    #[test]
+    fn create_v2_recruitment_embed_and_components_for_six_elements_matches_v2_layout() {
+        let element_emojis = build_element_emojis();
+
+        let (embed, components) =
+            create_v2_recruitment_embed_and_components("6属性", &element_emojis);
+
+        assert_eq!(components.len(), 4);
+        assert_eq!(embed.title.as_deref(), Some("参加者一覧"));
+    }
+
+    #[test]
+    fn create_v2_recruitment_embed_and_components_for_simple_style_matches_v2_layout() {
+        let element_emojis = build_element_emojis();
+
+        let (embed, components) =
+            create_v2_recruitment_embed_and_components("通常", &element_emojis);
+
+        assert_eq!(components.len(), 1);
+        assert_eq!(embed.title.as_deref(), Some("参加者一覧"));
+    }
 }

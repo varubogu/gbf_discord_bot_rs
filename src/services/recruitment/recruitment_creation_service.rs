@@ -2,21 +2,22 @@
 use crate::gateway::DiscordGateway;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::master::channel_types::GuildChannelType;
-use crate::presenter::RecruitmentPresenter;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
 use crate::repository::QuestRepository;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::message::MessageService;
-use crate::services::recruitment::new::{MessageContentParams, create_message_content};
+use crate::services::recruitment::new::{
+    MessageContentParams, create_message_content, create_v2_recruitment_embed_and_components,
+};
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
 use crate::types::discord::{
-    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, EmbedContent, MessageContent,
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, MessageContent,
 };
 use chrono::{TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
@@ -32,6 +33,16 @@ pub struct MatchingRecruitmentParams {
     pub quest_start_at: chrono::DateTime<Utc>,
     /// 参加ユーザーID一覧（メンション用）
     pub participant_user_ids: Vec<u64>,
+}
+
+/// マッチングから作成した募集のメッセージ情報
+pub struct CreatedMatchingRecruitmentInfo {
+    /// 募集ID
+    pub recruitment_id: i32,
+    /// 募集投稿チャンネルID
+    pub channel_id: u64,
+    /// 募集投稿メッセージID
+    pub message_id: u64,
 }
 
 /// 募集作成Service
@@ -310,21 +321,9 @@ where
             .get_element_emojis(txn, gateway, calculated_time.guild_id)
             .await?;
 
-        // 4. Embedを作成（Presenterを使用）
-        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
-            &battle_style.display_name,
-            &element_emojis,
-        );
-        let embed_content = EmbedContent::new()
-            .with_title("参加者一覧")
-            .with_description(&initial_participants_text)
-            .with_color(0x0099ff);
-
-        // 5. ボタンを作成（Presenterのドメインモデル）
-        let button_components = RecruitmentPresenter::create_recruitment_buttons(
-            &battle_style.display_name,
-            &element_emojis,
-        );
+        // 4. `/マルチバトル募集2` と同じUIを生成
+        let (embed_content, button_components) =
+            create_v2_recruitment_embed_and_components(&battle_style.display_name, &element_emojis);
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
         let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
@@ -423,7 +422,7 @@ where
         db_conn: &DatabaseConnection,
         gateway: &G,
         params: &MatchingRecruitmentParams,
-    ) -> Result<i32> {
+    ) -> Result<CreatedMatchingRecruitmentInfo> {
         debug!(
             guild_id = params.guild_id,
             quest_id = params.quest_id,
@@ -530,21 +529,9 @@ where
             .get_element_emojis(txn, gateway, params.guild_id)
             .await?;
 
-        // 4. Embedを作成（Presenterを使用）
-        let initial_participants_text = RecruitmentPresenter::create_initial_participants_text(
-            &battle_style.display_name,
-            &element_emojis,
-        );
-        let embed_content = EmbedContent::new()
-            .with_title("参加者一覧")
-            .with_description(&initial_participants_text)
-            .with_color(0x0099ff);
-
-        // 5. ボタンを作成（Presenterのドメインモデル）
-        let button_components = RecruitmentPresenter::create_recruitment_buttons(
-            &battle_style.display_name,
-            &element_emojis,
-        );
+        // 4. `/マルチバトル募集2` と同じUIを生成
+        let (embed_content, button_components) =
+            create_v2_recruitment_embed_and_components(&battle_style.display_name, &element_emojis);
 
         // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
         let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
@@ -608,6 +595,10 @@ where
             "マッチング募集の出発通知を登録しました"
         );
 
-        Ok(recruitment.id)
+        Ok(CreatedMatchingRecruitmentInfo {
+            recruitment_id: recruitment.id,
+            channel_id: recruitment_channel_id as u64,
+            message_id,
+        })
     }
 }

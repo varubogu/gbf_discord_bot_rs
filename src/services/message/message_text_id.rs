@@ -150,6 +150,18 @@ pub mod keys {
     pub const NOTIFICATION_PRESENTER_MATCH_TITLE: &str = "notification.presenter.match.title";
     pub const NOTIFICATION_PRESENTER_MATCH_DESCRIPTION: &str =
         "notification.presenter.match.description";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_TITLE: &str =
+        "notification.presenter.auto_matching.title";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_DESCRIPTION: &str =
+        "notification.presenter.auto_matching.description";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATING: &str =
+        "notification.presenter.auto_matching.status_creating";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATED: &str =
+        "notification.presenter.auto_matching.status_created";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_RECRUITMENT_FIELD_TITLE: &str =
+        "notification.presenter.auto_matching.recruitment_field_title";
+    pub const NOTIFICATION_PRESENTER_AUTO_MATCHING_ELEMENT_HEADER: &str =
+        "notification.presenter.auto_matching.element_header";
     pub const NOTIFICATION_PRESENTER_REVOTE_TITLE: &str = "notification.presenter.revote.title";
     pub const NOTIFICATION_PRESENTER_REVOTE_DESCRIPTION: &str =
         "notification.presenter.revote.description";
@@ -630,6 +642,12 @@ pub enum MessageTextId {
     // Notification presenter messages
     NotificationPresenterMatchTitle,
     NotificationPresenterMatchDescription,
+    NotificationPresenterAutoMatchingTitle,
+    NotificationPresenterAutoMatchingDescription,
+    NotificationPresenterAutoMatchingStatusCreating,
+    NotificationPresenterAutoMatchingStatusCreated,
+    NotificationPresenterAutoMatchingRecruitmentFieldTitle,
+    NotificationPresenterAutoMatchingElementHeader,
     NotificationPresenterRevoteTitle,
     NotificationPresenterRevoteDescription,
     NotificationPresenterQuestDecidedTitle,
@@ -1075,6 +1093,24 @@ impl MessageTextId {
             }
             MessageTextId::NotificationPresenterMatchDescription => {
                 keys::NOTIFICATION_PRESENTER_MATCH_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterAutoMatchingTitle => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_TITLE
+            }
+            MessageTextId::NotificationPresenterAutoMatchingDescription => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_DESCRIPTION
+            }
+            MessageTextId::NotificationPresenterAutoMatchingStatusCreating => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATING
+            }
+            MessageTextId::NotificationPresenterAutoMatchingStatusCreated => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_STATUS_CREATED
+            }
+            MessageTextId::NotificationPresenterAutoMatchingRecruitmentFieldTitle => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_RECRUITMENT_FIELD_TITLE
+            }
+            MessageTextId::NotificationPresenterAutoMatchingElementHeader => {
+                keys::NOTIFICATION_PRESENTER_AUTO_MATCHING_ELEMENT_HEADER
             }
             MessageTextId::NotificationPresenterRevoteTitle => {
                 keys::NOTIFICATION_PRESENTER_REVOTE_TITLE
@@ -1938,6 +1974,12 @@ mod tests {
             MessageTextId::RecruitmentPresenterEndDescription,
             MessageTextId::NotificationPresenterMatchTitle,
             MessageTextId::NotificationPresenterMatchDescription,
+            MessageTextId::NotificationPresenterAutoMatchingTitle,
+            MessageTextId::NotificationPresenterAutoMatchingDescription,
+            MessageTextId::NotificationPresenterAutoMatchingStatusCreating,
+            MessageTextId::NotificationPresenterAutoMatchingStatusCreated,
+            MessageTextId::NotificationPresenterAutoMatchingRecruitmentFieldTitle,
+            MessageTextId::NotificationPresenterAutoMatchingElementHeader,
             MessageTextId::NotificationPresenterRevoteTitle,
             MessageTextId::NotificationPresenterRevoteDescription,
             MessageTextId::NotificationPresenterQuestDecidedTitle,

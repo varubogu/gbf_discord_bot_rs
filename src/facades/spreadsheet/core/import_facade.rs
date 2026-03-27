@@ -9,9 +9,15 @@ use tracing::{error, info, instrument, warn};
 
 use crate::errors::FacadeError;
 use crate::facades::scheduler::SchedulerFacade;
-use crate::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
+use crate::infrastructure::database::repositories::{
+    SeaOrmGuildSpreadsheetConfigRepository, SeaOrmQuestRepository,
+    auto_recruitment::{
+        SeaOrmAutoRecruitmentMatchRuleQuotaRepository, SeaOrmAutoRecruitmentMatchRuleRepository,
+    },
+};
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+use crate::services::auto_recruitment::match_rule_validation_service::AutoRecruitmentMatchRuleValidationService;
 use crate::services::spreadsheet::{
     DataConverterService, GeneratedUuidInfo, GoogleAuthService, GoogleAuthServiceTrait,
     GuildSpreadsheetConfigService, GuildSpreadsheetConfigServiceTrait, RegisteredTableSchema,
@@ -109,8 +115,10 @@ impl ImportConfig {
     /// テーブルをフィルタするか判定
     fn should_include_table(&self, table: &RegisteredTableSchema) -> bool {
         match self.guild_id {
-            // ギルド版: guild_で始まるテーブルのみ
-            Some(_) => table.table_name.starts_with("guild_"),
+            // ギルド版: guild_master スキーマの登録テーブルのみ
+            Some(_) => {
+                crate::services::spreadsheet::get_schema_name(&table.table_name) == "guild_master"
+            }
             // グローバル版: 全テーブル
             None => true,
         }
@@ -312,6 +320,25 @@ impl SpreadsheetImportFacade {
         }
     }
 
+    /// ギルドスプレッドシート取り込み後の整合性検証
+    async fn validate_imported_guild_data(
+        txn: &sea_orm::DatabaseTransaction,
+        guild_id: i64,
+    ) -> Result<(), FacadeError> {
+        let validation_service = AutoRecruitmentMatchRuleValidationService::new(
+            SeaOrmAutoRecruitmentMatchRuleRepository::new(),
+            SeaOrmQuestRepository::new(),
+            SeaOrmAutoRecruitmentMatchRuleQuotaRepository::new(),
+        );
+
+        validation_service
+            .validate_guild_rules(txn, guild_id)
+            .await
+            .map_err(|source| FacadeError::BusinessRule { source })?;
+
+        Ok(())
+    }
+
     /// スプレッドシートからデータをインポート（内部共通処理）
     async fn import_spreadsheet_internal(
         &self,
@@ -460,6 +487,10 @@ impl SpreadsheetImportFacade {
                     sheet_name: leftover.sheet_name,
                     status: TableStatus::Skipped,
                 });
+            }
+
+            if let Some(guild_id) = config.guild_id {
+                Self::validate_imported_guild_data(&txn, guild_id).await?;
             }
 
             Ok(ImportResult {

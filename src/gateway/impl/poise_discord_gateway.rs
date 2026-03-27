@@ -74,8 +74,13 @@ impl MessageContent {
             message = message.embed(embed.into_serenity_embed());
         }
 
-        for component in self.components {
-            message = message.components(vec![component.into_serenity_action_row()]);
+        let action_rows: Vec<_> = self
+            .components
+            .into_iter()
+            .map(ActionRowContent::into_serenity_action_row)
+            .collect();
+        if !action_rows.is_empty() {
+            message = message.components(action_rows);
         }
 
         message
@@ -93,8 +98,13 @@ impl MessageContent {
             message = message.embed(embed.into_serenity_embed());
         }
 
-        for component in self.components {
-            message = message.components(vec![component.into_serenity_action_row()]);
+        let action_rows: Vec<_> = self
+            .components
+            .into_iter()
+            .map(ActionRowContent::into_serenity_action_row)
+            .collect();
+        if !action_rows.is_empty() {
+            message = message.components(action_rows);
         }
 
         message
@@ -162,28 +172,43 @@ impl EmbedContent {
 impl ActionRowContent {
     /// SerenityのCreateActionRowに変換する
     fn into_serenity_action_row(self) -> poise::serenity_prelude::CreateActionRow {
-        let components: Vec<_> = self
-            .components
-            .into_iter()
-            .map(|c| match c {
-                ComponentContent::Button(btn) => {
-                    poise::serenity_prelude::CreateActionRow::Buttons(vec![
-                        btn.into_serenity_button(),
-                    ])
-                }
-                ComponentContent::SelectMenu(menu) => {
-                    poise::serenity_prelude::CreateActionRow::SelectMenu(
-                        menu.into_serenity_select_menu(),
-                    )
-                }
-            })
-            .collect();
+        if self.components.is_empty() {
+            return poise::serenity_prelude::CreateActionRow::Buttons(vec![]);
+        }
 
-        // 全てのコンポーネントが同じ種類であることを想定
-        components
-            .into_iter()
-            .next()
-            .unwrap_or_else(|| poise::serenity_prelude::CreateActionRow::Buttons(vec![]))
+        match self.components.first() {
+            Some(ComponentContent::Button(_)) => {
+                let buttons = self
+                    .components
+                    .into_iter()
+                    .filter_map(|component| match component {
+                        ComponentContent::Button(button) => Some(button.into_serenity_button()),
+                        ComponentContent::SelectMenu(_) => None,
+                    })
+                    .collect();
+                poise::serenity_prelude::CreateActionRow::Buttons(buttons)
+            }
+            Some(ComponentContent::SelectMenu(_)) => {
+                let select_menu = self
+                    .components
+                    .into_iter()
+                    .find_map(|component| match component {
+                        ComponentContent::SelectMenu(menu) => Some(menu),
+                        ComponentContent::Button(_) => None,
+                    })
+                    .map(SelectMenuContent::into_serenity_select_menu)
+                    .unwrap_or_else(|| {
+                        poise::serenity_prelude::CreateSelectMenu::new(
+                            "empty_select_menu",
+                            poise::serenity_prelude::CreateSelectMenuKind::String {
+                                options: vec![],
+                            },
+                        )
+                    });
+                poise::serenity_prelude::CreateActionRow::SelectMenu(select_menu)
+            }
+            None => poise::serenity_prelude::CreateActionRow::Buttons(vec![]),
+        }
     }
 }
 
@@ -827,6 +852,11 @@ impl DiscordReactionGateway for PoiseDiscordGateway {
 #[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
+    use crate::types::discord::{
+        ActionRowContent, ButtonContent, ButtonStyleType, MessageContent, SelectMenuContent,
+        SelectMenuOptionContent,
+    };
+    use serde_json::Value;
 
     #[test]
     fn test_serenity_message_id_opt_zero_is_none() {
@@ -837,6 +867,82 @@ mod tests {
     fn test_serenity_message_id_zero_is_error() {
         let result = serenity_message_id(DiscordMessageId::new(0));
         assert!(matches!(result, Err(GatewayError::Internal(_))));
+    }
+
+    #[test]
+    fn test_into_serenity_message_preserves_all_action_rows_and_buttons() {
+        let message = MessageContent::new()
+            .with_component(ActionRowContent::buttons(vec![
+                ButtonContent::new("button_1", "ボタン1").with_style(ButtonStyleType::Primary),
+                ButtonContent::new("button_2", "ボタン2").with_style(ButtonStyleType::Secondary),
+            ]))
+            .with_component(ActionRowContent::select_menu(
+                SelectMenuContent::string_select(
+                    "select_1",
+                    vec![
+                        SelectMenuOptionContent::new("選択肢1", "1"),
+                        SelectMenuOptionContent::new("選択肢2", "2"),
+                    ],
+                )
+                .with_placeholder("選択してください"),
+            ))
+            .with_component(ActionRowContent::buttons(vec![
+                ButtonContent::new("button_3", "ボタン3").with_style(ButtonStyleType::Success),
+                ButtonContent::new("button_4", "ボタン4").with_style(ButtonStyleType::Danger),
+            ]));
+
+        let serenity_message = message.into_serenity_message();
+        let json = serde_json::to_value(&serenity_message).expect("CreateMessageのJSON化に失敗");
+
+        assert_action_rows(&json, &[2, 1, 2]);
+    }
+
+    #[test]
+    fn test_into_serenity_edit_message_preserves_all_action_rows_and_buttons() {
+        let message = MessageContent::new().with_components(vec![
+            ActionRowContent::buttons(vec![
+                ButtonContent::new("button_1", "ボタン1").with_style(ButtonStyleType::Primary),
+                ButtonContent::new("button_2", "ボタン2").with_style(ButtonStyleType::Secondary),
+            ]),
+            ActionRowContent::select_menu(
+                SelectMenuContent::string_select(
+                    "select_1",
+                    vec![
+                        SelectMenuOptionContent::new("選択肢1", "1"),
+                        SelectMenuOptionContent::new("選択肢2", "2"),
+                    ],
+                )
+                .with_placeholder("選択してください"),
+            ),
+            ActionRowContent::buttons(vec![
+                ButtonContent::new("button_3", "ボタン3").with_style(ButtonStyleType::Success),
+                ButtonContent::new("button_4", "ボタン4").with_style(ButtonStyleType::Danger),
+            ]),
+        ]);
+
+        let serenity_message = message.into_serenity_edit_message();
+        let json = serde_json::to_value(&serenity_message).expect("EditMessageのJSON化に失敗");
+
+        assert_action_rows(&json, &[2, 1, 2]);
+    }
+
+    fn assert_action_rows(json: &Value, expected_component_counts: &[usize]) {
+        let components = json["components"]
+            .as_array()
+            .expect("components配列が存在しません");
+        assert_eq!(components.len(), expected_component_counts.len());
+
+        for (index, expected_count) in expected_component_counts.iter().enumerate() {
+            let row_components = components[index]["components"]
+                .as_array()
+                .expect("action rowにcomponents配列が存在しません");
+            assert_eq!(
+                row_components.len(),
+                *expected_count,
+                "action row {} のコンポーネント数が期待値と異なります",
+                index
+            );
+        }
     }
 }
 

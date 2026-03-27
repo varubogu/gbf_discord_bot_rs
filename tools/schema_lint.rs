@@ -31,6 +31,32 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
 
     for entry in entries.flatten() {
         let path = entry.path();
+        if path.is_dir() {
+            extract_schema_info_from_directory(&path, &mut schema_map);
+        }
+    }
+
+    schema_map
+}
+
+/// 指定ディレクトリ配下のエンティティファイルを再帰的に走査
+fn extract_schema_info_from_directory(dir: &Path, schema_map: &mut HashMap<String, String>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            eprintln!("エンティティディレクトリの読み取りに失敗: {dir:?}: {e}");
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.is_dir() {
+            extract_schema_info_from_directory(&path, schema_map);
+            continue;
+        }
+
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
         }
@@ -51,39 +77,22 @@ fn extract_schema_info_from_entities() -> HashMap<String, String> {
             schema_map.insert(table_name, schema_name);
         }
     }
-
-    schema_map
 }
 
 /// エンティティファイルの内容からschema_nameとtable_nameを抽出
 fn parse_entity_file(content: &str) -> Option<(String, String)> {
-    let mut schema_name = None;
-    let mut table_name = None;
+    let schema_name = extract_attribute_value(content, "schema_name")?;
+    let table_name = extract_attribute_value(content, "table_name")?;
+    Some((schema_name, table_name))
+}
 
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        if trimmed.starts_with("#[sea_orm(") {
-            if let Some(start) = trimmed.find("schema_name = \"") {
-                let start_idx = start + "schema_name = \"".len();
-                if let Some(end_idx) = trimmed[start_idx..].find('"') {
-                    schema_name = Some(trimmed[start_idx..start_idx + end_idx].to_string());
-                }
-            }
-
-            if let Some(start) = trimmed.find("table_name = \"") {
-                let start_idx = start + "table_name = \"".len();
-                if let Some(end_idx) = trimmed[start_idx..].find('"') {
-                    table_name = Some(trimmed[start_idx..start_idx + end_idx].to_string());
-                }
-            }
-        }
-    }
-
-    match (schema_name, table_name) {
-        (Some(s), Some(t)) => Some((s, t)),
-        _ => None,
-    }
+/// SeaORM属性から指定キーの値を抽出
+fn extract_attribute_value(content: &str, key: &str) -> Option<String> {
+    let marker = format!("{key} = \"");
+    let start = content.find(&marker)?;
+    let value_start = start + marker.len();
+    let value_end = content[value_start..].find('"')?;
+    Some(content[value_start..value_start + value_end].to_string())
 }
 
 fn main() {

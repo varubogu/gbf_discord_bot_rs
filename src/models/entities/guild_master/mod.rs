@@ -1,5 +1,7 @@
 pub mod all_recruitment_notification_roles;
 pub mod auto_recruitment_channels;
+pub mod auto_recruitment_match_rule_quotas;
+pub mod auto_recruitment_match_rules;
 pub mod auto_recruitment_participants;
 pub mod auto_recruitment_quest_messages;
 pub mod auto_recruitments;

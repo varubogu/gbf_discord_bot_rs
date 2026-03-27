@@ -383,6 +383,24 @@ notification.presenter.match.description:
 notification.presenter.match.title:
   en: "🎮 Match found!"
   ja: "🎮 マッチング成功！"
+notification.presenter.auto_matching.description:
+  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\n**Participants**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
+  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n**参加者**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
+notification.presenter.auto_matching.title:
+  en: "🎮 Match completed!"
+  ja: "🎮 マッチング成立！"
+notification.presenter.auto_matching.status_creating:
+  en: "Creating the recruitment..."
+  ja: "募集を作成しています..."
+notification.presenter.auto_matching.status_created:
+  en: "The recruitment has been created. Use the link below to jump to the post."
+  ja: "募集を作成しました。以下のリンクから募集投稿へ移動できます。"
+notification.presenter.auto_matching.recruitment_field_title:
+  en: "Recruitment post"
+  ja: "マルチバトル募集"
+notification.presenter.auto_matching.element_header:
+  en: "Assigned elements"
+  ja: "担当属性"
 notification.presenter.quest_decided.description:
   en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\nCreating the recruitment..."
   ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n募集を作成しています..."

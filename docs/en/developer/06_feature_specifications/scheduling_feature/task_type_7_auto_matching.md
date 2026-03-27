@@ -48,8 +48,9 @@ src/di/repositories.rs
 1. Re-check task existence and `pending`
 2. Execute `PeriodicMatchingService::process_matching`
    - Join available times (`auto_recruitment_participants`) with desired quests (`user_desired_quests`)
-   - Group identical conditions and make groups of 2+ users as candidates
-   - For six-element quests, apply grouping that avoids duplicate elements
+   - Resolve guild-specific presets from `auto_recruitment_match_rules`
+   - Compile preset rules into required slots and build the smallest successful groups
+   - If no rule exists for the quest, keep the legacy `2+ users` behavior
    - Create `quest_matchings` / `quest_matching_users`
 3. For each matched group, try notification send and recruitment creation
 4. Set current task to `succeeded`
@@ -63,6 +64,9 @@ For each matched group:
 2. Send notifications with participant mentions (Embed)
 3. Calculate departure datetime from month/day/hour (JST base, supports `24..28` hour notation)
 4. If departure datetime is in the future, create recruitment and update `quest_matchings.recruitment_id`
+5. If recruitment creation succeeds, edit the previously sent notification and append a jump link to the recruitment post
+
+- The recruitment post UI uses the same shared generation path as `/recruit_new_v2`
 
 ## Execution status and error control
 
@@ -82,6 +86,8 @@ For each matched group:
 - `worker.scheduled_tasks`
 - `guild_master.auto_recruitments`
 - `guild_master.auto_recruitment_participants`
+- `guild_master.auto_recruitment_match_rules`
+- `guild_master.auto_recruitment_match_rule_quotas`
 - `guild_master.user_desired_quests`
 - `worker.quest_matchings`
 - `worker.quest_matching_users`
@@ -94,6 +100,8 @@ For each matched group:
 - [../../05_database/schema/worker/scheduled_tasks.md](../../05_database/schema/worker/scheduled_tasks.md)
 - [../../05_database/schema/guild_master/auto_recruitments.md](../../05_database/schema/guild_master/auto_recruitments.md)
 - [../../05_database/schema/guild_master/auto_recruitment_participants.md](../../05_database/schema/guild_master/auto_recruitment_participants.md)
+- [../../05_database/schema/guild_master/auto_recruitment_match_rules.md](../../05_database/schema/guild_master/auto_recruitment_match_rules.md)
+- [../../05_database/schema/guild_master/auto_recruitment_match_rule_quotas.md](../../05_database/schema/guild_master/auto_recruitment_match_rule_quotas.md)
 - [../../05_database/schema/guild_master/user_desired_quests.md](../../05_database/schema/guild_master/user_desired_quests.md)
 - [../../05_database/schema/worker/quest_matchings.md](../../05_database/schema/worker/quest_matchings.md)
 - [../../05_database/schema/worker/quest_matching_users.md](../../05_database/schema/worker/quest_matching_users.md)

@@ -2,6 +2,8 @@
 
 pub mod category_setup_service;
 pub mod interaction_service;
+pub mod match_rule;
+pub mod match_rule_validation_service;
 pub mod matching_service;
 pub mod notification_service;
 pub mod quest_selection_service;

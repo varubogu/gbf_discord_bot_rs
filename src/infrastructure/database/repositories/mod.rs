@@ -5,7 +5,8 @@ pub mod recruitment;
 pub mod schedule;
 
 pub use auto_recruitment::{
-    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
+    SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentMatchRuleQuotaRepository,
+    SeaOrmAutoRecruitmentMatchRuleRepository, SeaOrmAutoRecruitmentParticipantRepository,
     SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
     SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
     SeaOrmUserDesiredQuestRepository,

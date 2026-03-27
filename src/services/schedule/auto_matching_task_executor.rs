@@ -5,15 +5,16 @@
 
 use crate::gateway::DiscordGateway;
 use crate::models::entities::worker::scheduled_tasks::ScheduledTaskType;
+use crate::presenter::NotificationPresenter;
 use crate::repository::auto_recruitment::{
     AutoRecruitmentRepository, QuestMatchingRepository, QuestMatchingUserRepository,
 };
 use crate::repository::schedule::ScheduledTaskRepository;
 use crate::services::auto_recruitment::PeriodicMatchingService;
 use crate::services::recruitment::recruitment_creation_service::{
-    MatchingRecruitmentParams, RecruitmentCreationService,
+    CreatedMatchingRecruitmentInfo, MatchingRecruitmentParams, RecruitmentCreationService,
 };
-use crate::types::discord::{DiscordChannelId, EmbedContent, MessageContent};
+use crate::types::discord::{DiscordChannelId, DiscordMessageId};
 use crate::types::{AppError, Result};
 use chrono::{Datelike, Duration, TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
@@ -100,6 +101,8 @@ pub struct AutoMatchingTaskExecutor<
     QMUR,
     APR,
     UDR,
+    RMR,
+    RMQ,
 > where
     GC: crate::repository::GuildChannelRepository,
     Q: crate::repository::QuestRepository,
@@ -124,6 +127,8 @@ pub struct AutoMatchingTaskExecutor<
     QMUR: QuestMatchingUserRepository,
     APR: crate::repository::auto_recruitment::AutoRecruitmentParticipantRepository,
     UDR: crate::repository::auto_recruitment::UserDesiredQuestRepository,
+    RMR: crate::repository::auto_recruitment::AutoRecruitmentMatchRuleRepository,
+    RMQ: crate::repository::auto_recruitment::AutoRecruitmentMatchRuleQuotaRepository,
 {
     task_repo: Arc<ST>,
     #[allow(clippy::type_complexity)]
@@ -146,7 +151,7 @@ pub struct AutoMatchingTaskExecutor<
         GS,
         BR,
     >,
-    matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q>,
+    matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q, RMR, RMQ>,
     auto_recruitment_repo: ARR,
     matching_user_repo: QMUR,
     matching_repo: QMR,
@@ -177,6 +182,8 @@ impl<
     QMUR,
     APR,
     UDR,
+    RMR,
+    RMQ,
 >
     AutoMatchingTaskExecutor<
         GC,
@@ -202,6 +209,8 @@ impl<
         QMUR,
         APR,
         UDR,
+        RMR,
+        RMQ,
     >
 where
     GC: crate::repository::GuildChannelRepository,
@@ -227,6 +236,8 @@ where
     QMUR: QuestMatchingUserRepository,
     APR: crate::repository::auto_recruitment::AutoRecruitmentParticipantRepository,
     UDR: crate::repository::auto_recruitment::UserDesiredQuestRepository,
+    RMR: crate::repository::auto_recruitment::AutoRecruitmentMatchRuleRepository,
+    RMQ: crate::repository::auto_recruitment::AutoRecruitmentMatchRuleQuotaRepository,
 {
     #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn new(
@@ -250,7 +261,7 @@ where
             GS,
             BR,
         >,
-        matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q>,
+        matching_service: PeriodicMatchingService<APR, UDR, QMR, QMUR, Q, RMR, RMQ>,
         auto_recruitment_repo: ARR,
         matching_user_repo: QMUR,
         matching_repo: QMR,
@@ -407,7 +418,7 @@ where
                 let user_ids: Vec<u64> = users.iter().map(|u| u.user_id as u64).collect();
 
                 // 通知を送信（Gateway経由）
-                if let Err(e) = self
+                let notification_message_id = match self
                     .send_notification(
                         gateway,
                         matching_channel_id,
@@ -422,14 +433,18 @@ where
                     )
                     .await
                 {
-                    error!(
-                        error = %e,
-                        guild_id,
-                        matching_id = %matching.id,
-                        "マッチング通知の送信に失敗しました"
-                    );
-                    // 通知失敗しても募集作成は試みる
-                }
+                    Ok(message_id) => Some(message_id),
+                    Err(e) => {
+                        error!(
+                            error = %e,
+                            guild_id,
+                            matching_id = %matching.id,
+                            "マッチング通知の送信に失敗しました"
+                        );
+                        // 通知失敗しても募集作成は試みる
+                        None
+                    }
+                };
 
                 // 出発時刻を計算
                 let quest_start_at = self.calculate_quest_start_at(
@@ -464,26 +479,59 @@ where
                     .create_recruitment_from_matching(txn, db_conn, gateway, &params)
                     .await
                 {
-                    Ok(recruitment_id) => {
+                    Ok(recruitment) => {
                         info!(
                             guild_id,
                             matching_id = %matching.id,
-                            recruitment_id,
+                            recruitment_id = recruitment.recruitment_id,
                             "マルチ募集を作成しました"
                         );
 
                         // マッチングに募集IDを設定
                         if let Err(e) = self
                             .matching_repo
-                            .set_recruitment_id(txn, guild_id, matching.id, recruitment_id)
+                            .set_recruitment_id(
+                                txn,
+                                guild_id,
+                                matching.id,
+                                recruitment.recruitment_id,
+                            )
                             .await
                         {
                             error!(
                                 error = %e,
                                 guild_id,
                                 matching_id = %matching.id,
-                                recruitment_id,
+                                recruitment_id = recruitment.recruitment_id,
                                 "マッチングへの募集ID設定に失敗しました"
+                            );
+                        }
+
+                        if let Some(notification_message_id) = notification_message_id
+                            && let Err(e) = self
+                                .edit_notification_with_recruitment_link(
+                                    gateway,
+                                    matching_channel_id,
+                                    notification_message_id,
+                                    guild_id,
+                                    &quest.name,
+                                    matching.scheduled_month,
+                                    matching.scheduled_day,
+                                    matching.scheduled_hour,
+                                    &users
+                                        .iter()
+                                        .map(|u| (u.user_id as u64, u.battle_style_id))
+                                        .collect::<Vec<_>>(),
+                                    &recruitment,
+                                )
+                                .await
+                        {
+                            error!(
+                                error = %e,
+                                guild_id,
+                                matching_id = %matching.id,
+                                recruitment_id = recruitment.recruitment_id,
+                                "マッチング通知への募集リンク追記に失敗しました"
                             );
                         }
                     }
@@ -555,37 +603,13 @@ where
         day: i32,
         hour: i32,
         users: &[(u64, Option<i32>)],
-    ) -> Result<()> {
+    ) -> Result<DiscordMessageId> {
         let channel = DiscordChannelId::new(channel_id);
+        let message_content = NotificationPresenter::create_auto_matching_notification(
+            quest_name, month, day, hour, users, None,
+        );
 
-        // 参加者メンション
-        let participant_mentions: Vec<String> = users
-            .iter()
-            .map(|(user_id, _)| format!("<@{user_id}>"))
-            .collect();
-
-        // 属性情報を構築（6属性クエストの場合）
-        let element_info = self.build_element_info(users);
-
-        // Embed作成
-        let embed_content = EmbedContent::new()
-            .with_title("🎮 マッチング成立！")
-            .with_description(format!(
-                "**クエスト**: {}\n**日時**: {}月{}日 {}:00\n\n**参加者**:\n{}{}\n\n募集を作成しています...",
-                quest_name,
-                month,
-                day,
-                hour,
-                participant_mentions.join("\n"),
-                element_info,
-            ))
-            .with_color(0x00ff00);
-
-        let message_content = MessageContent::new()
-            .with_text(participant_mentions.join(" "))
-            .with_embed(embed_content);
-
-        gateway
+        let message_id = gateway
             .send_message(channel, message_content)
             .await
             .map_err(|e| AppError::Business {
@@ -602,50 +626,46 @@ where
             "マッチング通知を送信しました"
         );
 
-        Ok(())
+        Ok(message_id)
     }
 
-    /// 属性情報を文字列化
-    fn build_element_info(&self, users: &[(u64, Option<i32>)]) -> String {
-        // 属性IDが設定されているかチェック
-        let has_elements = users
-            .iter()
-            .any(|(_, style)| style.is_some() && *style != Some(0));
+    /// 募集作成後にマッチング通知へジャンプリンクを追記
+    #[allow(clippy::too_many_arguments)]
+    async fn edit_notification_with_recruitment_link<G: DiscordGateway>(
+        &self,
+        gateway: &G,
+        notification_channel_id: u64,
+        notification_message_id: DiscordMessageId,
+        guild_id: i64,
+        quest_name: &str,
+        month: i32,
+        day: i32,
+        hour: i32,
+        users: &[(u64, Option<i32>)],
+        recruitment: &CreatedMatchingRecruitmentInfo,
+    ) -> Result<()> {
+        let channel = DiscordChannelId::new(notification_channel_id);
+        let recruitment_url = format!(
+            "https://discord.com/channels/{guild_id}/{}/{}",
+            recruitment.channel_id, recruitment.message_id
+        );
+        let message_content = NotificationPresenter::create_auto_matching_notification(
+            quest_name,
+            month,
+            day,
+            hour,
+            users,
+            Some(&recruitment_url),
+        );
 
-        if !has_elements {
-            return String::new();
-        }
+        gateway
+            .edit_message(channel, notification_message_id, message_content)
+            .await
+            .map_err(|e| AppError::Business {
+                message: format!("マッチング通知の編集に失敗しました: {e}"),
+            })?;
 
-        let element_names = [
-            (1, "火"),
-            (2, "水"),
-            (3, "土"),
-            (4, "風"),
-            (5, "光"),
-            (6, "闇"),
-        ];
-        let element_map: HashMap<i32, &str> = element_names.into_iter().collect();
-
-        let elements: Vec<String> = users
-            .iter()
-            .filter_map(|(user_id, style)| {
-                style.and_then(|s| {
-                    if s > 0 {
-                        element_map
-                            .get(&s)
-                            .map(|name| format!("<@{user_id}>: {name}"))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
-
-        if elements.is_empty() {
-            String::new()
-        } else {
-            format!("\n\n**担当属性**:\n{}", elements.join("\n"))
-        }
+        Ok(())
     }
 
     /// 次回実行タスクを作成（10秒後）

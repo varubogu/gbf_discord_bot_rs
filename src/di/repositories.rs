@@ -5,7 +5,8 @@
 
 use crate::infrastructure::database::repositories::{
     auto_recruitment::{
-        SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentParticipantRepository,
+        SeaOrmAutoRecruitmentChannelRepository, SeaOrmAutoRecruitmentMatchRuleQuotaRepository,
+        SeaOrmAutoRecruitmentMatchRuleRepository, SeaOrmAutoRecruitmentParticipantRepository,
         SeaOrmAutoRecruitmentQuestMessageRepository, SeaOrmAutoRecruitmentRepository,
         SeaOrmQuestMatchingRepository, SeaOrmQuestMatchingUserRepository,
         SeaOrmUserDesiredQuestRepository,
@@ -78,6 +79,8 @@ pub struct Repositories {
     // === 自動募集関連リポジトリ ===
     pub auto_recruitment: SeaOrmAutoRecruitmentRepository,
     pub auto_recruitment_channel: SeaOrmAutoRecruitmentChannelRepository,
+    pub auto_recruitment_match_rule: SeaOrmAutoRecruitmentMatchRuleRepository,
+    pub auto_recruitment_match_rule_quota: SeaOrmAutoRecruitmentMatchRuleQuotaRepository,
     pub auto_recruitment_participant: SeaOrmAutoRecruitmentParticipantRepository,
     pub auto_recruitment_quest_message: SeaOrmAutoRecruitmentQuestMessageRepository,
     pub quest_matching: SeaOrmQuestMatchingRepository,
@@ -129,6 +132,8 @@ impl Repositories {
             // 自動募集関連リポジトリ
             auto_recruitment: SeaOrmAutoRecruitmentRepository::new(),
             auto_recruitment_channel: SeaOrmAutoRecruitmentChannelRepository::new(),
+            auto_recruitment_match_rule: SeaOrmAutoRecruitmentMatchRuleRepository::new(),
+            auto_recruitment_match_rule_quota: SeaOrmAutoRecruitmentMatchRuleQuotaRepository::new(),
             auto_recruitment_participant: SeaOrmAutoRecruitmentParticipantRepository::new(),
             auto_recruitment_quest_message: SeaOrmAutoRecruitmentQuestMessageRepository::new(),
             quest_matching: SeaOrmQuestMatchingRepository::new(),

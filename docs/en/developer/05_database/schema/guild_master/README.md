@@ -1,12 +1,14 @@
 # guild_master Schema
 
-- Tables: 20
+- Tables: 22
 - Source: `src/models/entities/guild_master`
 
 ## Tables
 
 - [`all_recruitment_notification_roles`](all_recruitment_notification_roles.md)
 - [`auto_recruitment_channels`](auto_recruitment_channels.md)
+- [`auto_recruitment_match_rule_quotas`](auto_recruitment_match_rule_quotas.md)
+- [`auto_recruitment_match_rules`](auto_recruitment_match_rules.md)
 - [`auto_recruitment_participants`](auto_recruitment_participants.md)
 - [`auto_recruitment_quest_messages`](auto_recruitment_quest_messages.md)
 - [`auto_recruitments`](auto_recruitments.md)
