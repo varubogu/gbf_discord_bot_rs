@@ -167,7 +167,7 @@ Use the messages above to change your selections.
 - Search for match candidates based on the newly registered content
   - If a quest is changed: search using newly added quest(s)
   - If time availability is changed: search using newly added hour(s)
-- Match success is determined by the configured rule for `(guild_id, quest_id)`
+- Match success is determined by rule priority: `(guild_id, quest_id)` first, then global rule `(guild_id=0, quest_id)`
 - If no rule is configured for the quest, keep the legacy behavior: 2+ users for the same date/time and quest
 
 ## Periodic matching process
@@ -180,13 +180,14 @@ Use the messages above to change your selections.
 ### Match detection
 - Join `auto_recruitment_participants` and `user_desired_quests`
 - Group by the same `(guild_id, quest_id, month, day, hour)`
-- Resolve the configured rule from `auto_recruitment_match_rules`
+- Resolve the configured rule from `auto_recruitment_match_rules` with priority `guild_id -> global(guild_id=0) -> no rule`
 - Target only users not already registered in `quest_matchings`
 
 ### Matching presets
 - `min_members_only`: succeeds when `min_match_count` users are available
 - `one_each_element`: succeeds when one user can be assigned to each of the six elements
 - `specific_element_n_plus_any`: succeeds when `required_battle_style_id` can be assigned `required_battle_style_count` times and total users reach `min_match_count`
+- `earth_two_light_two_plus_any`: succeeds with 6 users (`min_match_count=6`) when Earth has 2 users, Light has 2 users, and the remaining 2 users are free slots
 - `fixed_element_quota`: succeeds when all element quotas in `auto_recruitment_match_rule_quotas` are satisfied
 
 ### Matching algorithm
@@ -251,9 +252,9 @@ Use the messages above to change your selections.
 - updated_at
 
 ### Guild auto-recruitment match rules (`guild_master.auto_recruitment_match_rules`)
-- guild_id (PK)
+- guild_id (PK, `0` means global scope)
 - quest_id (PK)
-- preset_type (`min_members_only` / `one_each_element` / `specific_element_n_plus_any` / `fixed_element_quota`)
+- preset_type (`min_members_only` / `one_each_element` / `specific_element_n_plus_any` / `earth_two_light_two_plus_any` / `fixed_element_quota`)
 - min_match_count (minimum users required for a successful match)
 - required_battle_style_id (used only by `specific_element_n_plus_any`)
 - required_battle_style_count (used only by `specific_element_n_plus_any`)
@@ -261,7 +262,7 @@ Use the messages above to change your selections.
 - updated_at
 
 ### Guild auto-recruitment match rule quotas (`guild_master.auto_recruitment_match_rule_quotas`)
-- guild_id (PK)
+- guild_id (PK, `0` means global scope)
 - quest_id (PK)
 - battle_style_id (PK)
 - required_count

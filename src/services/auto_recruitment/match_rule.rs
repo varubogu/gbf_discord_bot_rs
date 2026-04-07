@@ -15,6 +15,7 @@ pub enum MatchRulePreset {
     MinMembersOnly,
     OneEachElement,
     SpecificElementNPlusAny,
+    EarthTwoLightTwoPlusAny,
     FixedElementQuota,
 }
 
@@ -25,6 +26,7 @@ impl MatchRulePreset {
             "min_members_only" => Some(Self::MinMembersOnly),
             "one_each_element" => Some(Self::OneEachElement),
             "specific_element_n_plus_any" => Some(Self::SpecificElementNPlusAny),
+            "earth_two_light_two_plus_any" => Some(Self::EarthTwoLightTwoPlusAny),
             "fixed_element_quota" => Some(Self::FixedElementQuota),
             _ => None,
         }
@@ -34,7 +36,10 @@ impl MatchRulePreset {
     pub fn is_attribute_based(self) -> bool {
         matches!(
             self,
-            Self::OneEachElement | Self::SpecificElementNPlusAny | Self::FixedElementQuota
+            Self::OneEachElement
+                | Self::SpecificElementNPlusAny
+                | Self::EarthTwoLightTwoPlusAny
+                | Self::FixedElementQuota
         )
     }
 }
@@ -116,4 +121,15 @@ pub fn quest_available_style_ids(quest: &Quest) -> Vec<i32> {
 /// 6属性IDか判定
 pub fn is_valid_six_element_style(style_id: i32) -> bool {
     SIX_ELEMENT_STYLE_IDS.contains(&style_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MatchRulePreset;
+
+    #[test]
+    fn parse_new_preset() {
+        let preset = MatchRulePreset::parse("earth_two_light_two_plus_any");
+        assert_eq!(preset, Some(MatchRulePreset::EarthTwoLightTwoPlusAny));
+    }
 }

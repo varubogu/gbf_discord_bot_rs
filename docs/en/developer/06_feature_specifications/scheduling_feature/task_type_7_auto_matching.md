@@ -48,7 +48,7 @@ src/di/repositories.rs
 1. Re-check task existence and `pending`
 2. Execute `PeriodicMatchingService::process_matching`
    - Join available times (`auto_recruitment_participants`) with desired quests (`user_desired_quests`)
-   - Resolve guild-specific presets from `auto_recruitment_match_rules`
+   - Resolve presets from `auto_recruitment_match_rules` with priority `guild_id -> global(guild_id=0)`
    - Compile preset rules into required slots and build the smallest successful groups
    - If no rule exists for the quest, keep the legacy `2+ users` behavior
    - Create `quest_matchings` / `quest_matching_users`

@@ -26,7 +26,7 @@ use crate::services::spreadsheet::{
     SpreadsheetWriterService, SpreadsheetWriterServiceTrait, TableDefinition,
     TableDefinitionService, TableIO,
 };
-use crate::types::AppState;
+use crate::types::{AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID, AppState};
 
 /// テーブル処理ステータス
 #[derive(Debug, Clone)]
@@ -320,10 +320,10 @@ impl SpreadsheetImportFacade {
         }
     }
 
-    /// ギルドスプレッドシート取り込み後の整合性検証
-    async fn validate_imported_guild_data(
+    /// 自動募集マッチングルール取り込み後の整合性検証
+    async fn validate_imported_match_rule_data(
         txn: &sea_orm::DatabaseTransaction,
-        guild_id: i64,
+        scope_guild_id: i64,
     ) -> Result<(), FacadeError> {
         let validation_service = AutoRecruitmentMatchRuleValidationService::new(
             SeaOrmAutoRecruitmentMatchRuleRepository::new(),
@@ -332,7 +332,7 @@ impl SpreadsheetImportFacade {
         );
 
         validation_service
-            .validate_guild_rules(txn, guild_id)
+            .validate_guild_rules(txn, scope_guild_id)
             .await
             .map_err(|source| FacadeError::BusinessRule { source })?;
 
@@ -490,7 +490,13 @@ impl SpreadsheetImportFacade {
             }
 
             if let Some(guild_id) = config.guild_id {
-                Self::validate_imported_guild_data(&txn, guild_id).await?;
+                Self::validate_imported_match_rule_data(&txn, guild_id).await?;
+            } else {
+                Self::validate_imported_match_rule_data(
+                    &txn,
+                    AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID,
+                )
+                .await?;
             }
 
             Ok(ImportResult {

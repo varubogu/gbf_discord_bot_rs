@@ -9,3 +9,6 @@ pub const ALL_ELEMENTS_EMOJI: &str = "🌈";
 
 /// シンプル参加の絵文字
 pub const SIMPLE_JOIN_EMOJI: &str = "✅";
+
+/// 自動募集マッチングルールでグローバル設定を表すguild_id
+pub const AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID: i64 = 0;

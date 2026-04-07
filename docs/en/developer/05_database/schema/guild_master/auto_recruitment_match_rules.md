@@ -14,7 +14,7 @@
 
 | Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `guild_id` | `i64` | NO | Primary key |
+| `guild_id` | `i64` | NO | Primary key (`0` means global scope) |
 | `quest_id` | `i32` | NO | Primary key |
 | `preset_type` | `String` | NO | Matching preset name |
 | `min_match_count` | `i32` | NO | Minimum users required |
@@ -27,3 +27,4 @@
 
 - This document is created using the definitions in `src/models/entities` as the source of truth.
 - For final constraints and indexes, also check the migration definitions.
+- Runtime resolution priority is `guild-specific (guild_id=<target>) -> global (guild_id=0) -> no rule`.

@@ -157,8 +157,11 @@ Column order does not matter; the program maps by the column names in row 1. Und
 | guild_id | quest_id | preset_type | min_match_count | required_battle_style_id | required_battle_style_count |
 |----------|----------|-------------|-----------------|--------------------------|-----------------------------|
 | Guild ID | Quest ID | Preset Type | Minimum Match Count | Required Element | Required Element Count |
+| 0 | 10 | earth_two_light_two_plus_any | 6 |  |  |
 | 12345 | 10 | min_members_only | 4 |  |  |
 | 12345 | 20 | specific_element_n_plus_any | 4 | 1 | 2 |
+
+- `guild_id=0` represents global scope. Runtime resolution uses priority: guild-specific rule first, then `guild_id=0`.
 
 **Example: `auto_recruitment_match_rule_quotas` sheet**
 
@@ -261,11 +264,12 @@ This command registers the spreadsheet IDs (import/export) for a guild into dedi
 
 ### Auto-recruitment rule validation on `/gspread_load`
 
-- `preset_type` must be one of `min_members_only`, `one_each_element`, `specific_element_n_plus_any`, `fixed_element_quota`
+- `preset_type` must be one of `min_members_only`, `one_each_element`, `specific_element_n_plus_any`, `earth_two_light_two_plus_any`, `fixed_element_quota`
 - `quest_id` must resolve to an existing quest
 - `min_match_count` must be at least `2`
 - Attribute-based presets are allowed only for six-element quests
 - `specific_element_n_plus_any` requires both `required_battle_style_id` and `required_battle_style_count`
+- `earth_two_light_two_plus_any` requires `min_match_count = 6` (Earth 2 + Light 2 + remaining 2 users as free slots)
 - `fixed_element_quota` requires at least one quota row and the sum of `required_count` must match `min_match_count`
 - Validation runs inside the import transaction, so invalid rules roll back the entire `/gspread_load`
 

@@ -14,7 +14,7 @@
 
 | カラム | 型（Rust） | NULL許容 | 備考 |
 | --- | --- | --- | --- |
-| `guild_id` | `i64` | NO | 主キー |
+| `guild_id` | `i64` | NO | 主キー（`0` はグローバル設定） |
 | `quest_id` | `i32` | NO | 主キー |
 | `battle_style_id` | `i32` | NO | 主キー |
 | `required_count` | `i32` | NO | 当該属性に必要な人数 |
@@ -26,3 +26,4 @@
 
 - 本書は `src/models/entities` の定義を正として作成しています。
 - 制約・インデックスの最終情報はマイグレーション定義も併せて確認してください。
+- `auto_recruitment_match_rules` と同じスコープ（同一 `guild_id`）の明細を参照します。

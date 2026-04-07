@@ -12,6 +12,13 @@ use crate::services::auto_recruitment::match_rule::{
 use sea_orm::DatabaseTransaction;
 use std::collections::HashMap;
 
+/// 土属性ID
+const EARTH_STYLE_ID: i32 = 3;
+/// 光属性ID
+const LIGHT_STYLE_ID: i32 = 5;
+/// 土2・光2プリセットの成立人数
+const EARTH_TWO_LIGHT_TWO_MATCH_COUNT: usize = 6;
+
 /// 自動募集マッチングルール検証サービス
 pub struct AutoRecruitmentMatchRuleValidationService<RR, QR, QQ>
 where
@@ -172,6 +179,38 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[test]
+    fn validate_rule_definition_rejects_earth_two_light_two_plus_any_when_min_too_small() {
+        let quest = build_quest(1, "1,2,3,4,5,6", 1);
+        let definition = MatchRuleDefinition {
+            preset: MatchRulePreset::EarthTwoLightTwoPlusAny,
+            min_match_count: 3,
+            required_battle_style_id: None,
+            required_battle_style_count: None,
+            quotas: vec![],
+        };
+
+        let result = validate_rule_definition(1, &quest, &definition);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_rule_definition_accepts_earth_two_light_two_plus_any_for_six_element_quest() {
+        let quest = build_quest(1, "1,2,3,4,5,6", 1);
+        let definition = MatchRuleDefinition {
+            preset: MatchRulePreset::EarthTwoLightTwoPlusAny,
+            min_match_count: 6,
+            required_battle_style_id: None,
+            required_battle_style_count: None,
+            quotas: vec![],
+        };
+
+        let result = validate_rule_definition(1, &quest, &definition);
+
+        assert!(result.is_ok());
+    }
 }
 
 fn validate_rule_definition(
@@ -249,6 +288,27 @@ fn validate_rule_definition(
                         "quest_id={quest_id} の required_battle_style_count は min_match_count 以下である必要があります"
                     ),
                 ));
+            }
+        }
+        MatchRulePreset::EarthTwoLightTwoPlusAny => {
+            if definition.min_match_count != EARTH_TWO_LIGHT_TWO_MATCH_COUNT {
+                return Err(table_definition_error(
+                    "auto_recruitment_match_rules",
+                    &format!(
+                        "quest_id={quest_id} の earth_two_light_two_plus_any は min_match_count=6 が必要です"
+                    ),
+                ));
+            }
+
+            for style_id in [EARTH_STYLE_ID, LIGHT_STYLE_ID] {
+                if !available_styles.contains(&style_id) {
+                    return Err(table_definition_error(
+                        "auto_recruitment_match_rules",
+                        &format!(
+                            "quest_id={quest_id} の earth_two_light_two_plus_any は style_id={style_id} を利用できる必要があります"
+                        ),
+                    ));
+                }
             }
         }
         MatchRulePreset::FixedElementQuota => {

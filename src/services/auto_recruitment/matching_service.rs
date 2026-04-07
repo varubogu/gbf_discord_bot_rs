@@ -6,6 +6,7 @@
 use super::match_rule::{
     MatchRuleDefinition, MatchRulePreset, is_six_element_quest, quest_available_style_ids,
 };
+use crate::models::entities::guild_master::auto_recruitment_match_rules;
 use crate::models::entities::worker::quest_matchings;
 use crate::models::quests::Quest;
 use crate::repository::QuestRepository;
@@ -14,7 +15,7 @@ use crate::repository::auto_recruitment::{
     AutoRecruitmentParticipantRepository, QuestMatchingRepository, QuestMatchingUserRepository,
     UserDesiredQuestRepository,
 };
-use crate::types::{AppError, Result};
+use crate::types::{AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID, AppError, Result};
 use sea_orm::DatabaseTransaction;
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, info};
@@ -29,6 +30,13 @@ type ParticipantTimesMap = HashMap<i64, HashMap<i64, Vec<(i32, i32, i32)>>>;
 type CandidatesMap = HashMap<(i64, i32, i32, i32, i32), Vec<(i64, Vec<i32>)>>;
 /// ギルド・クエスト単位のルールコンテキストキャッシュ
 type MatchRuleContextCache = HashMap<(i64, i32), ResolvedMatchRuleContext>;
+
+/// 土属性ID
+const EARTH_STYLE_ID: i32 = 3;
+/// 光属性ID
+const LIGHT_STYLE_ID: i32 = 5;
+/// 土2・光2プリセットで必要な固定人数
+const EARTH_TWO_LIGHT_TWO_REQUIRED_COUNT: usize = 4;
 
 /// マッチング候補
 #[derive(Debug, Clone)]
@@ -400,16 +408,30 @@ where
 
         let quest = self.quest_repo.get_by_target_id(txn, quest_id).await?;
         let rule = if quest.is_some() {
-            let rule_model = self
+            let guild_rule_model = self
                 .match_rule_repo
                 .find_by_guild_and_quest(txn, guild_id, quest_id)
                 .await?;
+            let global_rule_model = if guild_rule_model.is_none() {
+                self.match_rule_repo
+                    .find_by_guild_and_quest(txn, AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID, quest_id)
+                    .await?
+            } else {
+                None
+            };
+            let rule_model = select_match_rule_with_priority(guild_rule_model, global_rule_model);
 
             if let Some(rule_model) = rule_model {
                 let quotas = self
                     .match_rule_quota_repo
-                    .find_by_guild_and_quest(txn, guild_id, quest_id)
+                    .find_by_guild_and_quest(txn, rule_model.guild_id, quest_id)
                     .await?;
+                debug!(
+                    guild_id,
+                    quest_id,
+                    resolved_scope_guild_id = rule_model.guild_id,
+                    "マッチングルールを解決しました"
+                );
 
                 Some(
                     MatchRuleDefinition::try_from_models(&rule_model, quotas).map_err(|reason| {
@@ -446,6 +468,7 @@ where
             }
             MatchRulePreset::OneEachElement
             | MatchRulePreset::SpecificElementNPlusAny
+            | MatchRulePreset::EarthTwoLightTwoPlusAny
             | MatchRulePreset::FixedElementQuota => {
                 let quest = context.quest.as_ref().ok_or_else(|| AppError::Business {
                     message: format!(
@@ -521,6 +544,13 @@ where
                         })?;
                 requirements.required_counts[style_index(style_id)?] = required_count;
                 requirements.free_slots = rule.min_match_count.saturating_sub(required_count);
+            }
+            MatchRulePreset::EarthTwoLightTwoPlusAny => {
+                requirements.required_counts[style_index(EARTH_STYLE_ID)?] = 2;
+                requirements.required_counts[style_index(LIGHT_STYLE_ID)?] = 2;
+                requirements.free_slots = rule
+                    .min_match_count
+                    .saturating_sub(EARTH_TWO_LIGHT_TWO_REQUIRED_COUNT);
             }
             MatchRulePreset::FixedElementQuota => {
                 for quota in &rule.quotas {
@@ -853,6 +883,13 @@ where
     }
 }
 
+fn select_match_rule_with_priority(
+    guild_rule: Option<auto_recruitment_match_rules::Model>,
+    global_rule: Option<auto_recruitment_match_rules::Model>,
+) -> Option<auto_recruitment_match_rules::Model> {
+    guild_rule.or(global_rule)
+}
+
 fn style_index(style_id: i32) -> Result<usize> {
     if (1..=6).contains(&style_id) {
         Ok((style_id - 1) as usize)
@@ -872,6 +909,7 @@ mod tests {
         SeaOrmQuestMatchingUserRepository, SeaOrmUserDesiredQuestRepository,
     };
     use crate::infrastructure::database::repositories::master_data::SeaOrmQuestRepository;
+    use crate::models::entities::guild_master::auto_recruitment_match_rules;
     use chrono::Utc;
 
     fn create_test_service() -> PeriodicMatchingService<
@@ -910,6 +948,49 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }
+    }
+
+    fn build_rule_model_for_priority(
+        guild_id: i64,
+        quest_id: i32,
+    ) -> auto_recruitment_match_rules::Model {
+        auto_recruitment_match_rules::Model {
+            guild_id,
+            quest_id,
+            preset_type: "min_members_only".to_string(),
+            min_match_count: 2,
+            required_battle_style_id: None,
+            required_battle_style_count: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_select_match_rule_with_priority_prefers_guild_rule() {
+        let guild_rule = Some(build_rule_model_for_priority(12345, 10));
+        let global_rule = Some(build_rule_model_for_priority(
+            AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID,
+            10,
+        ));
+
+        let resolved = select_match_rule_with_priority(guild_rule, global_rule)
+            .expect("rule should be selected");
+
+        assert_eq!(resolved.guild_id, 12345);
+    }
+
+    #[test]
+    fn test_select_match_rule_with_priority_falls_back_to_global_rule() {
+        let global_rule = Some(build_rule_model_for_priority(
+            AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID,
+            10,
+        ));
+
+        let resolved = select_match_rule_with_priority(None, global_rule)
+            .expect("global rule should be selected");
+
+        assert_eq!(resolved.guild_id, AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID);
     }
 
     fn build_rule_definition(
@@ -1130,6 +1211,59 @@ mod tests {
         assert_eq!(assigned.get(&100), Some(&2));
         assert_eq!(assigned.get(&101), Some(&1));
         assert_eq!(assigned.get(&102), Some(&3));
+    }
+
+    #[test]
+    fn test_earth_two_light_two_plus_any_assigns_fixed_and_free_slots() {
+        let service = create_test_service();
+        let candidate = MatchCandidate {
+            guild_id: 1,
+            quest_id: 1,
+            month: 1,
+            day: 25,
+            hour: 21,
+            users: vec![
+                (100, vec![3]),
+                (101, vec![3, 1]),
+                (102, vec![5]),
+                (103, vec![5, 2]),
+                (104, vec![1]),
+                (105, vec![2]),
+            ],
+        };
+        let quest = build_quest(1, 6, "1,2,3,4,5,6", 1);
+        let context = ResolvedMatchRuleContext {
+            quest: Some(quest.clone()),
+            rule: None,
+        };
+        let rule = build_rule_definition(
+            MatchRulePreset::EarthTwoLightTwoPlusAny,
+            6,
+            None,
+            None,
+            vec![],
+        );
+
+        let groups = service
+            .group_with_rule_definition(&candidate, &context, &rule)
+            .expect("grouping should succeed");
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].users.len(), 6);
+
+        let earth_count = groups[0]
+            .users
+            .iter()
+            .filter(|(_, style)| *style == Some(EARTH_STYLE_ID))
+            .count();
+        let light_count = groups[0]
+            .users
+            .iter()
+            .filter(|(_, style)| *style == Some(LIGHT_STYLE_ID))
+            .count();
+
+        assert_eq!(earth_count, 2);
+        assert_eq!(light_count, 2);
     }
 
     #[test]

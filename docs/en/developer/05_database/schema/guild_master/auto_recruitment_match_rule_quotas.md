@@ -14,7 +14,7 @@
 
 | Column | Type (Rust) | Nullable | Notes |
 | --- | --- | --- | --- |
-| `guild_id` | `i64` | NO | Primary key |
+| `guild_id` | `i64` | NO | Primary key (`0` means global scope) |
 | `quest_id` | `i32` | NO | Primary key |
 | `battle_style_id` | `i32` | NO | Primary key |
 | `required_count` | `i32` | NO | Required users for this style |
@@ -26,3 +26,4 @@
 
 - This document is created using the definitions in `src/models/entities` as the source of truth.
 - For final constraints and indexes, also check the migration definitions.
+- Quota rows are resolved within the same scope (`guild_id`) as the selected match rule.

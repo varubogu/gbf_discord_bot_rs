@@ -14,7 +14,10 @@ pub use app_config::AppConfig;
 pub use app_error::{AppError, Result};
 pub use app_state::AppState;
 pub use battle_style_id::BattleStyleId;
-pub use constants::{ALL_ELEMENTS_EMOJI, ELEMENT_EMOJIS, ELEMENT_NAMES, SIMPLE_JOIN_EMOJI};
+pub use constants::{
+    ALL_ELEMENTS_EMOJI, AUTO_RECRUITMENT_GLOBAL_RULE_GUILD_ID, ELEMENT_EMOJIS, ELEMENT_NAMES,
+    SIMPLE_JOIN_EMOJI,
+};
 pub use db_role::DbRole;
 pub use discord_operation::{DiscordOperation, DiscordOperationError, DiscordOperationResult};
 pub use domain_interface_result::{CanCancelResult, CancelOnDeleteResult};
