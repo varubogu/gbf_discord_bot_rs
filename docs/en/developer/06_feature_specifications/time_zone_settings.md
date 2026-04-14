@@ -24,9 +24,9 @@ This feature configures timezone and locale (language setting) per Discord serve
    - datetime interpretation when loading from spreadsheets
 
 2. **Display**
-   - event datetime shown in recruitment messages
-   - event datetime shown in notification messages
-   - schedule displays
+   - event datetime shown in recruitment messages (with weekday)
+   - event datetime shown in notification messages (with weekday)
+   - schedule displays (with weekday)
 
 #### Not affected
 - Data stored in DB (always UTC)

@@ -16,6 +16,7 @@ use crate::types::discord::{
     DiscordMessageId, MessageContent, SelectMenuContent, SelectMenuOptionContent,
 };
 use crate::types::{AppError, Result};
+use crate::utils::datetime_display::format_date_channel_name_ja;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use rust_i18n::t;
 use sea_orm::DatabaseTransaction;
@@ -300,7 +301,7 @@ where
         for offset in 0..missing_count {
             let index = existing_count + offset;
             let target_date = today + Duration::days(index as i64);
-            let channel_name = format!("{}月{}日", target_date.month(), target_date.day());
+            let channel_name = format_date_channel_name_ja(target_date);
             let channel_position = (index + 1) as u16;
 
             let create_params = ChannelCreateParams::text(&channel_name)
@@ -447,7 +448,7 @@ where
                 .update_date(txn, channel.id, target_month, target_day)
                 .await?;
 
-            let target_name = format!("{target_month}月{target_day}日");
+            let target_name = format_date_channel_name_ja(target_date);
             if let Err(e) = self
                 .update_discord_channel_name(gateway, channel.channel_id as u64, &target_name)
                 .await

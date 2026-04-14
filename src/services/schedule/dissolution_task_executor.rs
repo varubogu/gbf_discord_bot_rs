@@ -11,6 +11,7 @@ use crate::services::recruitment::cancel::{
 };
 use crate::types::discord::{DiscordChannelId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, Result};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use sea_orm::DatabaseTransaction;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -286,7 +287,11 @@ where
                 format!(
                     "解散タスク通知 - {} / {}",
                     quest.name,
-                    quest_start_at_jst.format("%Y/%m/%d %H:%M")
+                    format_datetime_with_weekday(
+                        quest_start_at_jst,
+                        "%Y/%m/%d ({weekday}) %H:%M",
+                        &locale,
+                    )
                 )
             }
             None => "解散タスク通知".to_string(),

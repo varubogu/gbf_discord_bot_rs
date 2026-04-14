@@ -1,8 +1,11 @@
-use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
+use crate::events::helpers::{
+    get_locale_from_context, get_message_from_context, get_message_or_fallback_from_context,
+};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::NotificationScheduleFacade;
 use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;
 use tracing::info;
@@ -47,13 +50,19 @@ pub async fn schedule_history(
 
     let app_state = &ctx.data().app_state;
     let facade = NotificationScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
+    let locale = get_locale_from_context(&ctx).await;
 
     let now = chrono::Utc::now();
     let from = now - chrono::Duration::days(days);
 
     let (formatted, stats) = facade
-        .get_notification_history_formatted(guild_id.get() as i64, from, 20)
+        .get_notification_history_formatted(guild_id.get() as i64, from, 20, &locale)
         .await?;
+
+    let from_display =
+        format_datetime_with_weekday(stats.from, "%Y-%m-%d ({weekday}) %H:%M:%S UTC", &locale);
+    let to_display =
+        format_datetime_with_weekday(stats.to, "%Y-%m-%d ({weekday}) %H:%M:%S UTC", &locale);
 
     if formatted.is_empty() {
         let title = get_message_or_fallback_from_context(
@@ -98,8 +107,8 @@ pub async fn schedule_history(
 
     let mut footer_params = HashMap::new();
     footer_params.insert("total_count".to_string(), stats.total_count.to_string());
-    footer_params.insert("from".to_string(), stats.from.to_string());
-    footer_params.insert("to".to_string(), stats.to.to_string());
+    footer_params.insert("from".to_string(), from_display.clone());
+    footer_params.insert("to".to_string(), to_display.clone());
     let footer = get_message_from_context(
         &ctx,
         ctx.data().app_state.message_service(),
@@ -110,7 +119,7 @@ pub async fn schedule_history(
     .unwrap_or_else(|_| {
         format!(
             "合計 {} 件（期間: {} 〜 {}）",
-            stats.total_count, stats.from, stats.to
+            stats.total_count, from_display, to_display
         )
     });
 

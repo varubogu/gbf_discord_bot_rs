@@ -14,6 +14,7 @@ use crate::types::discord::{
     ActionRowContent, DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId,
     EmbedContent,
 };
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use sea_orm::DatabaseTransaction;
 
 /// 募集データ構造体（純粋なビジネスロジック用）
@@ -201,6 +202,8 @@ where
     G: crate::repository::GuildMessageTextRepository,
     M: crate::repository::MessageTextRepository,
 {
+    let locale = "ja";
+
     // メッセージIDを決定
     let message_id = if params.battle_style_name == "6属性" {
         MessageTextId::RecruitmentDisplaySixElements
@@ -219,7 +222,7 @@ where
             message_id.as_str(),
             message_params,
             params.guild_id,
-            Some("ja"),
+            Some(locale),
         )
         .await?;
 
@@ -233,7 +236,7 @@ where
             MessageTextId::RecruitmentDisplayEventDateLabel.as_str(),
             HashMap::new(),
             params.guild_id,
-            Some("ja"),
+            Some(locale),
         )
         .await?;
 
@@ -243,15 +246,12 @@ where
             MessageTextId::RecruitmentDisplayDateFormat.as_str(),
             HashMap::new(),
             params.guild_id,
-            Some("ja"),
+            Some(locale),
         )
         .await?;
 
-    message_text.push_str(&format!(
-        "\n{}{}",
-        date_label,
-        local_date.format(&date_format)
-    ));
+    let formatted_local_date = format_datetime_with_weekday(local_date, &date_format, locale);
+    message_text.push_str(&format!("\n{}{}", date_label, formatted_local_date));
 
     // 解散時刻を追加
     if let Some(dismissal_times_list) = params.dismissal_times
@@ -263,13 +263,21 @@ where
                 MessageTextId::RecruitmentDisplayDismissalTimesLabel.as_str(),
                 HashMap::new(),
                 params.guild_id,
-                Some("ja"),
+                Some(locale),
             )
             .await?;
 
         let dismissal_texts: Vec<String> = dismissal_times_list
             .iter()
-            .map(|dt| format_dismissal_time(dt, params.expiry_date, &params.timezone, &date_format))
+            .map(|dt| {
+                format_dismissal_time(
+                    dt,
+                    params.expiry_date,
+                    &params.timezone,
+                    &date_format,
+                    locale,
+                )
+            })
             .collect();
 
         message_text.push_str(&format!(
@@ -288,6 +296,7 @@ fn format_dismissal_time(
     departure_time: &DateTime<Utc>,
     timezone: &chrono_tz::Tz,
     date_format: &str,
+    locale: &str,
 ) -> String {
     match dismissal_time {
         ParsedDismissalTime::Absolute {
@@ -295,7 +304,8 @@ fn format_dismissal_time(
             datetime,
         } => {
             let local_datetime = datetime.with_timezone(timezone);
-            let formatted_datetime = local_datetime.format(date_format).to_string();
+            let formatted_datetime =
+                format_datetime_with_weekday(local_datetime, date_format, locale);
             format!("{input_value} ({formatted_datetime})")
         }
         ParsedDismissalTime::Relative {
@@ -310,7 +320,8 @@ fn format_dismissal_time(
                 + Duration::minutes(*minutes as i64);
             let dismissal_datetime = *departure_time - duration;
             let local_datetime = dismissal_datetime.with_timezone(timezone);
-            let formatted_datetime = local_datetime.format(date_format).to_string();
+            let formatted_datetime =
+                format_datetime_with_weekday(local_datetime, date_format, locale);
             format!("{input_value} ({formatted_datetime})")
         }
     }

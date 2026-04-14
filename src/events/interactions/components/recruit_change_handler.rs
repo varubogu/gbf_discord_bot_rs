@@ -7,6 +7,7 @@ use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
 use crate::types::discord::MessageData;
 use crate::types::{AppError, PoiseData, Result};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use poise::serenity_prelude::{
@@ -316,10 +317,12 @@ async fn format_event_date_label(
         let timezone_facade = GuildSettingsFacade::new(Arc::new(data.app_state.clone()));
         match timezone_facade.get_timezone(guild_id as i64).await {
             Ok(timezone) => {
-                return event_date
-                    .with_timezone(&timezone)
-                    .format("%Y-%m-%d %H:%M %Z")
-                    .to_string();
+                let local_datetime = event_date.with_timezone(&timezone);
+                return format_datetime_with_weekday(
+                    local_datetime,
+                    "%Y-%m-%d ({weekday}) %H:%M %Z",
+                    locale,
+                );
             }
             Err(e) => {
                 warn!(error = %e, guild_id = guild_id, "タイムゾーン取得に失敗したためUTC表示します");
@@ -327,7 +330,7 @@ async fn format_event_date_label(
         }
     }
 
-    event_date.format("%Y-%m-%d %H:%M UTC").to_string()
+    format_datetime_with_weekday(event_date, "%Y-%m-%d ({weekday}) %H:%M UTC", locale)
 }
 
 /// 日時ドラフトを更新

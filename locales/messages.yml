@@ -108,14 +108,14 @@ auto_recruitment.status.time_header:
   en: "**Available Times:**"
   ja: "**参加可能時間:**"
 auto_recruitment.status.time_slot:
-  en: "• {{month}}/{{day}}: {{hours_str}}"
-  ja: "• {{month}}月{{day}}日: {{hours_str}}"
+  en: "• {{month}}/{{day}} {{weekday}}: {{hours_str}}"
+  ja: "• {{month}}月{{day}}日 {{weekday}}: {{hours_str}}"
 auto_recruitment.time_select_placeholder:
   en: "Select available times (multiple selection)"
   ja: "参加可能な時間を選択（複数選択可）"
 auto_recruitment.time_select_registered:
-  en: "✅ Registered available times for {{month}}/{{day}}.\nRegistered time(s): {{hours_str}}"
-  ja: "✅ {{month}}月{{day}}日の参加可能時間を登録しました。\n登録した時間: {{hours_str}}"
+  en: "✅ Registered available times for {{month}}/{{day}} {{weekday}}.\nRegistered time(s): {{hours_str}}"
+  ja: "✅ {{month}}月{{day}}日 {{weekday}}の参加可能時間を登録しました。\n登録した時間: {{hours_str}}"
 auto_recruitment.time_select_required:
   en: "Please select at least one time."
   ja: "時間を選択してください。"
@@ -378,14 +378,14 @@ notification.presenter.dissolution.title:
   en: "📢 Dismissal time"
   ja: "📢 解散時刻です"
 notification.presenter.match.description:
-  en: "**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\n**Participants**: {{participants_str}}\n\nPlease choose from the quest candidates below."
-  ja: "**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n**参加者**: {{participants_str}}\n\n以下のクエスト候補から選択してください。"
+  en: "**Date/Time**: {{month}}/{{day}} {{weekday}} {{hour}}:00\n\n**Participants**: {{participants_str}}\n\nPlease choose from the quest candidates below."
+  ja: "**日時**: {{month}}月{{day}}日 {{weekday}} {{hour}}:00\n\n**参加者**: {{participants_str}}\n\n以下のクエスト候補から選択してください。"
 notification.presenter.match.title:
   en: "🎮 Match found!"
   ja: "🎮 マッチング成功！"
 notification.presenter.auto_matching.description:
-  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\n**Participants**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
-  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n**参加者**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
+  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{weekday}} {{hour}}:00\n\n**Participants**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
+  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{weekday}} {{hour}}:00\n\n**参加者**:\n{{participants_str}}{{element_info}}\n\n{{status_text}}"
 notification.presenter.auto_matching.title:
   en: "🎮 Match completed!"
   ja: "🎮 マッチング成立！"
@@ -402,8 +402,8 @@ notification.presenter.auto_matching.element_header:
   en: "Assigned elements"
   ja: "担当属性"
 notification.presenter.quest_decided.description:
-  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{hour}}:00\n\nCreating the recruitment..."
-  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{hour}}:00\n\n募集を作成しています..."
+  en: "**Quest**: {{quest_name}}\n**Date/Time**: {{month}}/{{day}} {{weekday}} {{hour}}:00\n\nCreating the recruitment..."
+  ja: "**クエスト**: {{quest_name}}\n**日時**: {{month}}月{{day}}日 {{weekday}} {{hour}}:00\n\n募集を作成しています..."
 notification.presenter.quest_decided.title:
   en: "✅ Quest decided!"
   ja: "✅ クエストが決定しました！"
@@ -495,8 +495,8 @@ recruitment.command.change.modal_event_date_label:
   en: "Departure date/time"
   ja: "出発日時"
 recruitment.command.change.modal_event_date_placeholder:
-  en: "Example: 12/25 22:30"
-  ja: "例: 12/25 22:30"
+  en: "Example input: 12/25 22:30 (display example: 12/25 (Thu) 22:30)"
+  ja: "入力例: 12/25 22:30（表示例: 12/25 (木) 22:30）"
 recruitment.command.change.modal_title:
   en: "Change departure date/time"
   ja: "出発日時変更"
@@ -528,8 +528,8 @@ recruitment.display.all_elements:
   en: "All Elements"
   ja: "全属性可能"
 recruitment.display.date_format:
-  en: "%m/%d %I:%M %p %Z"
-  ja: "%m/%d %H:%M %Z"
+  en: "%m/%d ({weekday}) %I:%M %p %Z"
+  ja: "%m/%d ({weekday}) %H:%M %Z"
 recruitment.display.dismissal_times_label:
   en: "Dismissal Times: "
   ja: "解散時刻："

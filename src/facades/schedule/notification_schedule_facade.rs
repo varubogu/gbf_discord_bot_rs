@@ -9,6 +9,7 @@ use crate::services::schedule::{
     schedule_query_service::{ScheduleQueryService, ScheduleStats},
 };
 use crate::types::{AppError, Result, app_state::AppState};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 
 /// 通知スケジュール（未来/履歴）を扱うFacade
 /// - Facadeがトランザクション境界を管理
@@ -27,6 +28,7 @@ impl NotificationScheduleFacade {
         &self,
         guild_id: i64,
         limit: usize,
+        locale: &str,
     ) -> Result<String> {
         let conn = self.app_state.system_db();
         let txn = conn.begin().await?;
@@ -44,11 +46,16 @@ impl NotificationScheduleFacade {
 
             let mut s = String::new();
             for (i, n) in items.iter().enumerate() {
+                let formatted_datetime = format_datetime_with_weekday(
+                    n.schedule_datetime,
+                    "%Y-%m-%d ({weekday}) %H:%M:%S UTC",
+                    locale,
+                );
                 s.push_str(&format!(
                     "{}. <#{}> {}\n",
                     i + 1,
                     n.notification.channel_id,
-                    n.schedule_datetime
+                    formatted_datetime
                 ));
             }
 
@@ -74,6 +81,7 @@ impl NotificationScheduleFacade {
         guild_id: i64,
         from: DateTime<Utc>,
         limit: usize,
+        locale: &str,
     ) -> Result<(String, ScheduleStats)> {
         let conn = self.app_state.system_db();
         let txn = conn.begin().await?;
@@ -103,11 +111,16 @@ impl NotificationScheduleFacade {
 
             let mut s = String::new();
             for (i, n) in items.iter().take(limit).enumerate() {
+                let formatted_datetime = format_datetime_with_weekday(
+                    n.schedule_datetime,
+                    "%Y-%m-%d ({weekday}) %H:%M:%S UTC",
+                    locale,
+                );
                 s.push_str(&format!(
                     "{}. <#{}> {} {}\n",
                     i + 1,
                     n.notification.channel_id,
-                    n.schedule_datetime,
+                    formatted_datetime,
                     if n.notification.is_sent { "✓" } else { "-" }
                 ));
             }

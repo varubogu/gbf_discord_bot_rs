@@ -18,6 +18,7 @@ use crate::services::schedule::NotificationManagementService;
 use crate::types;
 use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId, MessageContent};
 use crate::types::{AppError, AppState, CanCancelResult, CancelOnDeleteResult};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use sea_orm::TransactionTrait;
 use tracing::{error, info, instrument};
 
@@ -353,143 +354,149 @@ where
     // RLSポリシーのためにセッション変数を設定
     set_current_guild_id(&txn, guild_id as i64).await?;
 
-    let result = async {
-        // Repositoryの取得
-        let battle_recruitment_repo = app_state.repositories.battle_recruitments;
-        let recruitment_query_service = RecruitmentQueryService::new(
-            app_state.repositories.battle_style,
-            battle_recruitment_repo,
-        );
-        let participants_service =
-            RecruitmentParticipantsService::new(app_state.repositories.recruitment_participants);
-        let locale_service = LocaleService::new(app_state.repositories.guild_settings);
-        let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
+    let result =
+        async {
+            // Repositoryの取得
+            let battle_recruitment_repo = app_state.repositories.battle_recruitments;
+            let recruitment_query_service = RecruitmentQueryService::new(
+                app_state.repositories.battle_style,
+                battle_recruitment_repo,
+            );
+            let participants_service = RecruitmentParticipantsService::new(
+                app_state.repositories.recruitment_participants,
+            );
+            let locale_service = LocaleService::new(app_state.repositories.guild_settings);
+            let quest_query_service = QuestQueryService::new(app_state.repositories.quest);
 
-        // 募集メッセージかどうか確認
-        let recruitment_opt = recruitment_query_service
-            .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
-            .await?;
+            // 募集メッセージかどうか確認
+            let recruitment_opt = recruitment_query_service
+                .get_recruitment_by_message(&txn, guild_id, channel_id, message_id)
+                .await?;
 
-        let recruitment = match recruitment_opt {
-            Some(r) => r,
-            None => {
-                // 募集メッセージではない
+            let recruitment = match recruitment_opt {
+                Some(r) => r,
+                None => {
+                    // 募集メッセージではない
+                    info!(
+                        message_id = %message_id,
+                        "削除されたメッセージは募集メッセージではありませんでした"
+                    );
+                    return Ok::<CancelOnDeleteResult, AppError>(
+                        CancelOnDeleteResult::NotRecruitmentMessage,
+                    );
+                }
+            };
+
+            // 既にキャンセル済みの場合はスキップ
+            if recruitment.is_canceled {
                 info!(
-                    message_id = %message_id,
-                    "削除されたメッセージは募集メッセージではありませんでした"
-                );
-                return Ok::<CancelOnDeleteResult, AppError>(
-                    CancelOnDeleteResult::NotRecruitmentMessage,
-                );
-            }
-        };
-
-        // 既にキャンセル済みの場合はスキップ
-        if recruitment.is_canceled {
-            info!(
-                recruitment_id = recruitment.id,
-                "既にキャンセル済みの募集のため処理をスキップします"
-            );
-            return Ok(CancelOnDeleteResult::AlreadyCancelled);
-        }
-
-        // 開催日時を過ぎている場合はキャンセル不要
-        let now = chrono::Utc::now();
-        if recruitment.quest_start_at <= now {
-            info!(
-                recruitment_id = recruitment.id,
-                quest_start_at = %recruitment.quest_start_at,
-                "開催日時を過ぎているためキャンセル対象外です"
-            );
-            return Ok(CancelOnDeleteResult::EventDatePassed);
-        }
-
-        info!(
-            recruitment_id = recruitment.id,
-            "募集メッセージの削除を検出、キャンセル処理を実行します"
-        );
-
-        // DBを is_canceled=true に更新
-        // メッセージ削除時は元の募集メッセージIDをrecruit_end_message_idに設定
-        cancel_recruitment_by_message(
-            &txn,
-            &battle_recruitment_repo,
-            guild_id,
-            channel_id,
-            message_id,
-            DiscordMessageId::new(message_id),
-        )
-        .await?;
-
-        // 関連通知スケジュールを削除
-        let notification_management_service = NotificationManagementService::new(
-            app_state.repositories.notification,
-            app_state.repositories.notification_rel_battle_recruitment,
-            app_state.repositories.scheduled_task,
-        );
-        notification_management_service
-            .delete_recruitment_notifications(&txn, recruitment.id)
-            .await?;
-
-        // DBから参加者情報を取得
-        let participant_user_ids = participants_service
-            .get_all_participant_user_ids(&txn, recruitment.id)
-            .await?;
-
-        // ギルド設定からロケールを取得
-        let locale = locale_service
-            .get_guild_locale_with_txn(&txn, guild_id as i64)
-            .await?;
-
-        // キャンセル通知メッセージを作成
-        let message_service = app_state.message_service();
-        let notification_text = create_cancel_notification_text(
-            &txn,
-            message_service,
-            Some(guild_id as i64),
-            Some(&locale),
-            &participant_user_ids,
-        )
-        .await?;
-
-        // クエスト情報を取得して通知メッセージに追加
-        let quest = quest_query_service
-            .get_quest_by_id(&txn, recruitment.quest_id)
-            .await?;
-        let quest_start_at_jst = recruitment
-            .quest_start_at
-            .with_timezone(&chrono_tz::Asia::Tokyo);
-        let final_notification_text = format!(
-            "【メッセージ削除によるキャンセル - {} / {}】\n{}",
-            quest.name,
-            quest_start_at_jst.format("%Y/%m/%d %H:%M"),
-            notification_text
-        );
-
-        // 募集チャンネルに通知を送信（Gatewayを使用）
-        let message_content = MessageContent::text(&final_notification_text);
-
-        gateway
-            .send_message(DiscordChannelId::new(channel_id), message_content)
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
                     recruitment_id = recruitment.id,
-                    "キャンセル通知メッセージの送信に失敗しました"
+                    "既にキャンセル済みの募集のため処理をスキップします"
                 );
-                AppError::Generic(e.to_string())
-            })?;
+                return Ok(CancelOnDeleteResult::AlreadyCancelled);
+            }
 
-        info!(
-            recruitment_id = recruitment.id,
-            participants_count = participant_user_ids.len(),
-            "メッセージ削除に伴うキャンセル処理が完了しました"
-        );
+            // 開催日時を過ぎている場合はキャンセル不要
+            let now = chrono::Utc::now();
+            if recruitment.quest_start_at <= now {
+                info!(
+                    recruitment_id = recruitment.id,
+                    quest_start_at = %recruitment.quest_start_at,
+                    "開催日時を過ぎているためキャンセル対象外です"
+                );
+                return Ok(CancelOnDeleteResult::EventDatePassed);
+            }
 
-        Ok::<CancelOnDeleteResult, AppError>(CancelOnDeleteResult::Cancelled)
-    }
-    .await;
+            info!(
+                recruitment_id = recruitment.id,
+                "募集メッセージの削除を検出、キャンセル処理を実行します"
+            );
+
+            // DBを is_canceled=true に更新
+            // メッセージ削除時は元の募集メッセージIDをrecruit_end_message_idに設定
+            cancel_recruitment_by_message(
+                &txn,
+                &battle_recruitment_repo,
+                guild_id,
+                channel_id,
+                message_id,
+                DiscordMessageId::new(message_id),
+            )
+            .await?;
+
+            // 関連通知スケジュールを削除
+            let notification_management_service = NotificationManagementService::new(
+                app_state.repositories.notification,
+                app_state.repositories.notification_rel_battle_recruitment,
+                app_state.repositories.scheduled_task,
+            );
+            notification_management_service
+                .delete_recruitment_notifications(&txn, recruitment.id)
+                .await?;
+
+            // DBから参加者情報を取得
+            let participant_user_ids = participants_service
+                .get_all_participant_user_ids(&txn, recruitment.id)
+                .await?;
+
+            // ギルド設定からロケールを取得
+            let locale = locale_service
+                .get_guild_locale_with_txn(&txn, guild_id as i64)
+                .await?;
+
+            // キャンセル通知メッセージを作成
+            let message_service = app_state.message_service();
+            let notification_text = create_cancel_notification_text(
+                &txn,
+                message_service,
+                Some(guild_id as i64),
+                Some(&locale),
+                &participant_user_ids,
+            )
+            .await?;
+
+            // クエスト情報を取得して通知メッセージに追加
+            let quest = quest_query_service
+                .get_quest_by_id(&txn, recruitment.quest_id)
+                .await?;
+            let quest_start_at_jst = recruitment
+                .quest_start_at
+                .with_timezone(&chrono_tz::Asia::Tokyo);
+            let final_notification_text = format!(
+                "【メッセージ削除によるキャンセル - {} / {}】\n{}",
+                quest.name,
+                format_datetime_with_weekday(
+                    quest_start_at_jst,
+                    "%Y/%m/%d ({weekday}) %H:%M",
+                    &locale,
+                ),
+                notification_text
+            );
+
+            // 募集チャンネルに通知を送信（Gatewayを使用）
+            let message_content = MessageContent::text(&final_notification_text);
+
+            gateway
+                .send_message(DiscordChannelId::new(channel_id), message_content)
+                .await
+                .map_err(|e| {
+                    error!(
+                        error = %e,
+                        recruitment_id = recruitment.id,
+                        "キャンセル通知メッセージの送信に失敗しました"
+                    );
+                    AppError::Generic(e.to_string())
+                })?;
+
+            info!(
+                recruitment_id = recruitment.id,
+                participants_count = participant_user_ids.len(),
+                "メッセージ削除に伴うキャンセル処理が完了しました"
+            );
+
+            Ok::<CancelOnDeleteResult, AppError>(CancelOnDeleteResult::Cancelled)
+        }
+        .await;
 
     match result {
         Ok(processed) => {

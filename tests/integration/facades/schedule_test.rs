@@ -51,7 +51,7 @@ async fn test_get_future_notifications_formatted_with_data() {
 
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let result = facade
-        .get_future_notifications_formatted(TEST_GUILD_ID, 10)
+        .get_future_notifications_formatted(TEST_GUILD_ID, 10, "ja")
         .await;
 
     assert!(result.is_ok(), "結果がエラーです: {:?}", result);
@@ -78,7 +78,7 @@ async fn test_get_future_notifications_formatted_no_data() {
 
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let result = facade
-        .get_future_notifications_formatted(TEST_GUILD_ID, 10)
+        .get_future_notifications_formatted(TEST_GUILD_ID, 10, "ja")
         .await;
 
     assert!(result.is_ok());
@@ -128,7 +128,7 @@ async fn test_get_future_notifications_formatted_with_limit() {
 
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let result = facade
-        .get_future_notifications_formatted(TEST_GUILD_ID, 5)
+        .get_future_notifications_formatted(TEST_GUILD_ID, 5, "ja")
         .await;
 
     assert!(result.is_ok());
@@ -185,7 +185,7 @@ async fn test_get_future_notifications_formatted_limit_zero() {
 
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let result = facade
-        .get_future_notifications_formatted(TEST_GUILD_ID, 0)
+        .get_future_notifications_formatted(TEST_GUILD_ID, 0, "ja")
         .await;
 
     assert!(result.is_ok());
@@ -238,7 +238,7 @@ async fn test_get_notification_history_formatted_with_data() {
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let from = Utc::now() - Duration::days(1);
     let result = facade
-        .get_notification_history_formatted(TEST_GUILD_ID, from, 10)
+        .get_notification_history_formatted(TEST_GUILD_ID, from, 10, "ja")
         .await;
 
     assert!(result.is_ok(), "結果がエラーです: {:?}", result);
@@ -266,7 +266,7 @@ async fn test_get_notification_history_formatted_no_data() {
     let facade = NotificationScheduleFacade::new(app_state.clone().into());
     let from = Utc::now() - Duration::days(1);
     let result = facade
-        .get_notification_history_formatted(TEST_GUILD_ID, from, 10)
+        .get_notification_history_formatted(TEST_GUILD_ID, from, 10, "ja")
         .await;
 
     assert!(result.is_ok());

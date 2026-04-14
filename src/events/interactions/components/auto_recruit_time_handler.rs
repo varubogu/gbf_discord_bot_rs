@@ -6,6 +6,7 @@ use crate::events::helpers::resolve_guild_locale;
 use crate::facades::auto_recruitment;
 use crate::services::message::MessageTextId;
 use crate::types::{AppError, PoiseData, Result};
+use crate::utils::datetime_display::weekday_token_for_month_day_jst;
 use poise::serenity_prelude::{
     ComponentInteraction, ComponentInteractionDataKind, Context, EditInteractionResponse,
 };
@@ -119,19 +120,24 @@ pub async fn handle_time_selection_interaction(
                 .map(|h| format!("{h}時"))
                 .collect::<Vec<_>>()
                 .join(", ");
+            let weekday = weekday_token_for_month_day_jst(month, day, &locale).unwrap_or_default();
             let mut params = HashMap::new();
             params.insert("month".to_string(), month.to_string());
             params.insert("day".to_string(), day.to_string());
+            params.insert("weekday".to_string(), weekday.clone());
             params.insert("hours_str".to_string(), hours_str.clone());
+            let date_text = if weekday.is_empty() {
+                format!("{month}月{day}日")
+            } else {
+                format!("{month}月{day}日 {weekday}")
+            };
             let success_message = get_message_or_fallback(
                 data,
                 guild_id,
                 MessageTextId::AutoRecruitmentTimeSelectRegistered,
                 params,
                 &locale,
-                &format!(
-                    "✅ {month}月{day}日の参加可能時間を登録しました。\n登録した時間: {hours_str}"
-                ),
+                &format!("✅ {date_text}の参加可能時間を登録しました。\n登録した時間: {hours_str}"),
             )
             .await;
 

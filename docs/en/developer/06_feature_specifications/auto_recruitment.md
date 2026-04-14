@@ -96,13 +96,13 @@ Channels inside the category are ordered as follows:
 
 ### Matching channel
 - Exactly one channel in the category (position 0)
-- On a successful match, posts a message showing date/time, quest, and participants
+- On a successful match, posts a message showing date/time (with weekday), quest, and participants
 - Immediately creates a recruitment post in co-op recruitment v2 format
 - Mentions all participants
 
 ### Date channels
 - Any number of channels in the category (position 1..n)
-- Channel name format: `M-d` (e.g., `1-21`)
+- Channel name format: `M月D日_weekday` (e.g., `1月21日_火`)
 - Sorted by date ascending
 - Shows a select menu with 24 hourly options (supports selecting up to 24 at once)
 - Selection is toggle-based (selecting again unregisters)
@@ -205,7 +205,7 @@ Use the messages above to change your selections.
 
 ### Notification
 - Post a message in the matching channel
-- Show date/time, quest, and participants
+- Show date/time (with weekday), quest, and participants
 - Mention all participants
 - For 6-element quests, also show assigned elements/styles
 - Send the match-complete post first, then edit that same post after recruitment creation to append a jump link to the recruitment post

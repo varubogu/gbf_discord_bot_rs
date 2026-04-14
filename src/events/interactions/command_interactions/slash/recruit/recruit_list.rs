@@ -1,7 +1,10 @@
-use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
+use crate::events::helpers::{
+    get_locale_from_context, get_message_from_context, get_message_or_fallback_from_context,
+};
 use crate::facades::recruitment::recruit_list::list_active_recruitments;
 use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;
 use tracing::info;
@@ -71,9 +74,10 @@ pub async fn recruit_list(ctx: PoiseContext<'_>) -> Result<()> {
         ctx.data().app_state.message_service(),
         MessageTextId::RecruitmentDisplayDateFormat,
         HashMap::new(),
-        "%m/%d %H:%M %Z",
+        "%m/%d ({weekday}) %H:%M %Z",
     )
     .await;
+    let locale = get_locale_from_context(&ctx).await;
 
     // リンクテキストを取得
     let link_text = get_message_or_fallback_from_context(
@@ -93,7 +97,7 @@ pub async fn recruit_list(ctx: PoiseContext<'_>) -> Result<()> {
     for (i, item) in result.items.iter().take(display_count).enumerate() {
         // UTC → ギルドタイムゾーンへ変換して表示
         let local_dt = item.quest_start_at.with_timezone(&result.timezone);
-        let formatted_dt = local_dt.format(&date_format).to_string();
+        let formatted_dt = format_datetime_with_weekday(local_dt, &date_format, &locale);
 
         // Discord メッセージリンク（Markdown ハイパーリンク形式）
         let message_url = format!(

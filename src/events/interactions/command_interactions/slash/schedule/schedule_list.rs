@@ -1,4 +1,4 @@
-use crate::events::helpers::get_message_or_key_from_context;
+use crate::events::helpers::{get_locale_from_context, get_message_or_key_from_context};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::NotificationScheduleFacade;
 use crate::services::message::MessageTextId;
@@ -47,8 +47,9 @@ pub async fn schedule_list(ctx: PoiseContext<'_>) -> Result<()> {
 
     let app_state = &ctx.data().app_state;
     let facade = NotificationScheduleFacade::new(std::sync::Arc::new(app_state.clone()));
+    let locale = get_locale_from_context(&ctx).await;
     let formatted = facade
-        .get_future_notifications_formatted(guild_id.get() as i64, 10)
+        .get_future_notifications_formatted(guild_id.get() as i64, 10, &locale)
         .await?;
 
     let title = get_message_or_key_from_context(

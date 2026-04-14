@@ -14,6 +14,7 @@ use crate::types::discord::{
     SelectMenuOptionContent,
 };
 use crate::types::{AppError, AppState, BattleStyleId, Result};
+use crate::utils::datetime_display::format_date_channel_name_ja;
 use chrono::{Datelike, Duration, Utc};
 use rust_i18n::t;
 use sea_orm::TransactionTrait;
@@ -182,7 +183,7 @@ where
 
         for i in 0..days {
             let date = today + Duration::days(i as i64);
-            let channel_name = format!("{}月{}日", date.month(), date.day());
+            let channel_name = format_date_channel_name_ja(date);
             let channel_position = (i + 1) as u16;
 
             let channel_params = ChannelCreateParams::text(&channel_name)
@@ -518,7 +519,7 @@ where
 
             for i in 1..=channels_to_add {
                 let new_date = last_channel_date + Duration::days(i as i64);
-                let channel_name = format!("{}月{}日", new_date.month(), new_date.day());
+                let channel_name = format_date_channel_name_ja(new_date);
                 let sort_order = (existing_channels.len() + i) as i32;
                 // 日付チャンネルはposition 1から（position 0はマッチング）
                 let channel_position = (existing_channels.len() + i) as u16;

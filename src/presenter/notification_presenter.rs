@@ -7,6 +7,7 @@ use crate::services::message::MessageTextId;
 use crate::types::discord::{
     ActionRowContent, EmbedContent, MessageContent, SelectMenuContent, SelectMenuOptionContent,
 };
+use crate::utils::datetime_display::weekday_token_for_month_day_jst;
 use rust_i18n::t;
 
 /// 通知表示を担当するPresenter
@@ -63,6 +64,7 @@ impl NotificationPresenter {
                 &[
                     ("month", month.to_string()),
                     ("day", day.to_string()),
+                    ("weekday", Self::weekday_token(month, day)),
                     ("hour", hour.to_string()),
                     ("participants_str", participants_str),
                 ],
@@ -109,6 +111,7 @@ impl NotificationPresenter {
                     ("quest_name", quest_name.to_string()),
                     ("month", month.to_string()),
                     ("day", day.to_string()),
+                    ("weekday", Self::weekday_token(month, day)),
                     ("hour", hour.to_string()),
                     ("participants_str", participants_str),
                     ("element_info", element_info),
@@ -205,6 +208,7 @@ impl NotificationPresenter {
                     ("quest_name", quest_name.to_string()),
                     ("month", month.to_string()),
                     ("day", day.to_string()),
+                    ("weekday", Self::weekday_token(month, day)),
                     ("hour", hour.to_string()),
                 ],
             ))
@@ -295,6 +299,11 @@ impl NotificationPresenter {
                 elements.join("\n"),
             )
         }
+    }
+
+    /// 月日からJST基準の曜日トークン（例: `(水)`）を生成する
+    fn weekday_token(month: i32, day: i32) -> String {
+        weekday_token_for_month_day_jst(month, day, "ja").unwrap_or_default()
     }
 
     /// 出発通知Embedを生成する
@@ -437,6 +446,13 @@ mod tests {
                 .unwrap()
                 .contains("マッチング成功")
         );
+        assert!(
+            message.embeds[0]
+                .description
+                .as_ref()
+                .unwrap()
+                .contains("1月15日 (")
+        );
         assert_eq!(message.components.len(), 1);
     }
 
@@ -472,6 +488,13 @@ mod tests {
                 .unwrap()
                 .contains("決定クエスト")
         );
+        assert!(
+            message.embeds[0]
+                .description
+                .as_ref()
+                .unwrap()
+                .contains("1月15日 (")
+        );
     }
 
     #[test]
@@ -492,6 +515,13 @@ mod tests {
                 .as_ref()
                 .unwrap()
                 .contains("募集を作成しています")
+        );
+        assert!(
+            message.embeds[0]
+                .description
+                .as_ref()
+                .unwrap()
+                .contains("1月15日 (")
         );
         assert_eq!(message.embeds[0].fields.len(), 0);
     }

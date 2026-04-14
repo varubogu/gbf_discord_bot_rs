@@ -1,9 +1,10 @@
 //! 自動募集参加状況確認コマンド
 
-use crate::events::helpers::get_message_from_context;
+use crate::events::helpers::{get_locale_from_context, get_message_from_context};
 use crate::facades::auto_recruitment;
 use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use crate::utils::datetime_display::weekday_token_for_month_day_jst;
 use std::collections::HashMap;
 use tracing::error;
 
@@ -44,6 +45,7 @@ pub async fn auto_recruit_status(ctx: PoiseContext<'_>) -> Result<()> {
 
     let user_id = ctx.author().id.get();
     let app_state = &ctx.data().app_state;
+    let locale = get_locale_from_context(&ctx).await;
 
     match auto_recruitment::get_participation_status(app_state, guild_id.get(), user_id).await {
         Ok(status) => {
@@ -125,6 +127,11 @@ pub async fn auto_recruit_status(ctx: PoiseContext<'_>) -> Result<()> {
                     let mut params = HashMap::new();
                     params.insert("month".to_string(), slot.month.to_string());
                     params.insert("day".to_string(), slot.day.to_string());
+                    params.insert(
+                        "weekday".to_string(),
+                        weekday_token_for_month_day_jst(slot.month, slot.day, &locale)
+                            .unwrap_or_default(),
+                    );
                     params.insert("hours_str".to_string(), hours_str);
                     let time_slot = get_message_or_key(
                         &ctx,

@@ -1,8 +1,11 @@
-use crate::events::helpers::{get_message_from_context, get_message_or_fallback_from_context};
+use crate::events::helpers::{
+    get_locale_from_context, get_message_from_context, get_message_or_fallback_from_context,
+};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::schedule::ScheduleQueryFacade;
 use crate::services::message::MessageTextId;
 use crate::types::{PoiseContext, Result};
+use crate::utils::datetime_display::format_datetime_with_weekday;
 use chrono::Duration;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;
@@ -53,14 +56,19 @@ pub async fn schedule_stats(
     // Facadeを呼び出し
     let facade = ScheduleQueryFacade::new(Arc::new(app_state.clone()));
     let stats = facade.get_stats(guild_id.get() as i64, days).await?;
+    let locale = get_locale_from_context(&ctx).await;
 
     // 表示用にJST変換（UTC+9）
-    let from_jst = (stats.from + Duration::hours(9))
-        .format("%Y/%m/%d %H:%M")
-        .to_string();
-    let to_jst = (stats.to + Duration::hours(9))
-        .format("%Y/%m/%d %H:%M")
-        .to_string();
+    let from_jst = format_datetime_with_weekday(
+        stats.from + Duration::hours(9),
+        "%Y/%m/%d ({weekday}) %H:%M",
+        &locale,
+    );
+    let to_jst = format_datetime_with_weekday(
+        stats.to + Duration::hours(9),
+        "%Y/%m/%d ({weekday}) %H:%M",
+        &locale,
+    );
 
     let mut header_params = HashMap::new();
     header_params.insert("from".to_string(), from_jst.clone());
