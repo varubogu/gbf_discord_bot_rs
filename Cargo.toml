@@ -4,7 +4,7 @@ version = "0.7.1"
 edition = "2024"
 
 [dependencies]
-poise = "0.6.1"
+poise = "0.6.2"
 tokio = { version = "1.50", features = ["macros", "rt-multi-thread", "signal"] }
 dotenv = "0.15"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
@@ -22,13 +22,13 @@ lazy_static = "1.5"
 regex = "1.12"
 log = { version = "0.4" }
 logcall = { version = "0.1"}
-rust-i18n = "3.1"
+rust-i18n = "4.0"
 futures = "0.3"
 thiserror = "2.0"
 uuid = { version = "^1.0", features = ["v4", "serde"] }
 tokio-cron-scheduler = "0.15"
 google-sheets4 = "5.0"
-hyper = "1.8"
+hyper = "1.9"
 hyper-rustls = "0.27"
 
 
