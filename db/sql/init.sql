@@ -99,7 +99,7 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE '次のステップ:';
     RAISE NOTICE '  1. マイグレーション実行: cargo run -- migrate';
-    RAISE NOTICE '  2. Cleanupロールに権限付与: psql -d :db_name -f db/sql/create_cleanup_role.sql';
+    RAISE NOTICE '  2. Cleanupロールに権限付与: psql -d :db_name -v cleanup_password="..." -f db/sql/create_cleanup_role.sql';
     RAISE NOTICE '========================================';
 END
 $$;

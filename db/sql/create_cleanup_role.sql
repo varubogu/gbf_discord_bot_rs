@@ -10,12 +10,12 @@
 --
 -- 使用方法:
 --   psql -v cleanup_password="your_cleanup_password" \
---        -d gbf_discord_bot -f create_cleanup_role.sql
+--        -d gbf_bot_db -f create_cleanup_role.sql
 --
 -- または環境変数から:
---   export CLEANUP_PASSWORD="your_cleanup_password"
---   psql -v cleanup_password="$CLEANUP_PASSWORD" \
---        -d gbf_discord_bot -f create_cleanup_role.sql
+--   export CLEANUP_DB_PASSWORD="your_cleanup_password"
+--   psql -v cleanup_password="$CLEANUP_DB_PASSWORD" \
+--        -d gbf_bot_db -f create_cleanup_role.sql
 -- ================================
 
 -- Cleanupロールを作成（既に存在する場合はスキップ）
@@ -36,8 +36,15 @@ $$;
 -- RLSをバイパス（全ギルドのデータを対象とするため）
 ALTER ROLE gbf_bot_cleanup WITH BYPASSRLS;
 
--- データベース接続権限を付与
-GRANT CONNECT ON DATABASE CURRENT_DATABASE TO gbf_bot_cleanup;
+-- データベース接続権限を付与（接続中DBに対して実行）
+DO $$
+BEGIN
+    EXECUTE format(
+        'GRANT CONNECT ON DATABASE %I TO gbf_bot_cleanup',
+        current_database()
+    );
+END
+$$;
 
 -- workerスキーマへの接続権限
 GRANT USAGE ON SCHEMA worker TO gbf_bot_cleanup;

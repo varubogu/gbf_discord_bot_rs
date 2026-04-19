@@ -23,8 +23,9 @@ It runs via a maintenance path separated from the main bot.
 ### Overview
 
 - By default, deletes target data older than 30 days
-- Runs in a maintenance container (separate from the bot)
+- Runs in dedicated maintenance containers (separate from the bot)
 - Uses a dedicated DB role (`gbf_bot_cleanup`) for least-privilege operation
+- `maintenance_scheduler` runs continuously and executes cleanup daily in UTC time
 
 ### When to run
 
@@ -50,22 +51,29 @@ It runs via a maintenance path separated from the main bot.
 
 ### Production (Docker Compose)
 
+`./mng.sh prod up` starts `maintenance_scheduler` automatically.
+
+### Manual one-shot execution
+
 - `docker compose run --rm maintenance`
+- `docker compose run --rm -e CLEANUP_EXECUTION_MODE=once maintenance`
 
 ### Temporarily change retention days
 
 - `docker compose run --rm -e CLEANUP_RETENTION_DAYS=60 maintenance`
 
-## Scheduled execution with cron (recommended)
+## Scheduler settings (container built-in)
 
-Example for daily automatic execution:
+Configure `.env.maintenance` to tune daily execution timing:
 
-- `0 3 * * * cd /path/to/gbf_discord_bot_rs && docker compose run --rm maintenance >> /var/log/gbf-cleanup.log 2>&1`
+- `CLEANUP_SCHEDULE_HOUR_UTC` (default `3`)
+- `CLEANUP_SCHEDULE_MINUTE_UTC` (default `0`)
+- `CLEANUP_RUN_ON_STARTUP` (default `false`)
 
 Notes:
 
-- Run at night (e.g., 03:00) is recommended
-- Configure log rotation to avoid logs growing indefinitely
+- Running at night (e.g., 03:00 UTC) is recommended
+- Keep log rotation enabled to avoid logs growing indefinitely
 
 ## Data targets
 
@@ -99,6 +107,7 @@ Notes:
 - Check logs for start time, reference time, number of deletions, and success/failure
 - Example commands:
   - `tail -f /var/log/gbf-cleanup.log`
+  - `docker compose logs -f maintenance_scheduler`
   - `docker compose logs maintenance`
 
 ### Debug run
@@ -110,7 +119,7 @@ Notes:
 - Avoid concurrent runs (even if idempotent, it increases operational load)
 - Deleted data cannot be restored; make regular backups mandatory
 - If changing retention in production, get agreement first before applying
-- Before running manually, confirm it won’t overlap with scheduled jobs
+- Before manual one-shot runs, stop `maintenance_scheduler` or ensure no overlap
 
 ## Related documents
 

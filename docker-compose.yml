@@ -72,6 +72,7 @@ services:
     environment:
       DB_HOST: db
       TZ: UTC
+      CLEANUP_EXECUTION_MODE: once
     networks:
       - app_network
     depends_on:
@@ -79,5 +80,29 @@ services:
         condition: service_healthy
     profiles:
       - maintenance  # デフォルトでは起動しない（手動実行用）
+
+  maintenance_scheduler:
+    # 定期クリーンアップ実行用（通常起動時に常駐）
+    image: ghcr.io/${GITHUB_REPOSITORY:-varubogu/gbf_discord_bot_rs}-maintenance:latest
+    # # 検証用：ビルドする
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.maintenance
+    restart: unless-stopped
+    env_file:
+      - .env.maintenance
+    environment:
+      DB_HOST: db
+      TZ: UTC
+      CLEANUP_EXECUTION_MODE: scheduler
+    networks:
+      - app_network
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 volumes:
   pgdata:

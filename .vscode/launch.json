@@ -102,6 +102,29 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug cleanup once (local)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=cleanup",
+                    "--package=gbf_discord_bot_rs"
+                ],
+                "filter": {
+                    "name": "cleanup",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "CONFIG_FOLDER": "${workspaceFolder}",
+                "CLEANUP_EXECUTION_MODE": "once",
+                "RUST_LOG": "info"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

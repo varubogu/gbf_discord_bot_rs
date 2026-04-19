@@ -18,6 +18,7 @@ mod m20260217_000000_add_notification_channel_id_to_event_schedule_details;
 mod m20260222_000000_add_host_discord_user_id_to_battle_recruitments;
 mod m20260326_000000_add_auto_recruitment_match_rules;
 mod m20260327_000000_extend_auto_recruitment_match_rules_scope_and_presets;
+mod m20260419_000000_grant_cleanup_role_privileges;
 
 pub struct Migrator;
 
@@ -45,6 +46,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 m20260327_000000_extend_auto_recruitment_match_rules_scope_and_presets::Migration,
             ),
+            Box::new(m20260419_000000_grant_cleanup_role_privileges::Migration),
         ]
     }
 }

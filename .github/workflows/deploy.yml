@@ -85,6 +85,28 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
           platforms: ${{ matrix.platform }}
 
+      - name: Extract metadata for maintenance image
+        id: meta-maintenance
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-maintenance
+          tags: |
+            type=raw,value=latest-${{ matrix.arch }}
+            type=semver,pattern={{version}}-${{ matrix.arch }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.arch }}
+
+      - name: Build and push maintenance image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.maintenance
+          push: true
+          tags: ${{ steps.meta-maintenance.outputs.tags }}
+          labels: ${{ steps.meta-maintenance.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          platforms: ${{ matrix.platform }}
+
   # マルチアーキテクチャマニフェストの作成
   create-manifest:
     needs: build-and-push
@@ -124,4 +146,11 @@ jobs:
           .github/scripts/create-manifest.sh \
             "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" \
             "db" \
+            "${{ steps.version.outputs.version }}"
+
+      - name: Create maintenance manifest
+        run: |
+          .github/scripts/create-manifest.sh \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" \
+            "maintenance" \
             "${{ steps.version.outputs.version }}"

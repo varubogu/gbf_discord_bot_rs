@@ -2,7 +2,7 @@
 # マルチアーキテクチャマニフェストを作成するスクリプト
 # 使用方法: ./create-manifest.sh <image-base> <image-type> [version]
 #   image-base: レジストリとリポジトリ名（例: ghcr.io/user/repo）
-#   image-type: "app" または "db"
+#   image-type: "app" または "db" または "maintenance"
 #   version: セマンティックバージョン（オプショナル、例: 1.0.0）
 
 set -euo pipefail
@@ -21,8 +21,10 @@ VERSION="${3:-}"
 # image-typeに応じてサフィックスを追加
 if [ "$IMAGE_TYPE" = "db" ]; then
     IMAGE_BASE="${IMAGE_BASE}-db"
+elif [ "$IMAGE_TYPE" = "maintenance" ]; then
+    IMAGE_BASE="${IMAGE_BASE}-maintenance"
 elif [ "$IMAGE_TYPE" != "app" ]; then
-    echo "エラー: image-typeは 'app' または 'db' である必要があります"
+    echo "エラー: image-typeは 'app' または 'db' または 'maintenance' である必要があります"
     exit 1
 fi
 

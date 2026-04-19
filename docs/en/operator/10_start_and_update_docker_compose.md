@@ -15,6 +15,8 @@ This page describes how a bot operator (infra/deploy) can “start the bot and u
 ./mng.sh prod up
 ```
 
+This starts `app`, `db`, and `maintenance_scheduler` (daily cleanup container).
+
 ## Which image is used?
 
 This project typically starts by pulling prebuilt images from a registry (GHCR).
@@ -45,6 +47,9 @@ export GITHUB_REPOSITORY=owner/repo
 ```bash
 docker compose run --rm maintenance
 ```
+
+`maintenance_scheduler` is always-on for periodic cleanup.  
+Use `maintenance` only for ad-hoc/manual runs.
 
 ## Common pitfalls
 

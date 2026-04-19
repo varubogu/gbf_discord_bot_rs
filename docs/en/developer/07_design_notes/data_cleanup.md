@@ -12,5 +12,6 @@ Delete old data (recruitments/notifications/tasks, etc.) to prevent DB growth an
 
 ## Operational notes
 
-- Scheduled execution (cron, etc.) is recommended
+- In Docker Compose operations, run daily cleanup via `maintenance_scheduler` (built-in scheduler mode)
+- Keep `maintenance` for one-shot/manual cleanup
 - Deleted data cannot be restored; define a backup policy separately

@@ -15,6 +15,8 @@
 ./mng.sh prod up
 ```
 
+この起動で `app` / `db` に加えて `maintenance_scheduler`（日次クリーンアップ）も開始されます。
+
 ## どのイメージを使う？
 
 このプロジェクトは、基本的にビルド済みイメージをレジストリ（GHCR）から取得して起動します。
@@ -45,6 +47,9 @@ export GITHUB_REPOSITORY=owner/repo
 ```bash
 docker compose run --rm maintenance
 ```
+
+定期クリーンアップは `maintenance_scheduler` が常駐して実行します。  
+`maintenance` は手動・臨時実行用です。
 
 ## よくあるつまずき
 
