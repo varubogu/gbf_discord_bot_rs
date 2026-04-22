@@ -17,8 +17,8 @@ pub use guild::{
     SeaOrmGuildSettingsRepository, SeaOrmGuildSpreadsheetConfigRepository,
 };
 pub use master_data::{
-    SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmLastProcessTimeRepository,
-    SeaOrmMessageTextRepository, SeaOrmQuestRepository,
+    SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmEnvironmentRepository,
+    SeaOrmLastProcessTimeRepository, SeaOrmMessageTextRepository, SeaOrmQuestRepository,
 };
 pub use recruitment::{
     SeaOrmAllRecruitmentNotificationRolesRepository, SeaOrmBattleRecruitmentsRepository,
@@ -30,6 +30,7 @@ pub use schedule::{
     SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
     SeaOrmScheduleRepository, SeaOrmScheduledTaskCleanupRepository,
     SeaOrmScheduledTaskDismissalRepository, SeaOrmScheduledTaskDissolutionRepository,
+    SeaOrmScheduledTaskRecruitmentMessageDeletionRepository,
     SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
 };
 
@@ -42,6 +43,7 @@ pub use guild::guild_settings_repository;
 pub use guild::guild_spreadsheet_config_repository;
 pub use master_data::battle_style_repository;
 pub use master_data::channel_type_repository;
+pub use master_data::environment_repository;
 pub use master_data::last_process_time_repository;
 pub use master_data::message_text_repository;
 pub use master_data::quest_repository;

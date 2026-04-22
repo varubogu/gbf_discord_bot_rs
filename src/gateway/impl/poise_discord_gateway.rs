@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use poise::serenity_prelude::{
-    ChannelId, ChannelType, CreateChannel, CreateMessage, EditChannel, EditMessage, GetMessages,
-    GuildId, Http, MessageId, ReactionType, UserId,
+    ChannelId, ChannelType, CreateChannel, CreateMessage, EditChannel, EditMessage,
+    Error as SerenityError, GetMessages, GuildId, Http, HttpError, MessageId, ReactionType, UserId,
 };
 
 use crate::errors::GatewayError;
@@ -38,6 +38,24 @@ fn serenity_message_id(message_id: DiscordMessageId) -> Result<MessageId, Gatewa
         // 0 はDiscordのSnowflakeとして不正であり、上位層の状態不整合を示す
         GatewayError::internal("DiscordメッセージIDが不正です（0）")
     })
+}
+
+fn classify_message_gateway_error<F>(error: SerenityError, fallback: F) -> GatewayError
+where
+    F: FnOnce(String) -> GatewayError,
+{
+    let message = error.to_string();
+    match &error {
+        SerenityError::Http(HttpError::UnsuccessfulRequest(response)) => {
+            match response.error.code {
+                50013 => GatewayError::permission_denied(message),
+                10003 => GatewayError::not_found("Discordチャンネル"),
+                10008 => GatewayError::not_found("Discordメッセージ"),
+                _ => fallback(message),
+            }
+        }
+        _ => fallback(message),
+    }
 }
 
 /// Poise/Serenityを使用したDiscord Gateway実装
@@ -500,7 +518,9 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         serenity_channel_id
             .edit_message(&self.http, serenity_message_id, edit_message)
             .await
-            .map_err(GatewayError::edit_message_failed)?;
+            .map_err(|error| {
+                classify_message_gateway_error(error, GatewayError::edit_message_failed)
+            })?;
 
         Ok(())
     }
@@ -516,7 +536,9 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         serenity_channel_id
             .delete_message(&self.http, serenity_message_id)
             .await
-            .map_err(GatewayError::delete_message_failed)?;
+            .map_err(|error| {
+                classify_message_gateway_error(error, GatewayError::delete_message_failed)
+            })?;
 
         Ok(())
     }
@@ -532,7 +554,9 @@ impl DiscordMessageGateway for PoiseDiscordGateway {
         let message = serenity_channel_id
             .message(&self.http, serenity_message_id)
             .await
-            .map_err(GatewayError::get_message_failed)?;
+            .map_err(|error| {
+                classify_message_gateway_error(error, GatewayError::get_message_failed)
+            })?;
 
         Ok(MessageData::from(message))
     }

@@ -12,7 +12,9 @@ use crate::services::recruitment::new::{
     MessageContentParams, create_message_content, create_v2_recruitment_embed_and_components,
 };
 use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
+use crate::services::schedule::{
+    DismissalManagementService, NotificationManagementService, RecruitmentMessageDeletionScheduler,
+};
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
@@ -65,6 +67,7 @@ pub struct RecruitmentCreationService<
     TDR,
     GS,
     BR,
+    MDS,
 > where
     GC: GuildChannelRepository,
     Q: QuestRepository,
@@ -83,6 +86,7 @@ pub struct RecruitmentCreationService<
     TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
     GS: crate::repository::GuildSettingsRepository,
     BR: BattleRecruitmentsRepository,
+    MDS: RecruitmentMessageDeletionScheduler,
 {
     guild_channel_repo: GC,
     quest_repo: Q,
@@ -95,10 +99,30 @@ pub struct RecruitmentCreationService<
     notification_management_service: NotificationManagementService<NMN, NMR, NMS>,
     dismissal_service: DismissalManagementService<DR, TR, TDR>,
     battle_recruitment_repo: BR,
+    message_deletion_schedule_service: MDS,
 }
 
-impl<GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR>
-    RecruitmentCreationService<GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR>
+impl<GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR, MDS>
+    RecruitmentCreationService<
+        GC,
+        Q,
+        BS,
+        A,
+        QR,
+        GE,
+        SD,
+        GM,
+        MT,
+        NMN,
+        NMR,
+        NMS,
+        DR,
+        TR,
+        TDR,
+        GS,
+        BR,
+        MDS,
+    >
 where
     GC: GuildChannelRepository,
     Q: QuestRepository,
@@ -117,6 +141,7 @@ where
     TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
     GS: crate::repository::GuildSettingsRepository,
     BR: BattleRecruitmentsRepository,
+    MDS: RecruitmentMessageDeletionScheduler,
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -131,6 +156,7 @@ where
         notification_management_service: NotificationManagementService<NMN, NMR, NMS>,
         dismissal_service: DismissalManagementService<DR, TR, TDR>,
         battle_recruitment_repo: BR,
+        message_deletion_schedule_service: MDS,
     ) -> Self {
         Self {
             guild_channel_repo,
@@ -144,6 +170,7 @@ where
             notification_management_service,
             dismissal_service,
             battle_recruitment_repo,
+            message_deletion_schedule_service,
         }
     }
 
@@ -382,7 +409,18 @@ where
             )
             .await?;
 
-        // 9. 解散時刻を登録（指定されている場合）
+        // 9. 募集投稿削除タスクを登録
+        self.message_deletion_schedule_service
+            .create_for_recruitment(
+                txn,
+                calculated_time.guild_id,
+                recruitment_channel_id,
+                recruitment.id,
+                calculated_time.quest_start_at,
+            )
+            .await?;
+
+        // 10. 解散時刻を登録（指定されている場合）
         if !parsed_dismissal_times.is_empty() {
             debug!(
                 recruitment_id = recruitment.id,
@@ -587,6 +625,16 @@ where
                 params.guild_id,
                 recruitment_channel_id,
                 recruitment.id,
+            )
+            .await?;
+
+        self.message_deletion_schedule_service
+            .create_for_recruitment(
+                txn,
+                params.guild_id,
+                recruitment_channel_id,
+                recruitment.id,
+                params.quest_start_at,
             )
             .await?;
 

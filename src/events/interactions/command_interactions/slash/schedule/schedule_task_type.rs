@@ -18,6 +18,8 @@ pub enum ScheduleTaskTypeChoice {
     AutoRecruitmentRotation,
     #[name = "自動マッチング"]
     AutoMatching,
+    #[name = "募集投稿削除"]
+    RecruitmentMessageDeletion,
 }
 
 impl From<ScheduleTaskTypeChoice> for ScheduledTaskType {
@@ -32,6 +34,9 @@ impl From<ScheduleTaskTypeChoice> for ScheduledTaskType {
                 ScheduledTaskType::AutoRecruitmentRotation
             }
             ScheduleTaskTypeChoice::AutoMatching => ScheduledTaskType::AutoMatching,
+            ScheduleTaskTypeChoice::RecruitmentMessageDeletion => {
+                ScheduledTaskType::RecruitmentMessageDeletion
+            }
         }
     }
 }

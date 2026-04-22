@@ -17,8 +17,8 @@ use crate::infrastructure::database::repositories::{
         SeaOrmGuildSettingsRepository,
     },
     master_data::{
-        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmLastProcessTimeRepository,
-        SeaOrmMessageTextRepository, SeaOrmQuestRepository,
+        SeaOrmBattleStyleRepository, SeaOrmChannelTypeRepository, SeaOrmEnvironmentRepository,
+        SeaOrmLastProcessTimeRepository, SeaOrmMessageTextRepository, SeaOrmQuestRepository,
     },
     recruitment::{
         SeaOrmAllRecruitmentNotificationRolesRepository, SeaOrmBattleRecruitmentsRepository,
@@ -32,6 +32,7 @@ use crate::infrastructure::database::repositories::{
         SeaOrmNotificationRelEventScheduleRepository, SeaOrmNotificationRepository,
         SeaOrmScheduleRepository, SeaOrmScheduledTaskCleanupRepository,
         SeaOrmScheduledTaskDismissalRepository, SeaOrmScheduledTaskDissolutionRepository,
+        SeaOrmScheduledTaskRecruitmentMessageDeletionRepository,
         SeaOrmScheduledTaskRecurringRecruitmentRepository, SeaOrmScheduledTaskRepository,
     },
 };
@@ -55,6 +56,7 @@ pub struct Repositories {
     pub quest: SeaOrmQuestRepository,
     pub battle_style: SeaOrmBattleStyleRepository,
     pub channel_type: SeaOrmChannelTypeRepository,
+    pub environment: SeaOrmEnvironmentRepository,
     pub message_text: SeaOrmMessageTextRepository,
     pub last_process_time: SeaOrmLastProcessTimeRepository,
 
@@ -68,6 +70,8 @@ pub struct Repositories {
     pub scheduled_task_dissolution: SeaOrmScheduledTaskDissolutionRepository,
     pub scheduled_task_cleanup: SeaOrmScheduledTaskCleanupRepository,
     pub scheduled_task_recurring: SeaOrmScheduledTaskRecurringRecruitmentRepository,
+    pub scheduled_task_recruitment_message_deletion:
+        SeaOrmScheduledTaskRecruitmentMessageDeletionRepository,
     pub schedule: SeaOrmScheduleRepository,
     pub battle_recruitment_schedule: SeaOrmBattleRecruitmentScheduleRepository,
     pub battle_recruitment_dismissal: SeaOrmBattleRecruitmentDismissalRepository,
@@ -104,6 +108,7 @@ impl Repositories {
             quest: SeaOrmQuestRepository::new(),
             battle_style: SeaOrmBattleStyleRepository::new(),
             channel_type: SeaOrmChannelTypeRepository::new(),
+            environment: SeaOrmEnvironmentRepository::new(),
             message_text: SeaOrmMessageTextRepository::new(),
             last_process_time: SeaOrmLastProcessTimeRepository::new(),
 
@@ -119,6 +124,8 @@ impl Repositories {
             scheduled_task_dissolution: SeaOrmScheduledTaskDissolutionRepository::new(),
             scheduled_task_cleanup: SeaOrmScheduledTaskCleanupRepository::new(),
             scheduled_task_recurring: SeaOrmScheduledTaskRecurringRecruitmentRepository::new(),
+            scheduled_task_recruitment_message_deletion:
+                SeaOrmScheduledTaskRecruitmentMessageDeletionRepository::new(),
             schedule: SeaOrmScheduleRepository::new(),
             battle_recruitment_schedule: SeaOrmBattleRecruitmentScheduleRepository::new(),
             battle_recruitment_dismissal: SeaOrmBattleRecruitmentDismissalRepository::new(),

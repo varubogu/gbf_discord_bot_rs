@@ -8,6 +8,7 @@ pub mod schedule_repository;
 pub mod scheduled_task_cleanup_repository;
 pub mod scheduled_task_dismissal_repository;
 pub mod scheduled_task_dissolution_repository;
+pub mod scheduled_task_recruitment_message_deletion_repository;
 pub mod scheduled_task_recurring_recruitment_repository;
 pub mod scheduled_task_repository;
 
@@ -21,5 +22,6 @@ pub use schedule_repository::SeaOrmScheduleRepository;
 pub use scheduled_task_cleanup_repository::SeaOrmScheduledTaskCleanupRepository;
 pub use scheduled_task_dismissal_repository::SeaOrmScheduledTaskDismissalRepository;
 pub use scheduled_task_dissolution_repository::SeaOrmScheduledTaskDissolutionRepository;
+pub use scheduled_task_recruitment_message_deletion_repository::SeaOrmScheduledTaskRecruitmentMessageDeletionRepository;
 pub use scheduled_task_recurring_recruitment_repository::SeaOrmScheduledTaskRecurringRecruitmentRepository;
 pub use scheduled_task_repository::SeaOrmScheduledTaskRepository;

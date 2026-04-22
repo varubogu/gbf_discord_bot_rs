@@ -7,6 +7,8 @@ pub mod dissolution_task_executor;
 pub mod notification_history_service;
 pub mod notification_management_service;
 pub mod notification_service;
+pub mod recruitment_message_deletion_schedule_service;
+pub mod recruitment_message_deletion_task_executor;
 pub mod recruitment_schedule_service;
 pub mod recurring_recruitment_task_executor;
 pub mod schedule_calculator;
@@ -28,6 +30,15 @@ pub use dissolution_task_executor::{DissolutionExecutionResult, DissolutionTaskE
 pub use notification_history_service::{NotificationHistoryService, NotificationStats};
 pub use notification_management_service::NotificationManagementService;
 pub use notification_service::NotificationService;
+pub use recruitment_message_deletion_schedule_service::{
+    DEFAULT_MULTI_RECRUITMENT_DELETE_AFTER_DEPARTURE_MINUTES, DeletionDelaySource,
+    MULTI_RECRUITMENT_DELETE_AFTER_DEPARTURE_MINUTES_KEY,
+    RecruitmentMessageDeletionScheduleService, RecruitmentMessageDeletionScheduler,
+    ResolvedDeletionDelay,
+};
+pub use recruitment_message_deletion_task_executor::{
+    RecruitmentMessageDeletionExecutionResult, RecruitmentMessageDeletionTaskExecutor,
+};
 pub use recruitment_schedule_service::{CalculatedRecruitmentTime, RecruitmentScheduleService};
 pub use recurring_recruitment_task_executor::{
     RecurringRecruitmentExecutionResult, RecurringRecruitmentTaskExecutor,

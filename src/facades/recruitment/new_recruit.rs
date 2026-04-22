@@ -5,7 +5,10 @@ use crate::services::recruitment::new;
 use crate::services::recruitment::recruit_datetime_service::parse_quest_departure_datetime;
 use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::{DismissalManagementService, NotificationManagementService};
+use crate::services::schedule::{
+    DismissalManagementService, NotificationManagementService,
+    RecruitmentMessageDeletionScheduleService,
+};
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::services::unified_datetime_parser::{
@@ -227,7 +230,26 @@ where
             )
             .await?;
 
-        // 5. 解散時刻を登録（指定されている場合）
+        // 5. 募集投稿削除タスクを登録
+        let message_deletion_schedule_service = RecruitmentMessageDeletionScheduleService::new(
+            app_state.repositories.guild_environment,
+            app_state.repositories.environment,
+            app_state.repositories.scheduled_task,
+            app_state
+                .repositories
+                .scheduled_task_recruitment_message_deletion,
+        );
+        message_deletion_schedule_service
+            .create_for_recruitment(
+                &txn,
+                guild_id as i64,
+                channel_id as i64,
+                recruitment.id,
+                recruitment_data.expiry_date,
+            )
+            .await?;
+
+        // 6. 解散時刻を登録（指定されている場合）
         if let Some(parsed_dismissal_times) = parsed_dismissal_times {
             debug!(
                 recruitment_id = recruitment.id,

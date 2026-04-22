@@ -3,6 +3,7 @@ pub mod auto_recruitment;
 pub mod battle_recruitments_repository;
 pub mod battle_style_repository;
 pub mod channel_type_repository;
+pub mod environment_repository;
 pub mod guild_channel_repository;
 pub mod guild_environment_repository;
 pub mod guild_message_text_repository;
@@ -30,6 +31,7 @@ pub use battle_recruitments_repository::{
 };
 pub use battle_style_repository::BattleStyleRepository;
 pub use channel_type_repository::ChannelTypeRepository;
+pub use environment_repository::EnvironmentRepository;
 pub use guild_channel_repository::GuildChannelRepository;
 pub use guild_environment_repository::GuildEnvironmentRepository;
 pub use guild_message_text_repository::GuildMessageTextRepository;

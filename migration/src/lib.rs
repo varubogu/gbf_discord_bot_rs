@@ -19,6 +19,7 @@ mod m20260222_000000_add_host_discord_user_id_to_battle_recruitments;
 mod m20260326_000000_add_auto_recruitment_match_rules;
 mod m20260327_000000_extend_auto_recruitment_match_rules_scope_and_presets;
 mod m20260419_000000_grant_cleanup_role_privileges;
+mod m20260420_000000_add_recruitment_message_deletion_tasks;
 
 pub struct Migrator;
 
@@ -47,6 +48,7 @@ impl MigratorTrait for Migrator {
                 m20260327_000000_extend_auto_recruitment_match_rules_scope_and_presets::Migration,
             ),
             Box::new(m20260419_000000_grant_cleanup_role_privileges::Migration),
+            Box::new(m20260420_000000_add_recruitment_message_deletion_tasks::Migration),
         ]
     }
 }

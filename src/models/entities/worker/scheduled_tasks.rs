@@ -66,13 +66,14 @@ impl ActiveModelBehavior for ActiveModel {
 // タスク種別のenum定義
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ScheduledTaskType {
-    Notification = 1,            // 通知
-    Dissolution = 2,             // 解散
-    DataCleanup = 3,             // データクリーンアップ
-    RecurringRecruitment = 4,    // 定期募集
-    Dismissal = 5,               // 人数不足解散
-    AutoRecruitmentRotation = 6, // 自動募集日付ローテーション
-    AutoMatching = 7,            // 自動マッチング
+    Notification = 1,               // 通知
+    Dissolution = 2,                // 解散
+    DataCleanup = 3,                // データクリーンアップ
+    RecurringRecruitment = 4,       // 定期募集
+    Dismissal = 5,                  // 人数不足解散
+    AutoRecruitmentRotation = 6,    // 自動募集日付ローテーション
+    AutoMatching = 7,               // 自動マッチング
+    RecruitmentMessageDeletion = 8, // 募集投稿削除
 }
 
 impl ScheduledTaskType {
@@ -90,6 +91,7 @@ impl ScheduledTaskType {
             5 => Some(Self::Dismissal),
             6 => Some(Self::AutoRecruitmentRotation),
             7 => Some(Self::AutoMatching),
+            8 => Some(Self::RecruitmentMessageDeletion),
             _ => None,
         }
     }
@@ -104,6 +106,7 @@ impl ScheduledTaskType {
             Self::Dismissal => "人数不足解散",
             Self::AutoRecruitmentRotation => "自動募集日付ローテーション",
             Self::AutoMatching => "自動マッチング",
+            Self::RecruitmentMessageDeletion => "募集投稿削除",
         }
     }
 }

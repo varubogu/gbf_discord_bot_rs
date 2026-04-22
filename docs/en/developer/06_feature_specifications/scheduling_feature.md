@@ -22,6 +22,7 @@ Major variants of `ScheduledTaskType`:
 - `5: Dismissal` dissolve due to insufficient participants
 - `6: AutoRecruitmentRotation` rotate auto-recruitment dates
 - `7: AutoMatching` run auto-matching
+- `8: RecruitmentMessageDeletion` delete original Discord recruitment posts
 
 ## Task execution status (`scheduled_tasks.execution_status`)
 
@@ -47,6 +48,7 @@ Policy:
 - `5: Dismissal`: [task_type_5_dismissal.md](scheduling_feature/task_type_5_dismissal.md)
 - `6: AutoRecruitmentRotation`: [task_type_6_auto_recruitment_rotation.md](scheduling_feature/task_type_6_auto_recruitment_rotation.md)
 - `7: AutoMatching`: [task_type_7_auto_matching.md](scheduling_feature/task_type_7_auto_matching.md)
+- `8: RecruitmentMessageDeletion`: [task_type_8_recruitment_message_deletion.md](scheduling_feature/task_type_8_recruitment_message_deletion.md)
 
 ## Execution architecture
 
@@ -100,6 +102,7 @@ Current scheduler execution entry points:
 | `worker.scheduled_task_dismissals` | Relation to insufficient-participant dismissal targets |
 | `worker.scheduled_task_recurring_recruitments` | Relation to recurring recruitment schedules |
 | `worker.scheduled_task_cleanups` | Cleanup target information |
+| `worker.scheduled_task_recruitment_message_deletions` | Relation to recruitment posts whose original Discord message should be deleted |
 
 ## Typical use cases
 
@@ -107,6 +110,7 @@ Current scheduler execution entry points:
 - Auto-create recruitments from recurring recruitment schedules
 - Decide dissolution at recruitment departure time
 - Periodic execution for auto-recruitment (rotation/matching)
+- Delete old Discord recruitment posts while retaining database history
 
 ## Operational notes
 
@@ -127,6 +131,7 @@ Current scheduler execution entry points:
 - [scheduling_feature/task_type_5_dismissal.md](scheduling_feature/task_type_5_dismissal.md)
 - [scheduling_feature/task_type_6_auto_recruitment_rotation.md](scheduling_feature/task_type_6_auto_recruitment_rotation.md)
 - [scheduling_feature/task_type_7_auto_matching.md](scheduling_feature/task_type_7_auto_matching.md)
+- [scheduling_feature/task_type_8_recruitment_message_deletion.md](scheduling_feature/task_type_8_recruitment_message_deletion.md)
 - [scheduled_recruitment.md](scheduled_recruitment.md)
 - [recruitment_notifications.md](recruitment_notifications.md)
 - [spreadsheet_integration.md](spreadsheet_integration.md)

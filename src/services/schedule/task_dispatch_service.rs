@@ -21,6 +21,7 @@ use crate::services::schedule::dissolution_task_executor::DissolutionTaskExecuto
 use crate::services::schedule::recurring_recruitment_task_executor::RecurringRecruitmentTaskExecutor;
 use crate::services::schedule::{
     DismissalManagementService, NotificationManagementService, NotificationService,
+    RecruitmentMessageDeletionScheduleService, RecruitmentMessageDeletionTaskExecutor,
     RecruitmentScheduleService,
 };
 use crate::services::timezone_service::TimezoneService;
@@ -272,6 +273,14 @@ where
                         self.repos.scheduled_task_dismissal,
                     );
 
+                    let message_deletion_schedule_service =
+                        RecruitmentMessageDeletionScheduleService::new(
+                            self.repos.guild_environment,
+                            self.repos.environment,
+                            self.repos.scheduled_task,
+                            self.repos.scheduled_task_recruitment_message_deletion,
+                        );
+
                     let recruitment_creation_service = Arc::new(RecruitmentCreationService::new(
                         self.repos.guild_channel,
                         self.repos.quest,
@@ -284,6 +293,7 @@ where
                         notification_management_service,
                         dismissal_service,
                         self.repos.battle_recruitments,
+                        message_deletion_schedule_service,
                     ));
 
                     let executor = RecurringRecruitmentTaskExecutor::new(
@@ -380,6 +390,14 @@ where
                         self.repos.scheduled_task_dismissal,
                     );
 
+                    let message_deletion_schedule_service =
+                        RecruitmentMessageDeletionScheduleService::new(
+                            self.repos.guild_environment,
+                            self.repos.environment,
+                            self.repos.scheduled_task,
+                            self.repos.scheduled_task_recruitment_message_deletion,
+                        );
+
                     let recruitment_creation_service = Arc::new(RecruitmentCreationService::new(
                         self.repos.guild_channel,
                         self.repos.quest,
@@ -392,6 +410,7 @@ where
                         notification_management_service,
                         dismissal_service,
                         self.repos.battle_recruitments,
+                        message_deletion_schedule_service,
                     ));
 
                     let matching_service = PeriodicMatchingService::new(
@@ -423,6 +442,25 @@ where
                         }
                         Err(e) => {
                             error!(task_id = task.id, error = %e, "自動マッチングタスクの実行中にエラーが発生しました");
+                            self.mark_task_as_failed(txn, task.id).await;
+                        }
+                    }
+                }
+                8 => {
+                    info!(task_id = task.id, "募集投稿削除タスクを実行します");
+
+                    let executor = RecruitmentMessageDeletionTaskExecutor::new(
+                        Arc::new(self.repos.scheduled_task),
+                        Arc::new(self.repos.scheduled_task_recruitment_message_deletion),
+                        Arc::clone(&self.recruitment_repo),
+                    );
+
+                    match executor.execute(txn, gateway.as_ref(), task.id).await {
+                        Ok(result) => {
+                            info!(task_id = task.id, result = ?result, "募集投稿削除タスクを実行しました");
+                        }
+                        Err(e) => {
+                            error!(task_id = task.id, error = %e, "募集投稿削除タスクの実行中にエラーが発生しました");
                             self.mark_task_as_failed(txn, task.id).await;
                         }
                     }

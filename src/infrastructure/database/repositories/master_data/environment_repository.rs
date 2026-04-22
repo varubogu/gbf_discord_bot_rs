@@ -13,20 +13,21 @@ impl SeaOrmEnvironmentRepository {
     }
 }
 
+impl Default for SeaOrmEnvironmentRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl EnvironmentRepository for SeaOrmEnvironmentRepository {
     async fn get_all<'c, C>(&self, db: &'c C) -> Result<Vec<Environments>, DbErr>
     where
         C: sea_orm::ConnectionTrait,
     {
-        let models = EnvironmentEntity::find()
-            .all(db)
-            .await?;
+        let models = EnvironmentEntity::find().all(db).await?;
 
-        Ok(models
-            .into_iter()
-            .map(|env| env.into())
-            .collect())
+        Ok(models.into_iter().map(|env| env.into()).collect())
     }
 
     async fn get_by_key<'c, C>(&self, db: &'c C, key: &str) -> Result<Option<Environments>, DbErr>
@@ -45,34 +46,29 @@ impl EnvironmentRepository for SeaOrmEnvironmentRepository {
     where
         C: sea_orm::ConnectionTrait,
     {
-        // First try to find existing environment variable
+        // 既存の環境変数を検索
         let existing = EnvironmentEntity::find()
             .filter(environments::Column::Key.eq(key))
             .one(db)
             .await?;
 
         let result = if let Some(existing_env) = existing {
-            // Update existing environment variable
+            // 既存の環境変数を更新
             let mut active_model: environments::ActiveModel = existing_env.into();
             active_model.value = Set(value.to_string());
             active_model.updated_at = Set(chrono::Utc::now());
 
-            active_model
-                .update(db)
-                .await?
+            active_model.update(db).await?
         } else {
-            // Create new environment variable
+            // 新しい環境変数を作成
             let new_env = environments::ActiveModel {
                 key: Set(key.to_string()),
                 value: Set(value.to_string()),
                 created_at: Set(chrono::Utc::now()),
                 updated_at: Set(chrono::Utc::now()),
-                ..Default::default()
             };
 
-            new_env
-                .insert(db)
-                .await?
+            new_env.insert(db).await?
         };
 
         Ok(result.into())
@@ -112,7 +108,7 @@ mod tests {
             }
         };
 
-        // Test getting all environments
+        // 全ての環境変数を取得する
         let get_all_result = repo.get_all(&conn).await;
         match get_all_result {
             Ok(environments) => {
@@ -126,19 +122,19 @@ mod tests {
             }
         }
 
-        // Test getting a specific environment
+        // 特定キーの環境変数を取得する
         let test_key = "TEST_KEY";
         let get_result = repo.get_by_key(&conn, test_key).await;
         match get_result {
             Ok(None) => {
-                // Try to set the environment variable
+                // 環境変数を設定する
                 let set_result = repo.set(&conn, test_key, "test_value").await;
                 match set_result {
                     Ok(env) => {
                         assert_eq!(env.key, test_key);
                         assert_eq!(env.value, "test_value");
 
-                        // Try to retrieve it again
+                        // 設定した環境変数を再取得する
                         let get_again_result = repo.get_by_key(&conn, test_key).await;
                         match get_again_result {
                             Ok(Some(retrieved_env)) => {

@@ -22,6 +22,8 @@ For common specifications (execution cycle, execution statuses, and overall arch
   - [task_type_6_auto_recruitment_rotation.md](task_type_6_auto_recruitment_rotation.md)
 - `7: AutoMatching`
   - [task_type_7_auto_matching.md](task_type_7_auto_matching.md)
+- `8: RecruitmentMessageDeletion`
+  - [task_type_8_recruitment_message_deletion.md](task_type_8_recruitment_message_deletion.md)
 
 ## Notes
 

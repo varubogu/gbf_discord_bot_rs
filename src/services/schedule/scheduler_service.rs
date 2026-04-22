@@ -35,7 +35,7 @@ fn resolve_target_task_types(task_type: Option<ScheduledTaskType>) -> Vec<Schedu
     }
 }
 
-fn all_task_types() -> [ScheduledTaskType; 7] {
+fn all_task_types() -> [ScheduledTaskType; 8] {
     [
         ScheduledTaskType::Notification,
         ScheduledTaskType::Dissolution,
@@ -44,6 +44,7 @@ fn all_task_types() -> [ScheduledTaskType; 7] {
         ScheduledTaskType::Dismissal,
         ScheduledTaskType::AutoRecruitmentRotation,
         ScheduledTaskType::AutoMatching,
+        ScheduledTaskType::RecruitmentMessageDeletion,
     ]
 }
 
@@ -942,9 +943,10 @@ mod tests {
     fn resolve_target_task_types_with_none_returns_all_task_types() {
         let result = resolve_target_task_types(None);
 
-        assert_eq!(result.len(), 7);
+        assert_eq!(result.len(), 8);
         assert!(result.contains(&ScheduledTaskType::Notification));
         assert!(result.contains(&ScheduledTaskType::AutoMatching));
+        assert!(result.contains(&ScheduledTaskType::RecruitmentMessageDeletion));
     }
 
     #[test]

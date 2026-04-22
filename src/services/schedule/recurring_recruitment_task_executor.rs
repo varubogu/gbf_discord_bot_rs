@@ -30,6 +30,7 @@ type SharedRecruitmentCreationService<
     TDR,
     GS,
     BR,
+    MDS,
 > = Arc<
     RecruitmentCreationService<
         GC,
@@ -49,6 +50,7 @@ type SharedRecruitmentCreationService<
         TDR,
         GS,
         BR,
+        MDS,
     >,
 >;
 
@@ -94,6 +96,7 @@ pub struct RecurringRecruitmentTaskExecutor<
     TDR,
     GS,
     BR,
+    MDS,
 > where
     ST: ScheduledTaskRepository,
     RR: ScheduledTaskRecurringRecruitmentRepository,
@@ -115,6 +118,7 @@ pub struct RecurringRecruitmentTaskExecutor<
     TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
     GS: crate::repository::GuildSettingsRepository,
     BR: crate::repository::BattleRecruitmentsRepository,
+    MDS: crate::services::schedule::RecruitmentMessageDeletionScheduler,
 {
     task_repo: ST,
     recurring_repo: RR,
@@ -139,10 +143,11 @@ pub struct RecurringRecruitmentTaskExecutor<
         TDR,
         GS,
         BR,
+        MDS,
     >,
 }
 
-impl<ST, RR, SR, GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR>
+impl<ST, RR, SR, GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, GS, BR, MDS>
     RecurringRecruitmentTaskExecutor<
         ST,
         RR,
@@ -164,6 +169,7 @@ impl<ST, RR, SR, GC, Q, BS, A, QR, GE, SD, GM, MT, NMN, NMR, NMS, DR, TR, TDR, G
         TDR,
         GS,
         BR,
+        MDS,
     >
 where
     ST: ScheduledTaskRepository,
@@ -186,6 +192,7 @@ where
     TDR: crate::repository::schedule::ScheduledTaskDismissalRepository,
     GS: crate::repository::GuildSettingsRepository,
     BR: crate::repository::BattleRecruitmentsRepository,
+    MDS: crate::services::schedule::RecruitmentMessageDeletionScheduler,
 {
     #[allow(clippy::type_complexity)]
     pub fn new(
@@ -211,6 +218,7 @@ where
             TDR,
             GS,
             BR,
+            MDS,
         >,
     ) -> Self {
         Self {

@@ -8,7 +8,9 @@ use crate::services::recruitment::recruitment_participants_service::RecruitmentP
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
 use crate::services::recruitment::role_notification::RoleNotificationService;
-use crate::services::schedule::NotificationManagementService;
+use crate::services::schedule::{
+    NotificationManagementService, RecruitmentMessageDeletionScheduleService,
+};
 use crate::services::timezone_service::TimezoneService;
 use crate::types;
 use crate::types::discord::{
@@ -158,6 +160,14 @@ where
             app_state.repositories.notification,
             app_state.repositories.notification_rel_battle_recruitment,
             app_state.repositories.scheduled_task,
+        );
+        let message_deletion_schedule_service = RecruitmentMessageDeletionScheduleService::new(
+            app_state.repositories.guild_environment,
+            app_state.repositories.environment,
+            app_state.repositories.scheduled_task,
+            app_state
+                .repositories
+                .scheduled_task_recruitment_message_deletion,
         );
 
         let channel_id = message.channel_id.get();
@@ -392,6 +402,16 @@ where
                     guild_id as i64,
                     channel_id as i64,
                     existing_recruitment.id,
+                )
+                .await?;
+
+            message_deletion_schedule_service
+                .replace_for_recruitment(
+                    &txn,
+                    guild_id as i64,
+                    channel_id as i64,
+                    existing_recruitment.id,
+                    new_expiry_date,
                 )
                 .await?;
         }

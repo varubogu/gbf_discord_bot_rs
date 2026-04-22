@@ -106,6 +106,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_build_database_url() {
         // このテストは実際の環境変数に依存するため、
         // 環境変数が設定されていない場合はスキップ
@@ -269,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_database_available() {
         let (available, _) = is_database_available();
 

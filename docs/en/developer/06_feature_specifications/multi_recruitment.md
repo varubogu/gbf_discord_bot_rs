@@ -19,6 +19,7 @@ This feature recruits participants for multi battles within a Discord server. Us
 - Manage participants via reactions
 - Auto-update recruitment message
 - **Auto-cancel on message deletion**: if the recruitment message is deleted, the recruitment is automatically marked canceled
+- **Auto-delete Discord recruitment post**: after quest departure time plus the configured delay, delete only the original Discord recruitment message
 
 ### Recurring recruitment
 - Create schedules via `/recruitment-schedule-create`
@@ -35,6 +36,32 @@ This feature recruits participants for multi battles within a Discord server. Us
 - Automatic post-processing on recruitment end
 - Auto dissolution at departure time (dissolution)
 - Auto dissolution due to insufficient participants (dismissal)
+
+### Automatic Discord post deletion
+
+Recruitment posts created through `/recruit` and `/recruit2` are scheduled for Discord message deletion at:
+
+```text
+quest_start_at + MULTI_RECRUITMENT_DELETE_AFTER_DEPARTURE_MINUTES
+```
+
+This deletes only the original Discord recruitment message. It does not delete the `worker.battle_recruitments` row, cancellation notification replies, dissolution replies, or any other persisted data.
+
+The delay is expressed in minutes and is resolved in this order:
+
+1. Guild environment variable in `guild_master.guild_environments`
+2. Global environment variable in `master.environments`
+3. Program default `10080` minutes (7 days)
+
+The key name is:
+
+```text
+MULTI_RECRUITMENT_DELETE_AFTER_DEPARTURE_MINUTES
+```
+
+Unset values fall through to the next source. Empty strings, non-numeric values, and values less than or equal to 0 also fall through and are logged as warnings without adding user-facing messages.
+
+The schedule is created when a recruitment is created. If the departure time is changed, pending deletion tasks for that recruitment are replaced using the current setting. Changing the environment variable does not automatically recalculate already-created deletion tasks. Cancellation does not remove or recalculate the deletion task; the original post is still deleted at the planned departure time plus the resolved delay.
 
 ### Role mention notifications
 - Register notification roles via `/recruit_role_add`
