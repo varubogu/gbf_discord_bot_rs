@@ -4,9 +4,6 @@
 // Database integration tests
 mod database_tests;
 
-// Event handlers integration tests
-mod event_handlers_tests;
-
 // Utilities integration tests
 mod utils_test;
 

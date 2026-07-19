@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use tracing::info;
 
 use crate::models::quests::Quest;
-use crate::presenter::RecruitmentPresenter;
 use crate::repository::BattleStyleRepository;
 use crate::repository::QuestRepository;
 use crate::services::guild_environment_service::ElementEmojis;
@@ -11,8 +10,7 @@ use crate::services::message::{MessageService, MessageTextId};
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types;
 use crate::types::discord::{
-    ActionRowContent, DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId,
-    EmbedContent,
+    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, EmbedContent,
 };
 use crate::utils::datetime_display::format_datetime_with_weekday;
 use sea_orm::DatabaseTransaction;
@@ -371,110 +369,5 @@ where
         Ok("現在参加者はいません。".to_string())
     } else {
         Ok(text)
-    }
-}
-
-/// ボタン版用の初期参加者一覧テキストを作成
-/// Presenterへのラッパー関数
-pub fn create_initial_participants_text_for_buttons(
-    battle_style_name: &str,
-    element_emojis: &ElementEmojis,
-) -> String {
-    RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis)
-}
-
-/// ボタン版募集v2用のEmbedとコンポーネントを生成する
-///
-/// `/マルチバトル募集2` と同じ構成を返す。
-pub fn create_v2_recruitment_embed_and_components(
-    battle_style_name: &str,
-    element_emojis: &ElementEmojis,
-) -> (EmbedContent, Vec<ActionRowContent>) {
-    let initial_text =
-        RecruitmentPresenter::create_initial_participants_text(battle_style_name, element_emojis);
-
-    let components = if battle_style_name == "6属性" {
-        RecruitmentPresenter::create_six_element_full_components(element_emojis)
-    } else {
-        RecruitmentPresenter::create_recruitment_buttons(battle_style_name, element_emojis)
-    };
-
-    let embed = RecruitmentPresenter::create_participants_embed(&initial_text, Some(0));
-    (embed, components)
-}
-
-/// 募集用ボタンを作成する（ドメイン型版）
-///
-/// # 引数
-/// * `battle_style_name` - 攻略方法の名前（「6属性」かどうかで分岐）
-/// * `element_emojis` - カスタム属性絵文字
-///
-/// # 戻り値
-/// ActionRowContentのVec（ドメインモデル）
-pub fn create_recruitment_buttons(
-    battle_style_name: &str,
-    element_emojis: &ElementEmojis,
-) -> Vec<ActionRowContent> {
-    RecruitmentPresenter::create_recruitment_buttons(battle_style_name, element_emojis)
-}
-
-/// 属性セレクトメニュー（複数選択可能）を作成する（ドメイン型版）
-///
-/// # 引数
-/// * `element_emojis` - カスタム属性絵文字
-///
-/// # 戻り値
-/// ActionRowContent（ドメインモデル）
-pub fn create_element_select_menu(element_emojis: &ElementEmojis) -> ActionRowContent {
-    RecruitmentPresenter::create_element_select_menu(element_emojis)
-}
-
-/// 6属性募集用の全コンポーネント（ボタン + セレクトメニュー）を作成する（ドメイン型版）
-///
-/// # 引数
-/// * `element_emojis` - カスタム属性絵文字
-///
-/// # 戻り値
-/// ActionRowContentのVec（ドメインモデル）
-pub fn create_six_element_full_components(element_emojis: &ElementEmojis) -> Vec<ActionRowContent> {
-    RecruitmentPresenter::create_six_element_full_components(element_emojis)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::services::guild_environment_service::ElementEmojis;
-
-    fn build_element_emojis() -> ElementEmojis {
-        ElementEmojis {
-            fire: "fire".to_string(),
-            water: "water".to_string(),
-            earth: "earth".to_string(),
-            wind: "wind".to_string(),
-            light: "light".to_string(),
-            dark: "dark".to_string(),
-        }
-    }
-
-    #[test]
-    fn create_v2_recruitment_embed_and_components_for_six_elements_matches_v2_layout() {
-        let element_emojis = build_element_emojis();
-
-        let (embed, components) =
-            create_v2_recruitment_embed_and_components("6属性", &element_emojis);
-
-        assert_eq!(components.len(), 4);
-        assert_eq!(embed.title.as_deref(), Some("参加者一覧"));
-    }
-
-    #[test]
-    fn create_v2_recruitment_embed_and_components_for_simple_style_matches_v2_layout() {
-        let element_emojis = build_element_emojis();
-
-        let (embed, components) =
-            create_v2_recruitment_embed_and_components("通常", &element_emojis);
-
-        assert_eq!(components.len(), 1);
-        assert_eq!(embed.title.as_deref(), Some("参加者一覧"));
     }
 }

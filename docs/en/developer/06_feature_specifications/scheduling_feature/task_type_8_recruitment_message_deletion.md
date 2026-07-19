@@ -33,7 +33,7 @@ Changing the setting affects newly created recruitments and recruitments whose d
 
 ## Execution flow
 
-`TaskDispatchService` executes `RecruitmentMessageDeletionTaskExecutor` in the `task_type=8` branch.
+`SchedulerTaskDispatchFacade` executes `RecruitmentMessageDeletionTaskExecutor` in the `task_type=8` branch.
 
 1. Re-check task existence and `pending`
 2. Load `worker.scheduled_task_recruitment_message_deletions` by `task_id`

@@ -34,8 +34,11 @@ pub struct CancelInvokerContext {
 /// * `battle_recruitment_repo` - 募集リポジトリ
 /// * `txn` - データベーストランザクション
 /// * `invoker` - 操作を実行するユーザーの情報
-pub async fn check_can_cancel_recruitment<R: crate::repository::BattleRecruitmentsRepository>(
-    gateway: &dyn DiscordMessageGateway,
+pub async fn check_can_cancel_recruitment<
+    R: crate::repository::BattleRecruitmentsRepository,
+    G: DiscordMessageGateway,
+>(
+    gateway: &G,
     guild_id: u64,
     channel_id: u64,
     message_id: u64,

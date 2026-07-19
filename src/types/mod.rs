@@ -8,6 +8,7 @@ pub mod discord;
 pub(crate) mod discord_operation;
 pub(crate) mod domain_interface_result;
 pub(crate) mod poise_data;
+pub(crate) mod recruit_change_draft;
 pub(crate) mod recruitment_component_id;
 
 pub use app_config::AppConfig;
@@ -22,4 +23,7 @@ pub use db_role::DbRole;
 pub use discord_operation::{DiscordOperation, DiscordOperationError, DiscordOperationResult};
 pub use domain_interface_result::{CanCancelResult, CancelOnDeleteResult};
 pub use poise_data::{PoiseContext, PoiseData};
+pub use recruit_change_draft::{
+    RecruitChangeDraft, RecruitChangeDraftKey, RecruitChangeDraftStore,
+};
 pub use recruitment_component_id::RecruitmentComponentId;

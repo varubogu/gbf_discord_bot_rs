@@ -3,7 +3,7 @@
 /// messages.yml のキーをベースとして、yaml_loader.rs との整合性を検証する。
 /// DBを使用しないため、#[ignore] は不要。
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// messages.yml の全キーが yaml_loader.rs のマッチアームで解決されることを検証する
 ///
@@ -156,36 +156,46 @@ fn test_no_hardcoded_fallback_api_in_task11_targets() {
 /// Task11対象のcategory_setup_facadeで、UI文言を直書きしていないことを検証する
 #[test]
 fn test_no_hardcoded_category_setup_ui_literals() {
-    let file = Path::new("src/facades/auto_recruitment/category_setup_facade.rs");
-    let content = fs::read_to_string(file).unwrap_or_else(|e| {
-        panic!(
-            "テスト対象ファイルの読み込みに失敗しました: {} ({})",
-            file.display(),
-            e
-        )
-    });
-    let lines: Vec<&str> = content.lines().collect();
+    let target_files = vec![
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/mod.rs"),
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/common.rs"),
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/messages.rs"),
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/register.rs"),
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/unregister.rs"),
+        PathBuf::from("src/facades/auto_recruitment/category_setup_facade/change_days.rs"),
+    ];
 
-    for (index, line) in lines.iter().enumerate() {
-        if (line.contains("MessageContent::text(\"") || line.contains(".with_text(\""))
-            && contains_japanese_char(line)
-        {
+    for file in target_files {
+        let content = fs::read_to_string(&file).unwrap_or_else(|e| {
             panic!(
-                "category_setup_facade にUI文言の直書きがあります: {}:{}",
+                "テスト対象ファイルの読み込みに失敗しました: {} ({})",
                 file.display(),
-                index + 1
-            );
-        }
+                e
+            )
+        });
+        let lines: Vec<&str> = content.lines().collect();
 
-        if line.contains("ButtonContent::new(") {
-            let upper = usize::min(index + 6, lines.len());
-            let window = lines[index..upper].join("\n");
-            if window.contains('\"') && contains_japanese_char(&window) {
+        for (index, line) in lines.iter().enumerate() {
+            if (line.contains("MessageContent::text(\"") || line.contains(".with_text(\""))
+                && contains_japanese_char(line)
+            {
                 panic!(
-                    "category_setup_facade のButtonContent::new周辺にUI文言の直書きがあります: {}:{}",
+                    "category_setup_facade にUI文言の直書きがあります: {}:{}",
                     file.display(),
                     index + 1
                 );
+            }
+
+            if line.contains("ButtonContent::new(") {
+                let upper = usize::min(index + 6, lines.len());
+                let window = lines[index..upper].join("\n");
+                if window.contains('\"') && contains_japanese_char(&window) {
+                    panic!(
+                        "category_setup_facade のButtonContent::new周辺にUI文言の直書きがあります: {}:{}",
+                        file.display(),
+                        index + 1
+                    );
+                }
             }
         }
     }

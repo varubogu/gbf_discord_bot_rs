@@ -15,6 +15,15 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [build]
 jobs = 4
 
+## 結合テストはtestcontainersで起動した単一のPostgreSQLを全テストで共有するため、
+## 並列実行するとテスト間でギルドIDやworker.scheduled_tasksが衝突して失敗する。
+## `cargo test` をそのまま実行しても通るよう、テストスレッド数を1に固定する。
+##
+## この設定は既存の環境変数を上書きしないため、
+## `RUST_TEST_THREADS=4 cargo test` のように呼び出し側で変更できる。
+[env]
+RUST_TEST_THREADS = "1"
+
 [profile.dev]
 codegen-units = 2
 

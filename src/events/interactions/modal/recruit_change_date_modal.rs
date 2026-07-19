@@ -1,8 +1,8 @@
 use crate::errors::RecruitmentError;
 use crate::events::helpers::resolve_guild_locale;
 use crate::events::interactions::components::recruit_change_handler;
+use crate::facades::recruitment::change::parse_recruitment_event_date;
 use crate::services::message::MessageTextId;
-use crate::services::recruitment::recruit_datetime_service::RecruitDateTimeService;
 use crate::types::{AppError, PoiseData, Result};
 use poise::serenity_prelude::{
     ActionRowComponent, Context, CreateInteractionResponse, EditInteractionResponse,
@@ -88,11 +88,7 @@ pub async fn handle_recruit_change_date_modal(
 
     // 日時文字列を共通サービスで解析
     let event_date = {
-        let date_time_service =
-            RecruitDateTimeService::new(data.app_state.repositories.guild_settings);
-        match date_time_service
-            .parse_quest_departure(data.app_state.guild_db(), guild_id as i64, &event_date_str)
-            .await
+        match parse_recruitment_event_date(&data.app_state, guild_id as i64, &event_date_str).await
         {
             Ok(datetime) => datetime,
             Err(AppError::Business { .. }) => {
@@ -150,6 +146,7 @@ pub async fn handle_recruit_change_date_modal(
 
     // 一時状態に保存し、パネルを再描画
     recruit_change_handler::set_event_date_draft(
+        data,
         interaction.user.id.get(),
         channel_id,
         message_id,

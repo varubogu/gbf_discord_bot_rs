@@ -4,7 +4,4 @@
 // Bot startup system tests
 mod bot_startup_test;
 
-// Bot system tests
-mod bot_tests;
-
 // Add more system test modules as needed

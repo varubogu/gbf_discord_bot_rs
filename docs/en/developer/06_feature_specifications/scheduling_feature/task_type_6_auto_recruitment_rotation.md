@@ -14,17 +14,15 @@ At initial registration, pending tasks are checked and no duplicate is created i
 
 ## Scheduler integration dependency direction
 
-- `TaskDispatchService` is the composition point for executor wiring. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
-- `SchedulerTaskDispatchFacade` owns transaction boundaries and invokes `TaskDispatchService`.
+- `SchedulerTaskDispatchFacade` owns transaction boundaries and is also the composition point for executor wiring. It receives concrete repositories from `crate::di::Repositories` (SeaORM adapters in `src/infrastructure/database/repositories/**`).
 - `AutoRecruitmentRotationTaskExecutor` depends on repository traits via `crate::repository` (`ScheduledTaskRepository`, `AutoRecruitmentChannelRepository`, `AutoRecruitmentRepository`), not on concrete SeaORM types.
-- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx) -> task_dispatch_service (composition) -> executor -> repository ports`.
+- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx + composition) -> executor -> repository ports`.
 - Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 
 ```text
 src/services/schedule/scheduler_manager.rs
-src/services/schedule/task_dispatch_service.rs
 src/facades/schedule/scheduler_task_dispatch_facade.rs
 src/services/schedule/auto_recruitment_rotation_task_executor.rs
 src/repository/auto_recruitment/auto_recruitment_channel_repository.rs
@@ -38,7 +36,7 @@ src/di/repositories.rs
 
 ## Execution flow
 
-`TaskDispatchService` executes `AutoRecruitmentRotationTaskExecutor` in the `task_type=6` branch.
+`SchedulerTaskDispatchFacade` executes `AutoRecruitmentRotationTaskExecutor` in the `task_type=6` branch.
 
 1. Re-check task existence and `pending`
 2. Read all `auto_recruitment_channels`

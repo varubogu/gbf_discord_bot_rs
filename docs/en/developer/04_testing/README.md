@@ -11,8 +11,8 @@ cargo test -j 1 test_name
 # Full suite
 cargo test -j 1
 
-# Also run ignored tests (e.g., those requiring a real DB)
-cargo test -j 1 -- --ignored
+# Facade integration tests also start a PostgreSQL test container
+cargo test -j 1 --test mod
 ```
 
 ## Start here

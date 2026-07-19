@@ -1,11 +1,10 @@
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::resolve_bot_control;
 use crate::facades::recruitment::change::{
-    RecruitmentChangeContent, change_recruitment_information,
+    RecruitmentChangeContent, change_recruitment_information, parse_recruitment_event_date,
 };
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
-use crate::services::recruitment::recruit_datetime_service::RecruitDateTimeService;
 use crate::types::discord::{DiscordGuildId, MessageData};
 use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::Message;
@@ -81,15 +80,12 @@ pub async fn recruit_change(
         let guild_id = guild_id_for_parse.ok_or_else(|| crate::types::AppError::Business {
             message: guild_only_message.clone(),
         })?;
-        let date_time_service =
-            RecruitDateTimeService::new(ctx.data().app_state.repositories.guild_settings);
-        let parsed_date = match date_time_service
-            .parse_quest_departure(
-                ctx.data().app_state.guild_db(),
-                guild_id.get() as i64,
-                &date_str,
-            )
-            .await
+        let parsed_date = match parse_recruitment_event_date(
+            &ctx.data().app_state,
+            guild_id.get() as i64,
+            &date_str,
+        )
+        .await
         {
             Ok(datetime) => datetime,
             Err(AppError::Business { .. }) => {

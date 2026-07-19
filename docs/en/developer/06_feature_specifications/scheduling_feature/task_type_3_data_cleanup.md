@@ -7,14 +7,14 @@ It is executed from the scheduler dispatch path and reuses `DataCleanupService`.
 
 ## Scheduler path
 
-`TaskDispatchService` handles `task_type=3` as follows.
+`SchedulerTaskDispatchFacade` handles `task_type=3` as follows.
 
 1. Re-check `scheduled_task_cleanups` by `task_id`
 2. If no relation exists, continue with a warning log
 3. Execute `DataCleanupService`
 4. Mark the task as `succeeded` on success, or `failed` on fatal error
 
-Transaction boundaries are managed by `SchedulerTaskDispatchFacade`.
+Transaction boundaries are also managed by `SchedulerTaskDispatchFacade`.
 
 ## Cleanup execution path
 

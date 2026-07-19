@@ -15,7 +15,6 @@ use super::test_helper::{TEST_CHANNEL_ID, TEST_GUILD_ID, create_test_app_state};
 ///
 /// 未来日時のnotificationsデータありの場合、フォーマットされた通知一覧文字列が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_future_notifications_formatted_with_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -68,7 +67,6 @@ async fn test_get_future_notifications_formatted_with_data() {
 ///
 /// 未来日時のnotificationsデータなしの場合、空文字列が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_future_notifications_formatted_no_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -90,7 +88,6 @@ async fn test_get_future_notifications_formatted_no_data() {
 ///
 /// 通知が多数存在する場合、limit=5で5件以下の通知が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_future_notifications_formatted_with_limit() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -149,7 +146,6 @@ async fn test_get_future_notifications_formatted_with_limit() {
 ///
 /// 通知が存在してもlimit=0の場合、空文字列が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_future_notifications_formatted_limit_zero() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -201,7 +197,6 @@ async fn test_get_future_notifications_formatted_limit_zero() {
 ///
 /// 過去の送信済みnotificationsありの場合、フォーマットされた履歴文字列とScheduleStatsのタプルが返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_notification_history_formatted_with_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -255,7 +250,6 @@ async fn test_get_notification_history_formatted_with_data() {
 ///
 /// 指定期間内のnotificationsなしの場合、空の履歴と統計が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_notification_history_formatted_no_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -279,7 +273,6 @@ async fn test_get_notification_history_formatted_no_data() {
 ///
 /// scheduled_tasks, notificationsデータありの場合、ScheduleStatsに正しい統計値が含まれる
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_stats_with_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -329,7 +322,6 @@ async fn test_get_stats_with_data() {
 ///
 /// 対象ギルドのデータなしの場合、ゼロ値の統計が返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_stats_no_data() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -349,7 +341,6 @@ async fn test_get_stats_no_data() {
 ///
 /// days=7で指定した場合、過去7日分の統計のみが集計される
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_stats_with_period() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();
@@ -425,7 +416,6 @@ async fn test_get_stats_with_period() {
 ///
 /// execution_statusがfailedのタスクはpending取得結果に含まれない
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_find_pending_to_excludes_failed_tasks() {
     let app_state = create_test_app_state().await;
     let db = app_state.system_db();

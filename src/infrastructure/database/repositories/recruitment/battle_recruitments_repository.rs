@@ -266,6 +266,7 @@ impl BattleRecruitmentsRepository for SeaOrmBattleRecruitmentsRepository {
 
         let delete_result = BattleRecruitmentEntity::delete_many()
             .filter(Column::QuestStartAt.lt(before))
+            .filter(Column::IsRecruiting.eq(false))
             .exec(txn)
             .await
             .map_err(AppError::Database)?;

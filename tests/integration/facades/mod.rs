@@ -16,4 +16,5 @@ mod recruitment_query_test;
 mod recruitment_role_test;
 mod recruitment_schedule_test;
 mod schedule_test;
+mod scheduler_dispatch_test;
 mod spreadsheet_test;

@@ -28,7 +28,7 @@ For common specifications (execution cycle, execution statuses, and overall arch
 ## Notes
 
 - `task_type=1` is used by both event notifications and recruitment notifications.
-- `task_type=3` is executed from the scheduler path via `TaskDispatchService` and shares cleanup logic with `src/bin/cleanup.rs`.
+- `task_type=3` is executed from the scheduler path via `SchedulerTaskDispatchFacade` and shares cleanup logic with `src/bin/cleanup.rs`.
 
 ## Implementation boundaries
 

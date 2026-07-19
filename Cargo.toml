@@ -39,6 +39,8 @@ test-log = { version = "0.2", features = ["trace"] }
 env_logger = "0.11"
 tempfile = "3.27"
 serial_test = "3.4"
+testcontainers = "0.25"
+testcontainers-modules = { version = "0.13", features = ["postgres"] }
 
 [[bin]]
 name = "schema_lint"

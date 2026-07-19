@@ -10,7 +10,6 @@ use super::test_helper::{TEST_GUILD_ID, get_test_admin_db, get_test_guild_db};
 ///
 /// GOOGLE_SERVICE_ACCOUNT_KEY_FILE未設定の場合、FacadeError::Initializationが返る
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_missing_env_var() {
     // 環境変数を削除
     unsafe {
@@ -37,7 +36,6 @@ async fn test_new_missing_env_var() {
 /// 不正なスプレッドシートURLを指定した場合、URL抽出時点でエラーが返り、
 /// DBに設定レコードが作成されない
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_invalid_url() {
     // テスト用環境変数を設定（ダミーファイルパス）
     unsafe {
@@ -90,7 +88,6 @@ async fn test_register_invalid_url() {
 /// load/pushの一方のみ不正な場合、エラーが返り、
 /// DBに設定レコードが作成されない（部分登録なし）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_one_invalid_url() {
     // テスト用環境変数を設定（ダミーファイルパス）
     unsafe {

@@ -1,7 +1,8 @@
 use crate::events::helpers::get_message_or_key_from_context;
-use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
+use crate::facades::recruitment::recruitment_schedule_facade::{
+    RecruitmentScheduleFacade, ScheduleListItem,
+};
 use crate::services::message::MessageTextId;
-use crate::services::schedule::schedule_query_service::ScheduleListItem;
 use crate::types::{AppError, PoiseContext, Result};
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter};
 use std::collections::HashMap;

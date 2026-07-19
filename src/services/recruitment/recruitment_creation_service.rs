@@ -2,15 +2,14 @@
 use crate::gateway::DiscordGateway;
 use crate::infrastructure::database::session::set_current_guild_id;
 use crate::models::entities::master::channel_types::GuildChannelType;
+use crate::models::quests::Quest;
 use crate::repository::BattleRecruitmentsRepository;
 use crate::repository::BattleStyleRepository;
 use crate::repository::GuildChannelRepository;
 use crate::repository::QuestRepository;
-use crate::services::guild_environment_service::GuildEnvironmentService;
+use crate::services::guild_environment_service::{ElementEmojis, GuildEnvironmentService};
 use crate::services::message::MessageService;
-use crate::services::recruitment::new::{
-    MessageContentParams, create_message_content, create_v2_recruitment_embed_and_components,
-};
+use crate::services::recruitment::new::{MessageContentParams, create_message_content};
 use crate::services::recruitment::role_notification::RoleNotificationService;
 use crate::services::schedule::{
     DismissalManagementService, NotificationManagementService, RecruitmentMessageDeletionScheduler,
@@ -18,9 +17,7 @@ use crate::services::schedule::{
 use crate::services::timezone_service::TimezoneService;
 use crate::services::unified_datetime_parser::ParsedDismissalTime;
 use crate::types::Result;
-use crate::types::discord::{
-    DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId, MessageContent,
-};
+use crate::types::discord::{DiscordChannelId, DiscordGuildId, DiscordMessageId, DiscordUserId};
 use chrono::{TimeZone, Utc};
 use sea_orm::{DatabaseConnection, DatabaseTransaction};
 use tracing::{debug, info};
@@ -45,6 +42,28 @@ pub struct CreatedMatchingRecruitmentInfo {
     pub channel_id: u64,
     /// 募集投稿メッセージID
     pub message_id: u64,
+}
+
+/// 定期募集スケジュールから募集を作成する準備が整った状態（DB保存前）
+///
+/// UI組み立て（Presenter）とDiscord送信（Gateway）はFacade層が担当し、
+/// 送信結果（message_id）を`finalize_recruitment_from_schedule`へ渡す。
+pub struct PreparedScheduleRecruitment {
+    pub recruitment_channel_id: i64,
+    pub quest_id: i32,
+    pub battle_style_name: String,
+    pub message_content: String,
+    pub element_emojis: ElementEmojis,
+    pub parsed_dismissal_times: Vec<ParsedDismissalTime>,
+}
+
+/// マッチングから募集を作成する準備が整った状態（DB保存前）
+pub struct PreparedMatchingRecruitment {
+    pub recruitment_channel_id: i64,
+    pub quest: Quest,
+    pub battle_style_name: String,
+    pub message_content: String,
+    pub element_emojis: ElementEmojis,
 }
 
 /// 募集作成Service
@@ -174,15 +193,17 @@ where
         }
     }
 
-    /// スケジュールから募集を作成
-    /// 定期募集スケジュールに基づいて実際の募集を作成
-    pub async fn create_recruitment_from_schedule<G: DiscordGateway>(
+    /// スケジュールから募集を作成する準備（DB取得〜メッセージ組立まで）
+    ///
+    /// UI組み立て（Presenter）とDiscord送信（Gateway経由の送信そのもの）はFacade層が行う。
+    /// 送信結果（message_id）は`finalize_recruitment_from_schedule`へ渡すこと。
+    pub async fn prepare_recruitment_from_schedule<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
         gateway: &G,
         calculated_time: &crate::services::schedule::CalculatedRecruitmentTime,
-    ) -> Result<()> {
+    ) -> Result<PreparedScheduleRecruitment> {
         debug!(
             schedule_id = calculated_time.schedule_id,
             quest_id = calculated_time.quest_id,
@@ -348,28 +369,26 @@ where
             .get_element_emojis(txn, gateway, calculated_time.guild_id)
             .await?;
 
-        // 4. `/マルチバトル募集2` と同じUIを生成
-        let (embed_content, button_components) =
-            create_v2_recruitment_embed_and_components(&battle_style.display_name, &element_emojis);
+        Ok(PreparedScheduleRecruitment {
+            recruitment_channel_id,
+            quest_id: quest.id,
+            battle_style_name: battle_style.display_name,
+            message_content,
+            element_emojis,
+            parsed_dismissal_times,
+        })
+    }
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
-        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
-        let domain_message_content = MessageContent::new()
-            .with_text(&message_content)
-            .with_embed(embed_content)
-            .with_components(button_components);
-
-        let sent_message_id = gateway
-            .send_message(channel_id, domain_message_content)
-            .await?;
-
-        let message_id = sent_message_id.get();
-
-        debug!(
-            message_id = %message_id,
-            "Discordメッセージを投稿しました"
-        );
-
+    /// スケジュールから作成した募集の送信結果を保存する
+    ///
+    /// Discordへの送信（Gateway経由）はFacade層が行い、その結果（message_id）を受け取る。
+    pub async fn finalize_recruitment_from_schedule(
+        &self,
+        txn: &DatabaseTransaction,
+        calculated_time: &crate::services::schedule::CalculatedRecruitmentTime,
+        prepared: PreparedScheduleRecruitment,
+        message_id: u64,
+    ) -> Result<()> {
         // 7. battle_recruitmentsに保存
         // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = self
@@ -378,9 +397,9 @@ where
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
                     guild_id: DiscordGuildId::new(calculated_time.guild_id as u64),
-                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    channel_id: DiscordChannelId::new(prepared.recruitment_channel_id as u64),
                     message_id: DiscordMessageId::new(message_id),
-                    quest_id: quest.id,
+                    quest_id: prepared.quest_id,
                     battle_style_id: calculated_time.battle_style_id,
                     quest_start_at: calculated_time.quest_start_at,
                     host_discord_user_id: DiscordUserId::new(0), // 自動作成のため作成者不明
@@ -404,7 +423,7 @@ where
                 txn,
                 calculated_time.quest_start_at,
                 calculated_time.guild_id,
-                recruitment_channel_id,
+                prepared.recruitment_channel_id,
                 recruitment.id,
             )
             .await?;
@@ -414,17 +433,17 @@ where
             .create_for_recruitment(
                 txn,
                 calculated_time.guild_id,
-                recruitment_channel_id,
+                prepared.recruitment_channel_id,
                 recruitment.id,
                 calculated_time.quest_start_at,
             )
             .await?;
 
         // 10. 解散時刻を登録（指定されている場合）
-        if !parsed_dismissal_times.is_empty() {
+        if !prepared.parsed_dismissal_times.is_empty() {
             debug!(
                 recruitment_id = recruitment.id,
-                dismissal_count = parsed_dismissal_times.len(),
+                dismissal_count = prepared.parsed_dismissal_times.len(),
                 "募集の解散時刻を登録します"
             );
 
@@ -432,16 +451,16 @@ where
                 .create_recruitment_dismissals(
                     txn,
                     recruitment.id,
-                    parsed_dismissal_times.clone(),
+                    prepared.parsed_dismissal_times.clone(),
                     calculated_time.quest_start_at,
                     calculated_time.guild_id,
-                    recruitment_channel_id,
+                    prepared.recruitment_channel_id,
                 )
                 .await?;
 
             info!(
                 recruitment_id = recruitment.id,
-                dismissal_count = parsed_dismissal_times.len(),
+                dismissal_count = prepared.parsed_dismissal_times.len(),
                 "募集の解散時刻を登録しました"
             );
         }
@@ -449,18 +468,17 @@ where
         Ok(())
     }
 
-    /// マッチングから募集を作成
-    /// マッチング成立時に自動的に募集を作成
+    /// マッチングから募集を作成する準備（DB取得〜メッセージ組立まで）
     ///
-    /// # 戻り値
-    /// 作成された募集のID
-    pub async fn create_recruitment_from_matching<G: DiscordGateway>(
+    /// UI組み立て（Presenter）とDiscord送信（Gateway経由の送信そのもの）はFacade層が行う。
+    /// 送信結果（message_id）は`finalize_recruitment_from_matching`へ渡すこと。
+    pub async fn prepare_recruitment_from_matching<G: DiscordGateway>(
         &self,
         txn: &DatabaseTransaction,
         db_conn: &DatabaseConnection,
         gateway: &G,
         params: &MatchingRecruitmentParams,
-    ) -> Result<CreatedMatchingRecruitmentInfo> {
+    ) -> Result<PreparedMatchingRecruitment> {
         debug!(
             guild_id = params.guild_id,
             quest_id = params.quest_id,
@@ -567,28 +585,28 @@ where
             .get_element_emojis(txn, gateway, params.guild_id)
             .await?;
 
-        // 4. `/マルチバトル募集2` と同じUIを生成
-        let (embed_content, button_components) =
-            create_v2_recruitment_embed_and_components(&battle_style.display_name, &element_emojis);
+        Ok(PreparedMatchingRecruitment {
+            recruitment_channel_id,
+            quest,
+            battle_style_name: battle_style.display_name,
+            message_content,
+            element_emojis,
+        })
+    }
 
-        // 6. Discordメッセージを投稿（マルチ募集チャンネルに投稿）（Gateway経由）
-        let channel_id = DiscordChannelId::new(recruitment_channel_id as u64);
-        let domain_message_content = MessageContent::new()
-            .with_text(&message_content)
-            .with_embed(embed_content)
-            .with_components(button_components);
-
-        let sent_message_id = gateway
-            .send_message(channel_id, domain_message_content)
-            .await?;
-
-        let message_id = sent_message_id.get();
-
-        debug!(
-            message_id = %message_id,
-            "Discordメッセージを投稿しました"
-        );
-
+    /// マッチングから作成した募集の送信結果を保存する
+    ///
+    /// Discordへの送信（Gateway経由）はFacade層が行い、その結果（message_id）を受け取る。
+    ///
+    /// # 戻り値
+    /// 作成された募集のID
+    pub async fn finalize_recruitment_from_matching(
+        &self,
+        txn: &DatabaseTransaction,
+        params: &MatchingRecruitmentParams,
+        prepared: PreparedMatchingRecruitment,
+        message_id: u64,
+    ) -> Result<CreatedMatchingRecruitmentInfo> {
         // 7. battle_recruitmentsに保存
         // i64/u64をドメイン型に変換してRepositoryに渡す
         let recruitment = self
@@ -597,10 +615,10 @@ where
                 txn,
                 crate::repository::CreateBattleRecruitmentParams {
                     guild_id: DiscordGuildId::new(params.guild_id as u64),
-                    channel_id: DiscordChannelId::new(recruitment_channel_id as u64),
+                    channel_id: DiscordChannelId::new(prepared.recruitment_channel_id as u64),
                     message_id: DiscordMessageId::new(message_id),
-                    quest_id: quest.id,
-                    battle_style_id: quest.default_battle_style_id,
+                    quest_id: prepared.quest.id,
+                    battle_style_id: prepared.quest.default_battle_style_id,
                     quest_start_at: params.quest_start_at,
                     host_discord_user_id: DiscordUserId::new(0), // 自動作成のため作成者不明
                 },
@@ -623,7 +641,7 @@ where
                 txn,
                 params.quest_start_at,
                 params.guild_id,
-                recruitment_channel_id,
+                prepared.recruitment_channel_id,
                 recruitment.id,
             )
             .await?;
@@ -632,7 +650,7 @@ where
             .create_for_recruitment(
                 txn,
                 params.guild_id,
-                recruitment_channel_id,
+                prepared.recruitment_channel_id,
                 recruitment.id,
                 params.quest_start_at,
             )
@@ -645,7 +663,7 @@ where
 
         Ok(CreatedMatchingRecruitmentInfo {
             recruitment_id: recruitment.id,
-            channel_id: recruitment_channel_id as u64,
+            channel_id: prepared.recruitment_channel_id as u64,
             message_id,
         })
     }

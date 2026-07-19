@@ -224,7 +224,7 @@ where
         // 統計を取得
         let all_notifications = self
             .notification_repo
-            .find_by_datetime_range_with_txn(txn, from, to)
+            .find_all_by_datetime_range_with_txn(txn, from, to)
             .await?;
 
         // ギルドでフィルタ

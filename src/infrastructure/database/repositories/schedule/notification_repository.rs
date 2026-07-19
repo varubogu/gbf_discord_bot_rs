@@ -19,7 +19,7 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<Vec<notifications::Model>> {
-        Self::find_by_datetime_range_internal(db, from, to).await
+        Self::find_by_datetime_range_internal(db, from, to, true).await
     }
 
     /// 指定した日時範囲内の未送信通知を取得（トランザクション内）
@@ -29,7 +29,25 @@ impl NotificationRepository for SeaOrmNotificationRepository {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<Vec<notifications::Model>> {
-        Self::find_by_datetime_range_internal(txn, from, to).await
+        Self::find_by_datetime_range_internal(txn, from, to, true).await
+    }
+
+    async fn find_all_by_datetime_range_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>> {
+        Self::find_by_datetime_range_internal(db, from, to, false).await
+    }
+
+    async fn find_all_by_datetime_range_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>> {
+        Self::find_by_datetime_range_internal(txn, from, to, false).await
     }
 
     /// 通知を作成（トランザクション付き）
@@ -273,11 +291,12 @@ impl SeaOrmNotificationRepository {
         Self
     }
 
-    /// 指定した日時範囲内の未送信通知を取得（内部実装）
+    /// 指定した日時範囲内の通知を取得（内部実装）
     async fn find_by_datetime_range_internal<C>(
         db: &C,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
+        only_unsent: bool,
     ) -> Result<Vec<notifications::Model>>
     where
         C: sea_orm::ConnectionTrait,
@@ -306,17 +325,20 @@ impl SeaOrmNotificationRepository {
             return Ok(Vec::new());
         }
 
-        let notifications = notifications::Entity::find()
-            .filter(notifications::Column::TaskId.is_in(task_ids))
-            .filter(notifications::Column::IsSent.eq(false))
-            .all(db)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "通知の取得に失敗しました");
-                e
-            })?;
+        let mut query =
+            notifications::Entity::find().filter(notifications::Column::TaskId.is_in(task_ids));
+        if only_unsent {
+            query = query.filter(notifications::Column::IsSent.eq(false));
+        }
+        let notifications = query.all(db).await.map_err(|e| {
+            error!(error = %e, "通知の取得に失敗しました");
+            e
+        })?;
 
-        debug!(count = notifications.len(), "未送信通知を取得しました");
+        debug!(
+            count = notifications.len(),
+            only_unsent, "指定範囲の通知を取得しました"
+        );
         Ok(notifications)
     }
 }

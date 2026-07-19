@@ -112,6 +112,9 @@ pub trait BattleRecruitmentsRepository: Send + Sync + std::fmt::Debug {
     ) -> Result<()>;
 
     /// 指定日時より前の募集を削除（クリーンアップ用）
+    /// 終了済みで指定日時より古い募集を削除する。
+    ///
+    /// 募集中の募集は開始日時が古くても削除しない。
     async fn delete_before_date_with_txn(
         &self,
         txn: &sea_orm::DatabaseTransaction,

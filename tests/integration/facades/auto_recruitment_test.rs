@@ -28,16 +28,6 @@ use super::test_helper::{MockTestGateway, TEST_GUILD_ID, TEST_USER_ID, create_te
 const AUTO_GUILD_ID: u64 = (TEST_GUILD_ID + 800) as u64;
 const AUTO_USER_ID: u64 = TEST_USER_ID;
 
-/// DB環境変数が不足している場合はテストをスキップする
-fn should_skip_for_missing_db_env() -> bool {
-    let (available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
-    if !available {
-        println!("テストをスキップします（DB接続情報不足）: {:?}", missing);
-        return true;
-    }
-    false
-}
-
 /// 自動募集関連のテストデータを削除
 async fn cleanup_auto_recruitment_data(
     db: &sea_orm::DatabaseConnection,
@@ -93,6 +83,17 @@ async fn setup_auto_recruitment_registered(
     model.insert(app_state.guild_db()).await.unwrap();
 }
 
+/// カテゴリ登録に必要なギルドだけを登録する。
+async fn setup_auto_recruitment_guild(
+    app_state: &Arc<gbf_discord_bot_rs::types::AppState>,
+    guild_id: i64,
+) {
+    GuildManagementFacade::new(app_state.clone())
+        .register_new_guild(guild_id, "自動募集カテゴリテストギルド")
+        .await
+        .unwrap();
+}
+
 // =================================================
 // check_and_notify_after_quest_selection（スタブ）
 // =================================================
@@ -143,7 +144,6 @@ async fn test_check_and_notify_after_time_selection_stub() {
 
 /// 1-1: 正常系 - クエスト選択登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_quest_selection_register_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 1) as i64;
@@ -194,7 +194,6 @@ async fn test_quest_selection_register_success() {
 
 /// 1-2: 正常系 - クエスト選択の上書き
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_quest_selection_overwrite() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 50) as i64;
@@ -236,7 +235,6 @@ async fn test_quest_selection_overwrite() {
 
 /// 1-3: 異常系 - 自動募集未登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_quest_selection_not_registered() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -258,7 +256,6 @@ async fn test_quest_selection_not_registered() {
 
 /// 2-1: 正常系 - 時間帯選択登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_time_selection_register_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 10) as i64;
@@ -286,7 +283,6 @@ async fn test_time_selection_register_success() {
 
 /// 2-2: 正常系 - 時間帯選択の上書き
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_time_selection_overwrite() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 11) as i64;
@@ -330,7 +326,6 @@ async fn test_time_selection_overwrite() {
 
 /// 2-3: 正常系 - 複数時間帯の選択
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_time_selection_multiple_times() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 12) as i64;
@@ -359,7 +354,6 @@ async fn test_time_selection_multiple_times() {
 
 /// 2-4: 異常系 - 自動募集未登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_time_selection_not_registered() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -383,7 +377,6 @@ async fn test_time_selection_not_registered() {
 
 /// 3-1: 正常系 - クエスト・時間帯あり
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_participation_status_with_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 20) as i64;
@@ -430,7 +423,6 @@ async fn test_participation_status_with_data() {
 
 /// 3-2: 正常系 - 選択なし
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_participation_status_without_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (AUTO_GUILD_ID + 21) as i64;
@@ -461,7 +453,6 @@ async fn test_participation_status_without_data() {
 
 /// 3-3: 異常系 - 自動募集未登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_participation_status_not_registered() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -479,10 +470,6 @@ async fn test_participation_status_not_registered() {
 /// 6-2: 異常系 - days範囲外（1以下）
 #[tokio::test]
 async fn test_register_category_days_too_small() {
-    if should_skip_for_missing_db_env() {
-        return;
-    }
-
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
@@ -513,10 +500,6 @@ async fn test_register_category_days_too_small() {
 /// 6-3: 異常系 - days範囲外（8以上）
 #[tokio::test]
 async fn test_register_category_days_too_large() {
-    if should_skip_for_missing_db_env() {
-        return;
-    }
-
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
@@ -546,7 +529,6 @@ async fn test_register_category_days_too_large() {
 
 /// 6-4: 異常系 - 既に登録済み
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_category_already_registered() {
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
@@ -587,7 +569,6 @@ async fn test_register_category_already_registered() {
 
 /// 6-1: 正常系 - カテゴリ登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_category_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -613,6 +594,7 @@ async fn test_register_category_success() {
     let category_id = (guild_id + 10) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     // カテゴリ登録
     let result = category_setup_facade::register_category(
@@ -648,7 +630,6 @@ async fn test_register_category_success() {
 
 /// 7-1: 正常系 - カテゴリ登録解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_category_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -688,6 +669,7 @@ async fn test_unregister_category_success() {
     let command_channel_id = (guild_id + 100) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     // カテゴリ登録
     category_setup_facade::register_category(
@@ -723,7 +705,6 @@ async fn test_unregister_category_success() {
 
 /// 8-1: 正常系 - 日数増加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_days_increase() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -744,6 +725,7 @@ async fn test_change_days_increase() {
     let category_id = (guild_id + 10) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     // カテゴリ登録（3日）
     category_setup_facade::register_category(
@@ -770,7 +752,6 @@ async fn test_change_days_increase() {
 
 /// 8-2: 正常系 - 日数減少
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_days_decrease() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -797,6 +778,7 @@ async fn test_change_days_decrease() {
     let category_id = (guild_id + 10) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     // カテゴリ登録（5日）
     category_setup_facade::register_category(
@@ -823,7 +805,6 @@ async fn test_change_days_decrease() {
 
 /// 8-3: 異常系 - 同じ日数への変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_days_same_value() {
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
@@ -858,10 +839,6 @@ async fn test_change_days_same_value() {
 /// 8-4: 異常系 - 範囲外の日数
 #[tokio::test]
 async fn test_change_days_out_of_range() {
-    if should_skip_for_missing_db_env() {
-        return;
-    }
-
     let app_state = Arc::new(create_test_app_state().await);
     let mock_gateway = MockTestGateway::new();
 
@@ -892,7 +869,6 @@ async fn test_change_days_out_of_range() {
 
 /// 6-5: 異常系 - チャンネル作成失敗時のロールバック
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_category_channel_creation_failed_rollback() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -900,6 +876,7 @@ async fn test_register_category_channel_creation_failed_rollback() {
     let category_id = (guild_id + 10) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     mock_gateway.expect_create_channel().returning(|_, _| {
         Err(
@@ -946,7 +923,6 @@ async fn test_register_category_channel_creation_failed_rollback() {
 
 /// 7-2: 異常系 - カテゴリチャンネル内でのコマンド実行
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_category_in_category_channel_error() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -995,7 +971,6 @@ async fn test_unregister_category_in_category_channel_error() {
 
 /// 7-3: 異常系 - 未登録ギルドでの解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_category_not_registered() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -1026,7 +1001,6 @@ async fn test_unregister_category_not_registered() {
 
 /// 7-4: 準正常系 - Discord削除失敗を含む解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_category_with_discord_delete_failures() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -1035,6 +1009,7 @@ async fn test_unregister_category_with_discord_delete_failures() {
     let command_channel_id = (guild_id + 2000) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     let mut create_count = 0;
     mock_gateway.expect_create_channel().returning(move |_, _| {
@@ -1133,7 +1108,6 @@ async fn test_unregister_category_with_discord_delete_failures() {
 
 /// 8-5: 異常系 - 日数増加時のチャンネル作成失敗でロールバック
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_days_increase_channel_creation_failed_rollback() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -1141,11 +1115,20 @@ async fn test_change_days_increase_channel_creation_failed_rollback() {
     let category_id = (guild_id + 10) as u64;
 
     cleanup_auto_recruitment_data(app_state.guild_db(), guild_id, AUTO_USER_ID as i64).await;
+    setup_auto_recruitment_guild(&app_state, guild_id).await;
 
     let mut create_count = 0;
     mock_gateway.expect_create_channel().returning(move |_, _| {
         create_count += 1;
-        Ok(DiscordChannelId::new(70000 + create_count as u64))
+        if create_count <= 5 {
+            Ok(DiscordChannelId::new(70000 + create_count as u64))
+        } else {
+            Err(
+                gbf_discord_bot_rs::errors::GatewayError::CreateChannelFailed(
+                    "create failed in change".to_string(),
+                ),
+            )
+        }
     });
     mock_gateway.expect_edit_channel().returning(|_, _| Ok(()));
     mock_gateway.expect_send_message().returning(|_, _| {
@@ -1179,20 +1162,6 @@ async fn test_change_days_increase_channel_creation_failed_rollback() {
         .await
         .unwrap()
         .len();
-
-    let mut fail_once = true;
-    mock_gateway.expect_create_channel().returning(move |_, _| {
-        if fail_once {
-            fail_once = false;
-            Err(
-                gbf_discord_bot_rs::errors::GatewayError::CreateChannelFailed(
-                    "create failed in change".to_string(),
-                ),
-            )
-        } else {
-            Ok(DiscordChannelId::new(79999))
-        }
-    });
 
     let result =
         category_setup_facade::change_days(&mock_gateway, &app_state, guild_id as u64, 5).await;

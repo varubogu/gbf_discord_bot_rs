@@ -87,7 +87,6 @@ fn setup_new_recruitment_gateway(mock_gateway: &mut MockTestGateway) {
 
 /// 2-1: 正常系 - message_id更新
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_update_message_id_success() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -142,15 +141,6 @@ async fn test_update_message_id_success() {
 /// 2-2: 異常系 - 存在しないrecruitment_id
 #[tokio::test]
 async fn test_update_message_id_not_found() {
-    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
-    if !db_available {
-        println!(
-            "テストスキップ: データベース接続情報が不足しています: {:?}",
-            missing
-        );
-        return;
-    }
-
     let app_state = Arc::new(create_test_app_state().await);
 
     // 存在しないrecruitment_idでmessage_id更新
@@ -168,7 +158,6 @@ async fn test_update_message_id_not_found() {
 
 /// 1-1: 正常系 - ボタン版での新規募集作成
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_button_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -216,7 +205,6 @@ async fn test_new_recruitment_button_success() {
 
 /// 1-2: 正常系 - リアクション版での新規募集作成
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_reaction_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -260,7 +248,6 @@ async fn test_new_recruitment_reaction_success() {
 
 /// 1-3: 正常系 - battle_style_id指定あり
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_with_battle_style_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -302,7 +289,6 @@ async fn test_new_recruitment_with_battle_style_success() {
 
 /// 1-4: 正常系 - event_date指定あり
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_with_event_date_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -352,7 +338,6 @@ async fn test_new_recruitment_with_event_date_success() {
 
 /// 1-5: 正常系 - dismissal_times指定あり
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_with_dismissal_times_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -393,15 +378,6 @@ async fn test_new_recruitment_with_dismissal_times_success() {
 /// 1-6: 異常系 - 存在しないquest_alias
 #[tokio::test]
 async fn test_new_recruitment_quest_not_found() {
-    let (db_available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
-    if !db_available {
-        println!(
-            "テストスキップ: データベース接続情報が不足しています: {:?}",
-            missing
-        );
-        return;
-    }
-
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
     setup_new_recruitment_gateway(&mut mock_gateway);
@@ -438,7 +414,6 @@ async fn test_new_recruitment_quest_not_found() {
 
 /// 1-7: 異常系 - 存在しないbattle_style_id
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_new_recruitment_battle_style_not_found() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();

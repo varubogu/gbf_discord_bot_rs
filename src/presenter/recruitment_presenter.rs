@@ -5,6 +5,7 @@
 
 use crate::services::guild_environment_service::ElementEmojis;
 use crate::services::message::MessageTextId;
+use crate::types::CanCancelResult;
 use crate::types::discord::{
     ActionRowContent, ButtonContent, ButtonStyleType, EmbedContent, SelectMenuContent,
     SelectMenuOptionContent,
@@ -31,6 +32,31 @@ fn localized_ja_with_params(message_id: MessageTextId, params: &[(&str, String)]
 }
 
 impl RecruitmentPresenter {
+    /// 募集キャンセル不可の理由を表示メッセージIDへ変換する
+    ///
+    /// キャンセル可能な場合は確認ダイアログを表示するため、`None`を返す。
+    pub fn can_cancel_result_message_id(result: CanCancelResult) -> Option<MessageTextId> {
+        match result {
+            CanCancelResult::Success => None,
+            CanCancelResult::AlreadyCancelled => {
+                Some(MessageTextId::RecruitmentCommandCancelAlreadyCancelled)
+            }
+            CanCancelResult::MessageDeleted => {
+                Some(MessageTextId::RecruitmentCommandCancelMessageDeleted)
+            }
+            CanCancelResult::NotRecruitMessage => {
+                Some(MessageTextId::RecruitmentCommandCancelInvalidMessage)
+            }
+            CanCancelResult::NotFound => Some(MessageTextId::RecruitmentCommandCancelNotFound),
+            CanCancelResult::EventDatePassed => {
+                Some(MessageTextId::RecruitmentCommandCancelEventDatePassed)
+            }
+            CanCancelResult::PermissionDenied => {
+                Some(MessageTextId::RecruitmentCommandCancelPermissionDenied)
+            }
+        }
+    }
+
     /// 参加者一覧Embedを生成する
     ///
     /// # Arguments
@@ -431,5 +457,43 @@ mod tests {
         assert_eq!(embed.title, Some("募集出発".to_string()));
         assert!(embed.description.as_ref().unwrap().contains("出発しました"));
         assert_eq!(embed.color, Some(0x00ff00));
+    }
+
+    #[test]
+    fn can_cancel_result_message_id_全バリアントを変換する() {
+        let cases = [
+            (
+                CanCancelResult::AlreadyCancelled,
+                Some(MessageTextId::RecruitmentCommandCancelAlreadyCancelled),
+            ),
+            (
+                CanCancelResult::MessageDeleted,
+                Some(MessageTextId::RecruitmentCommandCancelMessageDeleted),
+            ),
+            (
+                CanCancelResult::NotRecruitMessage,
+                Some(MessageTextId::RecruitmentCommandCancelInvalidMessage),
+            ),
+            (
+                CanCancelResult::NotFound,
+                Some(MessageTextId::RecruitmentCommandCancelNotFound),
+            ),
+            (
+                CanCancelResult::EventDatePassed,
+                Some(MessageTextId::RecruitmentCommandCancelEventDatePassed),
+            ),
+            (
+                CanCancelResult::PermissionDenied,
+                Some(MessageTextId::RecruitmentCommandCancelPermissionDenied),
+            ),
+            (CanCancelResult::Success, None),
+        ];
+
+        for (result, expected) in cases {
+            assert_eq!(
+                RecruitmentPresenter::can_cancel_result_message_id(result),
+                expected
+            );
+        }
     }
 }

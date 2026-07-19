@@ -13,8 +13,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use std::sync::Arc;
 
 use super::test_helper::{
-    MockTestGateway, TEST_CHANNEL_ID, TEST_GUILD_ID, TEST_MESSAGE_ID, create_test_app_state,
-    create_test_message_data,
+    MockTestGateway, TEST_CHANNEL_ID, TEST_GUILD_ID, TEST_MESSAGE_ID, TEST_USER_ID,
+    create_test_app_state, create_test_message_data,
 };
 
 /// テスト用ギルドID（キャンセルテスト専用）
@@ -46,6 +46,7 @@ async fn create_test_recruitment(
         quest_start_at: Set(quest_start_at),
         is_recruiting: Set(!is_canceled),
         is_canceled: Set(is_canceled),
+        host_discord_user_id: Set(TEST_USER_ID as i64),
         recruit_end_message_id: Set(None),
         full_notification_sent: Set(false),
         ..Default::default()
@@ -83,7 +84,6 @@ async fn add_test_participant(db: &sea_orm::DatabaseConnection, recruitment_id: 
 
 /// 5-2: 正常系 - 募集メッセージでない場合
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_cancel_on_delete_not_recruitment_message() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -112,7 +112,6 @@ async fn test_cancel_on_delete_not_recruitment_message() {
 
 /// 5-3: 正常系 - 既にキャンセル済みの場合
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_cancel_on_delete_already_cancelled() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 1;
@@ -157,7 +156,6 @@ async fn test_cancel_on_delete_already_cancelled() {
 
 /// 5-4: 正常系 - 開催日時を過ぎている場合
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_cancel_on_delete_event_date_passed() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 2;
@@ -199,7 +197,6 @@ async fn test_cancel_on_delete_event_date_passed() {
 
 /// 5-1: 正常系 - 募集メッセージ削除時のキャンセル
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_cancel_on_delete_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 3;
@@ -257,7 +254,6 @@ async fn test_cancel_on_delete_success() {
 
 /// 4-1: 正常系 - 募集キャンセル
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 30;
@@ -318,7 +314,6 @@ async fn test_execute_cancel_success() {
 
 /// 4-2: 異常系 - 開催日時を過ぎた募集のキャンセル
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_event_passed() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 4;
@@ -361,7 +356,6 @@ async fn test_execute_cancel_event_passed() {
 
 /// 4-3: 異常系 - 存在しない募集のキャンセル
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_not_found() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -383,7 +377,6 @@ async fn test_execute_cancel_not_found() {
 
 /// 4-4: 異常系 - Gateway編集失敗時のロールバック
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_edit_message_failed_rollback() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 31;
@@ -449,7 +442,6 @@ async fn test_execute_cancel_edit_message_failed_rollback() {
 
 /// 3-1: 正常系 - キャンセル可能な募集
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_available() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 10;
@@ -472,7 +464,7 @@ async fn test_can_cancel_available() {
         Ok(create_test_message_data(
             message_id as u64,
             channel_id as u64,
-            123456, // author_id
+            TEST_USER_ID,
             "test content",
         ))
     });
@@ -483,8 +475,8 @@ async fn test_can_cancel_available() {
         DiscordGuildId::new(guild_id as u64),
         DiscordChannelId::new(channel_id as u64),
         DiscordMessageId::new(message_id as u64),
-        123456, // message.author_id（募集主として実行）
-        false,  // has_bot_control
+        TEST_USER_ID, // 募集主として実行
+        false,        // has_bot_control
     )
     .await;
 
@@ -507,7 +499,6 @@ async fn test_can_cancel_available() {
 
 /// 3-2: 正常系 - キャンセル済みの募集
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_already_cancelled() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 11;
@@ -568,7 +559,6 @@ async fn test_can_cancel_already_cancelled() {
 
 /// 3-3: 正常系 - DBに募集あり + Discordメッセージ削除済み
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_message_deleted() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 12;
@@ -622,7 +612,6 @@ async fn test_can_cancel_message_deleted() {
 
 /// 3-4: 正常系 - DBに募集なし + Discordメッセージは存在
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_not_recruit_message() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 13;
@@ -669,7 +658,6 @@ async fn test_can_cancel_not_recruit_message() {
 
 /// 3-5: 正常系 - 開催日時を過ぎた募集
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_event_date_passed() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 14;
@@ -726,7 +714,6 @@ async fn test_can_cancel_event_date_passed() {
 
 /// 3-6: 正常系 - 存在しないメッセージの募集
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_not_found() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -772,7 +759,6 @@ async fn test_can_cancel_not_found() {
 /// このテストではbotを除外した後の参加者IDのみをモックが返すことで、
 /// キャンセル通知に人間の参加者メンションが正しく含まれることを検証する。
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_participants_notified_bot_excluded() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 40;
@@ -859,7 +845,6 @@ async fn test_execute_cancel_participants_notified_bot_excluded() {
 
 /// 4-6: 正常系 - DB参加者のみでもキャンセル通知に含まれる
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_participants_notified_from_db_only() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 41;
@@ -920,7 +905,6 @@ async fn test_execute_cancel_participants_notified_from_db_only() {
 
 /// 3-7: 正常系 - 操作権限なし（募集主でなく gbf_bot_control ロールもない）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_permission_denied() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 15;
@@ -980,7 +964,6 @@ async fn test_can_cancel_permission_denied() {
 
 /// 3-8: 正常系 - gbf_bot_control ロールを持つ管理者は他人の募集もキャンセル可能
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_can_cancel_admin_can_cancel_others() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 16;
@@ -1037,7 +1020,6 @@ async fn test_can_cancel_admin_can_cancel_others() {
 
 /// 4-7: 正常系 - DBとリアクションを合算し重複を除去して通知する
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_execute_cancel_participants_notified_union_dedup() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CANCEL_GUILD_ID + 42;

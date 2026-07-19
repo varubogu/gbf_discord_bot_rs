@@ -10,6 +10,7 @@ Pass dependencies from the outside to preserve layer boundaries and make the sys
 - DB connections are managed by `AppState`; layers must not create ad-hoc new connections
 - Keep services dependent on repository traits, not concrete adapters
 - Don’t use global variables “for convenience” (it hides dependencies and causes accidents)
+- Interaction-flow state shared by handlers is owned by `AppState` through an explicit store; event handlers must not define mutable global state.
 
 ## Composition root rule
 

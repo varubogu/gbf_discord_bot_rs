@@ -3,9 +3,9 @@ name: Ignored DB Tests
 on:
   workflow_dispatch:
   schedule:
-    # 毎日 02:00 UTC に DB必須 ignored テストを実行
+    # 毎日 02:00 UTC にDB結合テスト（testcontainersで一時PostgreSQLを起動）を実行
     # 補足:
-    # - push 時実行だけでも「コード変更起因の不具合」は検知できる
+    # - push 時実行（ci.yml）だけでも「コード変更起因の不具合」は検知できる
     # - 一方で定期実行を残すと、依存更新や runner/image 変更など
     #   「コード変更なしで起きる退行」も検知できる
     # - コスト優先にする場合は push(main/develop) へ寄せる運用も検討可能
@@ -19,42 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ignored-db-tests:
-    name: Run ignored facade integration tests (DB required)
+  facade-integration-tests:
+    # facade結合テストはtestcontainersが都度使い捨てのPostgreSQLコンテナを
+    # 起動して実行する（tests/integration/facades/test_helper.rs参照）。
+    # GitHub Actions の ubuntu-latest ランナーは標準でDockerデーモンが
+    # 利用可能なため、追加のservicesコンテナ設定は不要。
+    name: Run facade integration tests (testcontainers PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
     env:
-      # StartupValidator 向け必須環境変数
-      DISCORD_TOKEN: "dummy_discord_token_for_ci_1234567890"
-      BOT_ADMIN_SERVER_ID: "12345678901234567"
-      DB_HOST: "127.0.0.1"
-      DB_PORT: "5432"
-      DB_NAME: "gbf_bot_db"
-      SYSTEM_DB_USER: "gbf_bot_system"
-      SYSTEM_DB_PASSWORD: "ci_system_password"
-      GUILD_DB_USER: "gbf_bot_guild"
-      GUILD_DB_PASSWORD: "ci_guild_password"
-      GLOBAL_DB_USER: "gbf_bot_global"
-      GLOBAL_DB_PASSWORD: "ci_global_password"
-      ADMIN_DB_USER: "gbf_bot_admin"
-      ADMIN_DB_PASSWORD: "ci_admin_password"
-      CLEANUP_DB_PASSWORD: "ci_cleanup_password"
       RUST_TEST_THREADS: "1"
 
     steps:
@@ -64,45 +38,5 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Wait for PostgreSQL
-        env:
-          PGPASSWORD: postgres
-        run: |
-          for i in {1..30}; do
-            if pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U postgres -d postgres; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "PostgreSQL is not ready"
-          exit 1
-
-      - name: Initialize roles and database
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql \
-            -h "${DB_HOST}" \
-            -p "${DB_PORT}" \
-            -U postgres \
-            -d postgres \
-            -v ON_ERROR_STOP=1 \
-            -v system_password="${SYSTEM_DB_PASSWORD}" \
-            -v guild_password="${GUILD_DB_PASSWORD}" \
-            -v global_password="${GLOBAL_DB_PASSWORD}" \
-            -v admin_password="${ADMIN_DB_PASSWORD}" \
-            -v cleanup_password="${CLEANUP_DB_PASSWORD}" \
-            -v db_name="${DB_NAME}" \
-            -f db/sql/init.sql
-
-      - name: Run database migrations
-        run: cargo run -j 1 --bin=gbf_discord_bot_rs -- migrate-only
-
-      - name: Run ignored facade tests (spreadsheet)
-        run: cargo test -j 1 --test mod integration::facades::spreadsheet_test -- --ignored
-
-      - name: Run ignored facade tests (guild settings)
-        run: cargo test -j 1 --test mod integration::facades::guild_settings_test -- --ignored
+      - name: Run facade integration tests
+        run: cargo test -j 1 --test mod

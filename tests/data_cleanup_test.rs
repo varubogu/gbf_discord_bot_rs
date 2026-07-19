@@ -10,20 +10,17 @@ use gbf_discord_bot_rs::models::entities::worker::{
     battle_recruitments, notifications, scheduled_tasks,
 };
 use gbf_discord_bot_rs::services::maintenance::DataCleanupService;
-use gbf_discord_bot_rs::types::DbRole;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
 
-/// テスト用のAdminロール接続を取得
-async fn get_test_admin_db() -> sea_orm::DatabaseConnection {
-    gbf_discord_bot_rs::test_utils::connect_database_for_role(DbRole::Admin)
-        .await
-        .expect("テスト用Adminロールのデータベース接続に失敗しました")
-}
+#[path = "integration/facades/test_helper.rs"]
+#[allow(dead_code)]
+mod test_helper;
+
+use test_helper::get_test_guild_db;
 
 #[tokio::test]
-#[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_integration() {
-    let db = get_test_admin_db().await;
+    let db = get_test_guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -49,16 +46,6 @@ async fn test_data_cleanup_integration() {
     let inserted_recruitment = old_recruitment.insert(&db).await.unwrap();
 
     // テストデータ作成（31日前の送信済み通知）
-    let old_notification = notifications::ActiveModel {
-        guild_id: Set(123456789),
-        channel_id: Set(987654321),
-        message_text_id: Set("test_message".to_string()),
-        is_sent: Set(true),
-        ..Default::default()
-    };
-    let inserted_notification = old_notification.insert(&db).await.unwrap();
-
-    // テストデータ作成（31日前の実行済みタスク）
     let old_task = scheduled_tasks::ActiveModel {
         schedule_datetime: Set(Utc::now() - Duration::days(31)),
         task_type: Set(ScheduledTaskType::Notification.as_i32()),
@@ -68,6 +55,17 @@ async fn test_data_cleanup_integration() {
         ..Default::default()
     };
     let inserted_task = old_task.insert(&db).await.unwrap();
+
+    // 通知はタスクに紐付け、タスク削除時のCASCADEも検証する。
+    let old_notification = notifications::ActiveModel {
+        task_id: Set(inserted_task.id),
+        guild_id: Set(123456789),
+        channel_id: Set(987654321),
+        message_text_id: Set("test_message".to_string()),
+        is_sent: Set(true),
+        ..Default::default()
+    };
+    let inserted_notification = old_notification.insert(&db).await.unwrap();
 
     // テストデータ作成（1日前の募集終了データ - 削除されないはず）
     let recent_recruitment = battle_recruitments::ActiveModel {
@@ -96,7 +94,7 @@ async fn test_data_cleanup_integration() {
 
     // 削除されたことを確認
     assert!(stats.deleted_recruitments >= 1);
-    assert!(stats.deleted_notifications >= 1);
+    assert_eq!(stats.deleted_notifications, 0);
     assert!(stats.deleted_tasks >= 1);
 
     // 古いデータが削除されたことを確認
@@ -133,9 +131,8 @@ async fn test_data_cleanup_integration() {
 }
 
 #[tokio::test]
-#[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_active_recruitment() {
-    let db = get_test_admin_db().await;
+    let db = get_test_guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -184,9 +181,8 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
 }
 
 #[tokio::test]
-#[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_unsent_notification() {
-    let db = get_test_admin_db().await;
+    let db = get_test_guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -196,7 +192,19 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
     let service = DataCleanupService::new(recruitment_repo, notification_repo, task_repo);
 
     // テストデータ作成（31日前だが未送信の通知）
+    let task = scheduled_tasks::ActiveModel {
+        schedule_datetime: Set(Utc::now() - Duration::days(31)),
+        task_type: Set(ScheduledTaskType::Notification.as_i32()),
+        guild_id: Set(Some(123456789)),
+        channel_id: Set(Some(987654321)),
+        execution_status: Set(TaskExecutionStatus::Pending),
+        ..Default::default()
+    }
+    .insert(&db)
+    .await
+    .unwrap();
     let unsent_notification = notifications::ActiveModel {
+        task_id: Set(task.id),
         guild_id: Set(123456789),
         channel_id: Set(987654321),
         message_text_id: Set("test_message".to_string()),
@@ -226,12 +234,15 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
         .exec(&db)
         .await
         .unwrap();
+    scheduled_tasks::Entity::delete_by_id(task.id)
+        .exec(&db)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
-#[ignore] // 実際のDBが必要なため、デフォルトでは無効化
 async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
-    let db = get_test_admin_db().await;
+    let db = get_test_guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();

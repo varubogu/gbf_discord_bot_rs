@@ -26,7 +26,6 @@ async fn cleanup_guild_settings(db: &sea_orm::DatabaseConnection, guild_id: i64)
 
 /// 1-1: 正常系 - 部分文字列でタイムゾーン候補取得
 #[tokio::test]
-#[ignore] // AppState構築にDB接続が必要
 async fn test_get_timezones_for_autocomplete_partial_match() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state);
@@ -45,7 +44,6 @@ async fn test_get_timezones_for_autocomplete_partial_match() {
 
 /// 1-2: 正常系 - 空文字列での候補取得
 #[tokio::test]
-#[ignore] // AppState構築にDB接続が必要
 async fn test_get_timezones_for_autocomplete_empty_string() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state);
@@ -63,7 +61,6 @@ async fn test_get_timezones_for_autocomplete_empty_string() {
 
 /// 1-3: 正常系 - マッチなしの候補取得
 #[tokio::test]
-#[ignore] // AppState構築にDB接続が必要
 async fn test_get_timezones_for_autocomplete_no_match() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state);
@@ -82,7 +79,6 @@ async fn test_get_timezones_for_autocomplete_no_match() {
 
 /// 2-2: 正常系 - 未設定時のデフォルト値（Asia/Tokyo）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_timezone_default() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -109,7 +105,6 @@ async fn test_get_timezone_default() {
 
 /// 3-2: 正常系 - 未設定ギルド設定の取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_guild_settings_not_set() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -134,7 +129,6 @@ async fn test_get_guild_settings_not_set() {
 
 /// 4-1: 正常系 - 新規タイムゾーン設定
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_set_timezone_new() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -165,7 +159,6 @@ async fn test_set_timezone_new() {
 
 /// 4-2: 正常系 - タイムゾーン変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_set_timezone_change() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -195,7 +188,6 @@ async fn test_set_timezone_change() {
 
 /// 4-3: 異常系 - 無効なタイムゾーン文字列
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_set_timezone_invalid() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state);
@@ -213,7 +205,6 @@ async fn test_set_timezone_invalid() {
 
 /// 2-1: 正常系 - 設定済みタイムゾーンの取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_timezone_set_value() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -239,7 +230,6 @@ async fn test_get_timezone_set_value() {
 
 /// 3-1: 正常系 - 設定済みギルド設定の取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_guild_settings_with_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());
@@ -267,7 +257,6 @@ async fn test_get_guild_settings_with_data() {
 
 /// 4-4: 正常系 - ロケール変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_set_timezone_change_locale() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = GuildSettingsFacade::new(app_state.clone());

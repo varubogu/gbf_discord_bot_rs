@@ -1,7 +1,7 @@
 // Integration tests for recruitment v2 functionality (button-based recruitment)
 
+use gbf_discord_bot_rs::presenter::RecruitmentPresenter;
 use gbf_discord_bot_rs::services::guild_environment_service::ElementEmojis;
-use gbf_discord_bot_rs::services::recruitment::new;
 use gbf_discord_bot_rs::types::RecruitmentComponentId;
 use gbf_discord_bot_rs::types::discord::ComponentContent;
 
@@ -59,7 +59,7 @@ fn test_component_id_parse_invalid() {
 #[test]
 fn test_create_recruitment_buttons_six_elements() {
     let element_emojis = ElementEmojis::default_emojis();
-    let buttons = new::create_recruitment_buttons("6属性", &element_emojis);
+    let buttons = RecruitmentPresenter::create_recruitment_buttons("6属性", &element_emojis);
 
     // 3行のボタンが生成されることを確認
     assert_eq!(buttons.len(), 3);
@@ -93,7 +93,7 @@ fn test_create_recruitment_buttons_six_elements() {
 #[test]
 fn test_create_recruitment_buttons_simple() {
     let element_emojis = ElementEmojis::default_emojis();
-    let buttons = new::create_recruitment_buttons("シンプル", &element_emojis);
+    let buttons = RecruitmentPresenter::create_recruitment_buttons("シンプル", &element_emojis);
 
     // 1行のボタンが生成されることを確認
     assert_eq!(buttons.len(), 1);
@@ -111,7 +111,7 @@ fn test_create_recruitment_buttons_simple() {
 fn test_create_recruitment_buttons_other_battle_style() {
     // 6属性以外の攻略方法はシンプル参加と同じ
     let element_emojis = ElementEmojis::default_emojis();
-    let buttons = new::create_recruitment_buttons("ワンパン", &element_emojis);
+    let buttons = RecruitmentPresenter::create_recruitment_buttons("ワンパン", &element_emojis);
 
     assert_eq!(buttons.len(), 1);
 

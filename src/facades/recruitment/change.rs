@@ -4,6 +4,7 @@ use crate::infrastructure::database::session::set_current_guild_id;
 use crate::services::guild_environment_service::GuildEnvironmentService;
 use crate::services::recruitment::new;
 use crate::services::recruitment::quest_query_service::QuestQueryService;
+use crate::services::recruitment::recruit_datetime_service::RecruitDateTimeService;
 use crate::services::recruitment::recruitment_participants_service::RecruitmentParticipantsService;
 use crate::services::recruitment::recruitment_query_service::RecruitmentQueryService;
 use crate::services::recruitment::recruitment_update_service::RecruitmentUpdateService;
@@ -30,6 +31,33 @@ pub struct RecruitmentChangeContent {
     pub battle_style_id: Option<i32>,
 }
 use tracing::{debug, error, info, instrument};
+
+/// 募集変更用の出発日時をギルド設定のタイムゾーンで解析する。
+///
+/// DBアクセスとRLS設定はFacadeで完結させ、events層からService層への直接依存を防ぐ。
+pub async fn parse_recruitment_event_date(
+    app_state: &crate::types::AppState,
+    guild_id: i64,
+    input: &str,
+) -> types::Result<DateTime<Utc>> {
+    let txn = app_state.guild_db().begin().await?;
+    set_current_guild_id(&txn, guild_id).await?;
+
+    let result = RecruitDateTimeService::new(app_state.repositories.guild_settings)
+        .parse_quest_departure_with_txn(&txn, guild_id, input)
+        .await;
+
+    match result {
+        Ok(event_date) => {
+            txn.commit().await?;
+            Ok(event_date)
+        }
+        Err(error) => {
+            txn.rollback().await?;
+            Err(error)
+        }
+    }
+}
 
 /// 募集変更権限チェック（パネル表示前の早期チェック用）
 ///

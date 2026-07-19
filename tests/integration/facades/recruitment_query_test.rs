@@ -16,7 +16,6 @@ use super::test_helper::create_test_app_state;
 
 /// 9-1: 正常系 - クエスト検索（マスターデータがある場合）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_search_quests_for_autocomplete() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -29,7 +28,6 @@ async fn test_search_quests_for_autocomplete() {
 
 /// 9-2: 正常系 - マッチなし
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_search_quests_no_match() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -46,7 +44,6 @@ async fn test_search_quests_no_match() {
 
 /// クエスト一覧取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_list_quests_for_select() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -63,7 +60,6 @@ async fn test_list_quests_for_select() {
 
 /// 10-1: 正常系 - 攻略方法一覧取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_battle_styles_for_autocomplete() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -79,7 +75,6 @@ async fn test_get_battle_styles_for_autocomplete() {
 
 /// 攻略方法一覧取得（セレクト用）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_list_battle_styles_for_select() {
     let app_state = Arc::new(create_test_app_state().await);
 
@@ -90,7 +85,6 @@ async fn test_list_battle_styles_for_select() {
 
 /// 攻略方法名をID指定で取得（存在しないID）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_battle_style_name_by_invalid_id() {
     let app_state = Arc::new(create_test_app_state().await);
 

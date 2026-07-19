@@ -10,17 +10,16 @@ In this project, they are written primarily **from facades**.
 
 ## Tests requiring a real DB
 
-- Mark tests that require a real DB with `#[ignore]` so they do not run in the default test suite
-- To run real-DB ignored tests explicitly, use `cargo test -- --ignored`
-- For ignored test classification and CI lanes, see [ignored_test_strategy.md](ignored_test_strategy.md)
-- Test DB connections must use role-specific environment variables (`SYSTEM_DB_*`, `GUILD_DB_*`, `GLOBAL_DB_*`, `ADMIN_DB_*`) instead of the default `DB_USER` / `DB_PASSWORD`
+- Facade integration tests start one PostgreSQL container per test binary and apply all migrations before use.
+- The fixture creates the application DB roles used by RLS, so tests must use `AppState` from the shared fixture rather than a local connection or environment variables.
+- Each test remains responsible for using distinct test data and cleaning up data it creates.
+- `#[ignore]` is reserved for tests that require an external secret or external API; it must not be used solely because a test needs PostgreSQL.
 
-## CI execution lane for ignored tests
+## CI execution
 
-- Workflow: `.github/workflows/ignored-db-tests.yml`
-- Representative facade integration tests:
-  - `integration::facades::spreadsheet_test`
-  - `integration::facades::guild_settings_test`
+- The regular test lane runs facade integration tests without a PostgreSQL service container or DB credentials.
+- The runner must permit Docker access so the test fixture can start its PostgreSQL container.
+- External-secret tests remain ignored and are executed only in their dedicated workflow.
 
 ## Test data handling
 

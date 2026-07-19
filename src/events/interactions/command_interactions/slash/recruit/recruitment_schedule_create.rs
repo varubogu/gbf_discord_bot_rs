@@ -1,6 +1,5 @@
 use crate::events::converters::to_create_embed;
 use crate::facades::recruitment::recruitment_schedule_facade::RecruitmentScheduleFacade;
-use crate::services::recruitment::schedule::ScheduleDisplayService;
 use crate::types::{PoiseContext, Result};
 use std::sync::Arc;
 use tracing::{error, info};
@@ -112,7 +111,8 @@ pub async fn recruitment_schedule_create(
         e
     })?;
 
-    let embed_content = ScheduleDisplayService::build_creation_embed(&schedule_data, user_id.get());
+    let embed_content =
+        RecruitmentScheduleFacade::build_creation_embed(&schedule_data, user_id.get());
     let embed = to_create_embed(&embed_content);
     ctx.send(poise::CreateReply::default().embed(embed).ephemeral(true))
         .await?;

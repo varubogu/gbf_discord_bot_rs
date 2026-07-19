@@ -55,8 +55,8 @@ Policy:
 ### Layer responsibilities
 
 - Events: scheduler trigger, logging, exception boundary
-- Facade: transaction boundary, coordination of executor calls
-- Services: SchedulerManager (trigger only), TaskDispatchService, and business logic in each TaskExecutor
+- Facade: transaction boundary, `task_type` dispatch, and executor/service composition (`SchedulerTaskDispatchFacade`)
+- Services: SchedulerManager (trigger only), `ScheduledTaskDispatchSupportService` (thin repository access for the dispatch loop), and business logic in each TaskExecutor
 - Repository: persistence for `scheduled_tasks` and related tables
 
 ### Repository/implementation mapping
@@ -74,8 +74,8 @@ Rules:
 Current scheduler execution entry points:
 
 - `SchedulerManager`: periodic trigger and startup hook only
-- `SchedulerTaskDispatchFacade`: transaction boundary for scheduler runtime execution
-- `TaskDispatchService`: `task_type` dispatch and executor composition
+- `SchedulerTaskDispatchFacade`: transaction boundary, `task_type` dispatch, and executor/service composition
+  for scheduler runtime execution
 
 ## Execution cycle (every 10 seconds)
 

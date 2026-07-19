@@ -15,21 +15,20 @@ At initial registration, pending tasks are checked and no duplicate is created i
 
 ## Scheduler integration dependency direction
 
-- `TaskDispatchService` is the composition point. It composes `PeriodicMatchingService` and `AutoMatchingTaskExecutor` using repositories provided by `crate::di::Repositories`.
-- `SchedulerTaskDispatchFacade` owns transaction boundaries and invokes `TaskDispatchService`.
+- `SchedulerTaskDispatchFacade` is the composition point. It owns transaction boundaries and composes `PeriodicMatchingService`, `AutoMatchingDispatchSupportService`, and `RecruitmentCreationService` using repositories provided by `crate::di::Repositories`. Building the notification/recruitment UI (`NotificationPresenter`, `RecruitmentPresenter`) and sending it via the Gateway also happens in the facade — this logic previously lived in `AutoMatchingTaskExecutor` (service layer) and was moved here because UI composition and multi-service orchestration are facade-level responsibilities.
 - Concrete repository implementations are SeaORM adapters under `src/infrastructure/database/repositories/**`.
-- `PeriodicMatchingService` and `AutoMatchingTaskExecutor` depend on repository traits via `crate::repository` (auto-recruitment, schedule, recruitment, and master data ports), not on `SeaOrm*Repository` concrete types.
-- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx) -> task_dispatch_service (composition) -> service/executor -> repository ports`.
+- `PeriodicMatchingService`, `AutoMatchingDispatchSupportService`, and `RecruitmentCreationService` depend on repository traits via `crate::repository` (auto-recruitment, schedule, recruitment, and master data ports), not on `SeaOrm*Repository` concrete types.
+- Keep the one-way flow: `scheduler_manager (trigger) -> facade (tx + composition + UI + gateway) -> service -> repository ports`.
 - Keep concrete adapter placement unified under `src/infrastructure/database/repositories/**`.
 
 ## Implementation reference paths
 
 ```text
 src/services/schedule/scheduler_manager.rs
-src/services/schedule/task_dispatch_service.rs
 src/facades/schedule/scheduler_task_dispatch_facade.rs
-src/services/schedule/auto_matching_task_executor.rs
+src/services/schedule/auto_matching_dispatch_support_service.rs
 src/services/auto_recruitment/matching_service.rs
+src/services/recruitment/recruitment_creation_service.rs
 src/repository/auto_recruitment/
 src/repository/schedule/scheduled_task_repository.rs
 src/repository/battle_recruitments_repository.rs
@@ -43,7 +42,7 @@ src/di/repositories.rs
 
 ## Execution flow
 
-`TaskDispatchService` executes `AutoMatchingTaskExecutor` in the `task_type=7` branch.
+`SchedulerTaskDispatchFacade` executes the `task_type=7` branch (`run_auto_matching_dispatch`).
 
 1. Re-check task existence and `pending`
 2. Execute `PeriodicMatchingService::process_matching`

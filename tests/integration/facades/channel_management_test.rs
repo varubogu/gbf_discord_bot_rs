@@ -54,7 +54,6 @@ async fn cleanup_all(db: &sea_orm::DatabaseConnection, guild_id: i64) {
 
 /// 1-1: 正常系 - チャンネル種別一覧を取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_channel_types_for_autocomplete() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state);
@@ -75,7 +74,6 @@ async fn test_get_channel_types_for_autocomplete() {
 
 /// 1-2: 正常系 - 空のテーブルからの取得
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_get_channel_types_for_autocomplete_empty() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -101,7 +99,6 @@ async fn test_get_channel_types_for_autocomplete_empty() {
 
 /// 2-1: 正常系 - 新規ギルド・新規チャンネル登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_channel_new_guild() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -140,7 +137,6 @@ async fn test_register_channel_new_guild() {
 
 /// 2-2: 正常系 - 既存ギルドへのチャンネル登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_channel_existing_guild() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -186,7 +182,6 @@ async fn test_register_channel_existing_guild() {
 
 /// 2-3: 正常系 - 既存チャンネルの上書き登録
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_channel_overwrite() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -240,7 +235,6 @@ async fn test_register_channel_overwrite() {
 
 /// 2-4: 異常系 - 存在しないchannel_type_id
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_channel_invalid_type() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -269,7 +263,6 @@ async fn test_register_channel_invalid_type() {
 
 /// 2-5: 正常系 - 登録結果にsettings_displayが含まれる
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_register_channel_settings_display() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -325,7 +318,6 @@ async fn test_register_channel_settings_display() {
 
 /// 3-1: 正常系 - チャンネル登録解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_channel_success() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -371,7 +363,6 @@ async fn test_unregister_channel_success() {
 
 /// 3-2: 異常系 - 未登録チャンネルの解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_channel_not_registered() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -405,7 +396,6 @@ async fn test_unregister_channel_not_registered() {
 
 /// 3-3: 異常系 - 存在しないchannel_type_idでの解除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_channel_invalid_type() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -430,7 +420,6 @@ async fn test_unregister_channel_invalid_type() {
 
 /// 3-4: 正常系 - 解除結果にold_channel_idが含まれる
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_unregister_channel_old_channel_id() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -484,7 +473,6 @@ async fn test_unregister_channel_old_channel_id() {
 
 /// 4-1: 正常系 - チャンネル設定表示（登録あり）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_show_channel_settings_with_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());
@@ -527,7 +515,6 @@ async fn test_show_channel_settings_with_data() {
 
 /// 4-2: 正常系 - チャンネル設定表示（登録なし）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_show_channel_settings_empty() {
     let app_state = Arc::new(create_test_app_state().await);
     let facade = ChannelManagementFacade::new(app_state.clone());

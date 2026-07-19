@@ -1,5 +1,5 @@
 use crate::di::{AppMessageService, Repositories, create_message_service};
-use crate::types::AppConfig;
+use crate::types::{AppConfig, RecruitChangeDraftStore};
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
@@ -17,6 +17,8 @@ pub struct AppState {
     pub message_service: Arc<AppMessageService>,
     /// リポジトリコンテナ
     pub repositories: Repositories,
+    /// 募集変更パネルの一時状態
+    recruit_change_drafts: Arc<RecruitChangeDraftStore>,
 }
 
 impl AppState {
@@ -40,6 +42,7 @@ impl AppState {
             config,
             message_service: Arc::new(create_message_service()),
             repositories,
+            recruit_change_drafts: Arc::new(RecruitChangeDraftStore::default()),
         }
     }
 
@@ -61,5 +64,10 @@ impl AppState {
     /// メッセージサービスを取得
     pub fn message_service(&self) -> &AppMessageService {
         &self.message_service
+    }
+
+    /// 募集変更パネルの一時状態を取得
+    pub fn recruit_change_drafts(&self) -> &RecruitChangeDraftStore {
+        &self.recruit_change_drafts
     }
 }

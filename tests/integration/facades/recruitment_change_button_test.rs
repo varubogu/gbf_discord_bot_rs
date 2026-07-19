@@ -50,6 +50,7 @@ async fn create_test_recruitment(
         quest_start_at: Set(quest_start_at),
         is_recruiting: Set(!is_canceled),
         is_canceled: Set(is_canceled),
+        host_discord_user_id: Set(TEST_USER_ID as i64),
         recruit_end_message_id: Set(None),
         full_notification_sent: Set(false),
         ..Default::default()
@@ -176,7 +177,6 @@ fn setup_common_gateway_for_button(
 
 /// 6-1: 正常系 - クエスト変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_change_quest() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -229,7 +229,6 @@ async fn test_change_recruitment_information_change_quest() {
 
 /// 6-2: 正常系 - 開催日時変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_change_event_date() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -281,7 +280,6 @@ async fn test_change_recruitment_information_change_event_date() {
 
 /// 6-3: 正常系 - 攻略方法変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_change_battle_style() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -334,7 +332,6 @@ async fn test_change_recruitment_information_change_battle_style() {
 
 /// 6-4: 異常系 - 存在しない募集の変更
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_not_found() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -364,7 +361,6 @@ async fn test_change_recruitment_information_not_found() {
 
 /// 6-5: 異常系 - Gateway編集失敗時のロールバック
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_edit_failed_rollback() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -422,7 +418,6 @@ async fn test_change_recruitment_information_edit_failed_rollback() {
 
 /// 6-6: 正常系 - v2募集の変更通知でDB+リアクションを合算し重複除去する
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_v2_notification_mentions_union_dedup() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CHANGE_GUILD_ID + 6;
@@ -504,7 +499,6 @@ async fn test_change_recruitment_information_v2_notification_mentions_union_dedu
 
 /// 6-7: 正常系 - v1募集の変更通知でDB+リアクションを合算する
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_information_v1_notification_mentions_union() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = CHANGE_GUILD_ID + 7;
@@ -575,7 +569,6 @@ async fn test_change_recruitment_information_v1_notification_mentions_union() {
 
 /// 7-1: 正常系 - 参加ボタン押下
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_join() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -621,7 +614,6 @@ async fn test_handle_recruitment_button_join() {
 
 /// 7-2: 正常系 - 属性指定参加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_join_element() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -668,7 +660,6 @@ async fn test_handle_recruitment_button_join_element() {
 
 /// 7-3: 正常系 - 全属性参加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_join_all_elements() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -715,7 +706,6 @@ async fn test_handle_recruitment_button_join_all_elements() {
 
 /// 7-4: 正常系 - 退出ボタン押下
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_leave_all() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -770,7 +760,6 @@ async fn test_handle_recruitment_button_leave_all() {
 
 /// 7-5: 異常系 - キャンセル済み募集への操作
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_cancelled_error() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -812,7 +801,6 @@ async fn test_handle_recruitment_button_cancelled_error() {
 
 /// 7-6: 異常系 - 期限切れ募集への操作
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_button_expired_error() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -851,7 +839,6 @@ async fn test_handle_recruitment_button_expired_error() {
 
 /// 8-1: 正常系 - 複数属性選択
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_select_menu_multi_elements() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -897,7 +884,6 @@ async fn test_handle_recruitment_select_menu_multi_elements() {
 
 /// 8-2: 正常系 - 既存参加の上書き
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_select_menu_overwrite_like_behavior() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -956,7 +942,6 @@ async fn test_handle_recruitment_select_menu_overwrite_like_behavior() {
 
 /// 8-3: 異常系 - キャンセル済み募集への操作
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_handle_recruitment_select_menu_cancelled_error() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -997,7 +982,6 @@ async fn test_handle_recruitment_select_menu_cancelled_error() {
 
 /// 6-8: 異常系 - 操作権限なし（募集主でなく gbf_bot_control ロールもない）
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_permission_denied() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();
@@ -1045,7 +1029,6 @@ async fn test_change_recruitment_permission_denied() {
 
 /// 6-9: 正常系 - gbf_bot_control ロールを持つ管理者は他人の募集も変更可能
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_change_recruitment_admin_can_change_others() {
     let app_state = Arc::new(create_test_app_state().await);
     let mut mock_gateway = MockTestGateway::new();

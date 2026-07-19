@@ -2,6 +2,7 @@ pub mod battle_style_list;
 pub mod button_handler;
 pub mod cancel;
 pub mod change;
+pub mod change_draft;
 pub mod new_recruit;
 mod participant_mentions;
 pub mod participants;

@@ -11,7 +11,7 @@ It is linked to target schedules through `scheduled_task_recurring_recruitments`
 
 - On schedule creation (`ScheduleCreateService`)
 - On schedule enable (`ScheduleCommandService::enable_schedule`)
-- On post-execution next reservation (`RecurringRecruitmentTaskExecutor::create_next_scheduled_task`)
+- On post-execution next reservation (`RecurringRecruitmentDispatchSupportService::register_next_scheduled_task`)
 
 At registration, update these two tables together.
 
@@ -25,7 +25,12 @@ At registration, update these two tables together.
 
 ## Execution flow
 
-`SchedulerManager` executes `RecurringRecruitmentTaskExecutor` in the `task_type=4` branch.
+`SchedulerManager` triggers the cycle and `SchedulerTaskDispatchFacade` executes the `task_type=4`
+branch (`run_recurring_recruitment_dispatch`). This logic previously lived in
+`RecurringRecruitmentTaskExecutor` (service layer); it was moved into the facade because composing
+`RecurringRecruitmentDispatchSupportService`, `RecruitmentScheduleService`, and
+`RecruitmentCreationService`, plus building the UI (Presenter) and sending it (Gateway), is a
+facade-level responsibility, not a service-level one.
 
 1. Re-check task existence and `pending`
 2. Get target schedule ID from `scheduled_task_recurring_recruitments`
@@ -35,7 +40,7 @@ At registration, update these two tables together.
 6. If `quest_start_at <= now`, check whether there is a currently executable occurrence (`recruit_start_at <= now < quest_start_at`)
 7. If such occurrence exists, create that recruitment immediately and mark the skipped task as `succeeded_with_warning`
 8. If no executable occurrence exists, skip recruitment creation, register only the next execution task, and mark the current task as `succeeded_with_warning`
-9. Only when departure is still in the future, create recruitment by `RecruitmentCreationService::create_recruitment_from_schedule`
+9. Only when departure is still in the future, create recruitment: `RecruitmentCreationService::prepare_recruitment_from_schedule` builds the domain data, the facade builds the embed/components via `RecruitmentPresenter` and sends it via the Gateway, then `RecruitmentCreationService::finalize_recruitment_from_schedule` persists the result
 10. Calculate/register the next execution task (search up to 365 days ahead)
 11. Set current task to `succeeded` when recruitment was created without skipping a past task
 

@@ -1,9 +1,12 @@
 use crate::infrastructure::database::session::set_current_guild_id;
-use crate::services::recruitment::schedule::ScheduleDisplayService;
+use crate::models::entities::guild_master::battle_recruitment_schedule_days;
+use crate::models::entities::guild_master::battle_recruitment_schedules;
+use crate::presenter::{ScheduleDisplayInfo, SchedulePresenter};
 use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::AppState;
 use crate::types::discord::AutocompleteOption;
+use chrono_tz::Tz;
 use sea_orm::TransactionTrait;
 use tracing::warn;
 
@@ -77,5 +80,62 @@ pub async fn get_schedules_for_autocomplete(
     let _ = txn.commit().await;
 
     // 表示用へ整形（タイムゾーンを渡す）
-    ScheduleDisplayService::to_autocomplete(&schedules, &timezone)
+    to_autocomplete(&schedules, &timezone)
+}
+
+/// 曜日リストを表示用にフォーマット
+fn format_days_for_display(days: &[battle_recruitment_schedule_days::Model]) -> String {
+    if days.is_empty() {
+        return "なし".to_string();
+    }
+
+    // 毎日かチェック（0: 毎日）
+    if days.iter().any(|d| d.day_of_week == 0) {
+        return "毎日".to_string();
+    }
+
+    // 曜日番号を抽出してSchedulePresenterに委譲
+    let day_numbers: Vec<i32> = days.iter().map(|d| d.day_of_week).collect();
+    SchedulePresenter::format_days(&day_numbers)
+}
+
+/// エンティティからScheduleDisplayInfoに変換する
+fn to_display_info(
+    schedule: &battle_recruitment_schedules::Model,
+    days: &[battle_recruitment_schedule_days::Model],
+    timezone: &Tz,
+) -> ScheduleDisplayInfo {
+    let days_display = format_days_for_display(days);
+    let time_display = SchedulePresenter::format_time_with_timezone(
+        schedule.quest_start_time.hour() as u32,
+        schedule.quest_start_time.minute() as u32,
+        timezone,
+    );
+
+    ScheduleDisplayInfo {
+        id: schedule.id,
+        name: schedule.name.clone(),
+        quest_name: String::new(), // 後で設定される場合がある
+        days_display,
+        time_display,
+        is_enabled: schedule.is_enabled,
+    }
+}
+
+/// オートコンプリート用の候補へ変換（最大25件）
+/// タイムゾーンを適用して時刻を表示
+fn to_autocomplete(
+    schedules: &[(
+        battle_recruitment_schedules::Model,
+        Vec<battle_recruitment_schedule_days::Model>,
+    )],
+    timezone: &Tz,
+) -> Vec<AutocompleteOption> {
+    let display_infos: Vec<ScheduleDisplayInfo> = schedules
+        .iter()
+        .take(25)
+        .map(|(schedule, days)| to_display_info(schedule, days, timezone))
+        .collect();
+
+    SchedulePresenter::create_schedule_autocomplete(&display_infos)
 }

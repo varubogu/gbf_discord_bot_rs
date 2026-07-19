@@ -56,7 +56,7 @@ impl<N: NotificationRepository, T: ScheduledTaskRepository> NotificationHistoryS
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range_with_db(db, from, now)
+            .find_all_by_datetime_range_with_db(db, from, now)
             .await?;
 
         // ギルドでフィルタ
@@ -162,7 +162,7 @@ impl<N: NotificationRepository, T: ScheduledTaskRepository> NotificationHistoryS
 
         let notifications = self
             .notification_repo
-            .find_by_datetime_range_with_db(db, from, to)
+            .find_all_by_datetime_range_with_db(db, from, to)
             .await?;
 
         let guild_notifications: Vec<_> = notifications

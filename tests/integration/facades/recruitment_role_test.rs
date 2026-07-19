@@ -36,7 +36,6 @@ async fn cleanup_role_data(db: &sea_orm::DatabaseConnection, guild_id: i64) {
 
 /// 11-1: 正常系 - 全募集用ロール追加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_add_all_recruitment_role() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 1) as u64;
@@ -77,7 +76,6 @@ async fn test_add_all_recruitment_role() {
 
 /// 11-2: 正常系 - 特定クエスト用ロール追加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_add_quest_recruitment_role() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 2) as u64;
@@ -117,7 +115,6 @@ async fn test_add_quest_recruitment_role() {
 
 /// 11-3: 正常系 - 重複ロールの追加
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_add_duplicate_role() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 3) as u64;
@@ -180,7 +177,6 @@ async fn test_add_duplicate_role() {
 
 /// 12-1: 正常系 - ロール削除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_remove_recruitment_role() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 4) as u64;
@@ -225,7 +221,6 @@ async fn test_remove_recruitment_role() {
 
 /// 12-2: 正常系 - 未登録ロールの削除
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_remove_unregistered_role() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 5) as u64;
@@ -262,7 +257,6 @@ async fn test_remove_unregistered_role() {
 
 /// 13-1: 正常系 - 全ロール設定表示
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_show_roles_with_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 6) as u64;
@@ -316,7 +310,6 @@ async fn test_show_roles_with_data() {
 
 /// 13-2: 正常系 - ロール未設定時の表示
 #[tokio::test]
-#[ignore] // 実際のDBが必要
 async fn test_show_roles_without_data() {
     let app_state = Arc::new(create_test_app_state().await);
     let guild_id = (ROLE_GUILD_ID + 7) as u64;

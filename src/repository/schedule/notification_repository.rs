@@ -23,6 +23,22 @@ pub trait NotificationRepository: Send + Sync {
         to: DateTime<Utc>,
     ) -> Result<Vec<notifications::Model>>;
 
+    /// 指定した日時範囲内の全通知を取得（DatabaseConnection）
+    async fn find_all_by_datetime_range_with_db(
+        &self,
+        db: &sea_orm::DatabaseConnection,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>>;
+
+    /// 指定した日時範囲内の全通知を取得（トランザクション内）
+    async fn find_all_by_datetime_range_with_txn(
+        &self,
+        txn: &DatabaseTransaction,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<notifications::Model>>;
+
     /// 通知を作成（トランザクション付き）
     async fn create_with_txn(
         &self,

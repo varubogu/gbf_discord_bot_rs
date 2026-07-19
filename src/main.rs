@@ -6,7 +6,7 @@ use gbf_discord_bot_rs::events::{
 use gbf_discord_bot_rs::facades::schedule::SchedulerTaskDispatchFacade;
 use gbf_discord_bot_rs::gateway::PoiseDiscordGateway;
 use gbf_discord_bot_rs::services::message::MessageTextId;
-use gbf_discord_bot_rs::services::schedule::{SchedulerManager, TaskDispatchService};
+use gbf_discord_bot_rs::services::schedule::SchedulerManager;
 use gbf_discord_bot_rs::types::{AppConfig, AppError, AppState, DbRole, PoiseData, Result};
 use gbf_discord_bot_rs::utils::error_formatter::ErrorFormatter;
 use gbf_discord_bot_rs::utils::startup_validator::{StartupValidationMode, StartupValidator};
@@ -324,11 +324,12 @@ async fn start_scheduler(app_state: &AppState, http: Arc<serenity::Http>) -> Res
     let recruitment_repo = Arc::new(repos.battle_recruitments);
     let participants_repo = Arc::new(repos.recruitment_participants);
     let message_service = app_state.message_service.clone();
-    let task_dispatch_service =
-        TaskDispatchService::new(recruitment_repo, participants_repo, message_service, repos);
     let dispatch_facade = Arc::new(SchedulerTaskDispatchFacade::new(
         app_state.system_db.clone(),
-        task_dispatch_service,
+        recruitment_repo,
+        participants_repo,
+        message_service,
+        repos,
     ));
 
     // poise依存をサービス層から分離するため、ここでGatewayを作成

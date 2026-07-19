@@ -1,8 +1,10 @@
 use crate::infrastructure::database::session::set_current_guild_id;
+use crate::presenter::{ScheduleCreationDisplayInfo, SchedulePresenter};
 use crate::services::recruitment::schedule::{
     ScheduleCommandService, ScheduleCreateService, ScheduleCreationResult,
 };
-use crate::services::schedule::schedule_query_service::{ScheduleListItem, ScheduleQueryService};
+pub use crate::services::schedule::schedule_query_service::ScheduleListItem;
+use crate::services::schedule::schedule_query_service::ScheduleQueryService;
 use crate::services::timezone_service::TimezoneService;
 use crate::types::app_state::AppState;
 use crate::types::{AppError, Result};
@@ -21,6 +23,29 @@ pub struct RecruitmentScheduleFacade {
 impl RecruitmentScheduleFacade {
     pub fn new(app_state: Arc<AppState>) -> Self {
         Self { app_state }
+    }
+
+    /// 定期募集作成結果を表示用Embedへ変換する。
+    pub fn build_creation_embed(
+        result: &ScheduleCreationResult,
+        user_id: u64,
+    ) -> crate::types::discord::EmbedContent {
+        let display_info = ScheduleCreationDisplayInfo {
+            schedule_id: result.schedule_id as i32,
+            schedule_name: result.schedule_name.clone(),
+            quest_id: result.quest_id,
+            quest_name: result.quest_name.clone(),
+            battle_style_name: result.battle_style_name.clone(),
+            days_display: result.days_display.clone(),
+            timezone: result.timezone.to_string(),
+            quest_start_time: result.quest_start_time.clone(),
+            recruit_start_day_offset: result.recruit_start_day_offset,
+            recruit_start_time: result.recruit_start_time.clone(),
+            dismissal_times: result.dismissal_times.clone(),
+            note: result.note.clone(),
+        };
+
+        SchedulePresenter::create_schedule_creation_embed(&display_info, user_id)
     }
 
     /// 定期募集スケジュールを作成

@@ -6,15 +6,18 @@ use gbf_discord_bot_rs::gateway::{
     DiscordChannelGateway, DiscordGuildGateway, DiscordInteractionGateway, DiscordMessageGateway,
     DiscordReactionGateway,
 };
-use gbf_discord_bot_rs::types::DbRole;
 use gbf_discord_bot_rs::types::discord::{
     ChannelCreateParams, ChannelData, ChannelEditParams, DiscordChannelId, DiscordGuildId,
     DiscordInteractionId, DiscordMessageId, DiscordUserId, GuildEmoji, GuildMember, GuildRole,
     InteractionResponse, MessageContent, MessageData, ReactionEmoji,
 };
 use gbf_discord_bot_rs::types::{AppConfig, AppState};
+use migration::{Migrator, MigratorTrait};
 use mockall::mock;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use testcontainers::{ContainerAsync, runners::AsyncRunner};
+use testcontainers_modules::postgres::Postgres;
+use tokio::sync::OnceCell;
 
 /// テスト用ギルドID（テストデータ用の固定値）
 pub const TEST_GUILD_ID: i64 = 999999999;
@@ -167,30 +170,149 @@ mock! {
     }
 }
 
-/// テスト用のデータベース接続を取得
-///
-/// 指定ロールの環境変数からDB接続情報を取得し、DatabaseConnectionを返す。
-/// テストでは既定のDB_USER/DB_PASSWORDにはフォールバックしない。
-pub async fn get_test_db_for_role(role: DbRole) -> DatabaseConnection {
-    gbf_discord_bot_rs::test_utils::connect_database_for_role(role)
-        .await
-        .unwrap_or_else(|error| {
-            panic!(
-                "テスト用{}データベース接続に失敗しました: {}",
-                role.description(),
-                error
-            )
+/// ファサード結合テストで共有するPostgreSQLコンテナ
+struct TestDatabase {
+    _container: ContainerAsync<Postgres>,
+    port: u16,
+}
+
+static TEST_DATABASE: OnceCell<TestDatabase> = OnceCell::const_new();
+
+async fn test_database() -> &'static TestDatabase {
+    TEST_DATABASE
+        .get_or_init(|| async {
+            let container = Postgres::default()
+                .start()
+                .await
+                .unwrap_or_else(|error| panic!("テスト用PostgreSQLの起動に失敗しました: {error}"));
+            let port = container
+                .get_host_port_ipv4(5432)
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("テスト用PostgreSQLのポート取得に失敗しました: {error}")
+                });
+            let admin_db = Database::connect(database_url("postgres", "postgres", port))
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("テスト用PostgreSQLへの管理者接続に失敗しました: {error}")
+                });
+
+            create_test_roles(&admin_db).await;
+            admin_db
+                .execute_unprepared("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("テスト用PostgreSQLのpgcrypto拡張有効化に失敗しました: {error}")
+                });
+            Migrator::up(&admin_db, None).await.unwrap_or_else(|error| {
+                panic!("テスト用データベースのマイグレーションに失敗しました: {error}")
+            });
+            seed_master_data(&admin_db).await;
+
+            TestDatabase {
+                _container: container,
+                port,
+            }
         })
+        .await
+}
+
+fn database_url(user: &str, password: &str, port: u16) -> String {
+    format!("postgres://{user}:{password}@127.0.0.1:{port}/postgres")
+}
+
+async fn create_test_roles(admin_db: &DatabaseConnection) {
+    for role in [
+        "gbf_bot_system",
+        "gbf_bot_guild",
+        "gbf_bot_global",
+        "gbf_bot_admin",
+    ] {
+        admin_db
+            .execute_unprepared(&format!(
+                "CREATE ROLE {role} LOGIN PASSWORD 'test_password'"
+            ))
+            .await
+            .unwrap_or_else(|error| panic!("テスト用ロール {role} の作成に失敗しました: {error}"));
+    }
+}
+
+/// 結合テストで共通利用する最小限のマスターデータを投入する。
+async fn seed_master_data(admin_db: &DatabaseConnection) {
+    const SEED_SQL: &str = r#"
+        INSERT INTO master.channel_types (id, name, memo) VALUES
+            (1, 'イベント通知', NULL),
+            (2, 'マルチ募集', NULL),
+            (3, '団連絡', NULL),
+            (4, '共用マルチ募集', NULL),
+            (5, '管理者通知', NULL)
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO master.battle_styles (id, display_name, reactions, sort_order) VALUES
+            (1, '通常', '✅', 1),
+            (2, '6属性', '🔥,💧,🌍,💨,☀️,🌑', 2)
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO master.elements (id, reaction_stamp, name_jp, name_en) VALUES
+            (1, '🔥', '火', 'fire'),
+            (2, '💧', '水', 'water'),
+            (3, '🌍', '土', 'earth'),
+            (4, '💨', '風', 'wind'),
+            (5, '☀️', '光', 'light'),
+            (6, '🌑', '闇', 'dark')
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO master.quests
+            (id, name, default_battle_style_id, recruit_count, available_battle_style_ids, sort_order)
+        VALUES
+            (1, 'アルバハHL', 1, 6, '1,2', 1),
+            (2, 'ルシファーHL', 1, 6, '1,2', 2),
+            (3, 'ベルゼバブHL', 1, 6, '1,2', 3),
+            (4, 'スーパーアルティメットバハムート', 2, 6, '1,2', 4)
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO master.quest_aliases (quest_id, sequence_no, alias, alias_kana_small)
+        VALUES
+            (1, 1, 'アルバハHL', 'あるばはhl'),
+            (2, 1, 'ルシファーHL', 'るしふぁーhl'),
+            (3, 1, 'ベルゼバブHL', 'べるぜばぶhl'),
+            (4, 1, 'スーパーアルティメットバハムート', 'すーぱーあるてぃめっとばはむーと')
+        ON CONFLICT (quest_id, sequence_no) DO NOTHING;
+
+        SELECT setval('master.quests_id_seq', 4, true);
+    "#;
+
+    admin_db
+        .execute_unprepared(SEED_SQL)
+        .await
+        .unwrap_or_else(|error| panic!("テスト用マスターデータの投入に失敗しました: {error}"));
+}
+
+async fn get_test_db(user: &str) -> DatabaseConnection {
+    let database = test_database().await;
+    let password = if user == "postgres" {
+        "postgres"
+    } else {
+        "test_password"
+    };
+    Database::connect(database_url(user, password, database.port))
+        .await
+        .unwrap_or_else(|error| panic!("テスト用{user}ロールの接続に失敗しました: {error}"))
 }
 
 /// テスト用のGuildロール接続を取得
 pub async fn get_test_guild_db() -> DatabaseConnection {
-    get_test_db_for_role(DbRole::Guild).await
+    get_test_db("postgres").await
+}
+
+/// RLS検証用のGuildロール接続を取得
+pub async fn get_test_guild_role_db() -> DatabaseConnection {
+    get_test_db("gbf_bot_guild").await
 }
 
 /// テスト用のAdminロール接続を取得
 pub async fn get_test_admin_db() -> DatabaseConnection {
-    get_test_db_for_role(DbRole::Admin).await
+    get_test_db("gbf_bot_admin").await
 }
 
 /// テスト用のAppStateを作成
@@ -200,18 +322,17 @@ pub async fn get_test_admin_db() -> DatabaseConnection {
 pub async fn create_test_app_state() -> AppState {
     let config = AppConfig {
         discord_token: "test_token".to_string(),
-        db_host: std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string()),
-        db_port: std::env::var("DB_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(5432),
-        db_name: std::env::var("DB_NAME").unwrap_or_else(|_| "test".to_string()),
+        db_host: "127.0.0.1".to_string(),
+        db_port: test_database().await.port,
+        db_name: "postgres".to_string(),
         max_schedule_days_outside_event: 365,
     };
 
-    let guild_db = get_test_db_for_role(DbRole::Guild).await;
-    let system_db = get_test_db_for_role(DbRole::System).await;
-    let global_db = get_test_db_for_role(DbRole::Global).await;
+    // 検証用クエリがRLSセッション変数に依存しないよう、結合テストでは管理者接続を共有する。
+    // RLS固有の振る舞いはロール接続を使う専用テストで検証する。
+    let guild_db = get_test_db("postgres").await;
+    let system_db = get_test_db("postgres").await;
+    let global_db = get_test_db("postgres").await;
 
     AppState::new(guild_db, system_db, global_db, config)
 }
@@ -235,21 +356,4 @@ pub fn create_test_message_data(
         pinned: false,
         referenced_message_id: None,
     }
-}
-
-/// データベースが利用可能かチェックし、不可の場合はテストをスキップ
-///
-/// テスト関数の先頭で呼び出す。DBが利用できない場合はprintln!してreturnする。
-#[macro_export]
-macro_rules! skip_if_no_db {
-    () => {
-        let (available, missing) = gbf_discord_bot_rs::test_utils::check_database_availability();
-        if !available {
-            println!(
-                "テストスキップ: データベース接続情報が不足しています: {:?}",
-                missing
-            );
-            return;
-        }
-    };
 }
