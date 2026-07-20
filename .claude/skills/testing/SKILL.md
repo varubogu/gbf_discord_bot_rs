@@ -19,11 +19,12 @@ Place in modules with `#[cfg(test)]`
 
 ```rust
 // src/services/user_service.rs
-pub struct UserService {
-    repository: Arc<dyn UserRepository>,
+// DI is static dispatch via generics, not Arc<dyn Trait> — see clean-architecture skill
+pub struct UserService<R: UserRepository> {
+    repository: R,
 }
 
-impl UserService {
+impl<R: UserRepository> UserService<R> {
     pub async fn create(&self, data: UserData) -> Result<User> {
         // Implementation
     }
@@ -71,7 +72,7 @@ async fn test_create_user_success() {
             email: data.email,
         }));
 
-    let service = UserService::new(Arc::new(mock_repository));
+    let service = UserService::new(mock_repository);
     let user_data = UserData {
         name: "太郎".to_string(),
         email: "taro@example.com".to_string(),
@@ -131,7 +132,7 @@ async fn test_with_mock() {
         }));
 
     // Run test
-    let service = UserService::new(Arc::new(mock_repo));
+    let service = UserService::new(mock_repo);
     let result = service.create(user_data).await;
 
     assert!(result.is_ok());
@@ -157,7 +158,7 @@ async fn test_multiple_calls() {
             }
         });
 
-    let service = UserService::new(Arc::new(mock_repo));
+    let service = UserService::new(mock_repo);
 
     let user1 = service.find_by_id(1).await.unwrap();
     assert!(user1.is_some());
@@ -179,7 +180,7 @@ async fn test_error_case() {
         .expect_create_with_txn()
         .returning(|_, _| Err(RepositoryError::DatabaseError("接続エラー".to_string())));
 
-    let service = UserService::new(Arc::new(mock_repo));
+    let service = UserService::new(mock_repo);
     let result = service.create(user_data).await;
 
     assert!(result.is_err());

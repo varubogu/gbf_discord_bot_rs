@@ -80,6 +80,32 @@ AppState pattern (Rust-idiomatic approach, not DI container)
 - Constructor injection for dependencies
 - **Prohibited**: Creating individual DB connections per layer
 
+### Static Dispatch Only (Avoid `dyn`)
+
+Trait substitution for DI **must** use generics for static dispatch, not `Arc<dyn Trait>` / `Box<dyn Trait>`.
+
+```rust
+// ✅ Recommended: static dispatch via generics
+pub struct UserService<R: UserRepository> {
+    repository: R,
+}
+
+impl<R: UserRepository> UserService<R> {
+    pub fn new(repository: R) -> Self {
+        Self { repository }
+    }
+}
+
+// ❌ Prohibited: dynamic dispatch
+pub struct UserService {
+    repository: Arc<dyn UserRepository>,
+}
+```
+
+- In tests, inject `MockUserRepository` directly as the generic type parameter — no `Arc::new(mock)` wrapper needed
+- If a type-parameter list would grow unmanageably large, prefer **not mocking** that dependency (e.g. exercise it against a real DB/testcontainers) over reaching for `dyn`
+- **Exception**: `Box<dyn std::error::Error>` is an idiomatic Rust error-handling pattern and is exempt from this rule
+
 ## Architecture Constraints
 
 ### Prohibited

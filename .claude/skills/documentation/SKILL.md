@@ -379,11 +379,11 @@ Check when creating/modifying documents:
 ❌ Bad:
 ## Implementation
 
-pub struct UserService {
-    repository: Arc<dyn UserRepository>,
+pub struct UserService<R: UserRepository> {
+    repository: R,
 }
 
-impl UserService {
+impl<R: UserRepository> UserService<R> {
     pub async fn create(&self, data: UserData) -> Result<User> {
         self.repository.create(data).await
     }
