@@ -28,9 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
-    env:
-      RUST_TEST_THREADS: "1"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4

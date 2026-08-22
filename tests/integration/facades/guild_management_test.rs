@@ -9,7 +9,7 @@ use gbf_discord_bot_rs::types::AppState;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait};
 use std::sync::Arc;
 
-use super::test_helper::{TEST_GUILD_ID, create_test_app_state, get_test_guild_role_db};
+use super::test_helper::{TEST_GUILD_ID, TestDb, create_test_app_state};
 
 /// テスト用ギルドID（ギルド管理テスト専用）
 const GUILD_TEST_ID: i64 = TEST_GUILD_ID + 100;
@@ -51,7 +51,9 @@ async fn test_register_new_guild_success() {
 /// Guildロールは設定済みギルドのデータだけを参照できる
 #[tokio::test]
 async fn test_guild_rls_isolates_other_guild_data() {
-    let app_state = Arc::new(create_test_app_state().await);
+    // AppStateとRLS検証用のロール接続が同じDBを指す必要があるため、TestDbを共有する
+    let test_db = TestDb::new().await;
+    let app_state = Arc::new(test_db.app_state().await);
     let facade = GuildManagementFacade::new(app_state.clone());
     let guild_id = GUILD_TEST_ID + 90;
     cleanup_guild(app_state.guild_db(), guild_id).await;
@@ -60,7 +62,7 @@ async fn test_guild_rls_isolates_other_guild_data() {
         .await
         .unwrap();
 
-    let guild_db = get_test_guild_role_db().await;
+    let guild_db = test_db.guild_role_db().await;
     let own_txn = guild_db.begin().await.unwrap();
     set_current_guild_id(&own_txn, guild_id).await.unwrap();
     assert!(

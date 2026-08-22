@@ -4,19 +4,25 @@ use gbf_discord_bot_rs::facades::spreadsheet::GuildSpreadsheetRegistrationFacade
 use gbf_discord_bot_rs::infrastructure::database::repositories::SeaOrmGuildSpreadsheetConfigRepository;
 use sea_orm::EntityTrait;
 
-use super::test_helper::{TEST_GUILD_ID, get_test_admin_db, get_test_guild_db};
+use serial_test::serial;
+
+use super::test_helper::{TEST_GUILD_ID, TestDb};
 
 /// 1-1: 異常系：必須環境変数なし
 ///
 /// GOOGLE_SERVICE_ACCOUNT_KEY_FILE未設定の場合、FacadeError::Initializationが返る
+///
+/// 本ファイルの各テストはプロセス全体の環境変数を書き換えるため、
+/// 並列実行で互いの設定を踏まないよう `serial` で直列化している
 #[tokio::test]
+#[serial(google_service_account_key_file)]
 async fn test_new_missing_env_var() {
     // 環境変数を削除
     unsafe {
         std::env::remove_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE");
     }
 
-    let db = get_test_guild_db().await;
+    let db = TestDb::new().await.guild_db().await;
     let result = GuildSpreadsheetRegistrationFacade::new(db);
 
     // 初期化エラーが返る
@@ -36,14 +42,17 @@ async fn test_new_missing_env_var() {
 /// 不正なスプレッドシートURLを指定した場合、URL抽出時点でエラーが返り、
 /// DBに設定レコードが作成されない
 #[tokio::test]
+#[serial(google_service_account_key_file)]
 async fn test_register_invalid_url() {
     // テスト用環境変数を設定（ダミーファイルパス）
     unsafe {
         std::env::set_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE", "/tmp/dummy.json");
     }
 
-    let guild_db = get_test_guild_db().await;
-    let admin_db = get_test_admin_db().await;
+    // Facade用の接続と検証用のadmin接続が同じDBを指す必要があるため、TestDbを共有する
+    let test_db = TestDb::new().await;
+    let guild_db = test_db.guild_db().await;
+    let admin_db = test_db.admin_db().await;
 
     // テスト前のクリーンアップ
     use gbf_discord_bot_rs::models::entities::guild_master::{
@@ -88,14 +97,17 @@ async fn test_register_invalid_url() {
 /// load/pushの一方のみ不正な場合、エラーが返り、
 /// DBに設定レコードが作成されない（部分登録なし）
 #[tokio::test]
+#[serial(google_service_account_key_file)]
 async fn test_register_one_invalid_url() {
     // テスト用環境変数を設定（ダミーファイルパス）
     unsafe {
         std::env::set_var("GOOGLE_SERVICE_ACCOUNT_KEY_FILE", "/tmp/dummy.json");
     }
 
-    let guild_db = get_test_guild_db().await;
-    let admin_db = get_test_admin_db().await;
+    // Facade用の接続と検証用のadmin接続が同じDBを指す必要があるため、TestDbを共有する
+    let test_db = TestDb::new().await;
+    let guild_db = test_db.guild_db().await;
+    let admin_db = test_db.admin_db().await;
 
     // テスト前のクリーンアップ
     use gbf_discord_bot_rs::models::entities::guild_master::{

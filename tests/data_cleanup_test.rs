@@ -16,11 +16,11 @@ use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
 #[allow(dead_code)]
 mod test_helper;
 
-use test_helper::get_test_guild_db;
+use test_helper::TestDb;
 
 #[tokio::test]
 async fn test_data_cleanup_integration() {
-    let db = get_test_guild_db().await;
+    let db = TestDb::new().await.guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -132,7 +132,7 @@ async fn test_data_cleanup_integration() {
 
 #[tokio::test]
 async fn test_data_cleanup_does_not_delete_active_recruitment() {
-    let db = get_test_guild_db().await;
+    let db = TestDb::new().await.guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -182,7 +182,7 @@ async fn test_data_cleanup_does_not_delete_active_recruitment() {
 
 #[tokio::test]
 async fn test_data_cleanup_does_not_delete_unsent_notification() {
-    let db = get_test_guild_db().await;
+    let db = TestDb::new().await.guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
@@ -242,7 +242,7 @@ async fn test_data_cleanup_does_not_delete_unsent_notification() {
 
 #[tokio::test]
 async fn test_data_cleanup_does_not_delete_data_cleanup_task() {
-    let db = get_test_guild_db().await;
+    let db = TestDb::new().await.guild_db().await;
 
     // リポジトリ初期化
     let recruitment_repo = SeaOrmBattleRecruitmentsRepository::new();
