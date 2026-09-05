@@ -21,7 +21,7 @@ where
     // トランザクション終了後は自動的にリセットされる
     let sql = format!("SET LOCAL app.current_guild_id = '{guild_id}'");
 
-    conn.execute(Statement::from_string(DatabaseBackend::Postgres, sql))
+    conn.execute_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
         .await?;
 
     Ok(())

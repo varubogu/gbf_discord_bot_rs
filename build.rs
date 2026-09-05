@@ -129,7 +129,7 @@ fn generate_schema_name_function(schema_map: &HashMap<String, String>) -> String
     }
 
     let mut code = String::from(
-        r#"use sea_orm::sea_query::{Alias, IntoIden, TableRef};
+        r#"use sea_orm::sea_query::{Alias, IntoIden, SchemaName, TableName, TableRef};
 
 /// テーブル名からスキーマ名を取得
 ///
@@ -178,12 +178,15 @@ pub fn get_entity_table_ref(table_name: &str) -> TableRef {
     let schema = get_schema_name(table_name);
     // スキーマがpublicでない場合は、スキーマ修飾したTableRefを返す
     if schema != "public" {
-        TableRef::SchemaTable(
-            Alias::new(schema).into_iden(),
-            Alias::new(table_name).into_iden(),
+        TableRef::Table(
+            TableName(
+                Some(SchemaName(None, Alias::new(schema).into_iden())),
+                Alias::new(table_name).into_iden(),
+            ),
+            None,
         )
     } else {
-        TableRef::Table(Alias::new(table_name).into_iden())
+        TableRef::Table(TableName(None, Alias::new(table_name).into_iden()), None)
     }
 }
 
@@ -222,7 +225,7 @@ mod tests {
     fn test_get_entity_table_ref() {
         // 関数が正常に実行できることを確認
         let table_ref = get_entity_table_ref("unknown_table");
-        assert!(matches!(table_ref, TableRef::Table(_)));
+        assert!(matches!(table_ref, TableRef::Table(..)));
     }
 }
 "#,

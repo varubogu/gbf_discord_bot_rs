@@ -122,7 +122,7 @@ mod tests {
             sea_orm::DatabaseBackend::Postgres
         }
 
-        async fn execute(
+        async fn execute_raw(
             &self,
             _stmt: sea_orm::Statement,
         ) -> std::result::Result<sea_orm::ExecResult, sea_orm::DbErr> {
@@ -136,14 +136,14 @@ mod tests {
             unimplemented!("テストでは使用されません")
         }
 
-        async fn query_one(
+        async fn query_one_raw(
             &self,
             _stmt: sea_orm::Statement,
         ) -> std::result::Result<Option<sea_orm::QueryResult>, sea_orm::DbErr> {
             unimplemented!("テストでは使用されません")
         }
 
-        async fn query_all(
+        async fn query_all_raw(
             &self,
             _stmt: sea_orm::Statement,
         ) -> std::result::Result<Vec<sea_orm::QueryResult>, sea_orm::DbErr> {

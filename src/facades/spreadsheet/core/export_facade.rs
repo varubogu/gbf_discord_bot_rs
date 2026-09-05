@@ -407,7 +407,7 @@ async fn fetch_table_rows_from_database(
 ) -> Result<Vec<Vec<PostgresValue>>, FacadeError> {
     let sql = build_select_sql(table_name, schema)?;
     let results = txn
-        .query_all(Statement::from_string(DatabaseBackend::Postgres, sql))
+        .query_all_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
         .await?;
 
     results

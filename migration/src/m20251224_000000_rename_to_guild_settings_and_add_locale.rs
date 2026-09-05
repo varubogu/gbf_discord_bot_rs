@@ -10,7 +10,7 @@ impl MigrationTrait for Migration {
 
         // テーブル存在確認用SQL（COUNT を使用してエラーを回避）
         let timezones_result = conn
-            .query_one(sea_orm::Statement::from_string(
+            .query_one_raw(sea_orm::Statement::from_string(
                 manager.get_database_backend(),
                 "SELECT COUNT(*) as count FROM information_schema.tables
                  WHERE table_schema = 'guild_master'
@@ -19,7 +19,7 @@ impl MigrationTrait for Migration {
             .await?;
 
         let settings_result = conn
-            .query_one(sea_orm::Statement::from_string(
+            .query_one_raw(sea_orm::Statement::from_string(
                 manager.get_database_backend(),
                 "SELECT COUNT(*) as count FROM information_schema.tables
                  WHERE table_schema = 'guild_master'
@@ -52,7 +52,7 @@ impl MigrationTrait for Migration {
             // guild_settings が既に存在する場合（リネーム済み）
             // locale 列の存在確認
             let locale_result = conn
-                .query_one(sea_orm::Statement::from_string(
+                .query_one_raw(sea_orm::Statement::from_string(
                     manager.get_database_backend(),
                     "SELECT COUNT(*) as count FROM information_schema.columns
                      WHERE table_schema = 'guild_master'

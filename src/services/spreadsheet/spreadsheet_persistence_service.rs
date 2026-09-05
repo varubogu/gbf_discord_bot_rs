@@ -59,7 +59,7 @@ impl SpreadsheetPersistenceService {
             delete.from_table(table_ref.clone());
             let (delete_sql, delete_values) = delete.build(PostgresQueryBuilder);
 
-            txn.execute(Statement::from_sql_and_values(
+            txn.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 delete_sql,
                 delete_values,
@@ -162,7 +162,7 @@ impl SpreadsheetPersistenceService {
             // ON CONFLICT句を手動で追加
             let upsert_sql = self.build_upsert_query(table_name, &insert_sql, &filtered_schema);
 
-            txn.execute(Statement::from_sql_and_values(
+            txn.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 upsert_sql,
                 insert_values,
@@ -178,7 +178,7 @@ impl SpreadsheetPersistenceService {
                 .await?;
         } else {
             let (insert_sql, insert_values) = insert.build(PostgresQueryBuilder);
-            txn.execute(Statement::from_sql_and_values(
+            txn.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 insert_sql,
                 insert_values,
@@ -408,7 +408,7 @@ impl SpreadsheetPersistenceService {
         id_list: &[i32],
     ) -> Result<(), FacadeError> {
         if id_list.is_empty() {
-            txn.execute(Statement::from_string(
+            txn.execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
                 delete_sql,
             ))
@@ -416,7 +416,7 @@ impl SpreadsheetPersistenceService {
             .map_err(FacadeError::from)?;
         } else {
             let values: Vec<SeaValue> = id_list.iter().map(|id| SeaValue::Int(Some(*id))).collect();
-            txn.execute(Statement::from_sql_and_values(
+            txn.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 delete_sql,
                 values,
@@ -445,16 +445,16 @@ impl SpreadsheetPersistenceService {
             },
             PostgresValue::Integer(v) => SeaValue::Int(Some(*v)),
             PostgresValue::BigInt(v) => SeaValue::BigInt(Some(*v)),
-            PostgresValue::Text(v) => SeaValue::String(Some(Box::new(v.clone()))),
+            PostgresValue::Text(v) => SeaValue::String(Some(v.clone())),
             PostgresValue::Boolean(v) => SeaValue::Bool(Some(*v)),
-            PostgresValue::Timestamp(v) => SeaValue::ChronoDateTime(Some(Box::new(*v))),
+            PostgresValue::Timestamp(v) => SeaValue::ChronoDateTime(Some(*v)),
             PostgresValue::TimestampTz(v) => {
                 // ローカルタイムゾーン（JST）をUTCに正しく変換
                 let utc = v.with_timezone(&Utc);
-                SeaValue::ChronoDateTimeUtc(Some(Box::new(utc)))
+                SeaValue::ChronoDateTimeUtc(Some(utc))
             }
-            PostgresValue::Date(v) => SeaValue::ChronoDate(Some(Box::new(*v))),
-            PostgresValue::Uuid(v) => SeaValue::Uuid(Some(Box::new(*v))),
+            PostgresValue::Date(v) => SeaValue::ChronoDate(Some(*v)),
+            PostgresValue::Uuid(v) => SeaValue::Uuid(Some(*v)),
             PostgresValue::Json(v) => SeaValue::Json(Some(Box::new(v.clone()))),
             PostgresValue::IntegerArray(v) => SeaValue::Array(
                 ArrayType::Int,
@@ -466,7 +466,7 @@ impl SpreadsheetPersistenceService {
                 ArrayType::String,
                 Some(Box::new(
                     v.iter()
-                        .map(|s| SeaValue::String(Some(Box::new(s.clone()))))
+                        .map(|s| SeaValue::String(Some(s.clone())))
                         .collect(),
                 )),
             ),
