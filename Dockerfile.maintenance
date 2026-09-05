@@ -1,5 +1,5 @@
 # ビルドステージ
-FROM rust:1.84-slim AS builder
+FROM rust:1.94-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -11,8 +11,20 @@ RUN apt-get update && \
 # 依存関係のキャッシュ用
 COPY Cargo.toml Cargo.lock ./
 COPY migration ./migration
+
+# ビルドスクリプトをコピー（スキーマユーティリティ生成に必要）
+COPY build.rs ./
+
+# ロケールファイルをコピー（rust-i18nのビルド時展開に必要）
+COPY locales ./locales
+
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release --bin cleanup || true
+
+# ビルド成果物のうち、次のビルドで再利用されないものを削除
+# target/release/build/ には build.rs の成果物が入っているが、
+# srcディレクトリが変更されると無効になるため削除
+RUN rm -rf src target/release/build/
 
 # 実際のソースコードをコピーしてビルド
 COPY src ./src
