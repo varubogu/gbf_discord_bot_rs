@@ -230,6 +230,9 @@ pub mod keys {
         "recruitment.command.cancel_permission_denied";
     pub const RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED: &str =
         "recruitment.command.change_permission_denied";
+    pub const RECRUITMENT_COMMAND_POSTPONE_SUCCESS: &str = "recruitment.command.postpone_success";
+    pub const RECRUITMENT_COMMAND_POSTPONE_EVENT_DATE_PASSED: &str =
+        "recruitment.command.postpone_event_date_passed";
 
     // General messages
     pub const MESSAGES_WELCOME: &str = "messages.welcome";
@@ -693,6 +696,8 @@ pub enum MessageTextId {
     RecruitmentCommandCancelTimeout,
     RecruitmentCommandCancelPermissionDenied,
     RecruitmentCommandChangePermissionDenied,
+    RecruitmentCommandPostponeSuccess,
+    RecruitmentCommandPostponeEventDatePassed,
 
     // General messages
     MessagesWelcome,
@@ -1214,6 +1219,12 @@ impl MessageTextId {
             }
             MessageTextId::RecruitmentCommandChangePermissionDenied => {
                 keys::RECRUITMENT_COMMAND_CHANGE_PERMISSION_DENIED
+            }
+            MessageTextId::RecruitmentCommandPostponeSuccess => {
+                keys::RECRUITMENT_COMMAND_POSTPONE_SUCCESS
+            }
+            MessageTextId::RecruitmentCommandPostponeEventDatePassed => {
+                keys::RECRUITMENT_COMMAND_POSTPONE_EVENT_DATE_PASSED
             }
 
             // Messages
@@ -2017,6 +2028,8 @@ mod tests {
             MessageTextId::RecruitmentCommandCancelTimeout,
             MessageTextId::RecruitmentCommandCancelPermissionDenied,
             MessageTextId::RecruitmentCommandChangePermissionDenied,
+            MessageTextId::RecruitmentCommandPostponeSuccess,
+            MessageTextId::RecruitmentCommandPostponeEventDatePassed,
             MessageTextId::MessagesWelcome,
             MessageTextId::MessagesHelp,
             MessageTextId::MessagesInitGuide,

@@ -524,6 +524,12 @@ recruitment.command.change_no_changes:
 recruitment.command.change_success:
   en: "Recruitment details have been updated."
   ja: "募集内容を更新しました。"
+recruitment.command.postpone_event_date_passed:
+  en: "The departure time has already passed, so this recruitment cannot be postponed."
+  ja: "既に出発時刻を過ぎているため、この募集は遅らせられません。"
+recruitment.command.postpone_success:
+  en: "The departure time has been postponed by {{minutes}} minutes.\nNew departure date/time: {{event_date}}"
+  ja: "出発時間を{{minutes}}分遅らせました。\n新しい出発日時: {{event_date}}"
 recruitment.display.all_elements:
   en: "All Elements"
   ja: "全属性可能"

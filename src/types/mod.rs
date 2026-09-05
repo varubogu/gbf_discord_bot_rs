@@ -21,7 +21,7 @@ pub use constants::{
 };
 pub use db_role::DbRole;
 pub use discord_operation::{DiscordOperation, DiscordOperationError, DiscordOperationResult};
-pub use domain_interface_result::{CanCancelResult, CancelOnDeleteResult};
+pub use domain_interface_result::{CanCancelResult, CancelOnDeleteResult, PostponeDepartureResult};
 pub use poise_data::{PoiseContext, PoiseData};
 pub use recruit_change_draft::{
     RecruitChangeDraft, RecruitChangeDraftKey, RecruitChangeDraftStore,

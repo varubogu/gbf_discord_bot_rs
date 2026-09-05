@@ -1,13 +1,10 @@
 //! パネル表示用の出発日時ラベル整形。
 
-use crate::facades::guild_settings::GuildSettingsFacade;
+use crate::events::helpers::format_event_datetime;
 use crate::services::message::MessageTextId;
 use crate::types::PoiseData;
-use crate::utils::datetime_display::format_datetime_with_weekday;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tracing::warn;
 
 use super::get_message_or_fallback;
 
@@ -30,22 +27,5 @@ pub(super) async fn format_event_date_label(
         .await;
     };
 
-    if let Some(guild_id) = guild_id {
-        let timezone_facade = GuildSettingsFacade::new(Arc::new(data.app_state.clone()));
-        match timezone_facade.get_timezone(guild_id as i64).await {
-            Ok(timezone) => {
-                let local_datetime = event_date.with_timezone(&timezone);
-                return format_datetime_with_weekday(
-                    local_datetime,
-                    "%Y-%m-%d ({weekday}) %H:%M %Z",
-                    locale,
-                );
-            }
-            Err(e) => {
-                warn!(error = %e, guild_id = guild_id, "タイムゾーン取得に失敗したためUTC表示します");
-            }
-        }
-    }
-
-    format_datetime_with_weekday(event_date, "%Y-%m-%d ({weekday}) %H:%M UTC", locale)
+    format_event_datetime(&data.app_state, guild_id, event_date, locale).await
 }

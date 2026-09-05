@@ -10,6 +10,7 @@ This feature recruits participants for multi battles within a Discord server. Us
 - Create recruitments via `/recruit`
 - Change recruitment details via `/recruit_change`
 - Cancel recruitments via `/recruit_cancel`
+- Postpone the departure time via the “Postpone recruitment by 30 minutes” context menu
 - Proxy operations by users who have the `gbf_bot_control` role
 - Transfer ownership (re-assign host during change)
 - Autocomplete via quest aliases
@@ -276,6 +277,39 @@ For detailed specs, technical implementation, and error handling, see:
   5. Send a “recruitment updated” notification mentioning participants (DB + reactions, deduplicated)
   6. Update DB fields (quest, start datetime, battle type, template)
   7. Commit on success; rollback on failure
+
+### “Postpone recruitment by 30 minutes” (context menu)
+
+- Input: the target recruitment message only (selected by right-click; no additional user input)
+- Actor: the recruitment creator, or an admin with the `gbf_bot_control` role
+- Summary:
+  1. Events calls `postpone_recruitment_departure`, a thin wrapper that passes `EventDateChange::PostponeMinutes(30)`
+     to the same `change_recruitment_information_internal` used by “change recruitment details”
+  2. Inside that change transaction, right after the existing recruitment is read, the service function
+     `postpone_quest_departure(current departure, minutes, now)` computes the new departure datetime
+     (read and update stay in a single transaction, and the recruitment row is not read twice)
+  3. Quest and battle style keep their existing values. The update notification, departure notifications and the
+     scheduled message deletion are re-created through the same path as any departure datetime change
+  4. Format the new departure datetime in the guild timezone and reply to the actor with an ephemeral message
+- Failure:
+  - A recruitment whose departure time has already passed is not postponed (it would stay in the past, so no departure
+    notification would be created while the scheduled post deletion would be re-created at a past time).
+    Nothing is written to the DB and `RecruitmentChangeOutcome::EventDatePassed` is returned
+  - On insufficient permission, return the same permission error text as “change recruitment details”; if the recruitment is not found, return an error text
+
+#### Departure datetime change specification (`EventDateChange`)
+
+`RecruitmentChangeContent.event_date` is an enum expressing “keep / set to a given datetime / shift relatively”.
+The relative shift is computed inside the change transaction.
+
+| Variant | Meaning | Used by |
+|---|---|---|
+| `Keep` | Do not change the departure datetime | quest/battle-style-only changes |
+| `Set(DateTime<Utc>)` | Change to the given datetime | `/recruit_change`, the change panel |
+| `PostponeMinutes(i64)` | Shift the current departure datetime back by the given minutes | “Postpone recruitment by 30 minutes” |
+
+The change function returns `RecruitmentChangeOutcome`: either the applied departure datetime (`Applied`)
+or “not eligible for postponement” (`EventDatePassed`).
 
 ### `/recruit_cancel` (cancel)
 - Input: target recruitment message

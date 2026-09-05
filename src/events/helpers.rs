@@ -3,13 +3,50 @@
 //! PoiseContextを使用する処理を集約。servicesレイヤーに依存しつつ、
 //! poise依存をeventsレイヤーに閉じ込める。
 
+use crate::facades::guild_settings::GuildSettingsFacade;
 use crate::services::locale_service::{DEFAULT_LOCALE, LocaleService};
 use crate::services::message::{
     GuildMessageTextRepository, MessageService, MessageTextId, MessageTextRepository,
 };
 use crate::types::PoiseContext;
+use crate::utils::datetime_display::format_datetime_with_weekday;
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::warn;
+
+/// 出発日時のギルドタイムゾーン表示フォーマット
+const EVENT_DATETIME_FORMAT: &str = "%Y-%m-%d ({weekday}) %H:%M %Z";
+
+/// 出発日時のUTC表示フォーマット（タイムゾーン取得失敗時のフォールバック）
+const EVENT_DATETIME_FORMAT_UTC: &str = "%Y-%m-%d ({weekday}) %H:%M UTC";
+
+/// 出発日時をギルドのタイムゾーンで曜日付きに整形する
+///
+/// タイムゾーンの取得に失敗した場合はwarnログを出してUTC表示にフォールバックする。
+pub async fn format_event_datetime(
+    app_state: &crate::types::AppState,
+    guild_id: Option<u64>,
+    event_date: DateTime<Utc>,
+    locale: &str,
+) -> String {
+    let Some(guild_id) = guild_id else {
+        return format_datetime_with_weekday(event_date, EVENT_DATETIME_FORMAT_UTC, locale);
+    };
+
+    let guild_settings_facade = GuildSettingsFacade::new(Arc::new(app_state.clone()));
+    match guild_settings_facade.get_timezone(guild_id as i64).await {
+        Ok(timezone) => format_datetime_with_weekday(
+            event_date.with_timezone(&timezone),
+            EVENT_DATETIME_FORMAT,
+            locale,
+        ),
+        Err(e) => {
+            warn!(error = %e, guild_id = guild_id, "タイムゾーン取得に失敗したためUTC表示します");
+            format_datetime_with_weekday(event_date, EVENT_DATETIME_FORMAT_UTC, locale)
+        }
+    }
+}
 
 /// PoiseContextから最適なロケールを取得
 ///

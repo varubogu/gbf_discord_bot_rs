@@ -1,7 +1,8 @@
 use crate::events::helpers::get_message_from_context;
 use crate::events::permission::resolve_bot_control;
 use crate::facades::recruitment::change::{
-    RecruitmentChangeContent, change_recruitment_information, parse_recruitment_event_date,
+    EventDateChange, RecruitmentChangeContent, change_recruitment_information,
+    parse_recruitment_event_date,
 };
 use crate::gateway::PoiseDiscordGateway;
 use crate::services::message::MessageTextId;
@@ -128,7 +129,7 @@ pub async fn recruit_change(
         &message_data,
         RecruitmentChangeContent {
             quest,
-            event_date: parsed_date,
+            event_date: parsed_date.map_or(EventDateChange::Keep, EventDateChange::Set),
             battle_style_id: battle_style,
         },
         invoker_user_id,

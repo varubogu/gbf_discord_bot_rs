@@ -6,7 +6,9 @@
 
 use chrono::{Duration, Utc};
 use gbf_discord_bot_rs::errors::GatewayError;
-use gbf_discord_bot_rs::facades::recruitment::change::RecruitmentChangeContent;
+use gbf_discord_bot_rs::facades::recruitment::change::{
+    EventDateChange, RecruitmentChangeContent, RecruitmentChangeOutcome,
+};
 use gbf_discord_bot_rs::facades::recruitment::{button_handler, change};
 use gbf_discord_bot_rs::models::entities::worker::{battle_recruitments, recruitment_participants};
 use gbf_discord_bot_rs::types::discord::{
@@ -205,7 +207,7 @@ async fn test_change_recruitment_information_change_quest() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -258,7 +260,7 @@ async fn test_change_recruitment_information_change_event_date() {
         &message,
         RecruitmentChangeContent {
             quest: None,
-            event_date: Some(new_date),
+            event_date: EventDateChange::Set(new_date),
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -308,7 +310,7 @@ async fn test_change_recruitment_information_change_battle_style() {
         &message,
         RecruitmentChangeContent {
             quest: None,
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: Some(2),
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -348,7 +350,7 @@ async fn test_change_recruitment_information_not_found() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（存在しない募集のため権限チェック後に NotFound）
@@ -394,7 +396,7 @@ async fn test_change_recruitment_information_edit_failed_rollback() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -485,7 +487,7 @@ async fn test_change_recruitment_information_v2_notification_mentions_union_dedu
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -555,7 +557,7 @@ async fn test_change_recruitment_information_v1_notification_mentions_union() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         TEST_USER_ID, // message.author_id（募集主として実行）
@@ -1014,7 +1016,7 @@ async fn test_change_recruitment_permission_denied() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         999999, // 募集主（TEST_USER_ID）ではない別ユーザー
@@ -1058,7 +1060,7 @@ async fn test_change_recruitment_admin_can_change_others() {
         &message,
         RecruitmentChangeContent {
             quest: Some("ルシファーHL".to_string()),
-            event_date: None,
+            event_date: EventDateChange::Keep,
             battle_style_id: None,
         },
         999999, // 募集主（TEST_USER_ID）ではない別ユーザー
@@ -1067,6 +1069,158 @@ async fn test_change_recruitment_admin_can_change_others() {
     .await;
 
     assert!(result.is_ok(), "管理者の変更に失敗: {:?}", result.err());
+
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-10: 正常系 - 出発時間の後ろ倒し（単一トランザクションで既存の出発日時を基準に算出）
+#[tokio::test]
+async fn test_postpone_recruitment_departure_shifts_quest_start_at() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let mut mock_gateway = MockTestGateway::new();
+    setup_common_gateway_for_change(&mut mock_gateway);
+
+    let guild_id = CHANGE_GUILD_ID + 10;
+    let channel_id = CHANGE_CHANNEL_ID + 10;
+    let message_id = CHANGE_MESSAGE_ID + 10;
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    let message = create_message_for_change(channel_id as u64, message_id as u64);
+    let expected = recruitment.quest_start_at + Duration::minutes(30);
+
+    let result = change::postpone_recruitment_departure(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        30,
+        TEST_USER_ID, // 募集主として実行
+        false,        // has_bot_control
+    )
+    .await;
+
+    assert_eq!(
+        result.expect("後ろ倒しに失敗"),
+        RecruitmentChangeOutcome::Applied {
+            event_date: expected
+        }
+    );
+
+    let updated = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    let diff = (updated.quest_start_at - expected).num_seconds().abs();
+    assert!(diff <= 1, "quest_start_atが30分後ろにずれていません");
+
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-11: 異常系 - 出発時刻を過ぎた募集は後ろ倒ししない（DBを変更しない）
+#[tokio::test]
+async fn test_postpone_recruitment_departure_rejects_passed_event_date() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let mock_gateway = MockTestGateway::new();
+
+    let guild_id = CHANGE_GUILD_ID + 11;
+    let channel_id = CHANGE_CHANNEL_ID + 11;
+    let message_id = CHANGE_MESSAGE_ID + 11;
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        -3, // 3時間前に出発済み
+    )
+    .await;
+    let message = create_message_for_change(channel_id as u64, message_id as u64);
+
+    let result = change::postpone_recruitment_departure(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        30,
+        TEST_USER_ID,
+        false,
+    )
+    .await;
+
+    assert_eq!(
+        result.expect("判定自体は成功するべき"),
+        RecruitmentChangeOutcome::EventDatePassed
+    );
+
+    let updated = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    let diff = (updated.quest_start_at - recruitment.quest_start_at)
+        .num_seconds()
+        .abs();
+    assert!(diff <= 1, "出発時刻経過時はquest_start_atを変更しないべき");
+
+    cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
+}
+
+/// 6-12: 異常系 - 出発時間の後ろ倒しは操作権限を要求する
+#[tokio::test]
+async fn test_postpone_recruitment_departure_requires_permission() {
+    let app_state = Arc::new(create_test_app_state().await);
+    let mock_gateway = MockTestGateway::new();
+
+    let guild_id = CHANGE_GUILD_ID + 12;
+    let channel_id = CHANGE_CHANNEL_ID + 12;
+    let message_id = CHANGE_MESSAGE_ID + 12;
+    let recruitment = create_test_recruitment(
+        app_state.guild_db(),
+        guild_id,
+        channel_id,
+        message_id,
+        1,
+        1,
+        false,
+        24,
+    )
+    .await;
+    let message = create_message_for_change(channel_id as u64, message_id as u64);
+
+    let result = change::postpone_recruitment_departure(
+        &app_state,
+        &mock_gateway,
+        guild_id as u64,
+        &message,
+        30,
+        999999, // 募集主（TEST_USER_ID）ではない別ユーザー
+        false,  // gbf_bot_control ロールなし
+    )
+    .await;
+
+    assert!(result.is_err(), "権限なしでエラーが返りませんでした");
+
+    let updated = battle_recruitments::Entity::find_by_id(recruitment.id)
+        .one(app_state.guild_db())
+        .await
+        .unwrap()
+        .unwrap();
+    let diff = (updated.quest_start_at - recruitment.quest_start_at)
+        .num_seconds()
+        .abs();
+    assert!(diff <= 1, "権限エラー時はquest_start_atを変更しないべき");
 
     cleanup_recruitment_with_participants(app_state.guild_db(), recruitment.id).await;
 }

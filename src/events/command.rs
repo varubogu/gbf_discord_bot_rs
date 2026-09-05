@@ -49,6 +49,7 @@ pub fn global_commands() -> Vec<poise::Command<PoiseData, AppError>> {
         slash::auto_recruit::status::auto_recruit_status(),
         // メッセージコンテキストメニューコマンド
         message::recruit_change::recruit_change_context_menu(),
+        message::recruit_postpone::recruit_postpone_context_menu(),
     ]
 }
 

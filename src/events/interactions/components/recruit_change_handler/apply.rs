@@ -3,6 +3,7 @@
 use crate::errors::RecruitmentError;
 use crate::events::helpers::resolve_guild_locale;
 use crate::events::permission::resolve_bot_control_for_interaction;
+use crate::facades::recruitment::change::EventDateChange;
 use crate::facades::recruitment::change_draft::RecruitChangeDraftFacade;
 use crate::gateway::PoiseDiscordGateway;
 use crate::types::discord::MessageData;
@@ -82,7 +83,9 @@ pub(super) async fn handle_apply_changes(
         &message_data,
         crate::facades::recruitment::change::RecruitmentChangeContent {
             quest: draft.quest_name,
-            event_date: draft.event_date,
+            event_date: draft
+                .event_date
+                .map_or(EventDateChange::Keep, EventDateChange::Set),
             battle_style_id: draft.battle_style_id,
         },
         user_id,

@@ -41,8 +41,6 @@ pub enum RecurringRecruitmentExecutionResult {
     ScheduleNotFound { schedule_id: i32 },
     /// スケジュールが無効化されている
     ScheduleDisabled { schedule_id: i32 },
-    /// 次回実行日時が見つからない
-    NextExecutionNotFound { schedule_id: i32 },
 }
 
 /// タスクと定期募集情報を取得し、実行可能な状態であることを検証する

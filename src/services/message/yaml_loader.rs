@@ -647,6 +647,16 @@ pub fn get_yaml_message(message_id: &str, locale: &str) -> Option<String> {
             )
             .to_string(),
         ),
+        keys::RECRUITMENT_COMMAND_POSTPONE_SUCCESS => {
+            Some(t!(keys::RECRUITMENT_COMMAND_POSTPONE_SUCCESS, locale = locale).to_string())
+        }
+        keys::RECRUITMENT_COMMAND_POSTPONE_EVENT_DATE_PASSED => Some(
+            t!(
+                keys::RECRUITMENT_COMMAND_POSTPONE_EVENT_DATE_PASSED,
+                locale = locale
+            )
+            .to_string(),
+        ),
 
         // General messages
         keys::MESSAGES_WELCOME => Some(t!(keys::MESSAGES_WELCOME, locale = locale).to_string()),

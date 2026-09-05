@@ -60,6 +60,18 @@ Or:
 2. Select “Copy Message Link”
 3. Run `/recruit_cancel` and paste the message link
 
+## Postpone a recruitment by 30 minutes
+
+Use this when you only want to push the departure time back by 30 minutes. No input is required.
+
+1. Right-click the recruitment message (long-press on mobile)
+2. Select “Apps” → “Postpone recruitment by 30 minutes”
+3. The new departure date/time is shown only to you, and the recruitment message is updated
+
+> Departure notifications and the automatic deletion of the recruitment post are also re-created for the new departure time.
+>
+> A recruitment whose departure time has already passed cannot be postponed.
+
 ## Change a recruitment (edit details)
 
 1. Right-click the recruitment message (long-press on mobile)
