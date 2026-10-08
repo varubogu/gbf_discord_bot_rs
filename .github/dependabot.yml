@@ -1,12 +1,109 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for more information:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# Dependabot のバージョン更新設定。
+# 既存の devcontainers エントリを維持し、リポジトリ内の依存マニフェストに合わせて拡張している。
+# 参照:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 # https://containers.dev/guide/dependabot
 
 version: 2
 updates:
- - package-ecosystem: "devcontainers"
-   directory: "/"
-   schedule:
-     interval: weekly
+  # Dev Containers の Features。
+  # 対象: /.devcontainer/devcontainer.json と /.devcontainer/devcontainer-lock.json
+  # directory は "/" を指定する。Dependabot が .devcontainer/ 配下を探索する。
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Cargo。ルートと migration は別の Cargo.lock を持つ。
+  # 対象: /Cargo.toml, /Cargo.lock, /migration/Cargo.toml, /migration/Cargo.lock
+  - package-ecosystem: "cargo"
+    directories:
+      - "/"
+      - "/migration"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dockerfile。ファイル名に dockerfile を含むものを対象ディレクトリ内で探索する。
+  # 対象: /Dockerfile.app, /Dockerfile.db, /Dockerfile.maintenance, /.devcontainer/Dockerfile
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/.devcontainer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docker Compose。compose ファイルは docker エコシステムとは別に指定する。
+  # 対象: /docker-compose.yml, /docker-compose.staging.yml, /.devcontainer/docker-compose.yml
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/"
+      - "/.devcontainer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions。directory は "/" を指定する。Dependabot が /.github/workflows を探索する。
+  # 対象: /.github/workflows/ci.yml, ignored-db-tests.yml, deploy.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
