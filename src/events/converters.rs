@@ -8,9 +8,9 @@ use crate::types::discord::{
     EmbedContent, MessageContent, SelectMenuContent, SelectMenuKindContent,
 };
 use poise::serenity_prelude::{
-    AutocompleteChoice, ButtonStyle, CreateActionRow, CreateButton, CreateEmbed, CreateEmbedAuthor,
-    CreateEmbedFooter, CreateMessage, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption, EditMessage, ReactionType,
+    AutocompleteChoice, ButtonStyle, CreateActionRow, CreateAutocompleteResponse, CreateButton,
+    CreateEmbed, CreateEmbedAuthor, CreateEmbedFooter, CreateMessage, CreateSelectMenu,
+    CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, ReactionType,
 };
 
 /// AutocompleteOptionをAutocompleteChoiceに変換する
@@ -21,6 +21,18 @@ pub fn to_autocomplete_choice(option: AutocompleteOption) -> AutocompleteChoice 
 /// Vec<AutocompleteOption>をVec<AutocompleteChoice>に変換する
 pub fn to_autocomplete_choices(options: Vec<AutocompleteOption>) -> Vec<AutocompleteChoice> {
     options.into_iter().map(to_autocomplete_choice).collect()
+}
+
+/// 空のオートコンプリート応答を返す
+pub fn empty_autocomplete_response() -> CreateAutocompleteResponse {
+    CreateAutocompleteResponse::new()
+}
+
+/// AutocompleteChoice列からオートコンプリート応答を作る
+pub fn to_autocomplete_response(
+    choices: impl IntoIterator<Item = AutocompleteChoice>,
+) -> CreateAutocompleteResponse {
+    CreateAutocompleteResponse::new().set_choices(choices.into_iter().collect())
 }
 
 /// EmbedContentをCreateEmbedに変換する
@@ -257,6 +269,17 @@ mod tests {
         ];
         let choices = to_autocomplete_choices(options);
         assert_eq!(choices.len(), 2);
+    }
+
+    #[test]
+    fn test_to_autocomplete_response() {
+        let options = vec![AutocompleteOption::new("オプション1", "1")];
+        let _response = to_autocomplete_response(to_autocomplete_choices(options));
+    }
+
+    #[test]
+    fn test_empty_autocomplete_response() {
+        let _response = empty_autocomplete_response();
     }
 
     #[test]
