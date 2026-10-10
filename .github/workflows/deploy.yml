@@ -43,7 +43,7 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -65,7 +65,7 @@ jobs:
 
       - name: Extract metadata for DB image
         id: meta-db
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-db
           tags: |
@@ -87,7 +87,7 @@ jobs:
 
       - name: Extract metadata for maintenance image
         id: meta-maintenance
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-maintenance
           tags: |
