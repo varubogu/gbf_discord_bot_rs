@@ -247,7 +247,10 @@ fn build_framework(app_state: AppState) -> poise::Framework<PoiseData, AppError>
     poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: commands(),
-            event_handler: |ctx, event, framework, data| {
+            // poise 0.7 は FrameworkContext とイベントだけを渡す
+            event_handler: |framework, event| {
+                let ctx = framework.serenity_context;
+                let data = framework.user_data;
                 Box::pin(event_handler(ctx, event, framework, data))
             },
             on_error: |error| Box::pin(error_handler(error)),

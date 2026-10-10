@@ -30,7 +30,9 @@ pub(super) async fn process_single_table(
     txn: &sea_orm::DatabaseTransaction,
     reader_service: &SpreadsheetReaderService<TableDefinitionService, DataConverterService>,
     sheets_client: &google_sheets4::Sheets<
-        google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+        google_sheets4::hyper_rustls::HttpsConnector<
+            google_sheets4::hyper_util::client::legacy::connect::HttpConnector,
+        >,
     >,
     spreadsheet_id: &str,
     table_def: &TableDefinition,

@@ -101,7 +101,7 @@ impl SpreadsheetImportFacade {
         txn: sea_orm::DatabaseTransaction,
         sheets_client: &google_sheets4::Sheets<
             google_sheets4::hyper_rustls::HttpsConnector<
-                google_sheets4::hyper::client::HttpConnector,
+                google_sheets4::hyper_util::client::legacy::connect::HttpConnector,
             >,
         >,
         spreadsheet_id: &str,
@@ -175,7 +175,9 @@ impl SpreadsheetImportFacade {
 /// `(SpreadsheetReaderService, フィルタ済み対象テーブル, インポート対象テーブル定義)`
 async fn prepare_import_tables(
     sheets_client: &google_sheets4::Sheets<
-        google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+        google_sheets4::hyper_rustls::HttpsConnector<
+            google_sheets4::hyper_util::client::legacy::connect::HttpConnector,
+        >,
     >,
     spreadsheet_id: &str,
     config: &ImportConfig,
@@ -229,7 +231,9 @@ async fn process_all_tables(
     txn: &sea_orm::DatabaseTransaction,
     reader_service: &SpreadsheetReaderService<TableDefinitionService, DataConverterService>,
     sheets_client: &google_sheets4::Sheets<
-        google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+        google_sheets4::hyper_rustls::HttpsConnector<
+            google_sheets4::hyper_util::client::legacy::connect::HttpConnector,
+        >,
     >,
     spreadsheet_id: &str,
     target_tables: &[RegisteredTableSchema],
@@ -323,7 +327,9 @@ async fn process_all_tables(
 /// 生成されたUUIDをスプレッドシートに書き戻す
 async fn write_back_uuids(
     sheets_client: &google_sheets4::Sheets<
-        google_sheets4::hyper_rustls::HttpsConnector<google_sheets4::hyper::client::HttpConnector>,
+        google_sheets4::hyper_rustls::HttpsConnector<
+            google_sheets4::hyper_util::client::legacy::connect::HttpConnector,
+        >,
     >,
     spreadsheet_id: &str,
     generated_uuids: &[(String, GeneratedUuidInfo)],
