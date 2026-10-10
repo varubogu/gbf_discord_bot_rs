@@ -1,16 +1,20 @@
+use crate::events::converters::{empty_autocomplete_response, to_autocomplete_response};
 use crate::events::permission::check_bot_control_role;
 use crate::facades::recruitment::quest_management_facade;
 use crate::types::{PoiseContext, Result};
-use poise::serenity_prelude::AutocompleteChoice;
+use poise::serenity_prelude::{AutocompleteChoice, CreateAutocompleteResponse};
 use tracing::error;
 
 /// クエスト名の入力候補を取得（無効化されていないクエストのみ）
-async fn quest_name_autocomplete(ctx: PoiseContext<'_>, partial: &str) -> Vec<AutocompleteChoice> {
+async fn quest_name_autocomplete(
+    ctx: PoiseContext<'_>,
+    partial: &str,
+) -> CreateAutocompleteResponse {
     let guild_id = match ctx.guild_id() {
         Some(id) => id.get() as i64,
         None => {
             error!("ギルドIDが取得できませんでした");
-            return vec![];
+            return empty_autocomplete_response();
         }
     };
 
@@ -21,10 +25,11 @@ async fn quest_name_autocomplete(ctx: PoiseContext<'_>, partial: &str) -> Vec<Au
     )
     .await;
 
-    results
-        .into_iter()
-        .map(|r| AutocompleteChoice::new(r.display_name, r.quest_name))
-        .collect()
+    to_autocomplete_response(
+        results
+            .into_iter()
+            .map(|r| AutocompleteChoice::new(r.display_name, r.quest_name)),
+    )
 }
 
 /// クエストを無効化
