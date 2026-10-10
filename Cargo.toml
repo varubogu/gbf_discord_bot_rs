@@ -27,7 +27,7 @@ futures = "0.3"
 thiserror = "2.0"
 uuid = { version = "^1.26", features = ["v4", "serde"] }
 tokio-cron-scheduler = "0.15"
-google-sheets4 = "5.0"
+google-sheets4 = "7.0"
 hyper = "1.11"
 hyper-rustls = "0.27"
 
