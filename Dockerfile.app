@@ -1,7 +1,7 @@
 # ================================
 # ビルドステージ
 # ================================
-FROM rust:1.94-bookworm AS builder
+FROM rust:1.99-bookworm AS builder
 
 WORKDIR /build
 
