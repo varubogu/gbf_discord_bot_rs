@@ -52,7 +52,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.arch }}
 
       - name: Build and push app image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.app
@@ -74,7 +74,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.arch }}
 
       - name: Build and push db image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.db
@@ -96,7 +96,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.arch }}
 
       - name: Build and push maintenance image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.maintenance
