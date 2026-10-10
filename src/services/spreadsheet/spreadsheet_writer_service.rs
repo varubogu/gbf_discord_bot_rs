@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use google_sheets4::{
     Sheets,
     api::{ClearValuesRequest, ValueRange},
-    hyper::client::HttpConnector,
     hyper_rustls::HttpsConnector,
+    hyper_util::client::legacy::connect::HttpConnector,
 };
 
 use crate::errors::ExternalServiceError;

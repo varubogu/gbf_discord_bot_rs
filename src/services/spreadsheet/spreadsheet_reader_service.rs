@@ -3,7 +3,9 @@
 /// Google Sheetsからデータを読み込み、PostgreSQL用のデータ構造に変換します。
 /// 設計書: docs/develop/design/spreadsheet/service_layer.md
 use async_trait::async_trait;
-use google_sheets4::{Sheets, hyper::client::HttpConnector, hyper_rustls::HttpsConnector};
+use google_sheets4::{
+    Sheets, hyper_rustls::HttpsConnector, hyper_util::client::legacy::connect::HttpConnector,
+};
 use std::collections::HashMap;
 
 use crate::errors::{ExternalServiceError, ValidationError};

@@ -5,9 +5,9 @@
 use async_trait::async_trait;
 use google_sheets4::{
     Sheets,
-    hyper::{self, client::HttpConnector},
     hyper_rustls::{self, HttpsConnector},
-    oauth2::{ServiceAccountAuthenticator, ServiceAccountKey},
+    hyper_util::{self, client::legacy::connect::HttpConnector},
+    yup_oauth2::{ServiceAccountAuthenticator, ServiceAccountKey},
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -46,7 +46,7 @@ impl GoogleAuthService {
     async fn authenticate(
         &self,
     ) -> Result<
-        google_sheets4::oauth2::authenticator::Authenticator<HttpsConnector<HttpConnector>>,
+        google_sheets4::yup_oauth2::authenticator::Authenticator<HttpsConnector<HttpConnector>>,
         ExternalServiceError,
     > {
         // サービスアカウントキーファイルを読み込み
@@ -80,7 +80,7 @@ impl GoogleAuthService {
         // 認証
         let auth = self.authenticate().await?;
 
-        // HTTPSコネクタを作成（hyper-rustls 0.24用）
+        // HTTPSコネクタを作成する（hyper-rustls 0.27 / hyper 1 系）
         let https = hyper_rustls::HttpsConnectorBuilder::new()
             .with_native_roots()
             .map_err(|e| ExternalServiceError::GoogleAuthError {
@@ -90,8 +90,10 @@ impl GoogleAuthService {
             .enable_http1()
             .build();
 
-        // HTTPクライアントを作成
-        let client = hyper::Client::builder().build(https.clone());
+        // google-apis-common 8 の Client は hyper-util の legacy クライアント
+        let client =
+            hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+                .build(https);
 
         // Sheets APIクライアントを作成
         let hub = Sheets::new(client, auth);

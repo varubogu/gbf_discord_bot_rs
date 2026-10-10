@@ -27,9 +27,11 @@ futures = "0.3"
 thiserror = "2.0"
 uuid = { version = "^1.26", features = ["v4", "serde"] }
 tokio-cron-scheduler = "0.15"
-google-sheets4 = "7.0"
-hyper = "1.11"
-hyper-rustls = "0.27"
+google-sheets4 = { version = "7.0", features = ["yup-oauth2-service-account"] }
+hyper = { version = "1.11", features = ["client", "http1", "http2"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-legacy", "http1", "http2", "tokio"] }
+yup-oauth2 = { version = "12", default-features = false, features = ["hyper-rustls", "service-account", "ring"] }
 
 
 [dev-dependencies]
